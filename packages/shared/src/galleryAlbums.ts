@@ -5,6 +5,7 @@ export interface GalleryAlbum {
   createdAt: number;
   updatedAt: number;
   createdByUid: string;
+  isDefault?: boolean;
 }
 
 export interface GalleryAlbumMedia {

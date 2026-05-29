@@ -6,5 +6,6 @@ export * from './circleInviteAcceptance';
 export * from './circleGalleryUpload';
 export * from './galleryAlbums';
 export * from './circleGalleryAlbums';
+export * from './galleryDefaultAlbum';
 export * from './circlePatients';
 export * from './utils';

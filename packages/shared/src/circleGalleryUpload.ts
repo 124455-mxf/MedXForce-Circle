@@ -2,6 +2,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { addDoc, collection, type Firestore, type FirebaseStorage } from 'firebase/firestore';
 import type { CircleMemberRole } from './patientPermissions';
 import { buildCircleGalleryUpload, toFirestoreGalleryPayload } from './galleryMessages';
+import { resolveGalleryUploadAlbumId } from './galleryDefaultAlbum';
 
 const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
@@ -45,6 +46,12 @@ export async function uploadCircleGalleryMedia(params: {
   });
   const url = await getDownloadURL(storageRef);
 
+  const albumId = await resolveGalleryUploadAlbumId(params.db, {
+    patientId: params.patientId,
+    createdByUid: params.uploadedByUid,
+    albumId: params.albumId,
+  });
+
   const payload = buildCircleGalleryUpload({
     patientId: params.patientId,
     uploadedByUid: params.uploadedByUid,
@@ -53,7 +60,7 @@ export async function uploadCircleGalleryMedia(params: {
     url,
     caption: params.caption,
     isVideo,
-    albumId: params.albumId,
+    albumId,
   });
 
   const docRef = await addDoc(

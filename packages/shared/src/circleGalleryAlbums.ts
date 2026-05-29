@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   orderBy,
   query,
@@ -37,7 +38,11 @@ async function deleteStorageUrl(storage: FirebaseStorage, url: string | undefine
   }
 }
 
-function normalizeAlbum(id: string, patientId: string, data: Record<string, unknown>): GalleryAlbum {
+export function normalizeGalleryAlbum(
+  id: string,
+  patientId: string,
+  data: Record<string, unknown>,
+): GalleryAlbum {
   return {
     id,
     patientId,
@@ -45,6 +50,7 @@ function normalizeAlbum(id: string, patientId: string, data: Record<string, unkn
     createdAt: typeof data.createdAt === 'number' ? data.createdAt : Date.now(),
     updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : Date.now(),
     createdByUid: String(data.createdByUid || ''),
+    isDefault: data.isDefault === true,
   };
 }
 
@@ -67,7 +73,7 @@ function normalizeMedia(id: string, data: Record<string, unknown>): GalleryAlbum
 
 export async function listGalleryAlbums(db: Firestore, patientId: string): Promise<GalleryAlbum[]> {
   const snap = await getDocs(query(albumsCollection(db, patientId), orderBy('updatedAt', 'desc')));
-  return snap.docs.map((d) => normalizeAlbum(d.id, patientId, d.data() as Record<string, unknown>));
+  return snap.docs.map((d) => normalizeGalleryAlbum(d.id, patientId, d.data() as Record<string, unknown>));
 }
 
 export async function createGalleryAlbum(
@@ -174,6 +180,12 @@ export async function deleteGalleryAlbum(
   storage: FirebaseStorage,
   params: { patientId: string; albumId: string },
 ): Promise<void> {
+  const albumRef = doc(db, 'patients', params.patientId, 'gallery_albums', params.albumId);
+  const albumSnap = await getDoc(albumRef);
+  if (albumSnap.exists() && albumSnap.data()?.isDefault === true) {
+    throw new Error('The default shared photos album cannot be deleted.');
+  }
+
   const media = await listAlbumMedia(db, params.patientId, params.albumId);
   for (const item of media) {
     await deleteCircleGalleryMedia(db, storage, item);
