@@ -4,8 +4,8 @@ import {
   doc,
   getDocs,
   query,
-  updateDoc,
   where,
+  writeBatch,
   type Firestore,
 } from 'firebase/firestore';
 import { normalizeGalleryAlbum } from './circleGalleryAlbums';
@@ -82,18 +82,20 @@ export async function migrateLooseCircleMediaToDefaultAlbum(
     ),
   );
 
+  const batch = writeBatch(db);
   let migrated = 0;
   for (const docSnap of snap.docs) {
     const data = docSnap.data();
     if (data.source === 'patient' || data.albumId) continue;
-    await updateDoc(docSnap.ref, { albumId: defaultAlbumId });
+    batch.update(docSnap.ref, { albumId: defaultAlbumId });
     migrated += 1;
   }
 
   if (migrated > 0) {
-    await updateDoc(doc(db, 'patients', params.patientId, 'gallery_albums', defaultAlbumId), {
+    batch.update(doc(db, 'patients', params.patientId, 'gallery_albums', defaultAlbumId), {
       updatedAt: Date.now(),
     });
+    await batch.commit();
   }
 
   return migrated;
