@@ -27,6 +27,7 @@ export async function uploadCircleGalleryMedia(params: {
   senderName: string;
   file: File;
   caption?: string;
+  albumId?: string;
 }): Promise<string> {
   const isVideo = isVideoFile(params.file);
   const maxBytes = isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
@@ -52,6 +53,7 @@ export async function uploadCircleGalleryMedia(params: {
     url,
     caption: params.caption,
     isVideo,
+    albumId: params.albumId,
   });
 
   const docRef = await addDoc(

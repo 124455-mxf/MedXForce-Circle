@@ -25,33 +25,42 @@ export function buildCircleInviteRecord(params: {
   contactId?: string;
 }): CircleInviteRecord {
   const now = Date.now();
-  return {
+  const record: CircleInviteRecord = {
     patientId: params.patientId,
     invitedEmail: params.invitedEmail.trim().toLowerCase(),
     role: params.role,
     capabilities: params.capabilities,
-    displayName: params.displayName,
-    contactId: params.contactId,
     status: 'pending',
     createdAt: now,
     updatedAt: now,
   };
+  if (params.displayName?.trim()) {
+    record.displayName = params.displayName.trim();
+  }
+  if (params.contactId?.trim()) {
+    record.contactId = params.contactId.trim();
+  }
+  return record;
 }
 
 export function memberRecordFromInvite(
   invite: CircleInviteRecord,
-  uid: string,
+  _uid: string,
 ): PatientMemberRecord {
-  return {
+  const record: PatientMemberRecord = {
     role: invite.role,
     capabilities: invite.capabilities,
     status: 'active',
-    displayName: invite.displayName,
     invitedEmail: invite.invitedEmail,
-    contactId: invite.contactId,
-    inviteRef: undefined,
     updatedAt: Date.now(),
   };
+  if (invite.displayName?.trim()) {
+    record.displayName = invite.displayName.trim();
+  }
+  if (invite.contactId?.trim()) {
+    record.contactId = invite.contactId.trim();
+  }
+  return record;
 }
 
 export function circleInviteDocId(patientId: string, invitedEmail: string): string {

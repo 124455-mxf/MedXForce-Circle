@@ -17,6 +17,7 @@ export interface GalleryMessageWrite {
   width?: number;
   height?: number;
   notifyCircle?: boolean;
+  albumId?: string;
 }
 
 export function toFirestoreGalleryPayload(payload: GalleryMessageWrite): Record<string, unknown> {
@@ -36,6 +37,7 @@ export function toFirestoreGalleryPayload(payload: GalleryMessageWrite): Record<
   if (typeof payload.width === 'number') doc.width = payload.width;
   if (typeof payload.height === 'number') doc.height = payload.height;
   if (payload.thumbnailUrl) doc.thumbnailUrl = payload.thumbnailUrl;
+  if (payload.albumId) doc.albumId = payload.albumId;
   return doc;
 }
 
@@ -63,5 +65,6 @@ export function buildCircleGalleryUpload(params: {
     notifyCircle: false,
   };
   if (params.thumbnailUrl) base.thumbnailUrl = params.thumbnailUrl;
+  if (params.albumId) base.albumId = params.albumId;
   return base;
 }

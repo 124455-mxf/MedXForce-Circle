@@ -1,4 +1,11 @@
 import { initMedxFirebase, type MedxFirebaseConfig } from '@medxforce/shared';
+import {
+  browserLocalPersistence,
+  getRedirectResult,
+  setPersistence,
+  type Auth,
+  type UserCredential,
+} from 'firebase/auth';
 
 function requireEnv(key: string): string {
   const value = import.meta.env[key];
@@ -21,3 +28,19 @@ export function loadFirebaseConfig(): MedxFirebaseConfig {
 }
 
 export const firebase = initMedxFirebase(loadFirebaseConfig());
+
+void setPersistence(firebase.auth, browserLocalPersistence).catch((err) => {
+  console.warn('Firebase Auth persistence:', err);
+});
+
+/** Single-flight while pending (StrictMode double-mount). */
+let redirectResultOnce: Promise<UserCredential | null> | null = null;
+
+export function consumeAuthRedirectOnce(authentication: Auth): Promise<UserCredential | null> {
+  if (!redirectResultOnce) {
+    redirectResultOnce = getRedirectResult(authentication).finally(() => {
+      redirectResultOnce = null;
+    });
+  }
+  return redirectResultOnce;
+}

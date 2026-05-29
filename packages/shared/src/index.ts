@@ -4,5 +4,7 @@ export * from './circleInvites';
 export * from './firebase';
 export * from './circleInviteAcceptance';
 export * from './circleGalleryUpload';
+export * from './galleryAlbums';
+export * from './circleGalleryAlbums';
 export * from './circlePatients';
 export * from './utils';

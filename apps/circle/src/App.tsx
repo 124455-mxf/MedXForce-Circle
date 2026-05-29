@@ -1,23 +1,26 @@
 import { useEffect, useState } from 'react';
 import {
   createUserWithEmailAndPassword,
+  GoogleAuthProvider,
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  signInWithPopup,
+  signInWithRedirect,
   signOut,
   type User,
 } from 'firebase/auth';
-import { HeartHandshake, LogOut, Upload, Users } from 'lucide-react';
+import { HeartHandshake, LogOut, Users } from 'lucide-react';
 import {
   acceptPendingCircleInvites,
-  cn,
   listCirclePatientsForUser,
-  type CircleMemberRole,
+  normalizeInviteEmail,
   type CirclePatientSummary,
-  uploadCircleGalleryMedia,
 } from '@medxforce/shared';
-import { firebase } from './lib/firebaseClient';
+import { PatientGalleryScreen } from './components/PatientGalleryScreen';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { consumeAuthRedirectOnce, firebase } from './lib/firebaseClient';
 
-type View = 'patients' | 'upload';
+type View = 'patients' | 'gallery';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -25,70 +28,142 @@ export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
+  const [googleSigningIn, setGoogleSigningIn] = useState(false);
   const [patients, setPatients] = useState<CirclePatientSummary[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<CirclePatientSummary | null>(null);
   const [view, setView] = useState<View>('patients');
-  const [caption, setCaption] = useState('');
-  const [uploading, setUploading] = useState(false);
-  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [refreshingPatients, setRefreshingPatients] = useState(false);
 
   const refreshPatients = async (currentUser: User) => {
     await acceptPendingCircleInvites(firebase.db, currentUser);
     const list = await listCirclePatientsForUser(firebase.db, currentUser.uid);
     setPatients(list);
+    return list;
+  };
+
+  const handleRefreshPatients = async () => {
+    if (!user) return;
+    setRefreshingPatients(true);
+    setAuthError(null);
+    try {
+      const accepted = await acceptPendingCircleInvites(firebase.db, user);
+      const list = await listCirclePatientsForUser(firebase.db, user.uid);
+      setPatients(list);
+      if (list.length === 0 && accepted.length === 0 && user.email) {
+        const email = normalizeInviteEmail(user.email);
+        const pendingSnap = await getDocs(
+          query(
+            collection(firebase.db, 'circle_invites'),
+            where('invitedEmail', '==', email),
+            where('status', '==', 'pending'),
+          ),
+        );
+        if (pendingSnap.empty) {
+          setAuthError(
+            `No invite found for ${email}. In the patient app, save Friends & Family contact with this exact email, click Done, then Refresh.`,
+          );
+        } else {
+          setAuthError('Invite found but could not link your account. Check the browser console for details.');
+        }
+      }
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Could not refresh invites.');
+    } finally {
+      setRefreshingPatients(false);
+    }
   };
 
   useEffect(() => {
-    return onAuthStateChanged(firebase.auth, async (nextUser) => {
+    let active = true;
+
+    void consumeAuthRedirectOnce(firebase.auth)
+      .then((result) => {
+        if (!active) return;
+        if (result?.user && window.location.hash.includes('apiKey=')) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      })
+      .catch((err) => {
+        console.error('getRedirectResult:', err);
+        if (active) setAuthError(friendlyAuthError(err));
+      });
+
+    const unsubscribe = onAuthStateChanged(firebase.auth, async (nextUser) => {
+      if (!active) return;
       setUser(nextUser);
       setAuthLoading(false);
+      setGoogleSigningIn(false);
       if (nextUser) {
         try {
           await refreshPatients(nextUser);
         } catch (err) {
           console.error(err);
+          setAuthError(err instanceof Error ? err.message : 'Could not load your circle patients.');
         }
       } else {
         setPatients([]);
       }
     });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 
   const handleSignIn = async () => {
     setAuthError(null);
     try {
       await signInWithEmailAndPassword(firebase.auth, email.trim(), password);
-    } catch {
-      try {
-        await createUserWithEmailAndPassword(firebase.auth, email.trim(), password);
-      } catch (err) {
-        setAuthError(err instanceof Error ? err.message : 'Sign in failed');
+    } catch (err: unknown) {
+      const code = err && typeof err === 'object' && 'code' in err ? String(err.code) : '';
+      if (code === 'auth/user-not-found') {
+        try {
+          await createUserWithEmailAndPassword(firebase.auth, email.trim(), password);
+        } catch (createErr) {
+          setAuthError(friendlyAuthError(createErr));
+        }
+        return;
       }
+      setAuthError(friendlyAuthError(err));
     }
   };
 
-  const handleUpload = async (file: File) => {
-    if (!user || !selectedPatient?.canUpload) return;
-    setUploading(true);
-    setUploadMessage(null);
+  const handleCreateAccount = async () => {
+    setAuthError(null);
     try {
-      const role = selectedPatient.role as CircleMemberRole;
-      await uploadCircleGalleryMedia({
-        db: firebase.db,
-        storage: firebase.storage,
-        patientId: selectedPatient.patientId,
-        uploadedByUid: user.uid,
-        uploadedByRole: role,
-        senderName: user.displayName || user.email || 'Family Member',
-        file,
-        caption,
-      });
-      setUploadMessage('Shared successfully — it will appear in the patient Soul gallery.');
-      setCaption('');
+      await createUserWithEmailAndPassword(firebase.auth, email.trim(), password);
     } catch (err) {
-      setUploadMessage(err instanceof Error ? err.message : 'Upload failed');
-    } finally {
-      setUploading(false);
+      setAuthError(friendlyAuthError(err));
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setAuthError(null);
+    setGoogleSigningIn(true);
+    const provider = new GoogleAuthProvider();
+    provider.addScope('email');
+    provider.setCustomParameters({ prompt: 'select_account' });
+    try {
+      await signInWithPopup(firebase.auth, provider);
+    } catch (err: unknown) {
+      const code = err && typeof err === 'object' && 'code' in err ? String(err.code) : '';
+      if (
+        code === 'auth/popup-blocked' ||
+        code === 'auth/cancelled-popup-request' ||
+        code === 'auth/popup-closed-by-user'
+      ) {
+        try {
+          await signInWithRedirect(firebase.auth, provider);
+          return;
+        } catch (redirectErr) {
+          setGoogleSigningIn(false);
+          setAuthError(friendlyAuthError(redirectErr));
+        }
+        return;
+      }
+      setGoogleSigningIn(false);
+      setAuthError(friendlyAuthError(err));
     }
   };
 
@@ -131,11 +206,36 @@ export default function App() {
             {authError && <p className="text-sm text-red-600">{authError}</p>}
             <button
               type="button"
+              onClick={handleGoogleSignIn}
+              disabled={googleSigningIn}
+              className="w-full py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-semibold hover:bg-slate-50 flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              <span className="text-lg leading-none">G</span>
+              {googleSigningIn ? 'Signing in…' : 'Continue with Google'}
+            </button>
+            <div className="flex items-center gap-3 text-xs text-slate-400">
+              <div className="h-px flex-1 bg-slate-200" />
+              or email & password
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
+            <button
+              type="button"
               onClick={handleSignIn}
               className="w-full py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700"
             >
               Sign in
             </button>
+            <button
+              type="button"
+              onClick={handleCreateAccount}
+              className="w-full py-3 bg-slate-100 text-slate-700 rounded-2xl font-semibold hover:bg-slate-200"
+            >
+              Create account
+            </button>
+            <p className="text-xs text-slate-500 text-center">
+              MedXForce patient app uses Google — use Continue with Google if you already sign in there.
+              The Google email must match the Friends &amp; Family invite exactly.
+            </p>
           </div>
         </div>
       </div>
@@ -166,13 +266,24 @@ export default function App() {
 
       {view === 'patients' && (
         <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-4">
-          <div className="flex items-center gap-2 text-slate-700">
-            <Users size={18} />
-            <h2 className="font-bold">Your patients</h2>
+          <div className="flex items-center justify-between gap-2 text-slate-700">
+            <div className="flex items-center gap-2">
+              <Users size={18} />
+              <h2 className="font-bold">Your patients</h2>
+            </div>
+            <button
+              type="button"
+              onClick={handleRefreshPatients}
+              disabled={refreshingPatients}
+              className="text-sm font-semibold text-blue-600 disabled:opacity-50"
+            >
+              {refreshingPatients ? 'Refreshing…' : 'Refresh'}
+            </button>
           </div>
+          {authError && <p className="text-sm text-red-600">{authError}</p>}
           {patients.length === 0 ? (
             <p className="text-sm text-slate-500 leading-relaxed">
-              No active invites yet. Ask the patient to add your email under Settings → Friends & Family, then sign in again.
+              No active invites yet. In the patient app, open Settings → Friends &amp; Family, confirm your email is saved, click Done, then tap Refresh here.
             </p>
           ) : (
             <ul className="space-y-3">
@@ -182,13 +293,9 @@ export default function App() {
                     type="button"
                     onClick={() => {
                       setSelectedPatient(patient);
-                      setView('upload');
-                      setUploadMessage(null);
+                      setView('gallery');
                     }}
-                    className={cn(
-                      'w-full text-left p-4 rounded-2xl border transition-colors',
-                      'border-slate-100 hover:border-blue-200 hover:bg-blue-50/50',
-                    )}
+                    className="w-full text-left p-4 rounded-2xl border transition-colors border-slate-100 hover:border-blue-200 hover:bg-blue-50/50"
                   >
                     <p className="font-bold text-slate-800">{patient.displayName}</p>
                     <p className="text-xs text-slate-500 capitalize">{patient.role}</p>
@@ -200,55 +307,37 @@ export default function App() {
         </div>
       )}
 
-      {view === 'upload' && selectedPatient && (
-        <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-5">
-          <button
-            type="button"
-            onClick={() => setView('patients')}
-            className="text-sm font-semibold text-blue-600"
-          >
-            ← Back to patients
-          </button>
-          <div>
-            <h2 className="text-lg font-bold text-slate-800">Share with {selectedPatient.displayName}</h2>
-            <p className="text-sm text-slate-500">Photos and videos appear in Soul → Media Gallery on the patient app.</p>
-          </div>
-          <textarea
-            value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-            placeholder="Add a caption (optional)"
-            rows={3}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl resize-none"
-          />
-          <label
-            className={cn(
-              'flex flex-col items-center justify-center gap-2 py-10 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-blue-300 hover:bg-blue-50/30',
-              (!selectedPatient.canUpload || uploading) && 'opacity-50 pointer-events-none',
-            )}
-          >
-            <Upload size={28} className="text-blue-600" />
-            <span className="font-semibold text-slate-700">
-              {uploading ? 'Uploading…' : 'Choose photo or video'}
-            </span>
-            <input
-              type="file"
-              accept="image/*,video/*"
-              className="hidden"
-              disabled={uploading || !selectedPatient.canUpload}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void handleUpload(file);
-                e.target.value = '';
-              }}
-            />
-          </label>
-          {uploadMessage && (
-            <p className={cn('text-sm', uploadMessage.includes('failed') ? 'text-red-600' : 'text-emerald-700')}>
-              {uploadMessage}
-            </p>
-          )}
-        </div>
+      {view === 'gallery' && selectedPatient && user && (
+        <PatientGalleryScreen
+          user={user}
+          patient={selectedPatient}
+          db={firebase.db}
+          storage={firebase.storage}
+          onBack={() => {
+            setView('patients');
+            setSelectedPatient(null);
+          }}
+        />
       )}
     </div>
   );
+}
+
+function friendlyAuthError(err: unknown): string {
+  const code = err && typeof err === 'object' && 'code' in err ? String(err.code) : '';
+  switch (code) {
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':
+      return 'Wrong password — or this account uses Google sign-in. Try Continue with Google instead.';
+    case 'auth/email-already-in-use':
+      return 'This email already has an account (often via Google). Use Continue with Google, or reset password in Firebase Authentication.';
+    case 'auth/weak-password':
+      return 'Password must be at least 6 characters.';
+    case 'auth/invalid-email':
+      return 'Enter a valid email address.';
+    case 'auth/user-not-found':
+      return 'No account for this email yet. Use Create account instead.';
+    default:
+      return err instanceof Error ? err.message : 'Authentication failed';
+  }
 }
