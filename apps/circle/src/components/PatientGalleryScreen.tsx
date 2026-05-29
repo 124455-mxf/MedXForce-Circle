@@ -138,7 +138,7 @@ export function PatientGalleryScreen({
     setError(null);
     setMessage(null);
     try {
-      await uploadCircleGalleryMediaToAlbum({
+      const uploadedIds = await uploadCircleGalleryMediaToAlbum({
         db,
         storage,
         patientId: patient.patientId,
@@ -152,9 +152,13 @@ export function PatientGalleryScreen({
       setUploadCaption('');
       await loadAlbumDetail(selectedAlbum);
       await loadAlbums();
-      setMessage(
-        files.length === 1 ? 'Uploaded 1 item.' : `Uploaded ${files.length} items.`,
-      );
+      if (uploadedIds.length > 0) {
+        setMessage(
+          uploadedIds.length === 1
+            ? 'Uploaded 1 item.'
+            : `Uploaded ${uploadedIds.length} items.`,
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed.');
     } finally {
