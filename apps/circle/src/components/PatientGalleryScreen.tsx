@@ -24,8 +24,11 @@ import {
   updateCircleGalleryCaption,
   uploadCircleGalleryMediaToAlbum,
 } from '@medxforce/shared';
+import { doc, setDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
+
+import { PatientMessagesScreen } from './PatientMessagesScreen';
 
 type Screen = 'albums' | 'album';
 
@@ -45,6 +48,7 @@ export function PatientGalleryScreen({
   onBack,
 }: PatientGalleryScreenProps) {
   const [screen, setScreen] = useState<Screen>('albums');
+  const [panel, setPanel] = useState<'albums' | 'messages'>('albums');
   const [albums, setAlbums] = useState<GalleryAlbum[]>([]);
   const [selectedAlbum, setSelectedAlbum] = useState<GalleryAlbum | null>(null);
   const [media, setMedia] = useState<GalleryAlbumMedia[]>([]);
@@ -99,6 +103,35 @@ export function PatientGalleryScreen({
   useEffect(() => {
     void loadAlbums();
   }, [loadAlbums]);
+
+  // Presence heartbeat so the patient can see this Circle member as "online".
+  useEffect(() => {
+    if (!patient?.patientId || !user?.uid) return;
+
+    let active = true;
+    const beat = () => {
+      if (!active) return;
+      const now = Date.now();
+      void setDoc(
+        doc(db, 'patients', patient.patientId, 'presence', user.uid),
+        { uid: user.uid, lastSeen: now, status: 'online' },
+        { merge: true },
+      ).catch(() => {});
+    };
+
+    beat();
+    const interval = window.setInterval(beat, 30_000);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') beat();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [db, patient.patientId, user.uid]);
 
   const openAlbum = (album: GalleryAlbum) => {
     setSelectedAlbum(album);
@@ -258,16 +291,47 @@ export function PatientGalleryScreen({
       <div>
         <h2 className="text-lg font-bold text-slate-800">{patient.displayName}</h2>
         <p className="text-sm text-slate-500">
-          {screen === 'albums'
-            ? 'Create albums and share photos & videos with your loved one.'
-            : selectedAlbum?.title}
+          {panel === 'messages'
+            ? 'Send messages to your loved one.'
+            : screen === 'albums'
+              ? 'Create albums and share photos & videos with your loved one.'
+              : selectedAlbum?.title}
         </p>
+
+        <div className="flex gap-2 mt-3">
+          <button
+            type="button"
+            onClick={() => setPanel('albums')}
+            className={[
+              'px-4 py-2 rounded-xl text-sm font-semibold border transition-colors',
+              panel === 'albums'
+                ? 'bg-blue-600 text-white border-blue-700'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-blue-50/40 hover:border-blue-200',
+            ].join(' ')}
+          >
+            Albums
+          </button>
+          <button
+            type="button"
+            onClick={() => setPanel('messages')}
+            className={[
+              'px-4 py-2 rounded-xl text-sm font-semibold border transition-colors',
+              panel === 'messages'
+                ? 'bg-blue-600 text-white border-blue-700'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-blue-50/40 hover:border-blue-200',
+            ].join(' ')}
+          >
+            Messages
+          </button>
+        </div>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {message && <p className="text-sm text-emerald-700">{message}</p>}
+      {panel === 'albums' && message && <p className="text-sm text-emerald-700">{message}</p>}
 
-      {screen === 'albums' && (
+      {panel === 'messages' && <PatientMessagesScreen user={user} patient={patient} db={db} />}
+
+      {panel === 'albums' && screen === 'albums' && (
         <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-4">
           <div className="flex items-center justify-between gap-2">
             <h3 className="font-bold text-slate-800">Albums</h3>
@@ -328,7 +392,7 @@ export function PatientGalleryScreen({
         </div>
       )}
 
-      {screen === 'album' && selectedAlbum && (
+      {panel === 'albums' && screen === 'album' && selectedAlbum && (
         <div className="space-y-4">
           <button
             type="button"
@@ -475,7 +539,7 @@ export function PatientGalleryScreen({
         </div>
       )}
 
-      {editingMedia && (
+      {panel === 'albums' && editingMedia && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40">
           <div className="w-full max-w-md bg-white rounded-[28px] p-6 space-y-4 shadow-xl">
             <h3 className="font-bold text-slate-800">Edit description</h3>
