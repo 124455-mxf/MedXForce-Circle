@@ -104,6 +104,21 @@ export async function renameGalleryAlbum(
   });
 }
 
+/** All gallery items for a patient (circle + patient uploads). Filter by capability in the app. */
+export async function listAllGalleryMediaForPatient(
+  db: Firestore,
+  patientId: string,
+): Promise<GalleryAlbumMedia[]> {
+  const snap = await getDocs(
+    query(
+      collection(db, 'gallery_messages'),
+      where('userId', '==', patientId),
+      orderBy('timestamp', 'desc'),
+    ),
+  );
+  return snap.docs.map((d) => normalizeMedia(d.id, d.data() as Record<string, unknown>));
+}
+
 export async function listAlbumMedia(
   db: Firestore,
   patientId: string,

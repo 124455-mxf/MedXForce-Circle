@@ -1,56 +1,140 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { MutableRefObject } from 'react';
 import type { User } from 'firebase/auth';
-import {
-  collection,
-  doc,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  query,
-  setDoc,
-  updateDoc,
-} from 'firebase/firestore';
+import { ChevronLeft, ChevronDown, Mail, User as UserIcon } from 'lucide-react';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import { normalizeInviteEmail } from '@medxforce/shared';
+import { normalizeInviteEmail, type CirclePatientSummary } from '@medxforce/shared';
+import { cn } from '../lib/utils';
 
-import type { CirclePatientSummary } from '@medxforce/shared';
+import type {
+  CircleThreadMessage,
+  CircleThreadReply,
+} from '../hooks/useCirclePatientThreads';
+import { markThreadRead, threadHasUnreadPatientReply } from '../lib/circleMessageRead';
+import {
+  CIRCLE_REPLY_SORT_CHANGED,
+  getCircleReplySortOrder,
+  type CircleReplySortOrder,
+} from '../lib/circleMessagePreferences';
+import type { UnsavedReplyDraftGuard } from '../lib/unsavedReplyDraft';
+import { CircleDiscardDraftModal } from './CircleDiscardDraftModal';
 
-type FirestorePatientMessage = {
-  id: string;
-  subject?: string;
-  text: string;
-  senderUid: string;
-  senderName: string;
-  status?: string;
-  type?: string;
-  circleMemberUids?: string[];
-  recipientEmails?: string[];
-  createdAt: number;
-  updatedAt: number;
-  hasNewReply?: boolean;
-};
+const REPLY_COLLAPSE_THRESHOLD = 4;
+const REPLY_TAIL_VISIBLE = 2;
 
-type FirestorePatientReply = {
-  id: string;
-  patientId: string;
-  messageId: string;
-  senderUid: string;
-  senderName: string;
-  senderEmail?: string;
-  text: string;
-  isPatient: boolean;
-  channel: 'app' | 'email';
-  timestamp: number;
-};
+function threadTitle(msg: CircleThreadMessage): string {
+  const subject = msg.subject?.trim();
+  if (subject) return subject;
+  const text = msg.text?.trim() || '';
+  if (!text) return 'Message';
+  if (text.length <= 80) return text;
+  return `${text.slice(0, 80)}…`;
+}
+
+function formatThreadTime(ts: number): string {
+  const d = new Date(ts);
+  const today = new Date().toDateString();
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === today) return `Today, ${time}`;
+  return `${d.toLocaleDateString()}, ${time}`;
+}
+
+/** Matches patient app MessagesTab reply cards (blue = you, emerald = patient). */
+function CircleReplyCard({
+  reply,
+  highlightAsUnread = false,
+}: {
+  reply: CircleThreadReply;
+  highlightAsUnread?: boolean;
+}) {
+  const fromPatient = reply.isPatient;
+  const isOwnReply = !fromPatient;
+
+  return (
+    <div
+      className={cn(
+        'border rounded-2xl p-4 relative overflow-hidden',
+        highlightAsUnread
+          ? 'bg-red-50/40 border-red-200'
+          : isOwnReply
+            ? 'bg-blue-50/50 border-blue-100'
+            : 'bg-emerald-50/50 border-emerald-100',
+      )}
+    >
+      <div
+        className={cn(
+          'absolute top-0 left-0 w-1 h-full',
+          highlightAsUnread
+            ? 'bg-red-500'
+            : isOwnReply
+              ? 'bg-blue-400'
+              : 'bg-emerald-400',
+        )}
+        aria-hidden
+      />
+      <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0">
+          <div
+            className={cn(
+              'w-6 h-6 rounded-full flex items-center justify-center shrink-0',
+              isOwnReply ? 'bg-blue-100' : 'bg-emerald-100',
+            )}
+          >
+            {isOwnReply ? (
+              <UserIcon size={12} className="text-blue-600" />
+            ) : (
+              <Mail size={12} className="text-emerald-600" />
+            )}
+          </div>
+          <span
+            className={cn(
+              'text-xs font-bold uppercase tracking-tight truncate',
+              isOwnReply ? 'text-blue-700' : 'text-emerald-700',
+            )}
+          >
+            {isOwnReply ? 'Your response' : `Reply from ${reply.senderName}`}
+          </span>
+        </div>
+        <span
+          className={cn(
+            'text-[10px] font-medium tabular-nums shrink-0',
+            isOwnReply ? 'text-blue-600/60' : 'text-emerald-600/60',
+          )}
+        >
+          {new Date(reply.timestamp).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </span>
+      </div>
+      <p className="text-slate-700 text-sm font-medium leading-relaxed whitespace-pre-wrap">
+        {reply.text}
+      </p>
+    </div>
+  );
+}
 
 export function PatientMessagesScreen({
   user,
   patient,
   db,
+  loading,
+  error,
+  messages,
+  repliesByMessageId,
+  unreadCount,
+  draftGuardRef,
 }: {
   user: User;
   patient: CirclePatientSummary;
   db: Firestore;
+  loading: boolean;
+  error: string | null;
+  messages: CircleThreadMessage[];
+  repliesByMessageId: Record<string, CircleThreadReply[]>;
+  unreadCount: number;
+  draftGuardRef?: MutableRefObject<UnsavedReplyDraftGuard | null>;
 }) {
   const normalizedEmail = useMemo(
     () => (user.email ? normalizeInviteEmail(user.email) : ''),
@@ -61,93 +145,101 @@ export function PatientMessagesScreen({
     [user.displayName, user.email],
   );
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Array<{ messageId: string; data: FirestorePatientMessage }>>(
-    [],
-  );
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
-
-  // Replies for the currently selected thread
-  const [repliesLoading, setRepliesLoading] = useState(false);
-  const [replies, setReplies] = useState<FirestorePatientReply[]>([]);
-
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
+  const [expandedMiddle, setExpandedMiddle] = useState(false);
+  const [replySort, setReplySort] = useState<CircleReplySortOrder>(() =>
+    getCircleReplySortOrder(),
+  );
+  const [showDiscardModal, setShowDiscardModal] = useState(false);
 
-  const visibleMessagesFilter = useCallback(
-    (m: FirestorePatientMessage) => {
-      const memberUids = Array.isArray(m.circleMemberUids) ? m.circleMemberUids : [];
-      const recipientEmails = Array.isArray(m.recipientEmails) ? m.recipientEmails : [];
-      return memberUids.includes(user.uid) || (normalizedEmail && recipientEmails.includes(normalizedEmail));
+  useEffect(() => {
+    const syncReplySort = () => setReplySort(getCircleReplySortOrder());
+    window.addEventListener(CIRCLE_REPLY_SORT_CHANGED, syncReplySort);
+    window.addEventListener('storage', syncReplySort);
+    return () => {
+      window.removeEventListener(CIRCLE_REPLY_SORT_CHANGED, syncReplySort);
+      window.removeEventListener('storage', syncReplySort);
+    };
+  }, []);
+  const pendingNavigateRef = useRef<(() => void) | null>(null);
+
+  const hasUnsavedDraft = useCallback(
+    () => !!selectedMessageId && replyText.trim().length > 0,
+    [replyText, selectedMessageId],
+  );
+
+  const confirmNavigate = useCallback(
+    (proceed: () => void) => {
+      if (!hasUnsavedDraft()) {
+        proceed();
+        return;
+      }
+      pendingNavigateRef.current = proceed;
+      setShowDiscardModal(true);
     },
-    [normalizedEmail, user.uid],
+    [hasUnsavedDraft],
   );
 
   useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError(null);
-
-    (async () => {
-      try {
-        const snap = await getDocs(collection(db, 'patients', patient.patientId, 'messages'));
-        if (!active) return;
-
-        const items = snap.docs
-          .map((d) => ({ messageId: d.id, data: d.data() as FirestorePatientMessage }))
-          .filter((m) => visibleMessagesFilter(m.data))
-          .sort((a, b) => (b.data.updatedAt || 0) - (a.data.updatedAt || 0));
-
-        setMessages(items);
-        setSelectedMessageId((prev) => prev ?? items[0]?.messageId ?? null);
-      } catch (err) {
-        if (!active) return;
-        setError(err instanceof Error ? err.message : 'Could not load messages.');
-      } finally {
-        if (!active) return;
-        setLoading(false);
-      }
-    })();
-
+    if (!draftGuardRef) return;
+    draftGuardRef.current = { hasUnsavedDraft, confirmNavigate };
     return () => {
-      active = false;
+      draftGuardRef.current = null;
     };
-  }, [db, patient.patientId, visibleMessagesFilter]);
+  }, [confirmNavigate, draftGuardRef, hasUnsavedDraft]);
+
+  const selectedMessage = useMemo(
+    () => messages.find((m) => m.id === selectedMessageId) ?? null,
+    [messages, selectedMessageId],
+  );
+
+  const replies = selectedMessageId ? repliesByMessageId[selectedMessageId] || [] : [];
+
+  const openThread = useCallback(
+    (messageId: string) => {
+      if (messageId === selectedMessageId) return;
+      confirmNavigate(() => {
+        setSelectedMessageId(messageId);
+        setReplyText('');
+        setExpandedMiddle(false);
+        markThreadRead(patient.patientId, messageId);
+      });
+    },
+    [confirmNavigate, patient.patientId, selectedMessageId],
+  );
+
+  const leaveThread = useCallback(() => {
+    confirmNavigate(() => {
+      setSelectedMessageId(null);
+      setReplyText('');
+      setExpandedMiddle(false);
+    });
+  }, [confirmNavigate]);
+
+  const handleDiscardDraft = useCallback(() => {
+    setShowDiscardModal(false);
+    setReplyText('');
+    const proceed = pendingNavigateRef.current;
+    pendingNavigateRef.current = null;
+    proceed?.();
+  }, []);
+
+  const handleContinueEditing = useCallback(() => {
+    setShowDiscardModal(false);
+    pendingNavigateRef.current = null;
+  }, []);
 
   useEffect(() => {
-    if (!selectedMessageId) return;
+    if (selectedMessageId) {
+      markThreadRead(patient.patientId, selectedMessageId);
+    }
+  }, [patient.patientId, selectedMessageId, replies.length]);
 
-    setRepliesLoading(true);
-    setReplies([]);
-
-    const q = query(
-      collection(db, 'patients', patient.patientId, 'messages', selectedMessageId, 'replies'),
-      orderBy('timestamp', 'asc'),
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snap) => {
-        const next: FirestorePatientReply[] = snap.docs.map(
-          (d) => d.data() as FirestorePatientReply,
-        );
-        setReplies(next);
-        setRepliesLoading(false);
-      },
-      (err) => {
-        console.warn('Replies listener error:', err);
-        setRepliesLoading(false);
-      },
-    );
-
-    return () => unsubscribe();
-  }, [db, patient.patientId, selectedMessageId]);
-
-  const selectedMessage = useMemo(() => {
-    if (!selectedMessageId) return null;
-    return messages.find((m) => m.messageId === selectedMessageId) || null;
-  }, [messages, selectedMessageId]);
+  useEffect(() => {
+    setExpandedMiddle(false);
+  }, [replySort]);
 
   const handleSendReply = useCallback(async () => {
     if (!selectedMessageId) return;
@@ -173,25 +265,27 @@ export function PatientMessagesScreen({
         timestamp: now,
       };
 
-      const replyRef = doc(
-        db,
-        'patients',
-        patient.patientId,
-        'messages',
-        selectedMessageId,
-        'replies',
-        replyId,
+      await setDoc(
+        doc(
+          db,
+          'patients',
+          patient.patientId,
+          'messages',
+          selectedMessageId,
+          'replies',
+          replyId,
+        ),
+        replyDoc,
+        { merge: true },
       );
-      await setDoc(replyRef, replyDoc, { merge: true });
 
-      // Nudge the thread "new reply" badge for the patient UI.
-      // (Rules allow updates only to hasNewReply/updatedAt for non-owners.)
-      await updateDoc(doc(db, 'patients', patient.patientId, 'messages', selectedMessageId), {
-        hasNewReply: true,
-        updatedAt: now,
-      });
+      await updateDoc(
+        doc(db, 'patients', patient.patientId, 'messages', selectedMessageId),
+        { hasNewReply: true, updatedAt: now },
+      );
 
       setReplyText('');
+      markThreadRead(patient.patientId, selectedMessageId, now);
     } finally {
       setSending(false);
     }
@@ -205,130 +299,256 @@ export function PatientMessagesScreen({
     user.uid,
   ]);
 
-  return (
-    <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="space-y-1">
+  const isInboxThreadUnread = (msg: CircleThreadMessage) =>
+    threadHasUnreadPatientReply(
+      repliesByMessageId[msg.id] || [],
+      patient.patientId,
+      msg.id,
+    );
+
+  const latestPatientReplyId = useMemo(() => {
+    for (let i = replies.length - 1; i >= 0; i--) {
+      if (replies[i].isPatient) return replies[i].id;
+    }
+    return null;
+  }, [replies]);
+
+  const selectedThreadHasUnread =
+    !!selectedMessage &&
+    threadHasUnreadPatientReply(replies, patient.patientId, selectedMessage.id);
+
+  const orderedReplies = useMemo(() => {
+    const copy = [...replies].sort((a, b) => a.timestamp - b.timestamp);
+    return replySort === 'newest' ? copy.reverse() : copy;
+  }, [replies, replySort]);
+
+  const totalReplies = orderedReplies.length;
+  const shouldCollapse = totalReplies >= REPLY_COLLAPSE_THRESHOLD;
+
+  const { earlierReplies, recentReplies } = useMemo(() => {
+    if (!shouldCollapse) {
+      return { earlierReplies: [] as CircleThreadReply[], recentReplies: orderedReplies };
+    }
+    if (replySort === 'newest') {
+      return {
+        recentReplies: orderedReplies.slice(0, REPLY_TAIL_VISIBLE),
+        earlierReplies: orderedReplies.slice(REPLY_TAIL_VISIBLE),
+      };
+    }
+    return {
+      earlierReplies: orderedReplies.slice(0, totalReplies - REPLY_TAIL_VISIBLE),
+      recentReplies: orderedReplies.slice(-REPLY_TAIL_VISIBLE),
+    };
+  }, [orderedReplies, replySort, shouldCollapse, totalReplies]);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6">
+        <p className="text-sm text-slate-500">Loading messages…</p>
+      </div>
+    );
+  }
+
+  if (messages.length === 0) {
+    return (
+      <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6">
+        <h3 className="font-bold text-slate-800 mb-2">Messages</h3>
+        <p className="text-sm text-slate-500 leading-relaxed">
+          No messages yet. When your loved one sends you something in MedXForce, it will
+          appear here.
+        </p>
+      </div>
+    );
+  }
+
+  if (!selectedMessageId || !selectedMessage) {
+    return (
+      <div className="bg-[#F8FAFC] rounded-[32px] border border-slate-100 shadow-sm flex flex-col flex-1 min-h-0 overflow-hidden">
+        <div className="shrink-0 p-4 border-b border-slate-100 bg-white/80">
           <h3 className="font-bold text-slate-800">Messages</h3>
-          <p className="text-xs text-slate-500">
-            Reply to your loved one’s latest message.
+          <p className="text-xs text-slate-500 mt-0.5">
+            Tap a conversation to read and reply
+            {unreadCount > 0 ? ` · ${unreadCount} with new replies` : ''}
+          </p>
+        </div>
+        <ul className="flex-1 min-h-0 divide-y divide-slate-100 overflow-y-auto overscroll-contain">
+          {messages.map((msg) => {
+            const unread = isInboxThreadUnread(msg);
+            const snippet =
+              (msg.subject && msg.subject.trim()) || msg.text?.slice(0, 80) || 'Message';
+            const replyCount = (repliesByMessageId[msg.id] || []).length;
+            return (
+              <li key={msg.id}>
+                <button
+                  type="button"
+                  onClick={() => openThread(msg.id)}
+                  className={cn(
+                    'w-full text-left p-4 transition-colors relative overflow-hidden',
+                    unread
+                      ? 'bg-red-50/40 hover:bg-red-50/60 border-l-0'
+                      : 'hover:bg-slate-50',
+                  )}
+                >
+                  {unread && (
+                    <span
+                      className="absolute left-0 top-0 bottom-0 w-1 bg-red-500 rounded-r"
+                      aria-hidden
+                    />
+                  )}
+                  <div className="flex items-start justify-between gap-2 pl-1">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        {unread && (
+                          <span className="bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full animate-pulse">
+                            New reply
+                          </span>
+                        )}
+                        {replyCount > 0 && !unread && (
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+                          </span>
+                        )}
+                      </div>
+                      <p className="font-bold text-slate-800 truncate">{snippet}</p>
+                      <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">{msg.text}</p>
+                    </div>
+                    <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">
+                      {formatThreadTime(msg.updatedAt || msg.createdAt)}
+                    </span>
+                  </div>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  }
+
+  const renderReply = (r: CircleThreadReply) => (
+    <CircleReplyCard
+      key={r.id}
+      reply={r}
+      highlightAsUnread={
+        selectedThreadHasUnread && r.isPatient && r.id === latestPatientReplyId
+      }
+    />
+  );
+
+  return (
+    <>
+    <div className="bg-[#F8FAFC] rounded-[32px] border border-slate-100 shadow-sm flex flex-col flex-1 min-h-0 max-h-full overflow-hidden">
+      <div className="shrink-0 flex items-center gap-2 p-4 border-b border-slate-100 bg-white/90">
+        <button
+          type="button"
+          onClick={leaveThread}
+          className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 shrink-0"
+          aria-label="Back to inbox"
+        >
+          <ChevronLeft size={20} />
+        </button>
+        <div className="min-w-0 flex-1">
+          <p className="font-bold text-slate-800 line-clamp-2 leading-snug">
+            {threadTitle(selectedMessage)}
+          </p>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            {formatThreadTime(selectedMessage.updatedAt || selectedMessage.createdAt)}
           </p>
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {loading ? (
-        <p className="text-sm text-slate-500">Loading messages…</p>
-      ) : messages.length === 0 ? (
-        <p className="text-sm text-slate-500 leading-relaxed">
-          No messages yet. When the patient sends you something in MedXForce, it will appear here.
-        </p>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              {messages.map((m) => {
-                const isSelected = m.messageId === selectedMessageId;
-                const snippet = (m.data.subject && m.data.subject.trim()) ? m.data.subject : m.data.text;
-                return (
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 pb-6 space-y-4">
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        <div className="bg-white rounded-[32px] p-4 shadow-sm border border-slate-100">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+            Patient message
+          </p>
+          <p className="text-slate-800 leading-relaxed text-sm whitespace-pre-wrap">
+            {selectedMessage.text}
+          </p>
+        </div>
+
+        {totalReplies > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="h-px flex-1 bg-slate-100" />
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2">
+                {totalReplies} {totalReplies === 1 ? 'reply' : 'replies'}
+              </span>
+              <div className="h-px flex-1 bg-slate-100" />
+            </div>
+            {!shouldCollapse ? (
+              orderedReplies.map(renderReply)
+            ) : replySort === 'oldest' ? (
+              <>
+                {!expandedMiddle && earlierReplies.length > 0 && (
                   <button
-                    key={m.messageId}
                     type="button"
-                    onClick={() => setSelectedMessageId(m.messageId)}
-                    className={[
-                      'w-full text-left p-4 rounded-2xl border transition-colors',
-                      isSelected ? 'border-blue-200 bg-blue-50/40' : 'border-slate-100 hover:border-blue-200 hover:bg-blue-50/40',
-                    ].join(' ')}
+                    onClick={() => setExpandedMiddle(true)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/80 text-[11px] font-bold uppercase tracking-wide text-slate-500 hover:bg-slate-100 hover:text-slate-700 hover:border-slate-300 transition-colors"
                   >
-                    <p className="text-sm font-bold text-slate-800 truncate">
-                      {snippet || 'Message'}
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      {new Date(m.data.updatedAt || m.data.createdAt).toLocaleString()}
-                    </p>
+                    <ChevronDown size={14} />
+                    Show {earlierReplies.length} earlier replies
                   </button>
-                );
-              })}
-            </div>
-
-            <div className="space-y-3">
-              {!selectedMessage ? (
-                <p className="text-sm text-slate-500">Select a message thread.</p>
-              ) : (
-                <>
-                  <div className="p-4 rounded-2xl border border-slate-100 bg-slate-50">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                      Patient message
-                    </p>
-                    <p className="text-sm text-slate-800 mt-1 whitespace-pre-wrap">
-                      {selectedMessage.data.text}
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                        Replies
-                      </h4>
-                      {repliesLoading && <p className="text-[11px] text-slate-500">Updating…</p>}
-                    </div>
-
-                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                      {replies.length === 0 ? (
-                        <p className="text-sm text-slate-500">No replies yet.</p>
-                      ) : (
-                        replies.map((r) => (
-                          <div
-                            key={r.id}
-                            className="p-3 rounded-2xl border border-slate-100 bg-white"
-                          >
-                            <p className="text-[11px] font-bold text-slate-500">
-                              {r.senderName} • {new Date(r.timestamp).toLocaleTimeString()}
-                            </p>
-                            <p className="text-sm text-slate-800 whitespace-pre-wrap mt-1">
-                              {r.text}
-                            </p>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <textarea
-                      value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
-                      rows={3}
-                      placeholder="Type your reply…"
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl resize-none text-sm"
-                      disabled={sending}
-                    />
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setReplyText('')}
-                        className="px-4 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-50 rounded-xl border border-slate-200"
-                        disabled={sending}
-                      >
-                        Clear
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleSendReply()}
-                        className="px-5 py-2 bg-blue-600 text-white rounded-2xl text-sm font-bold disabled:opacity-50"
-                        disabled={sending || !replyText.trim() || !selectedMessageId}
-                      >
-                        {sending ? 'Sending…' : 'Send reply'}
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
+                )}
+                {expandedMiddle && earlierReplies.map(renderReply)}
+                {recentReplies.map(renderReply)}
+              </>
+            ) : (
+              <>
+                {recentReplies.map(renderReply)}
+                {!expandedMiddle && earlierReplies.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setExpandedMiddle(true)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/80 text-[11px] font-bold uppercase tracking-wide text-slate-500 hover:bg-slate-100 hover:text-slate-700 hover:border-slate-300 transition-colors"
+                  >
+                    <ChevronDown size={14} />
+                    Show {earlierReplies.length} older replies
+                  </button>
+                )}
+                {expandedMiddle && earlierReplies.map(renderReply)}
+              </>
+            )}
           </div>
-        </>
-      )}
+        )}
+      </div>
+
+      <div className="shrink-0 p-3 sm:p-4 border-t border-slate-200 bg-white shadow-[0_-4px_12px_rgba(15,23,42,0.06)] space-y-2">
+        <textarea
+          value={replyText}
+          onChange={(e) => setReplyText(e.target.value)}
+          rows={2}
+          placeholder="Type your reply…"
+          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl resize-none text-sm max-h-28"
+          disabled={sending}
+        />
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setReplyText('')}
+            className="px-4 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-50 rounded-xl border border-slate-200"
+            disabled={sending}
+          >
+            Clear
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSendReply()}
+            className="px-5 py-2 bg-blue-600 text-white rounded-2xl text-sm font-bold disabled:opacity-50"
+            disabled={sending || !replyText.trim()}
+          >
+            {sending ? 'Sending…' : 'Send reply'}
+          </button>
+        </div>
+      </div>
     </div>
+    <CircleDiscardDraftModal
+      open={showDiscardModal}
+      onDiscard={handleDiscardDraft}
+      onContinueEditing={handleContinueEditing}
+    />
+    </>
   );
 }
-

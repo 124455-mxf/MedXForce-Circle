@@ -9,18 +9,20 @@ import {
   signOut,
   type User,
 } from 'firebase/auth';
-import { HeartHandshake, LogOut, Users } from 'lucide-react';
+import { LogOut, Users } from 'lucide-react';
+import { MedXForceBrandLogo } from './components/MedXForceBrandLogo';
 import {
   acceptPendingCircleInvites,
   listCirclePatientsForUser,
   normalizeInviteEmail,
   type CirclePatientSummary,
 } from '@medxforce/shared';
-import { PatientGalleryScreen } from './components/PatientGalleryScreen';
+import { CircleMainShell } from './components/CircleMainShell';
+import { CircleProfileDrawer } from './components/CircleProfileDrawer';
+import { CircleStartupSequence } from './components/CircleStartupSequence';
+import { useCircleStartupSequence } from './hooks/useCircleStartupSequence';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { consumeAuthRedirectOnce, firebase } from './lib/firebaseClient';
-
-type View = 'patients' | 'gallery';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -30,9 +32,8 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [googleSigningIn, setGoogleSigningIn] = useState(false);
   const [patients, setPatients] = useState<CirclePatientSummary[]>([]);
-  const [selectedPatient, setSelectedPatient] = useState<CirclePatientSummary | null>(null);
-  const [view, setView] = useState<View>('patients');
   const [refreshingPatients, setRefreshingPatients] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const refreshPatients = async (currentUser: User) => {
     await acceptPendingCircleInvites(firebase.db, currentUser);
@@ -111,6 +112,18 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      void refreshPatients(user).catch((err) => {
+        console.warn('[CIRCLE] Could not refresh patients on focus:', err);
+      });
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [user]);
+
   const handleSignIn = async () => {
     setAuthError(null);
     try {
@@ -167,12 +180,10 @@ export default function App() {
     }
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-slate-500">
-        Loading…
-      </div>
-    );
+  const startup = useCircleStartupSequence(!authLoading);
+
+  if (startup.visible) {
+    return <CircleStartupSequence phase={startup.phase} exiting={startup.exiting} />;
   }
 
   if (!user) {
@@ -180,8 +191,8 @@ export default function App() {
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="w-full max-w-md bg-white rounded-[32px] border border-slate-100 shadow-sm p-8 space-y-6">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
-              <HeartHandshake size={22} />
+            <div className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shrink-0">
+              <MedXForceBrandLogo />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-slate-800">MedXForce Circle</h1>
@@ -242,29 +253,48 @@ export default function App() {
     );
   }
 
-  return (
-    <div className="min-h-screen p-4 sm:p-8 max-w-2xl mx-auto space-y-6">
-      <header className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
-            <HeartHandshake size={22} />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-800">MedXForce Circle</h1>
-            <p className="text-xs text-slate-500">{user.email}</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => signOut(firebase.auth)}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-500 hover:text-blue-600 rounded-xl"
-        >
-          <LogOut size={16} />
-          Sign out
-        </button>
-      </header>
+  const accountPhotoUrl = user.photoURL || undefined;
 
-      {view === 'patients' && (
+  return (
+    <div
+      className={
+        patients.length > 0
+          ? 'flex flex-col h-dvh max-h-dvh overflow-hidden box-border p-4 sm:p-8 max-w-2xl mx-auto'
+          : 'min-h-screen p-4 sm:p-8 max-w-2xl mx-auto'
+      }
+    >
+      <div
+        className={`flex items-center gap-3 shrink-0 ${patients.length > 0 ? 'mb-4' : 'mb-6'}`}
+      >
+        <div className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shrink-0">
+          <MedXForceBrandLogo />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl font-bold text-slate-800">MedXForce Circle</h1>
+          <p className="text-xs text-slate-500 truncate">Friends &amp; family</p>
+        </div>
+        {patients.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setProfileOpen(true)}
+            className="flex flex-col items-center gap-0.5 shrink-0"
+            title="Your account"
+          >
+            <span className="w-11 h-11 rounded-full bg-blue-100 border-2 border-blue-200 overflow-hidden flex items-center justify-center">
+              {accountPhotoUrl ? (
+                <img src={accountPhotoUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-sm font-bold text-blue-700">
+                  {(user.displayName || user.email || '?').charAt(0).toUpperCase()}
+                </span>
+              )}
+            </span>
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">You</span>
+          </button>
+        )}
+      </div>
+
+      {patients.length === 0 ? (
         <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-4">
           <div className="flex items-center justify-between gap-2 text-slate-700">
             <div className="flex items-center gap-2">
@@ -281,43 +311,38 @@ export default function App() {
             </button>
           </div>
           {authError && <p className="text-sm text-red-600">{authError}</p>}
-          {patients.length === 0 ? (
-            <p className="text-sm text-slate-500 leading-relaxed">
-              No active invites yet. In the patient app, open Settings → Friends &amp; Family, confirm your email is saved, click Done, then tap Refresh here.
-            </p>
-          ) : (
-            <ul className="space-y-3">
-              {patients.map((patient) => (
-                <li key={patient.patientId}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedPatient(patient);
-                      setView('gallery');
-                    }}
-                    className="w-full text-left p-4 rounded-2xl border transition-colors border-slate-100 hover:border-blue-200 hover:bg-blue-50/50"
-                  >
-                    <p className="font-bold text-slate-800">{patient.displayName}</p>
-                    <p className="text-xs text-slate-500 capitalize">{patient.role}</p>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <p className="text-sm text-slate-500 leading-relaxed">
+            No active invites yet. In the patient app, open Settings → Friends &amp; Family, confirm your email is saved, click Done, then tap Refresh here.
+          </p>
+          <button
+            type="button"
+            onClick={() => signOut(firebase.auth)}
+            className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-blue-600"
+          >
+            <LogOut size={16} />
+            Sign out
+          </button>
         </div>
-      )}
-
-      {view === 'gallery' && selectedPatient && user && (
-        <PatientGalleryScreen
-          user={user}
-          patient={selectedPatient}
-          db={firebase.db}
-          storage={firebase.storage}
-          onBack={() => {
-            setView('patients');
-            setSelectedPatient(null);
-          }}
-        />
+      ) : (
+        <>
+          <div className="flex flex-col flex-1 min-h-0">
+            <CircleMainShell
+              user={user}
+              patients={patients}
+              db={firebase.db}
+              storage={firebase.storage}
+              inviteError={authError}
+            />
+          </div>
+          <CircleProfileDrawer
+            user={user}
+            db={firebase.db}
+            storage={firebase.storage}
+            open={profileOpen}
+            onClose={() => setProfileOpen(false)}
+            onSignOut={() => signOut(firebase.auth)}
+          />
+        </>
       )}
     </div>
   );

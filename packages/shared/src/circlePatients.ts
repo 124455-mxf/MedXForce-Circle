@@ -8,12 +8,21 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import type { CircleInviteRecord } from './circleInvites';
+import {
+  canUploadRichMedia,
+  capabilitiesForRole,
+  type CircleMemberRole,
+  type PatientCapabilities,
+} from './patientPermissions';
 
 export interface CirclePatientSummary {
   patientId: string;
   displayName: string;
   role: string;
   canUpload: boolean;
+  capabilities: PatientCapabilities;
+  /** Patient profile photo from the patient app (Firestore patients/{id}.photoUrl). */
+  photoUrl?: string;
 }
 
 /** Patients this circle user may access (accepted invites + active member doc). */
@@ -41,11 +50,22 @@ export async function listCirclePatientsForUser(
       invite.displayName ||
       'Patient';
 
+    const role = String(member?.role || invite.role) as CircleMemberRole;
+    const capabilities =
+      (member?.capabilities as PatientCapabilities | undefined) ||
+      capabilitiesForRole(role);
+
+    const photoUrl = patientSnap.exists()
+      ? String(patientSnap.data()?.photoUrl || '').trim() || undefined
+      : undefined;
+
     summaries.push({
       patientId: invite.patientId,
       displayName: patientName,
-      role: String(member?.role || invite.role),
-      canUpload: !!member?.capabilities?.richMediaUpload,
+      role,
+      canUpload: canUploadRichMedia(capabilities),
+      capabilities,
+      photoUrl,
     });
   }
 

@@ -8,4 +8,7 @@ export * from './galleryAlbums';
 export * from './circleGalleryAlbums';
 export * from './galleryDefaultAlbum';
 export * from './circlePatients';
+export * from './circleProfile';
 export * from './utils';
+export * from './galleryReactions';
+export * from './galleryPersonMediaTags';

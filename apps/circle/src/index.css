@@ -8,3 +8,14 @@
 body {
   @apply bg-[#F8FAFC] text-slate-900 font-sans antialiased;
 }
+
+@keyframes gallery-reaction-pop {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% - 120px)) scale(2.5);
+  }
+}

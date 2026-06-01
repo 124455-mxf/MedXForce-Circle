@@ -101,6 +101,10 @@ export function canUploadRichMedia(capabilities: PatientCapabilities | undefined
   return !!capabilities?.richMediaUpload;
 }
 
+export function canViewPatientUploads(capabilities: PatientCapabilities | undefined): boolean {
+  return !!capabilities?.viewPatientUploads;
+}
+
 export function normalizeInviteEmail(email: string): string {
   return email.trim().toLowerCase();
 }
