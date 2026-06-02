@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
@@ -34,6 +34,16 @@ export default function App() {
   const [patients, setPatients] = useState<CirclePatientSummary[]>([]);
   const [refreshingPatients, setRefreshingPatients] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+
+  const selectedPatientForSettings = useMemo(() => {
+    if (patients.length === 0) return null;
+    if (selectedPatientId) {
+      const found = patients.find((p) => p.patientId === selectedPatientId);
+      if (found) return found;
+    }
+    return patients[0];
+  }, [patients, selectedPatientId]);
 
   const refreshPatients = async (currentUser: User) => {
     await acceptPendingCircleInvites(firebase.db, currentUser);
@@ -332,15 +342,21 @@ export default function App() {
               db={firebase.db}
               storage={firebase.storage}
               inviteError={authError}
+              onSelectedPatientChange={setSelectedPatientId}
             />
           </div>
           <CircleProfileDrawer
             user={user}
             db={firebase.db}
             storage={firebase.storage}
+            patient={selectedPatientForSettings}
             open={profileOpen}
             onClose={() => setProfileOpen(false)}
             onSignOut={() => signOut(firebase.auth)}
+            onLeftCircle={async () => {
+              if (!user) return;
+              await refreshPatients(user);
+            }}
           />
         </>
       )}

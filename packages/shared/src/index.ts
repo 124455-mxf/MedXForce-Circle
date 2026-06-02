@@ -3,6 +3,7 @@ export * from './galleryMessages';
 export * from './circleInvites';
 export * from './firebase';
 export * from './circleInviteAcceptance';
+export * from './circleMemberLeave';
 export * from './circleGalleryUpload';
 export * from './galleryAlbums';
 export * from './circleGalleryAlbums';

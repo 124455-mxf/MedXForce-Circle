@@ -7,6 +7,7 @@ import {
   Camera,
   ChevronLeft,
   ChevronRight,
+  HeartHandshake,
   LogOut,
   Image as ImageIcon,
   MessageSquare,
@@ -16,11 +17,13 @@ import {
 } from 'lucide-react';
 import { CircleSettingsMessagingPanel } from './CircleSettingsMessagingPanel';
 import { CircleSettingsMediaPanel } from './CircleSettingsMediaPanel';
+import { CircleSettingsCareRelationshipPanel } from './CircleSettingsCareRelationshipPanel';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
 import {
   getCircleUserProfile,
   saveCircleUserProfile,
+  type CirclePatientSummary,
   type CircleUserProfile,
 } from '@medxforce/shared';
 
@@ -28,25 +31,29 @@ interface CircleProfileDrawerProps {
   user: User;
   db: Firestore;
   storage: FirebaseStorage;
+  patient: CirclePatientSummary | null;
   open: boolean;
   onClose: () => void;
   onSignOut: () => void;
+  onLeftCircle: () => void | Promise<void>;
 }
 
 export function CircleProfileDrawer({
   user,
   db,
   storage,
+  patient,
   open,
   onClose,
   onSignOut,
+  onLeftCircle,
 }: CircleProfileDrawerProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<CircleUserProfile | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [drawerView, setDrawerView] = useState<
-    'account' | 'settings' | 'messaging' | 'media'
+    'account' | 'settings' | 'messaging' | 'media' | 'careRelationship'
   >('account');
 
   useEffect(() => {
@@ -124,7 +131,11 @@ export function CircleProfileDrawer({
               type="button"
               onClick={() =>
                 setDrawerView(
-                  drawerView === 'messaging' || drawerView === 'media' ? 'settings' : 'account',
+                  drawerView === 'messaging' ||
+                    drawerView === 'media' ||
+                    drawerView === 'careRelationship'
+                    ? 'settings'
+                    : 'account',
                 )
               }
               className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 shrink-0"
@@ -140,6 +151,7 @@ export function CircleProfileDrawer({
             {drawerView === 'settings' && 'Settings'}
             {drawerView === 'messaging' && 'Messaging'}
             {drawerView === 'media' && 'Media'}
+            {drawerView === 'careRelationship' && 'Care relationship'}
           </h2>
           <button
             type="button"
@@ -152,6 +164,22 @@ export function CircleProfileDrawer({
 
         {drawerView === 'settings' && (
           <div className="flex-1 overflow-y-auto p-2">
+            <button
+              type="button"
+              onClick={() => setDrawerView('careRelationship')}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+            >
+              <HeartHandshake size={20} className="text-blue-600" />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-800 text-sm">Care relationship</p>
+                <p className="text-xs text-slate-400 truncate">
+                  {patient
+                    ? `Your role for ${patient.displayName}`
+                    : 'Role and access for your loved one'}
+                </p>
+              </div>
+              <ChevronRight size={16} className="text-slate-300 shrink-0" />
+            </button>
             <button
               type="button"
               onClick={() => setDrawerView('messaging')}
@@ -188,6 +216,20 @@ export function CircleProfileDrawer({
         {drawerView === 'media' && (
           <div className="flex-1 overflow-y-auto">
             <CircleSettingsMediaPanel />
+          </div>
+        )}
+
+        {drawerView === 'careRelationship' && (
+          <div className="flex-1 overflow-y-auto">
+            <CircleSettingsCareRelationshipPanel
+              user={user}
+              db={db}
+              patient={patient}
+              onLeftCircle={async () => {
+                await onLeftCircle();
+                onClose();
+              }}
+            />
           </div>
         )}
 
@@ -263,7 +305,7 @@ export function CircleProfileDrawer({
             <Settings size={20} className="text-slate-500" />
             <div className="flex-1">
               <p className="font-semibold text-slate-800 text-sm">Settings</p>
-              <p className="text-xs text-slate-400">Messaging, media, and more</p>
+              <p className="text-xs text-slate-400">Messaging, media, care relationship, and more</p>
             </div>
             <ChevronRight size={16} className="text-slate-300" />
           </button>

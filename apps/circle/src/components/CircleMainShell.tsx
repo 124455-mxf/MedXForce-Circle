@@ -27,6 +27,7 @@ interface CircleMainShellProps {
   storage: FirebaseStorage;
   inviteError: string | null;
   onSignOut?: () => void;
+  onSelectedPatientChange?: (patientId: string | null) => void;
 }
 
 export function CircleMainShell({
@@ -35,6 +36,7 @@ export function CircleMainShell({
   db,
   storage,
   inviteError,
+  onSelectedPatientChange,
 }: CircleMainShellProps) {
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(
     () => patients[0]?.patientId ?? null,
@@ -66,6 +68,10 @@ export function CircleMainShell({
     }
     return patients[0];
   }, [patients, selectedPatientId]);
+
+  useEffect(() => {
+    onSelectedPatientChange?.(selectedPatient?.patientId ?? null);
+  }, [selectedPatient?.patientId, onSelectedPatientChange]);
 
   const navItems = useMemo(() => {
     if (!selectedPatient) return [];

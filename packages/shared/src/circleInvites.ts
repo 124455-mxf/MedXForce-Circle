@@ -12,6 +12,8 @@ export interface CircleInviteRecord {
   contactId?: string;
   status: CircleInviteStatus;
   acceptedByUid?: string;
+  /** Set when the circle member leaves voluntarily (leaveCircleForPatient). */
+  leftByUid?: string;
   createdAt: number;
   updatedAt: number;
 }
