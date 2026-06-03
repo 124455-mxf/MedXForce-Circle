@@ -105,6 +105,10 @@ export function canViewPatientUploads(capabilities: PatientCapabilities | undefi
   return !!capabilities?.viewPatientUploads;
 }
 
+export function canInviteMembers(capabilities: PatientCapabilities | undefined): boolean {
+  return !!capabilities?.inviteMembers;
+}
+
 export function normalizeInviteEmail(email: string): string {
   return email.trim().toLowerCase();
 }

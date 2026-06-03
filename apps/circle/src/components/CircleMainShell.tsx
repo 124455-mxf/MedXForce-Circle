@@ -6,17 +6,24 @@ import type { FirebaseStorage } from 'firebase/storage';
 import type { CirclePatientSummary } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 
+import { CircleAdminScreen } from './CircleAdminScreen';
 import { CircleAnalyticsScreen } from './CircleAnalyticsScreen';
 import {
   CircleBottomNav,
-  navItemsForPatient,
+  allNavItemsForPatient,
+  moreNavItemsForPatient,
+  primaryNavItemsForPatient,
   type CircleMainTab,
 } from './CircleBottomNav';
+import { CircleCircleScreen } from './CircleCircleScreen';
 import { CircleDashboardScreen } from './CircleDashboardScreen';
+import { CircleDiaryScreen } from './CircleDiaryScreen';
+import { CircleKnowScreen } from './CircleKnowScreen';
 import { CirclePatientSwitcher } from './CirclePatientSwitcher';
 import { PatientGalleryScreen } from './PatientGalleryScreen';
 import { PatientMessagesScreen } from './PatientMessagesScreen';
 import { useCircleGalleryMediaCounts } from '../hooks/useCircleGalleryMediaCounts';
+import { useCircleMemberThreadUnread } from '../hooks/useCircleMemberThreadUnread';
 import { useCirclePatientThreads } from '../hooks/useCirclePatientThreads';
 import type { UnsavedReplyDraftGuard } from '../lib/unsavedReplyDraft';
 
@@ -45,13 +52,16 @@ export function CircleMainShell({
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const replyDraftGuardRef = useRef<UnsavedReplyDraftGuard | null>(null);
 
-  const guardedNavigate = useCallback((proceed: () => void) => {
-    if (activeTab === 'messages' && replyDraftGuardRef.current?.hasUnsavedDraft()) {
-      replyDraftGuardRef.current.confirmNavigate(proceed);
-      return;
-    }
-    proceed();
-  }, [activeTab]);
+  const guardedNavigate = useCallback(
+    (proceed: () => void) => {
+      if (activeTab === 'messages' && replyDraftGuardRef.current?.hasUnsavedDraft()) {
+        replyDraftGuardRef.current.confirmNavigate(proceed);
+        return;
+      }
+      proceed();
+    },
+    [activeTab],
+  );
 
   const handleTabChange = useCallback(
     (tab: CircleMainTab) => {
@@ -73,15 +83,32 @@ export function CircleMainShell({
     onSelectedPatientChange?.(selectedPatient?.patientId ?? null);
   }, [selectedPatient?.patientId, onSelectedPatientChange]);
 
-  const navItems = useMemo(() => {
+  const primaryNavItems = useMemo(() => {
     if (!selectedPatient) return [];
-    return navItemsForPatient(selectedPatient.capabilities);
+    return primaryNavItemsForPatient(selectedPatient.capabilities);
+  }, [selectedPatient]);
+
+  const moreNavItems = useMemo(() => {
+    if (!selectedPatient) return [];
+    return moreNavItemsForPatient(selectedPatient.capabilities);
+  }, [selectedPatient]);
+
+  const allNavItems = useMemo(() => {
+    if (!selectedPatient) return [];
+    return allNavItemsForPatient(selectedPatient.capabilities);
   }, [selectedPatient]);
 
   const threadState = useCirclePatientThreads(
     db,
     selectedPatient?.patientId ?? '',
     user,
+  );
+
+  const circleThreadUnread = useCircleMemberThreadUnread(
+    db,
+    selectedPatient?.patientId ?? '',
+    user,
+    selectedPatient?.role ?? '',
   );
 
   const galleryCounts = useCircleGalleryMediaCounts(
@@ -92,11 +119,35 @@ export function CircleMainShell({
   );
 
   useEffect(() => {
-    if (navItems.length === 0) return;
-    if (!navItems.some((item) => item.id === activeTab)) {
-      setActiveTab(navItems[0].id);
+    if (allNavItems.length === 0) return;
+    if (!allNavItems.some((item) => item.id === activeTab)) {
+      setActiveTab(allNavItems[0].id);
     }
-  }, [navItems, activeTab]);
+  }, [allNavItems, activeTab]);
+
+  const moreActive = moreNavItems.some((item) => item.id === activeTab);
+
+  const navBadges = useMemo(() => {
+    const messagesUnread =
+      activeTab === 'messages' || !selectedPatient?.capabilities.messaging
+        ? 0
+        : threadState.unreadCount;
+    const circleUnread = activeTab === 'circle' ? 0 : circleThreadUnread.unreadCount;
+    const moreCount = moreActive || moreNavItems.length === 0 ? 0 : moreNavItems.length;
+
+    return {
+      messages: messagesUnread,
+      circle: circleUnread,
+      more: moreCount,
+    };
+  }, [
+    activeTab,
+    circleThreadUnread.unreadCount,
+    moreActive,
+    moreNavItems.length,
+    selectedPatient?.capabilities.messaging,
+    threadState.unreadCount,
+  ]);
 
   useEffect(() => {
     if (!selectedPatient?.patientId || !user?.uid) return;
@@ -135,8 +186,8 @@ export function CircleMainShell({
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-hidden gap-2">
-      <header className="mb-3 shrink-0 rounded-2xl bg-slate-50 border border-slate-100 px-2 py-2 shadow-sm">
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden gap-1.5 [@media(max-height:740px)]:gap-1">
+      <header className="mb-3 shrink-0 rounded-2xl bg-slate-50 border border-slate-100 px-2 py-2 shadow-sm [@media(max-height:740px)]:mb-1.5 [@media(max-height:740px)]:py-1.5">
         <CirclePatientSwitcher
           patients={patients}
           selected={selectedPatient}
@@ -156,13 +207,15 @@ export function CircleMainShell({
       <main
         className={cn(
           'flex-1 min-h-0',
-          activeTab === 'messages' || activeTab === 'media'
+          activeTab === 'messages' || activeTab === 'media' || activeTab === 'diary' || activeTab === 'circle'
             ? 'flex flex-col overflow-hidden'
             : 'space-y-4 overflow-y-auto',
         )}
       >
         {activeTab === 'dashboard' && (
           <CircleDashboardScreen
+            user={user}
+            db={db}
             patient={selectedPatient}
             unreadCount={threadState.unreadCount}
             messageCount={threadState.messages.length}
@@ -197,10 +250,30 @@ export function CircleMainShell({
             />
           </div>
         )}
+        {activeTab === 'circle' && (
+          <div className="flex flex-col flex-1 min-h-0">
+            <CircleCircleScreen user={user} db={db} patient={selectedPatient} />
+          </div>
+        )}
+        {activeTab === 'admin' && (
+          <CircleAdminScreen user={user} db={db} patient={selectedPatient} />
+        )}
         {activeTab === 'analytics' && <CircleAnalyticsScreen patient={selectedPatient} />}
+        {activeTab === 'diary' && (
+          <div className="flex flex-col flex-1 min-h-0">
+            <CircleDiaryScreen user={user} db={db} patient={selectedPatient} />
+          </div>
+        )}
+        {activeTab === 'know' && <CircleKnowScreen patient={selectedPatient} />}
       </main>
 
-      <CircleBottomNav items={navItems} activeTab={activeTab} onTabChange={handleTabChange} />
+      <CircleBottomNav
+        primaryItems={primaryNavItems}
+        moreItems={moreNavItems}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        badges={navBadges}
+      />
     </div>
   );
 }

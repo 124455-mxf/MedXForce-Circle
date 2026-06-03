@@ -1,8 +1,7 @@
-import { useMemo, useState, useEffect } from 'react';
 import type { CircleStartupPhase } from '../hooks/useCircleStartupSequence';
 
-/** Brand splash red — matches patient app StartupSequence */
-export const STARTUP_BRAND_RED = '#BD0007';
+/** Circle app brand splash color */
+export const STARTUP_BRAND_COLOR = '#F9A142';
 
 const STEPS = [
   'Starting MedXForce Circle',
@@ -16,25 +15,13 @@ type CircleStartupSequenceProps = {
 };
 
 export function CircleStartupSequence({ phase, exiting }: CircleStartupSequenceProps) {
-  const reduceMotion = useMemo(
-    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    [],
-  );
-
-  const [fadeIn, setFadeIn] = useState(reduceMotion);
   const progress = ((phase + 1) / STEPS.length) * 100;
-
-  useEffect(() => {
-    if (reduceMotion) return;
-    const id = requestAnimationFrame(() => setFadeIn(true));
-    return () => cancelAnimationFrame(id);
-  }, [reduceMotion]);
 
   return (
     <div
       className="fixed inset-0 z-[10000] overflow-hidden text-white transition-opacity duration-500 ease-in-out"
       style={{
-        backgroundColor: STARTUP_BRAND_RED,
+        backgroundColor: STARTUP_BRAND_COLOR,
         opacity: exiting ? 0 : 1,
       }}
       aria-live="polite"
@@ -56,13 +43,7 @@ export function CircleStartupSequence({ phase, exiting }: CircleStartupSequenceP
           </p>
         </header>
 
-        <main
-          className="flex min-h-0 flex-1 flex-col items-center justify-center px-[clamp(1rem,4vw,2.5rem)] text-center transition-all duration-500 ease-out"
-          style={{
-            opacity: fadeIn && !exiting ? 1 : 0,
-            transform: fadeIn && !exiting ? 'translateY(0)' : 'translateY(12px)',
-          }}
-        >
+        <main className="flex min-h-0 flex-1 flex-col items-center justify-center px-[clamp(1rem,4vw,2.5rem)] text-center transition-opacity duration-500 ease-out">
           <div className="w-full max-w-4xl">
             <h1
               className="font-bold leading-none tracking-tight text-white"

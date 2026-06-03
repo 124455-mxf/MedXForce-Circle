@@ -19,6 +19,13 @@ import {
 } from '../lib/circleMessagePreferences';
 import type { UnsavedReplyDraftGuard } from '../lib/unsavedReplyDraft';
 import { CircleDiscardDraftModal } from './CircleDiscardDraftModal';
+import {
+  circleSectionEmptyCardClass,
+  circleSectionHeaderClass,
+  circleSectionPanelClass,
+  circleSectionSubtitleClass,
+  circleSectionTitleClass,
+} from '../lib/circleSectionStyles';
 
 const REPLY_COLLAPSE_THRESHOLD = 4;
 const REPLY_TAIL_VISIBLE = 2;
@@ -343,7 +350,7 @@ export function PatientMessagesScreen({
 
   if (loading) {
     return (
-      <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6">
+      <div className={circleSectionEmptyCardClass}>
         <p className="text-sm text-slate-500">Loading messages…</p>
       </div>
     );
@@ -351,8 +358,8 @@ export function PatientMessagesScreen({
 
   if (messages.length === 0) {
     return (
-      <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6">
-        <h3 className="font-bold text-slate-800 mb-2">Messages</h3>
+      <div className={circleSectionEmptyCardClass}>
+        <h3 className={cn(circleSectionTitleClass, 'mb-2')}>Messages</h3>
         <p className="text-sm text-slate-500 leading-relaxed">
           No messages yet. When your loved one sends you something in MedXForce, it will
           appear here.
@@ -437,7 +444,7 @@ export function PatientMessagesScreen({
 
   return (
     <>
-    <div className="bg-[#F8FAFC] rounded-[32px] border border-slate-100 shadow-sm flex flex-col flex-1 min-h-0 max-h-full overflow-hidden">
+    <div className={cn(circleSectionPanelClass, 'max-h-full')}>
       <div className="shrink-0 flex items-center gap-2 p-4 border-b border-slate-100 bg-white/90">
         <button
           type="button"

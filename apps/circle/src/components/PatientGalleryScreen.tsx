@@ -5,7 +5,6 @@ import {
   ChevronRight,
   FolderPlus,
   Image as ImageIcon,
-  Layers,
   Pencil,
   Play,
   Plus,
@@ -42,12 +41,26 @@ import { CircleGalleryLightbox, GalleryThumb } from './CircleGalleryLightbox';
 import { CircleDeleteAlbumConfirmModal } from './CircleDeleteAlbumConfirmModal';
 import { CircleDeleteMediaConfirmModal } from './CircleDeleteMediaConfirmModal';
 import { cn } from '../lib/utils';
+import {
+  circleInsetCardClass,
+  circleSectionBodyClass,
+  circleSectionHeaderClass,
+  circleSectionHeaderStackClass,
+  circleSectionPanelClass,
+  circleSectionSubtitleClass,
+  circleSectionTitleClass,
+  circleTabButtonClass,
+  circleTabListClass,
+} from '../lib/circleSectionStyles';
 
 type MainMode = 'browse' | 'manage';
 type BrowseTab = 'shared' | 'patient';
 type BrowseLayout = 'albums' | 'newest';
 type ManageScreen = 'albums' | 'album';
 type ManageEntryPoint = 'upload-flow' | 'shared-browse';
+/** Virtual browse scopes (not real albums). */
+const VIRTUAL_PHOTOS = '__virtual_photos__';
+const VIRTUAL_VIDEOS = '__virtual_videos__';
 
 function mediaInAlbum(item: GalleryAlbumMedia, album: GalleryAlbum): boolean {
   if (album.isDefault) return !item.albumId || item.albumId === album.id;
@@ -178,6 +191,14 @@ export function PatientGalleryScreen({
     () => allMedia.filter((m) => m.source !== 'patient'),
     [allMedia],
   );
+  const circlePhotos = useMemo(
+    () => circleMedia.filter((m) => !m.isVideo),
+    [circleMedia],
+  );
+  const circleVideos = useMemo(
+    () => circleMedia.filter((m) => m.isVideo),
+    [circleMedia],
+  );
   const patientMedia = useMemo(
     () => (showPatientTab ? allMedia.filter((m) => m.source === 'patient') : []),
     [allMedia, showPatientTab],
@@ -296,6 +317,12 @@ export function PatientGalleryScreen({
     if (browseTab === 'patient') {
       return [...patientMedia].sort((a, b) => b.timestamp - a.timestamp);
     }
+    if (gridScope === VIRTUAL_PHOTOS) {
+      return [...circlePhotos].sort((a, b) => b.timestamp - a.timestamp);
+    }
+    if (gridScope === VIRTUAL_VIDEOS) {
+      return [...circleVideos].sort((a, b) => b.timestamp - a.timestamp);
+    }
     if (gridScope === 'all') {
       return [...circleMedia].sort((a, b) => b.timestamp - a.timestamp);
     }
@@ -304,11 +331,13 @@ export function PatientGalleryScreen({
     return circleMedia
       .filter((m) => mediaInAlbum(m, album))
       .sort((a, b) => b.timestamp - a.timestamp);
-  }, [albums, browseTab, circleMedia, gridScope, patientMedia]);
+  }, [albums, browseTab, circleMedia, circlePhotos, circleVideos, gridScope, patientMedia]);
 
   const gridTitle = useMemo(() => {
     if (browseTab === 'patient') return `From ${patient.displayName}`;
-    if (gridScope === 'all') return 'All shared pictures';
+    if (gridScope === VIRTUAL_PHOTOS) return 'All pictures';
+    if (gridScope === VIRTUAL_VIDEOS) return 'All videos';
+    if (gridScope === 'all') return 'Newest shared';
     return albums.find((a) => a.id === gridScope)?.title ?? 'Album';
   }, [albums, browseTab, gridScope, patient.displayName]);
 
@@ -321,8 +350,14 @@ export function PatientGalleryScreen({
     refreshViewed();
   };
 
-  const openGrid = (scope: 'all' | string) => {
-    if (scope !== 'all') {
+  const openGrid = (
+    scope: 'all' | typeof VIRTUAL_PHOTOS | typeof VIRTUAL_VIDEOS | string,
+  ) => {
+    if (
+      scope !== 'all' &&
+      scope !== VIRTUAL_PHOTOS &&
+      scope !== VIRTUAL_VIDEOS
+    ) {
       const album = albums.find((a) => a.id === scope);
       if (album && canUpload && canManageAlbum(album)) {
         openManageAlbum(album, 'shared-browse');
@@ -330,6 +365,19 @@ export function PatientGalleryScreen({
       }
     }
     setGridScope(scope);
+    setShowGrid(true);
+  };
+
+  const backFromSharedGrid = () => {
+    setShowGrid(false);
+    if (browseLayout === 'newest' && gridScope === 'all') {
+      setBrowseLayout('albums');
+    }
+  };
+
+  const openNewestGrid = () => {
+    setBrowseLayout('newest');
+    setGridScope('all');
     setShowGrid(true);
   };
 
@@ -520,166 +568,144 @@ export function PatientGalleryScreen({
 
   return (
     <div className="flex flex-col flex-1 min-h-0 max-h-full overflow-hidden">
-      <div className="shrink-0 space-y-3 pb-3">
-        <div className="flex items-start justify-between gap-2">
-          {mainMode === 'browse' && (
-            <>
-              <div className="min-w-0">
-                <h2 className="text-lg font-bold text-slate-800">Media gallery</h2>
-                <p className="text-sm text-slate-500 leading-relaxed">
-                  Photos and videos shared with your loved one.
-                </p>
-              </div>
-              {canUpload && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMainMode('manage');
-                    setManageScreen('albums');
-                    setMessage(null);
-                  }}
-                  className="shrink-0 w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-md hover:bg-blue-700 transition-colors"
-                  aria-label="Upload photos or videos"
-                  title="Upload"
-                >
-                  <Upload size={18} />
-                </button>
-              )}
-            </>
-          )}
-          {mainMode === 'manage' && manageScreen === 'albums' && (
-            <>
+      <div className={cn(circleSectionPanelClass, 'max-h-full')}>
+        <div className={cn(circleSectionHeaderClass, circleSectionHeaderStackClass)}>
+          <div className="flex items-start justify-between gap-2">
+            {mainMode === 'browse' && (
+              <>
+                <div className="min-w-0">
+                  <h3 className={circleSectionTitleClass}>Media gallery</h3>
+                  <p className={circleSectionSubtitleClass}>
+                    Photos and videos shared with your loved one.
+                  </p>
+                </div>
+                {canUpload && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMainMode('manage');
+                      setManageScreen('albums');
+                      setMessage(null);
+                    }}
+                    className="shrink-0 w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm hover:bg-blue-700 transition-colors"
+                    aria-label="Upload photos or videos"
+                    title="Upload"
+                  >
+                    <Upload size={18} />
+                  </button>
+                )}
+              </>
+            )}
+            {mainMode === 'manage' && manageScreen === 'albums' && (
+              <>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <button
+                    type="button"
+                    onClick={exitManageToBrowse}
+                    className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 shrink-0"
+                    aria-label="Back to media gallery"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <div className="min-w-0">
+                    <h3 className={circleSectionTitleClass}>Your albums</h3>
+                    <p className={circleSectionSubtitleClass}>Add and organize what you share.</p>
+                  </div>
+                </div>
+                {canUpload && (
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateAlbum((v) => !v)}
+                    className="shrink-0 flex items-center gap-1 text-sm font-semibold text-blue-600 px-2 py-1"
+                  >
+                    <FolderPlus size={16} />
+                    New
+                  </button>
+                )}
+              </>
+            )}
+            {mainMode === 'manage' && manageScreen === 'album' && selectedAlbum && (
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 <button
                   type="button"
-                  onClick={exitManageToBrowse}
+                  onClick={backFromManageAlbum}
                   className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 shrink-0"
-                  aria-label="Back to media gallery"
+                  aria-label={
+                    manageEntryPoint === 'shared-browse'
+                      ? 'Back to shared albums'
+                      : 'Back to your albums'
+                  }
                 >
-                  <ChevronLeft size={22} />
+                  <ChevronLeft size={20} />
                 </button>
                 <div className="min-w-0">
-                  <h2 className="text-lg font-bold text-slate-800">Your albums</h2>
-                  <p className="text-sm text-slate-500 leading-relaxed">
-                    Add and organize what you share.
-                  </p>
+                  <h3 className={cn(circleSectionTitleClass, 'truncate')}>
+                    {manageEntryPoint === 'shared-browse' ? 'Shared albums' : 'Your albums'}
+                  </h3>
+                  <p className={cn(circleSectionSubtitleClass, 'truncate')}>{selectedAlbum.title}</p>
                 </div>
               </div>
-              {canUpload && (
-                <button
-                  type="button"
-                  onClick={() => setShowCreateAlbum((v) => !v)}
-                  className="shrink-0 flex items-center gap-1 text-sm font-semibold text-blue-600 px-2 py-1"
-                >
-                  <FolderPlus size={16} />
-                  New
-                </button>
-              )}
-            </>
-          )}
-          {mainMode === 'manage' && manageScreen === 'album' && selectedAlbum && (
-            <div className="flex items-center gap-2 min-w-0 flex-1">
+            )}
+          </div>
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          {message && <p className="text-sm text-emerald-700">{message}</p>}
+
+          {mainMode === 'browse' && (
+            <div className={circleTabListClass} role="tablist" aria-label="Gallery sections">
               <button
                 type="button"
-                onClick={backFromManageAlbum}
-                className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 shrink-0"
-                aria-label={
-                  manageEntryPoint === 'shared-browse'
-                    ? 'Back to shared albums'
-                    : 'Back to your albums'
-                }
+                role="tab"
+                aria-selected={browseTab === 'shared'}
+                onClick={() => {
+                  setBrowseTab('shared');
+                  setShowGrid(false);
+                }}
+                className={circleTabButtonClass(browseTab === 'shared')}
               >
-                <ChevronLeft size={22} />
+                Shared
               </button>
-              <p className="font-bold text-slate-800 truncate">
-                {manageEntryPoint === 'shared-browse' ? 'Shared albums' : 'Your albums'}
-              </p>
+              {showPatientTab && (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={browseTab === 'patient'}
+                  onClick={() => {
+                    setBrowseTab('patient');
+                    setShowGrid(true);
+                    setGridScope('all');
+                  }}
+                  className={circleTabButtonClass(browseTab === 'patient', 'truncate')}
+                >
+                  From {patient.displayName.split(' ')[0]}
+                </button>
+              )}
             </div>
           )}
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {message && <p className="text-sm text-emerald-700">{message}</p>}
-
-        {mainMode === 'browse' && (
-          <div
-            className="flex gap-1 p-1 bg-slate-100 rounded-xl"
-            role="tablist"
-            aria-label="Gallery sections"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={browseTab === 'shared'}
-              onClick={() => {
-                setBrowseTab('shared');
-                setShowGrid(false);
-              }}
-              className={cn(
-                'flex-1 py-2 px-2 rounded-lg text-xs font-bold transition-all',
-                browseTab === 'shared'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-slate-500',
-              )}
-            >
-              Shared
-            </button>
-            {showPatientTab && (
-              <button
-                type="button"
-                role="tab"
-                aria-selected={browseTab === 'patient'}
-                onClick={() => {
-                  setBrowseTab('patient');
-                  setShowGrid(true);
-                  setGridScope('all');
-                }}
-                className={cn(
-                  'flex-1 py-2 px-2 rounded-lg text-xs font-bold transition-all truncate',
-                  browseTab === 'patient'
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-slate-500',
-                )}
-              >
-                From {patient.displayName.split(' ')[0]}
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pb-4">
+        <div className={cn(circleSectionBodyClass, 'p-4')}>
         {loading && mainMode === 'browse' && !showGrid && (
-          <p className="text-sm text-slate-500 px-1">Loading gallery…</p>
+          <p className="text-sm text-slate-500">Loading gallery…</p>
         )}
 
         {mainMode === 'browse' && browseTab === 'shared' && !showGrid && !loading && (
           <div className="space-y-4">
-            <div className="flex gap-1 p-1 bg-slate-50 rounded-xl border border-slate-100">
+            <div className={circleTabListClass}>
               <button
                 type="button"
-                onClick={() => setBrowseLayout('albums')}
-                className={cn(
-                  'flex-1 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wide',
-                  browseLayout === 'albums'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-500',
-                )}
+                onClick={() => {
+                  setBrowseLayout('albums');
+                  setShowGrid(false);
+                }}
+                className={circleTabButtonClass(browseLayout === 'albums')}
               >
                 Albums
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setBrowseLayout('newest');
-                  openGrid('all');
-                }}
-                className={cn(
-                  'flex-1 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wide',
-                  browseLayout === 'newest'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-500',
-                )}
+                onClick={openNewestGrid}
+                className={circleTabButtonClass(browseLayout === 'newest')}
               >
                 Newest
               </button>
@@ -688,25 +714,44 @@ export function PatientGalleryScreen({
             {browseLayout === 'albums' && (
               <div className="space-y-4">
                 {circleMedia.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => openGrid('all')}
-                    className="w-full text-left p-5 rounded-[28px] border-2 border-blue-100 bg-gradient-to-br from-blue-50 to-white hover:border-blue-200 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-200">
-                        <Layers size={26} />
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => openGrid(VIRTUAL_PHOTOS)}
+                      className="w-full text-left p-3.5 rounded-2xl border border-blue-100 bg-white hover:border-blue-200 hover:bg-blue-50/30 transition-colors shadow-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                          <ImageIcon size={18} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className={circleSectionTitleClass}>All pictures</p>
+                          <p className={circleSectionSubtitleClass}>
+                            {circlePhotos.length} photo{circlePhotos.length === 1 ? '' : 's'}
+                          </p>
+                        </div>
+                        <ChevronRight className="text-slate-300 shrink-0" size={18} />
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-bold text-slate-800">All shared pictures</p>
-                        <p className="text-sm text-slate-500 mt-0.5">
-                          {circleMedia.length} photo{circleMedia.length === 1 ? '' : 's'} and
-                          video{circleMedia.length === 1 ? '' : 's'}
-                        </p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openGrid(VIRTUAL_VIDEOS)}
+                      className="w-full text-left p-3.5 rounded-2xl border border-violet-100 bg-white hover:border-violet-200 hover:bg-violet-50/30 transition-colors shadow-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                          <Play size={18} fill="currentColor" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className={circleSectionTitleClass}>All videos</p>
+                          <p className={circleSectionSubtitleClass}>
+                            {circleVideos.length} video{circleVideos.length === 1 ? '' : 's'}
+                          </p>
+                        </div>
+                        <ChevronRight className="text-slate-300 shrink-0" size={18} />
                       </div>
-                      <ChevronRight className="text-slate-300 shrink-0" size={22} />
-                    </div>
-                  </button>
+                    </button>
+                  </div>
                 )}
 
                 {albumCards.length > 0 && (
@@ -720,7 +765,7 @@ export function PatientGalleryScreen({
                           key={album.id}
                           type="button"
                           onClick={() => openGrid(album.id)}
-                          className="text-left rounded-[24px] overflow-hidden border border-slate-100 bg-white shadow-sm"
+                          className="text-left rounded-2xl overflow-hidden border border-slate-100 bg-white shadow-sm"
                         >
                           <div className="aspect-square relative bg-slate-50">
                             {cover ? (
@@ -749,7 +794,7 @@ export function PatientGalleryScreen({
                 )}
 
                 {circleMedia.length === 0 && (
-                  <div className="p-8 text-center rounded-[28px] border border-dashed border-slate-200 bg-slate-50/80">
+                  <div className="p-8 text-center rounded-2xl border border-dashed border-slate-200 bg-white">
                     <p className="text-sm text-slate-500 leading-relaxed">
                       No shared photos yet.
                       {canUpload ? ' Tap the upload button to add the first album.' : ''}
@@ -767,7 +812,7 @@ export function PatientGalleryScreen({
               {browseTab === 'shared' && (
                 <button
                   type="button"
-                  onClick={() => setShowGrid(false)}
+                  onClick={backFromSharedGrid}
                   className="p-2 rounded-xl text-slate-500 hover:bg-slate-100"
                   aria-label="Back"
                 >
@@ -775,8 +820,8 @@ export function PatientGalleryScreen({
                 </button>
               )}
               <div className="min-w-0 flex-1">
-                <p className="font-bold text-slate-800">{gridTitle}</p>
-                <p className="text-xs text-slate-500">
+                <h3 className={cn(circleSectionTitleClass, 'truncate')}>{gridTitle}</h3>
+                <p className={circleSectionSubtitleClass}>
                   {gridItems.length} item{gridItems.length === 1 ? '' : 's'}
                 </p>
               </div>
@@ -827,7 +872,7 @@ export function PatientGalleryScreen({
         {mainMode === 'manage' && manageScreen === 'albums' && (
           <div className="space-y-4">
             {showCreateAlbum && (
-              <div className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-5">
+              <div className={cn(circleInsetCardClass, 'p-5')}>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -848,7 +893,7 @@ export function PatientGalleryScreen({
               </div>
             )}
             {myAlbumCards.length === 0 ? (
-              <div className="p-8 text-center rounded-[28px] border border-dashed border-slate-200 bg-slate-50/80">
+              <div className="p-8 text-center rounded-2xl border border-dashed border-slate-200 bg-white">
                 <p className="text-sm text-slate-500 leading-relaxed">
                   Create an album to start sharing photos and videos.
                 </p>
@@ -860,7 +905,7 @@ export function PatientGalleryScreen({
                     key={album.id}
                     type="button"
                     onClick={() => openManageAlbum(album)}
-                    className="text-left rounded-[24px] overflow-hidden border border-slate-100 bg-white shadow-sm"
+                    className="text-left rounded-2xl overflow-hidden border border-slate-100 bg-white shadow-sm"
                   >
                     <div className="aspect-square relative bg-slate-50">
                       {cover ? (
@@ -886,7 +931,7 @@ export function PatientGalleryScreen({
 
         {mainMode === 'manage' && manageScreen === 'album' && selectedAlbum && (
           <div className="space-y-4">
-            <div className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-5 space-y-4">
+            <div className={cn(circleInsetCardClass, 'p-5 space-y-4')}>
               <div className="flex items-start justify-between gap-2">
                 {renamingAlbum ? (
                   <div className="flex-1 flex gap-2">
@@ -993,7 +1038,7 @@ export function PatientGalleryScreen({
               )}
             </div>
 
-            <div className="bg-white rounded-[28px] border border-slate-100 shadow-sm p-5 space-y-4">
+            <div className={cn(circleInsetCardClass, 'p-5 space-y-4')}>
               <div className="flex items-center justify-between gap-2">
                 <h3 className="font-bold text-slate-800">
                   {albumMedia.length} item{albumMedia.length === 1 ? '' : 's'}
@@ -1048,6 +1093,7 @@ export function PatientGalleryScreen({
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {lightbox && (
@@ -1090,7 +1136,7 @@ export function PatientGalleryScreen({
 
       {editingMedia && (
         <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/40">
-          <div className="w-full max-w-md bg-white rounded-[28px] p-6 space-y-4 shadow-xl">
+          <div className="w-full max-w-md bg-white rounded-[32px] p-6 space-y-4 shadow-xl">
             <h3 className="font-bold text-slate-800">Edit description</h3>
             <textarea
               value={editCaption}

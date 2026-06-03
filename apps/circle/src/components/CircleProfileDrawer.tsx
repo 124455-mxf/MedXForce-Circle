@@ -13,18 +13,24 @@ import {
   MessageSquare,
   Settings,
   User as UserIcon,
+  Users,
   X,
 } from 'lucide-react';
 import { CircleSettingsMessagingPanel } from './CircleSettingsMessagingPanel';
 import { CircleSettingsMediaPanel } from './CircleSettingsMediaPanel';
 import { CircleSettingsCareRelationshipPanel } from './CircleSettingsCareRelationshipPanel';
+import { CircleSettingsUserManagementPanel } from './CircleSettingsUserManagementPanel';
+import { CircleSettingsNotificationPreferencesPanel } from './CircleSettingsNotificationPreferencesPanel';
+import { CircleProfilePhotoCropModal } from './CircleProfilePhotoCropModal';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
+import { dataUrlToBlob } from '../lib/imageCrop';
 import {
   getCircleUserProfile,
   saveCircleUserProfile,
   type CirclePatientSummary,
   type CircleUserProfile,
+  canInviteMembers,
 } from '@medxforce/shared';
 
 interface CircleProfileDrawerProps {
@@ -52,9 +58,18 @@ export function CircleProfileDrawer({
   const [profile, setProfile] = useState<CircleUserProfile | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   const [drawerView, setDrawerView] = useState<
-    'account' | 'settings' | 'messaging' | 'media' | 'careRelationship'
+    | 'account'
+    | 'settings'
+    | 'messaging'
+    | 'media'
+    | 'careRelationship'
+    | 'userManagement'
+    | 'notifications'
   >('account');
+
+  const proxyCanManageUsers = canInviteMembers(patient?.capabilities);
 
   useEffect(() => {
     if (!open) setDrawerView('account');
@@ -87,12 +102,25 @@ export function CircleProfileDrawer({
       setError('Please choose an image file.');
       return;
     }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Image must be smaller than 10 MB.');
+      return;
+    }
+    setError(null);
+    if (imageToCrop?.startsWith('blob:')) {
+      URL.revokeObjectURL(imageToCrop);
+    }
+    setImageToCrop(URL.createObjectURL(file));
+  };
+
+  const uploadCroppedPhoto = async (croppedDataUrl: string) => {
     setUploading(true);
     setError(null);
     try {
+      const blob = await dataUrlToBlob(croppedDataUrl);
       const path = `circle_profiles/${user.uid}/avatar`;
       const storageRef = ref(storage, path);
-      await uploadBytes(storageRef, file, { contentType: file.type });
+      await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
       const url = await getDownloadURL(storageRef);
       await saveCircleUserProfile(db, user.uid, {
         photoUrl: url,
@@ -107,11 +135,22 @@ export function CircleProfileDrawer({
         email: user.email || undefined,
         updatedAt: Date.now(),
       });
+      if (imageToCrop?.startsWith('blob:')) {
+        URL.revokeObjectURL(imageToCrop);
+      }
+      setImageToCrop(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not upload photo.');
     } finally {
       setUploading(false);
     }
+  };
+
+  const cancelCrop = () => {
+    if (imageToCrop?.startsWith('blob:')) {
+      URL.revokeObjectURL(imageToCrop);
+    }
+    setImageToCrop(null);
   };
 
   if (!open) return null;
@@ -133,7 +172,8 @@ export function CircleProfileDrawer({
                 setDrawerView(
                   drawerView === 'messaging' ||
                     drawerView === 'media' ||
-                    drawerView === 'careRelationship'
+                    drawerView === 'careRelationship' ||
+                    drawerView === 'userManagement'
                     ? 'settings'
                     : 'account',
                 )
@@ -152,6 +192,8 @@ export function CircleProfileDrawer({
             {drawerView === 'messaging' && 'Messaging'}
             {drawerView === 'media' && 'Media'}
             {drawerView === 'careRelationship' && 'Care relationship'}
+            {drawerView === 'userManagement' && 'User management'}
+            {drawerView === 'notifications' && 'Notifications'}
           </h2>
           <button
             type="button"
@@ -180,6 +222,22 @@ export function CircleProfileDrawer({
               </div>
               <ChevronRight size={16} className="text-slate-300 shrink-0" />
             </button>
+            {proxyCanManageUsers && (
+              <button
+                type="button"
+                onClick={() => setDrawerView('userManagement')}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+              >
+                <Users size={20} className="text-violet-600" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-slate-800 text-sm">User management</p>
+                  <p className="text-xs text-slate-400 truncate">
+                    Circle access for {patient?.displayName ?? 'your loved one'}
+                  </p>
+                </div>
+                <ChevronRight size={16} className="text-slate-300 shrink-0" />
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setDrawerView('messaging')}
@@ -233,6 +291,18 @@ export function CircleProfileDrawer({
           </div>
         )}
 
+        {drawerView === 'userManagement' && (
+          <div className="flex-1 overflow-y-auto">
+            <CircleSettingsUserManagementPanel user={user} db={db} patient={patient} />
+          </div>
+        )}
+
+        {drawerView === 'notifications' && (
+          <div className="flex-1 overflow-y-auto">
+            <CircleSettingsNotificationPreferencesPanel user={user} db={db} patient={patient} />
+          </div>
+        )}
+
         {drawerView === 'account' && (
         <>
         <div className="p-5 border-b border-slate-100">
@@ -261,7 +331,7 @@ export function CircleProfileDrawer({
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) void handlePhotoChange(file);
+                if (file) handlePhotoChange(file);
                 e.target.value = '';
               }}
             />
@@ -287,13 +357,13 @@ export function CircleProfileDrawer({
         <div className="flex-1 overflow-y-auto p-2">
           <button
             type="button"
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 opacity-60"
-            disabled
+            onClick={() => setDrawerView('notifications')}
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
           >
             <Bell size={20} className="text-slate-500" />
             <div className="flex-1">
               <p className="font-semibold text-slate-800 text-sm">Notifications</p>
-              <p className="text-xs text-slate-400">Coming soon</p>
+              <p className="text-xs text-slate-400">Alert, attention, and message preferences</p>
             </div>
             <ChevronRight size={16} className="text-slate-300" />
           </button>
@@ -305,7 +375,7 @@ export function CircleProfileDrawer({
             <Settings size={20} className="text-slate-500" />
             <div className="flex-1">
               <p className="font-semibold text-slate-800 text-sm">Settings</p>
-              <p className="text-xs text-slate-400">Messaging, media, care relationship, and more</p>
+              <p className="text-xs text-slate-400">Messaging, media, care relationship{proxyCanManageUsers ? ', user management' : ''}, and more</p>
             </div>
             <ChevronRight size={16} className="text-slate-300" />
           </button>
@@ -327,6 +397,14 @@ export function CircleProfileDrawer({
         </>
         )}
       </aside>
+
+      {imageToCrop && (
+        <CircleProfilePhotoCropModal
+          imageSrc={imageToCrop}
+          onCancel={cancelCrop}
+          onApply={uploadCroppedPhoto}
+        />
+      )}
     </div>
   );
 }
