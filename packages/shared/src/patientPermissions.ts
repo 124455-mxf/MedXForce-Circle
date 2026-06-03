@@ -13,6 +13,8 @@ export interface PatientCapabilities {
   viewCircleMedia: boolean;
   viewPatientUploads: boolean;
   notifyOnPatientUpload: boolean;
+  viewEngagementTrends: boolean;
+  viewCareTrends: boolean;
   viewClinicalData: boolean;
   remoteSettings: boolean;
   inviteMembers: boolean;
@@ -36,6 +38,8 @@ export const ROLE_CAPABILITY_TEMPLATES: Record<CircleMemberRole, PatientCapabili
     viewCircleMedia: true,
     viewPatientUploads: false,
     notifyOnPatientUpload: false,
+    viewEngagementTrends: true,
+    viewCareTrends: false,
     viewClinicalData: false,
     remoteSettings: false,
     inviteMembers: false,
@@ -46,6 +50,8 @@ export const ROLE_CAPABILITY_TEMPLATES: Record<CircleMemberRole, PatientCapabili
     viewCircleMedia: true,
     viewPatientUploads: true,
     notifyOnPatientUpload: true,
+    viewEngagementTrends: true,
+    viewCareTrends: false,
     viewClinicalData: false,
     remoteSettings: false,
     inviteMembers: false,
@@ -56,6 +62,8 @@ export const ROLE_CAPABILITY_TEMPLATES: Record<CircleMemberRole, PatientCapabili
     viewCircleMedia: true,
     viewPatientUploads: true,
     notifyOnPatientUpload: true,
+    viewEngagementTrends: true,
+    viewCareTrends: true,
     viewClinicalData: false,
     remoteSettings: false,
     inviteMembers: false,
@@ -66,6 +74,8 @@ export const ROLE_CAPABILITY_TEMPLATES: Record<CircleMemberRole, PatientCapabili
     viewCircleMedia: true,
     viewPatientUploads: true,
     notifyOnPatientUpload: true,
+    viewEngagementTrends: true,
+    viewCareTrends: true,
     viewClinicalData: false,
     remoteSettings: false,
     inviteMembers: false,
@@ -76,6 +86,8 @@ export const ROLE_CAPABILITY_TEMPLATES: Record<CircleMemberRole, PatientCapabili
     viewCircleMedia: true,
     viewPatientUploads: true,
     notifyOnPatientUpload: true,
+    viewEngagementTrends: true,
+    viewCareTrends: true,
     viewClinicalData: true,
     remoteSettings: true,
     inviteMembers: true,
@@ -86,6 +98,8 @@ export const ROLE_CAPABILITY_TEMPLATES: Record<CircleMemberRole, PatientCapabili
     viewCircleMedia: true,
     viewPatientUploads: true,
     notifyOnPatientUpload: true,
+    viewEngagementTrends: true,
+    viewCareTrends: true,
     viewClinicalData: false,
     remoteSettings: false,
     inviteMembers: false,

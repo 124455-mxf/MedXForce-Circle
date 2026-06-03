@@ -20,3 +20,4 @@ export * from './circlePatientProfile';
 export * from './circlePatientProfileService';
 export * from './diaryEntries';
 export * from './circleMemberThreads';
+export * from './analyticsSummaries';

@@ -11,7 +11,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useState } from 'react';
-import type { PatientCapabilities } from '@medxforce/shared';
+import { canViewAnalyticsTab, type PatientCapabilities } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 
 export type CircleMainTab =
@@ -251,12 +251,12 @@ export function moreNavItemsForPatient(capabilities: PatientCapabilities): Circl
       description: 'Patient management',
     });
   }
-  if (capabilities.viewClinicalData) {
+  if (canViewAnalyticsTab(capabilities)) {
     items.push({
       id: 'analytics',
       label: 'Analytics',
       icon: BarChart3,
-      description: 'Assessment data & trends',
+      description: 'Engagement & care trends',
     });
   }
 

@@ -51,9 +51,10 @@ export async function listCirclePatientsForUser(
       'Patient';
 
     const role = String(member?.role || invite.role) as CircleMemberRole;
-    const capabilities =
-      (member?.capabilities as PatientCapabilities | undefined) ||
-      capabilitiesForRole(role);
+    const capabilities: PatientCapabilities = {
+      ...capabilitiesForRole(role),
+      ...((member?.capabilities as Partial<PatientCapabilities> | undefined) ?? {}),
+    };
 
     const photoUrl = patientSnap.exists()
       ? String(patientSnap.data()?.photoUrl || '').trim() || undefined

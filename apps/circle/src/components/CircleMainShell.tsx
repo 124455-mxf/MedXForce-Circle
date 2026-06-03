@@ -22,6 +22,11 @@ import { CircleKnowScreen } from './CircleKnowScreen';
 import { CirclePatientSwitcher } from './CirclePatientSwitcher';
 import { PatientGalleryScreen } from './PatientGalleryScreen';
 import { PatientMessagesScreen } from './PatientMessagesScreen';
+import {
+  isFirestoreBackgroundWritePaused,
+  isFirestoreQuotaError,
+  pauseFirestoreBackgroundWrites,
+} from '../lib/firestoreQuota';
 import { useCircleGalleryMediaCounts } from '../hooks/useCircleGalleryMediaCounts';
 import { useCircleMemberThreadUnread } from '../hooks/useCircleMemberThreadUnread';
 import { useCirclePatientThreads } from '../hooks/useCirclePatientThreads';
@@ -154,13 +159,15 @@ export function CircleMainShell({
 
     let active = true;
     const beat = () => {
-      if (!active) return;
+      if (!active || isFirestoreBackgroundWritePaused()) return;
       const now = Date.now();
       void setDoc(
         doc(db, 'patients', selectedPatient.patientId, 'presence', user.uid),
         { uid: user.uid, lastSeen: now, status: 'online' },
         { merge: true },
-      ).catch(() => {});
+      ).catch((err) => {
+        if (isFirestoreQuotaError(err)) pauseFirestoreBackgroundWrites(String(err));
+      });
     };
 
     beat();
