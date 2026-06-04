@@ -1,16 +1,16 @@
 import {
   BarChart3,
-  BookOpen,
   Image,
   LayoutDashboard,
   MessageSquare,
   MoreHorizontal,
+  ScrollText,
   Settings2,
   Sparkles,
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { canViewAnalyticsTab, type PatientCapabilities } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 
@@ -45,12 +45,36 @@ interface CircleBottomNavProps {
   badges?: CircleBottomNavBadges;
 }
 
+function NavIconShell({
+  active,
+  compact,
+  children,
+}: {
+  active: boolean;
+  compact: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <span
+      className={cn(
+        'relative inline-flex items-center justify-center rounded-xl transition-all duration-200',
+        compact ? 'w-7 h-7' : 'w-8 h-8',
+        active
+          ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+          : 'text-slate-500',
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
 function NavBadge({ count }: { count: number }) {
   if (count <= 0) return null;
   const label = count > 99 ? '99+' : String(count);
   return (
     <span
-      className="absolute -top-1 -right-2 min-w-[14px] h-[14px] px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none flex items-center justify-center tabular-nums pointer-events-none"
+      className="absolute -top-1 -right-2 min-w-[14px] h-[14px] px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none flex items-center justify-center tabular-nums pointer-events-none ring-2 ring-white"
       aria-hidden
     >
       {label}
@@ -102,13 +126,13 @@ export function CircleBottomNav({
                 onClick={() => selectTab(item.id)}
                 className={cn(
                   'flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1 min-h-[40px] transition-colors min-w-0',
-                  active ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600',
+                  active ? 'text-blue-600' : 'text-slate-500 hover:text-slate-600',
                 )}
               >
-                <span className="relative inline-flex">
+                <NavIconShell active={active} compact={compact}>
                   <Icon size={compact ? 15 : 16} strokeWidth={active ? 2.25 : 1.75} />
                   <NavBadge count={badgeCountForTab(item.id, badges)} />
-                </span>
+                </NavIconShell>
                 <span
                   className={cn(
                     'font-bold uppercase tracking-wide leading-none truncate w-full text-center mt-0.5',
@@ -130,15 +154,13 @@ export function CircleBottomNav({
               aria-haspopup="dialog"
               className={cn(
                 'flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1 min-h-[40px] transition-colors min-w-0',
-                moreActive ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600',
+                moreActive ? 'text-blue-600' : 'text-slate-500 hover:text-slate-600',
               )}
             >
-              <span className="relative inline-flex">
+              <NavIconShell active={moreActive} compact={compact}>
                 <MoreHorizontal size={compact ? 15 : 16} strokeWidth={moreActive ? 2.25 : 1.75} />
-                <NavBadge
-                  count={moreActive || moreOpen ? 0 : (badges?.more ?? 0)}
-                />
-              </span>
+                <NavBadge count={moreActive || moreOpen ? 0 : (badges?.more ?? 0)} />
+              </NavIconShell>
               <span
                 className={cn(
                   'font-bold uppercase tracking-wide leading-none truncate w-full text-center mt-0.5',
@@ -188,8 +210,10 @@ export function CircleBottomNav({
                   >
                     <div
                       className={cn(
-                        'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
-                        active ? 'bg-blue-100 text-blue-600' : 'bg-white text-slate-500 border border-slate-100',
+                        'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200',
+                        active
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+                          : 'bg-white text-slate-500 border border-slate-100',
                       )}
                     >
                       <Icon size={20} />
@@ -234,7 +258,7 @@ export function primaryNavItemsForPatient(capabilities: PatientCapabilities): Ci
   items.push({
     id: 'diary',
     label: 'Diary',
-    icon: BookOpen,
+    icon: ScrollText,
   });
 
   return items;

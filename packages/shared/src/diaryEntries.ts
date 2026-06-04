@@ -3,12 +3,17 @@ import {
   collection,
   deleteDoc,
   doc,
-  type Firestore,
+  onSnapshot,
+  orderBy,
+  query,
   updateDoc,
+  where,
+  type Firestore,
+  type Unsubscribe,
 } from 'firebase/firestore';
 
 /** Who can see the entry — private stays with the author (and patient); circle is visible to all members. */
-export type DiaryEntryVisibility = 'private' | 'circle';
+export type DiaryEntryVisibility = 'private' | 'circle' | 'shared_with_patient';
 
 export type DiaryEntryMood =
   | 'grateful'
@@ -18,7 +23,8 @@ export type DiaryEntryMood =
   | 'peaceful'
   | 'sad'
   | 'joyful'
-  | 'reflective';
+  | 'reflective'
+  | 'celebratory';
 
 export interface CircleDiaryEntry {
   id: string;
@@ -31,6 +37,7 @@ export interface CircleDiaryEntry {
   /** When the moment happened (may differ from createdAt). */
   experienceAt: number;
   visibility: DiaryEntryVisibility;
+  isMilestone: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -41,6 +48,7 @@ export type CircleDiaryEntryDraft = {
   mood: DiaryEntryMood | '';
   experienceAt: number;
   visibility: DiaryEntryVisibility;
+  isMilestone: boolean;
 };
 
 export const DIARY_MOOD_OPTIONS: {
@@ -50,6 +58,7 @@ export const DIARY_MOOD_OPTIONS: {
   { value: 'grateful', label: 'Grateful' },
   { value: 'hopeful', label: 'Hopeful' },
   { value: 'joyful', label: 'Joyful' },
+  { value: 'celebratory', label: 'Celebratory' },
   { value: 'peaceful', label: 'Peaceful' },
   { value: 'reflective', label: 'Reflective' },
   { value: 'worried', label: 'Worried' },
@@ -57,11 +66,21 @@ export const DIARY_MOOD_OPTIONS: {
   { value: 'overwhelmed', label: 'Overwhelmed' },
 ];
 
+const DIARY_MOOD_VALUES = new Set<string>(DIARY_MOOD_OPTIONS.map((o) => o.value));
+
 export function diaryEntriesCollection(db: Firestore, patientId: string) {
   return collection(db, 'patients', patientId, 'diary_entries');
 }
 
+function parseDiaryVisibility(value: unknown): DiaryEntryVisibility {
+  const v = String(value || 'private');
+  if (v === 'circle' || v === 'shared_with_patient') return v;
+  return 'private';
+}
+
 export function parseDiaryEntry(id: string, data: Record<string, unknown>): CircleDiaryEntry {
+  const moodRaw = String(data.mood || '');
+  const mood = DIARY_MOOD_VALUES.has(moodRaw) ? (moodRaw as DiaryEntryMood) : undefined;
   return {
     id,
     patientId: String(data.patientId || ''),
@@ -69,9 +88,10 @@ export function parseDiaryEntry(id: string, data: Record<string, unknown>): Circ
     authorName: String(data.authorName || 'Someone'),
     title: data.title ? String(data.title) : undefined,
     body: String(data.body || ''),
-    mood: data.mood ? (String(data.mood) as DiaryEntryMood) : undefined,
+    mood,
     experienceAt: Number(data.experienceAt || data.createdAt || 0),
-    visibility: data.visibility === 'circle' ? 'circle' : 'private',
+    visibility: parseDiaryVisibility(data.visibility),
+    isMilestone: !!data.isMilestone,
     createdAt: Number(data.createdAt || 0),
     updatedAt: Number(data.updatedAt || data.createdAt || 0),
   };
@@ -84,6 +104,7 @@ export function emptyDiaryDraft(experienceAt = Date.now()): CircleDiaryEntryDraf
     mood: '',
     experienceAt,
     visibility: 'circle',
+    isMilestone: false,
   };
 }
 
@@ -93,7 +114,69 @@ export function diaryEntryToDraft(entry: CircleDiaryEntry): CircleDiaryEntryDraf
     body: entry.body,
     mood: entry.mood || '',
     experienceAt: entry.experienceAt,
-    visibility: entry.visibility,
+    visibility:
+      entry.visibility === 'shared_with_patient' ? 'circle' : entry.visibility,
+    isMilestone: entry.isMilestone,
+  };
+}
+
+/** Scoped listens so private patient entries do not break circle members with permission-denied. */
+export function subscribeCircleDiaryEntries(
+  db: Firestore,
+  patientId: string,
+  memberUid: string,
+  onEntries: (entries: CircleDiaryEntry[]) => void,
+  onError?: (message: string) => void,
+): Unsubscribe {
+  const coll = diaryEntriesCollection(db, patientId);
+  const buckets = new Map<string, CircleDiaryEntry[]>();
+  const unsubs: Unsubscribe[] = [];
+
+  const emit = () => {
+    const byId = new Map<string, CircleDiaryEntry>();
+    for (const list of buckets.values()) {
+      for (const entry of list) {
+        byId.set(entry.id, entry);
+      }
+    }
+    const merged = [...byId.values()].sort((a, b) => b.experienceAt - a.experienceAt);
+    onEntries(merged);
+  };
+
+  const attach = (key: string, q: ReturnType<typeof query>) => {
+    unsubs.push(
+      onSnapshot(
+        q,
+        (snap) => {
+          buckets.set(
+            key,
+            snap.docs.map((d) => parseDiaryEntry(d.id, d.data() as Record<string, unknown>)),
+          );
+          emit();
+        },
+        (err) => {
+          const message = err.message || 'Could not load diary entries.';
+          onError?.(message);
+        },
+      ),
+    );
+  };
+
+  attach(
+    'own',
+    query(coll, where('authorUid', '==', memberUid), orderBy('experienceAt', 'desc')),
+  );
+  attach(
+    'shared',
+    query(
+      coll,
+      where('visibility', 'in', ['circle', 'shared_with_patient']),
+      orderBy('experienceAt', 'desc'),
+    ),
+  );
+
+  return () => {
+    for (const unsub of unsubs) unsub();
   };
 }
 
@@ -120,6 +203,8 @@ export async function createDiaryEntry(
     ...(params.draft.mood ? { mood: params.draft.mood } : {}),
     experienceAt: params.draft.experienceAt || now,
     visibility: params.draft.visibility,
+    entryKind: 'human',
+    isMilestone: !!params.draft.isMilestone,
     createdAt: now,
     updatedAt: now,
   });
@@ -145,6 +230,7 @@ export async function updateDiaryEntry(
     mood: params.draft.mood || '',
     experienceAt: params.draft.experienceAt || now,
     visibility: params.draft.visibility,
+    isMilestone: !!params.draft.isMilestone,
     updatedAt: now,
   });
 }
@@ -160,4 +246,8 @@ export async function deleteDiaryEntry(
 export function diaryMoodLabel(mood?: DiaryEntryMood): string | undefined {
   if (!mood) return undefined;
   return DIARY_MOOD_OPTIONS.find((o) => o.value === mood)?.label;
+}
+
+export function isDiaryEntrySharedWithCircle(entry: CircleDiaryEntry): boolean {
+  return entry.visibility === 'circle' || entry.visibility === 'shared_with_patient';
 }

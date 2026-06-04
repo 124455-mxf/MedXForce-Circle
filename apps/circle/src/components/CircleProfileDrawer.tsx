@@ -267,7 +267,7 @@ export function CircleProfileDrawer({
 
         {drawerView === 'messaging' && (
           <div className="flex-1 overflow-y-auto">
-            <CircleSettingsMessagingPanel />
+            <CircleSettingsMessagingPanel user={user} db={db} patient={patient} />
           </div>
         )}
 

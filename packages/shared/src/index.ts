@@ -2,6 +2,7 @@ export * from './patientPermissions';
 export * from './galleryMessages';
 export * from './circleInvites';
 export * from './firebase';
+export * from './firestoreQuota';
 export * from './circleInviteAcceptance';
 export * from './circleMemberManagement';
 export * from './circleMemberLeave';

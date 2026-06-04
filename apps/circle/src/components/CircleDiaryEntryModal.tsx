@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Lock, Mic, MicOff, Users, X } from 'lucide-react';
+import { Loader2, Lock, Mic, MicOff, Star, Users, X } from 'lucide-react';
 import {
   DIARY_MOOD_OPTIONS,
+  diaryEntryToDraft,
   emptyDiaryDraft,
   type CircleDiaryEntry,
   type CircleDiaryEntryDraft,
@@ -48,13 +49,7 @@ export function CircleDiaryEntryModal({
   useEffect(() => {
     if (!open) return;
     if (mode === 'edit' && entry) {
-      setDraft({
-        title: entry.title || '',
-        body: entry.body,
-        mood: entry.mood || '',
-        experienceAt: entry.experienceAt,
-        visibility: entry.visibility,
-      });
+      setDraft(diaryEntryToDraft(entry));
     } else {
       setDraft(emptyDiaryDraft());
     }
@@ -182,6 +177,37 @@ export function CircleDiaryEntryModal({
               }
             />
           </label>
+
+          <div className="space-y-2">
+            <p className="text-xs font-bold text-slate-500 uppercase">Mark as milestone?</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setDraft({ ...draft, isMilestone: false })}
+                className={cn(
+                  'py-2.5 rounded-xl border text-xs font-bold transition-colors',
+                  !draft.isMilestone
+                    ? 'border-blue-200 bg-blue-50 text-blue-700'
+                    : 'border-slate-200 bg-white text-slate-600',
+                )}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                onClick={() => setDraft({ ...draft, isMilestone: true })}
+                className={cn(
+                  'py-2.5 rounded-xl border text-xs font-bold transition-colors inline-flex items-center justify-center gap-1.5',
+                  draft.isMilestone
+                    ? 'border-violet-300 bg-violet-50 text-violet-700'
+                    : 'border-slate-200 bg-white text-slate-600',
+                )}
+              >
+                <Star size={14} />
+                Yes
+              </button>
+            </div>
+          </div>
 
           <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-3">
             <p className="text-xs font-bold text-slate-500 uppercase">Sharing</p>

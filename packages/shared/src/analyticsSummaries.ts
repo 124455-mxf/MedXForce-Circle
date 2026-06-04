@@ -1,5 +1,12 @@
-import { collection, doc } from 'firebase/firestore';
-import type { Firestore } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  onSnapshot,
+  query,
+  where,
+  type Firestore,
+  type Unsubscribe,
+} from 'firebase/firestore';
 import type { CircleMemberRole, PatientCapabilities } from './patientPermissions';
 
 /** Who may read this summary in Circle (enforced in Firestore rules). */
@@ -356,5 +363,65 @@ export function parsePatientAnalyticsSummary(
     description: String(data.description ?? def?.description ?? ''),
     sectionId: (data.sectionId as AnalyticsSectionId) ?? def?.sectionId ?? 'communication',
     updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : 0,
+  };
+}
+
+/** Scoped listeners so list queries match Firestore rules per audience (avoids permission-denied on mixed collections). */
+export function subscribeCircleAnalyticsSummaries(
+  db: Firestore,
+  patientId: string,
+  role: string,
+  capabilities: PatientCapabilities | undefined,
+  onSummaries: (summaries: PatientAnalyticsSummary[]) => void,
+  onError?: (message: string) => void,
+): Unsubscribe {
+  const coll = analyticsSummariesCollection(db, patientId);
+  const buckets = new Map<string, PatientAnalyticsSummary[]>();
+  const unsubs: Unsubscribe[] = [];
+
+  const emit = () => {
+    const byId = new Map<string, PatientAnalyticsSummary>();
+    for (const list of buckets.values()) {
+      for (const summary of list) {
+        byId.set(summary.metricId, summary);
+      }
+    }
+    onSummaries([...byId.values()]);
+  };
+
+  const attach = (key: string, audience: AnalyticsAudience) => {
+    unsubs.push(
+      onSnapshot(
+        query(coll, where('audience', '==', audience)),
+        (snap) => {
+          buckets.set(
+            key,
+            snap.docs
+              .map((d) => parsePatientAnalyticsSummary(d.id, d.data() as Record<string, unknown>))
+              .filter((s): s is PatientAnalyticsSummary => s != null),
+          );
+          emit();
+        },
+        (err) => {
+          onError?.(err.message || 'Could not load analytics summaries.');
+        },
+      ),
+    );
+  };
+
+  const audiences: AnalyticsAudience[] = ['engagement', 'care', 'clinical'];
+  for (const audience of audiences) {
+    if (!capabilities || canReadAnalyticsAudience(audience, role, capabilities)) {
+      attach(audience, audience);
+    }
+  }
+
+  if (unsubs.length === 0) {
+    onSummaries([]);
+    return () => undefined;
+  }
+
+  return () => {
+    for (const unsub of unsubs) unsub();
   };
 }

@@ -1,14 +1,8 @@
-/** Detect Firestore free-tier / quota exhaustion so we can stop write loops. */
-export function isFirestoreQuotaError(err: unknown): boolean {
-  if (!err || typeof err !== 'object') return false;
-  const code = (err as { code?: string }).code;
-  const message = String((err as { message?: string }).message ?? '');
-  return (
-    code === 'resource-exhausted' ||
-    message.includes('Quota exceeded') ||
-    message.includes('quota limit exceeded')
-  );
-}
+export {
+  isFirestoreQuotaError,
+  hasRepairedMemberCapabilitiesThisSession,
+  markMemberCapabilitiesRepairedThisSession,
+} from '@medxforce/shared';
 
 let backgroundWritesPaused = false;
 

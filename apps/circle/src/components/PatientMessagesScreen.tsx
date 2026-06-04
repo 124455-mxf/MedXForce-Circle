@@ -11,7 +11,12 @@ import type {
   CircleThreadMessage,
   CircleThreadReply,
 } from '../hooks/useCirclePatientThreads';
-import { markThreadRead, threadHasUnreadPatientReply } from '../lib/circleMessageRead';
+import {
+  getThreadLastReadAt,
+  inboxUnreadKind,
+  markThreadRead,
+  threadHasUnreadPatientReply,
+} from '../lib/circleMessageRead';
 import {
   CIRCLE_REPLY_SORT_CHANGED,
   getCircleReplySortOrder,
@@ -30,13 +35,11 @@ import {
 const REPLY_COLLAPSE_THRESHOLD = 4;
 const REPLY_TAIL_VISIBLE = 2;
 
-function threadTitle(msg: CircleThreadMessage): string {
+/** Thread chrome only — full body lives in the scroll area below. */
+function threadHeaderTitle(msg: CircleThreadMessage): string {
   const subject = msg.subject?.trim();
   if (subject) return subject;
-  const text = msg.text?.trim() || '';
-  if (!text) return 'Message';
-  if (text.length <= 80) return text;
-  return `${text.slice(0, 80)}…`;
+  return 'Patient message';
 }
 
 function formatThreadTime(ts: number): string {
@@ -211,7 +214,6 @@ export function PatientMessagesScreen({
         setSelectedMessageId(messageId);
         setReplyText('');
         setExpandedMiddle(false);
-        markThreadRead(patient.patientId, messageId);
       });
     },
     [confirmNavigate, patient.patientId, selectedMessageId],
@@ -219,11 +221,14 @@ export function PatientMessagesScreen({
 
   const leaveThread = useCallback(() => {
     confirmNavigate(() => {
+      if (selectedMessageId) {
+        markThreadRead(patient.patientId, selectedMessageId);
+      }
       setSelectedMessageId(null);
       setReplyText('');
       setExpandedMiddle(false);
     });
-  }, [confirmNavigate]);
+  }, [confirmNavigate, patient.patientId, selectedMessageId]);
 
   const handleDiscardDraft = useCallback(() => {
     setShowDiscardModal(false);
@@ -237,12 +242,6 @@ export function PatientMessagesScreen({
     setShowDiscardModal(false);
     pendingNavigateRef.current = null;
   }, []);
-
-  useEffect(() => {
-    if (selectedMessageId) {
-      markThreadRead(patient.patientId, selectedMessageId);
-    }
-  }, [patient.patientId, selectedMessageId, replies.length]);
 
   useEffect(() => {
     setExpandedMiddle(false);
@@ -311,6 +310,7 @@ export function PatientMessagesScreen({
       repliesByMessageId[msg.id] || [],
       patient.patientId,
       msg.id,
+      msg,
     );
 
   const latestPatientReplyId = useMemo(() => {
@@ -320,9 +320,22 @@ export function PatientMessagesScreen({
     return null;
   }, [replies]);
 
+  const selectedThreadLastRead = selectedMessage
+    ? getThreadLastReadAt(patient.patientId, selectedMessage.id)
+    : 0;
+
   const selectedThreadHasUnread =
     !!selectedMessage &&
-    threadHasUnreadPatientReply(replies, patient.patientId, selectedMessage.id);
+    threadHasUnreadPatientReply(
+      replies,
+      patient.patientId,
+      selectedMessage.id,
+      selectedMessage,
+    );
+
+  const selectedInitialMessageUnread =
+    !!selectedMessage &&
+    (selectedMessage.createdAt || 0) > selectedThreadLastRead;
 
   const orderedReplies = useMemo(() => {
     const copy = [...replies].sort((a, b) => a.timestamp - b.timestamp);
@@ -360,9 +373,13 @@ export function PatientMessagesScreen({
     return (
       <div className={circleSectionEmptyCardClass}>
         <h3 className={cn(circleSectionTitleClass, 'mb-2')}>Messages</h3>
+        {error ? (
+          <p className="text-sm text-red-600 leading-relaxed mb-2">{error}</p>
+        ) : null}
         <p className="text-sm text-slate-500 leading-relaxed">
-          No messages yet. When your loved one sends you something in MedXForce, it will
-          appear here.
+          {error
+            ? 'We could not load messages. Try refreshing the page.'
+            : 'No messages yet. When your loved one sends you something in MedXForce, it will appear here.'}
         </p>
       </div>
     );
@@ -375,15 +392,24 @@ export function PatientMessagesScreen({
           <h3 className="font-bold text-slate-800">Messages</h3>
           <p className="text-xs text-slate-500 mt-0.5">
             Tap a conversation to read and reply
-            {unreadCount > 0 ? ` · ${unreadCount} with new replies` : ''}
+            {unreadCount > 0
+              ? ` · ${unreadCount} unread`
+              : ''}
           </p>
         </div>
         <ul className="flex-1 min-h-0 divide-y divide-slate-100 overflow-y-auto overscroll-contain">
           {messages.map((msg) => {
+            const threadReplies = repliesByMessageId[msg.id] || [];
             const unread = isInboxThreadUnread(msg);
+            const unreadKind = inboxUnreadKind(
+              msg,
+              threadReplies,
+              patient.patientId,
+              msg.id,
+            );
             const snippet =
               (msg.subject && msg.subject.trim()) || msg.text?.slice(0, 80) || 'Message';
-            const replyCount = (repliesByMessageId[msg.id] || []).length;
+            const replyCount = threadReplies.length;
             return (
               <li key={msg.id}>
                 <button
@@ -398,7 +424,7 @@ export function PatientMessagesScreen({
                 >
                   {unread && (
                     <span
-                      className="absolute left-0 top-0 bottom-0 w-1 bg-red-500 rounded-r"
+                      className="absolute left-0 top-4 bottom-4 w-1.5 rounded-full bg-red-500 shadow-sm shadow-red-200/80"
                       aria-hidden
                     />
                   )}
@@ -407,7 +433,7 @@ export function PatientMessagesScreen({
                       <div className="flex flex-wrap items-center gap-2 mb-1">
                         {unread && (
                           <span className="bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full animate-pulse">
-                            New reply
+                            {unreadKind === 'reply' ? 'New reply' : 'New message'}
                           </span>
                         )}
                         {replyCount > 0 && !unread && (
@@ -432,15 +458,35 @@ export function PatientMessagesScreen({
     );
   }
 
-  const renderReply = (r: CircleThreadReply) => (
-    <CircleReplyCard
-      key={r.id}
-      reply={r}
-      highlightAsUnread={
-        selectedThreadHasUnread && r.isPatient && r.id === latestPatientReplyId
-      }
-    />
+  const renderNewDivider = (key: string) => (
+    <div key={key} className="flex items-center gap-2 py-1">
+      <div className="h-px flex-1 bg-red-200" />
+      <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest px-2">
+        New
+      </span>
+      <div className="h-px flex-1 bg-red-200" />
+    </div>
   );
+
+  let renderedNewDivider = false;
+  const renderReply = (r: CircleThreadReply) => {
+    const showDivider =
+      !renderedNewDivider &&
+      r.isPatient &&
+      (r.timestamp || 0) > selectedThreadLastRead;
+    if (showDivider) renderedNewDivider = true;
+    return (
+      <div key={r.id}>
+        {showDivider ? renderNewDivider(`new-${r.id}`) : null}
+        <CircleReplyCard
+          reply={r}
+          highlightAsUnread={
+            selectedThreadHasUnread && r.isPatient && r.id === latestPatientReplyId
+          }
+        />
+      </div>
+    );
+  };
 
   return (
     <>
@@ -456,7 +502,7 @@ export function PatientMessagesScreen({
         </button>
         <div className="min-w-0 flex-1">
           <p className="font-bold text-slate-800 line-clamp-2 leading-snug">
-            {threadTitle(selectedMessage)}
+            {threadHeaderTitle(selectedMessage)}
           </p>
           <p className="text-[11px] text-slate-500 mt-0.5">
             {formatThreadTime(selectedMessage.updatedAt || selectedMessage.createdAt)}
@@ -467,10 +513,20 @@ export function PatientMessagesScreen({
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 pb-6 space-y-4">
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        <div className="bg-white rounded-[32px] p-4 shadow-sm border border-slate-100">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-            Patient message
-          </p>
+        {selectedInitialMessageUnread ? renderNewDivider('new-initial') : null}
+        <div
+          className={cn(
+            'rounded-[32px] p-4 shadow-sm border',
+            selectedInitialMessageUnread
+              ? 'bg-red-50/40 border-red-200'
+              : 'bg-white border-slate-100',
+          )}
+        >
+          {selectedMessage.subject?.trim() ? (
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+              Patient message
+            </p>
+          ) : null}
           <p className="text-slate-800 leading-relaxed text-sm whitespace-pre-wrap">
             {selectedMessage.text}
           </p>

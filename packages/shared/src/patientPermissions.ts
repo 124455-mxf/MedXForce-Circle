@@ -8,6 +8,11 @@ export type CircleMemberRole =
   | 'proxy'
   | 'facility_staff';
 
+/** How a Circle member receives patient messages — app is default. */
+export type CircleMessageDeliveryPreference = 'app' | 'email';
+
+export const DEFAULT_CIRCLE_MESSAGE_DELIVERY: CircleMessageDeliveryPreference = 'app';
+
 export interface PatientCapabilities {
   richMediaUpload: boolean;
   viewCircleMedia: boolean;
@@ -108,7 +113,25 @@ export const ROLE_CAPABILITY_TEMPLATES: Record<CircleMemberRole, PatientCapabili
 };
 
 export function capabilitiesForRole(role: CircleMemberRole): PatientCapabilities {
-  return { ...ROLE_CAPABILITY_TEMPLATES[role] };
+  return { ...(ROLE_CAPABILITY_TEMPLATES[role] ?? ROLE_CAPABILITY_TEMPLATES.caregiver) };
+}
+
+/** Legacy Firestore roles — map to current capability templates. */
+export function normalizeMemberRole(role: string): CircleMemberRole {
+  if (role === 'professional_caregiver' || role === 'facility_staff') return 'caregiver';
+  if (role in ROLE_CAPABILITY_TEMPLATES) return role as CircleMemberRole;
+  return 'caregiver';
+}
+
+export function mergeMemberCapabilities(
+  role: string,
+  stored?: Partial<PatientCapabilities> | null,
+): PatientCapabilities {
+  const normalizedRole = normalizeMemberRole(role);
+  return {
+    ...capabilitiesForRole(normalizedRole),
+    ...(stored ?? {}),
+  };
 }
 
 export function canUploadRichMedia(capabilities: PatientCapabilities | undefined): boolean {

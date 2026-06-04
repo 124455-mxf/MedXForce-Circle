@@ -13,6 +13,8 @@ import { LogOut, Users } from 'lucide-react';
 import { MedXForceBrandLogo } from './components/MedXForceBrandLogo';
 import {
   acceptPendingCircleInvites,
+  ensureMemberCapabilitiesForUser,
+  isFirestoreQuotaError,
   listCirclePatientsForUser,
   normalizeInviteEmail,
   type CirclePatientSummary,
@@ -46,10 +48,11 @@ export default function App() {
   }, [patients, selectedPatientId]);
 
   const refreshPatients = async (currentUser: User) => {
-    await acceptPendingCircleInvites(firebase.db, currentUser);
+    const accepted = await acceptPendingCircleInvites(firebase.db, currentUser);
+    await ensureMemberCapabilitiesForUser(firebase.db, currentUser.uid);
     const list = await listCirclePatientsForUser(firebase.db, currentUser.uid);
     setPatients(list);
-    return list;
+    return { list, accepted };
   };
 
   const handleRefreshPatients = async () => {
@@ -57,9 +60,7 @@ export default function App() {
     setRefreshingPatients(true);
     setAuthError(null);
     try {
-      const accepted = await acceptPendingCircleInvites(firebase.db, user);
-      const list = await listCirclePatientsForUser(firebase.db, user.uid);
-      setPatients(list);
+      const { list, accepted } = await refreshPatients(user);
       if (list.length === 0 && accepted.length === 0 && user.email) {
         const email = normalizeInviteEmail(user.email);
         const pendingSnap = await getDocs(
@@ -78,7 +79,13 @@ export default function App() {
         }
       }
     } catch (err) {
-      setAuthError(err instanceof Error ? err.message : 'Could not refresh invites.');
+      if (isFirestoreQuotaError(err)) {
+        setAuthError(
+          'Firestore daily write limit reached for this project. Try again after midnight Pacific, or upgrade the Firebase database plan.',
+        );
+      } else {
+        setAuthError(err instanceof Error ? err.message : 'Could not refresh invites.');
+      }
     } finally {
       setRefreshingPatients(false);
     }
@@ -109,7 +116,13 @@ export default function App() {
           await refreshPatients(nextUser);
         } catch (err) {
           console.error(err);
-          setAuthError(err instanceof Error ? err.message : 'Could not load your circle patients.');
+          if (isFirestoreQuotaError(err)) {
+            setAuthError(
+              'Firestore daily write limit reached. Messages and sync may not work until the quota resets (midnight Pacific).',
+            );
+          } else {
+            setAuthError(err instanceof Error ? err.message : 'Could not load your circle patients.');
+          }
         }
       } else {
         setPatients([]);
@@ -126,9 +139,11 @@ export default function App() {
     if (!user) return;
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return;
-      void refreshPatients(user).catch((err) => {
-        console.warn('[CIRCLE] Could not refresh patients on focus:', err);
-      });
+      void listCirclePatientsForUser(firebase.db, user.uid)
+        .then(setPatients)
+        .catch((err) => {
+          console.warn('[CIRCLE] Could not refresh patients on focus:', err);
+        });
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);

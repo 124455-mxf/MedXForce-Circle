@@ -1,5 +1,5 @@
 import type { CircleMemberRole, PatientCapabilities, PatientMemberRecord } from './patientPermissions';
-import { normalizeInviteEmail } from './patientPermissions';
+import { mergeMemberCapabilities, normalizeInviteEmail } from './patientPermissions';
 
 export type CircleInviteStatus = 'pending' | 'accepted' | 'revoked';
 
@@ -49,9 +49,11 @@ export function memberRecordFromInvite(
   invite: CircleInviteRecord,
   _uid: string,
 ): PatientMemberRecord {
+  const role = invite.role;
+  const capabilities = mergeMemberCapabilities(role, invite.capabilities);
   const record: PatientMemberRecord = {
-    role: invite.role,
-    capabilities: invite.capabilities,
+    role,
+    capabilities,
     status: 'active',
     invitedEmail: invite.invitedEmail,
     updatedAt: Date.now(),

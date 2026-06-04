@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { onSnapshot } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import {
-  analyticsSummariesCollection,
   filterSummariesForMember,
-  parsePatientAnalyticsSummary,
+  subscribeCircleAnalyticsSummaries,
   type CirclePatientSummary,
   type PatientAnalyticsSummary,
 } from '@medxforce/shared';
@@ -25,6 +23,7 @@ export function useCircleAnalyticsSummaries(
   useEffect(() => {
     if (!patientId) {
       setSummaries([]);
+      setTotalFromServer(0);
       setLoading(false);
       return;
     }
@@ -32,12 +31,12 @@ export function useCircleAnalyticsSummaries(
     setLoading(true);
     setError(null);
 
-    return onSnapshot(
-      analyticsSummariesCollection(db, patientId),
-      (snap) => {
-        const parsed = snap.docs
-          .map((d) => parsePatientAnalyticsSummary(d.id, d.data() as Record<string, unknown>))
-          .filter((s): s is PatientAnalyticsSummary => s != null);
+    return subscribeCircleAnalyticsSummaries(
+      db,
+      patientId,
+      role,
+      capabilities,
+      (parsed) => {
         setTotalFromServer(parsed.length);
         setSummaries(
           capabilities
@@ -46,8 +45,8 @@ export function useCircleAnalyticsSummaries(
         );
         setLoading(false);
       },
-      (err) => {
-        setError(err.message);
+      (message) => {
+        setError(message);
         setLoading(false);
       },
     );

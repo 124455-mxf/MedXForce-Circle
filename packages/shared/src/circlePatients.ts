@@ -10,7 +10,7 @@ import {
 import type { CircleInviteRecord } from './circleInvites';
 import {
   canUploadRichMedia,
-  capabilitiesForRole,
+  mergeMemberCapabilities,
   type CircleMemberRole,
   type PatientCapabilities,
 } from './patientPermissions';
@@ -51,10 +51,11 @@ export async function listCirclePatientsForUser(
       'Patient';
 
     const role = String(member?.role || invite.role) as CircleMemberRole;
-    const capabilities: PatientCapabilities = {
-      ...capabilitiesForRole(role),
-      ...((member?.capabilities as Partial<PatientCapabilities> | undefined) ?? {}),
-    };
+    const capabilities = mergeMemberCapabilities(
+      role,
+      (member?.capabilities as Partial<PatientCapabilities> | undefined) ??
+        invite.capabilities,
+    );
 
     const photoUrl = patientSnap.exists()
       ? String(patientSnap.data()?.photoUrl || '').trim() || undefined

@@ -214,7 +214,7 @@ export function CircleMainShell({
       <main
         className={cn(
           'flex-1 min-h-0',
-          activeTab === 'messages' || activeTab === 'media' || activeTab === 'diary' || activeTab === 'circle'
+          activeTab === 'messages' || activeTab === 'media' || activeTab === 'diary' || activeTab === 'circle' || activeTab === 'analytics'
             ? 'flex flex-col overflow-hidden'
             : 'space-y-4 overflow-y-auto',
         )}
@@ -265,7 +265,11 @@ export function CircleMainShell({
         {activeTab === 'admin' && (
           <CircleAdminScreen user={user} db={db} patient={selectedPatient} />
         )}
-        {activeTab === 'analytics' && <CircleAnalyticsScreen patient={selectedPatient} />}
+        {activeTab === 'analytics' && (
+          <div className="flex flex-col flex-1 min-h-0">
+            <CircleAnalyticsScreen patient={selectedPatient} />
+          </div>
+        )}
         {activeTab === 'diary' && (
           <div className="flex flex-col flex-1 min-h-0">
             <CircleDiaryScreen user={user} db={db} patient={selectedPatient} />

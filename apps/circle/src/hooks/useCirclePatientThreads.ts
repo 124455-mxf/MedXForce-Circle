@@ -5,6 +5,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  where,
 } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import { normalizeInviteEmail } from '@medxforce/shared';
@@ -37,6 +38,19 @@ export type CircleThreadReply = {
   timestamp: number;
 };
 
+function parseThreadMessage(
+  id: string,
+  data: Omit<CircleThreadMessage, 'id'>,
+): CircleThreadMessage {
+  return { id, ...data };
+}
+
+function sortThreadMessages(items: CircleThreadMessage[]): CircleThreadMessage[] {
+  return [...items].sort(
+    (a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt),
+  );
+}
+
 export function useCirclePatientThreads(
   db: Firestore,
   patientId: string,
@@ -54,13 +68,13 @@ export function useCirclePatientThreads(
     Record<string, CircleThreadReply[]>
   >({});
 
-  const visibleFilter = useCallback(
+  const matchesRecipient = useCallback(
     (m: CircleThreadMessage) => {
       const memberUids = Array.isArray(m.circleMemberUids) ? m.circleMemberUids : [];
       const recipientEmails = Array.isArray(m.recipientEmails) ? m.recipientEmails : [];
       return (
         memberUids.includes(user.uid) ||
-        (normalizedEmail && recipientEmails.includes(normalizedEmail))
+        (normalizedEmail.length > 0 && recipientEmails.includes(normalizedEmail))
       );
     },
     [normalizedEmail, user.uid],
@@ -78,24 +92,60 @@ export function useCirclePatientThreads(
     setError(null);
 
     const ref = collection(db, 'patients', patientId, 'messages');
-    const unsubscribe = onSnapshot(
-      ref,
-      (snap) => {
-        const items = snap.docs
-          .map((d) => ({ id: d.id, ...(d.data() as Omit<CircleThreadMessage, 'id'>) }))
-          .filter(visibleFilter)
-          .sort((a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt));
-        setMessages(items);
-        setLoading(false);
-      },
-      (err) => {
-        setError(err.message || 'Could not load messages.');
-        setLoading(false);
-      },
+    const buckets = new Map<string, CircleThreadMessage[]>();
+    const unsubs: Array<() => void> = [];
+
+    const emit = () => {
+      const byId = new Map<string, CircleThreadMessage>();
+      for (const list of buckets.values()) {
+        for (const item of list) {
+          byId.set(item.id, item);
+        }
+      }
+      setMessages(sortThreadMessages([...byId.values()].filter(matchesRecipient)));
+      setLoading(false);
+    };
+
+    const attach = (key: string, q: ReturnType<typeof query>) => {
+      unsubs.push(
+        onSnapshot(
+          q,
+          (snap) => {
+            buckets.set(
+              key,
+              snap.docs.map((d) =>
+                parseThreadMessage(
+                  d.id,
+                  d.data() as Omit<CircleThreadMessage, 'id'>,
+                ),
+              ),
+            );
+            emit();
+          },
+          (err) => {
+            setError(err.message || 'Could not load messages.');
+            setLoading(false);
+          },
+        ),
+      );
+    };
+
+    attach(
+      'byUid',
+      query(ref, where('circleMemberUids', 'array-contains', user.uid)),
     );
 
-    return () => unsubscribe();
-  }, [db, patientId, visibleFilter]);
+    if (normalizedEmail) {
+      attach(
+        'byEmail',
+        query(ref, where('recipientEmails', 'array-contains', normalizedEmail)),
+      );
+    }
+
+    return () => {
+      for (const unsub of unsubs) unsub();
+    };
+  }, [db, patientId, normalizedEmail, user.uid, matchesRecipient]);
 
   useEffect(() => {
     if (!patientId || messages.length === 0) {
@@ -121,7 +171,12 @@ export function useCirclePatientThreads(
 
   const unreadCount = useMemo(() => {
     return messages.filter((m) =>
-      threadHasUnreadPatientReply(repliesByMessageId[m.id] || [], patientId, m.id),
+      threadHasUnreadPatientReply(
+        repliesByMessageId[m.id] || [],
+        patientId,
+        m.id,
+        m,
+      ),
     ).length;
   }, [messages, repliesByMessageId, patientId]);
 

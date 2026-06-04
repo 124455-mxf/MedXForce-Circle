@@ -2,10 +2,12 @@ import { useCallback, useMemo, useState } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import {
+  Heart,
   Loader2,
   Lock,
   Pencil,
   Plus,
+  Star,
   Trash2,
   Users,
 } from 'lucide-react';
@@ -13,6 +15,7 @@ import {
   createDiaryEntry,
   deleteDiaryEntry,
   diaryMoodLabel,
+  isDiaryEntrySharedWithCircle,
   updateDiaryEntry,
   type CircleDiaryEntry,
   type CircleDiaryEntryDraft,
@@ -34,7 +37,10 @@ import {
   circleTabListClass,
 } from '../lib/circleSectionStyles';
 import { useCircleDiaryEntries, type DiaryListFilter } from '../hooks/useCircleDiaryEntries';
+import { useCircleToast } from '../hooks/useCircleToast';
+import { CircleAppToast } from './CircleAppToast';
 import { CircleDiaryEntryModal } from './CircleDiaryEntryModal';
+import { DiaryEntryDeleteConfirmModal } from './DiaryEntryDeleteConfirmModal';
 import { ResponsiveTabLabel } from './ResponsiveTabLabel';
 
 interface CircleDiaryScreenProps {
@@ -44,19 +50,13 @@ interface CircleDiaryScreenProps {
 }
 
 function formatDiaryDate(ts: number): string {
-  const d = new Date(ts);
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-
-  if (d.toDateString() === today.toDateString()) return 'Today';
-  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-  return d.toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: d.getFullYear() !== today.getFullYear() ? 'numeric' : undefined,
-  });
+  return new Date(ts)
+    .toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+    .toUpperCase();
 }
 
 function entryPreview(body: string, max = 160): string {
@@ -65,7 +65,7 @@ function entryPreview(body: string, max = 160): string {
   return `${text.slice(0, max)}…`;
 }
 
-function DiaryEntryCard({
+function DiaryTimelineEntry({
   entry,
   isOwn,
   patientDisplayName,
@@ -79,81 +79,120 @@ function DiaryEntryCard({
   onDelete: () => void;
 }) {
   const isPatientAuthor = entry.authorUid === entry.patientId;
+  const isCareTeamEntry = !isPatientAuthor;
   const mood = diaryMoodLabel(entry.mood);
+  const shared = isDiaryEntrySharedWithCircle(entry);
+  const authorLabel = isPatientAuthor ? patientDisplayName : entry.authorName;
 
   return (
-    <article className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3 [@media(max-height:740px)]:p-3 [@media(max-height:740px)]:space-y-2">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-bold text-slate-800 text-sm">
-              {entry.title?.trim() || 'Untitled entry'}
+    <li className="relative pl-6">
+      <span
+        className={cn(
+          'absolute top-2 rounded-full border-2 border-white shadow',
+          entry.isMilestone
+            ? '-left-[11px] w-5 h-5 bg-rose-500 ring-2 ring-rose-300 shadow-md animate-pulse'
+            : '-left-[8px] w-3.5 h-3.5',
+          !entry.isMilestone && (isPatientAuthor ? 'bg-violet-500' : isOwn ? 'bg-blue-500' : 'bg-slate-400'),
+        )}
+      />
+      <article
+        className={cn(
+          'rounded-2xl border shadow-sm p-4 space-y-3 [@media(max-height:740px)]:p-3 [@media(max-height:740px)]:space-y-2',
+          entry.isMilestone
+            ? 'bg-violet-50/50 border-violet-200'
+            : 'bg-white border-slate-100',
+          isCareTeamEntry && 'ml-2 sm:ml-4 border-l-4 border-l-blue-200',
+        )}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-700">
+              {formatDiaryDate(entry.experienceAt)}
             </p>
+            <p className="text-sm font-semibold text-slate-800 mt-0.5">{authorLabel}</p>
+            {isCareTeamEntry && (
+              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mt-0.5">
+                Circle member
+              </p>
+            )}
+            {isPatientAuthor && (
+              <p className="text-[10px] font-bold uppercase tracking-wide text-violet-500 mt-0.5">
+                Patient
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
             {mood && (
-              <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] font-bold uppercase">
+              <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold uppercase">
                 {mood}
               </span>
             )}
+            {entry.isMilestone && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 text-[10px] font-bold uppercase">
+                <Star size={10} />
+                Milestone
+              </span>
+            )}
+            <span
+              className={cn(
+                'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold uppercase shrink-0',
+                shared ? 'bg-violet-50 text-violet-600' : 'bg-slate-100 text-slate-500',
+              )}
+            >
+              {shared ? (
+                isPatientAuthor ? (
+                  <Heart size={12} />
+                ) : (
+                  <Users size={12} />
+                )
+              ) : (
+                <Lock size={12} />
+              )}
+              {shared ? (isPatientAuthor ? 'Patient story' : 'Shared') : 'Private'}
+            </span>
+            {isOwn && (
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  className="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                  aria-label="Edit entry"
+                >
+                  <Pencil size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50"
+                  aria-label="Delete entry"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            )}
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            {formatDiaryDate(entry.experienceAt)}
-            {' · '}
-            {isPatientAuthor ? patientDisplayName : entry.authorName}
-          </p>
         </div>
-        <span
-          className={cn(
-            'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold uppercase shrink-0',
-            entry.visibility === 'circle'
-              ? 'bg-violet-50 text-violet-600'
-              : 'bg-slate-100 text-slate-500',
-          )}
-          title={
-            entry.visibility === 'circle'
-              ? 'Shared with the circle'
-              : 'Private — only you can see this'
-          }
-        >
-          {entry.visibility === 'circle' ? <Users size={12} /> : <Lock size={12} />}
-          {entry.visibility === 'circle' ? 'Shared' : 'Private'}
-        </span>
-      </div>
 
-      <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
-        {entryPreview(entry.body)}
-      </p>
-
-      {isOwn && (
-        <div className="flex items-center gap-2 pt-1">
-          <button
-            type="button"
-            onClick={onEdit}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-blue-600 hover:bg-blue-50"
-          >
-            <Pencil size={14} />
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50"
-          >
-            <Trash2 size={14} />
-            Delete
-          </button>
-        </div>
-      )}
-    </article>
+        {entry.title?.trim() && (
+          <h3 className="font-bold text-slate-800 text-sm">{entry.title.trim()}</h3>
+        )}
+        <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
+          {entryPreview(entry.body, 320)}
+        </p>
+      </article>
+    </li>
   );
 }
 
 export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps) {
-  const [filter, setFilter] = useState<DiaryListFilter>('mine');
+  const [filter, setFilter] = useState<DiaryListFilter>('circle');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<CircleDiaryEntry | null>(null);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CircleDiaryEntry | null>(null);
+  const [deletingEntry, setDeletingEntry] = useState(false);
+  const { toast, showToast } = useCircleToast();
 
   const { loading, error: loadError, entries, allEntries } = useCircleDiaryEntries(
     db,
@@ -167,7 +206,7 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
   }, [user.displayName, user.email]);
 
   const sharedCount = useMemo(
-    () => allEntries.filter((e) => e.visibility === 'circle').length,
+    () => allEntries.filter((e) => isDiaryEntrySharedWithCircle(e)).length,
     [allEntries],
   );
 
@@ -191,7 +230,6 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
     async (draft: CircleDiaryEntryDraft) => {
       setSaving(true);
       setError(null);
-      setMessage(null);
       try {
         if (editingEntry) {
           await updateDiaryEntry(db, {
@@ -199,7 +237,7 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
             entryId: editingEntry.id,
             draft,
           });
-          setMessage('Entry updated.');
+          showToast('Entry updated.');
         } else {
           await createDiaryEntry(db, {
             patientId: patient.patientId,
@@ -207,7 +245,7 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
             authorName,
             draft,
           });
-          setMessage('Entry saved.');
+          showToast('Entry saved.');
         }
         setModalOpen(false);
         setEditingEntry(null);
@@ -217,23 +255,23 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
         setSaving(false);
       }
     },
-    [authorName, db, editingEntry, patient.patientId, user.uid],
+    [authorName, db, editingEntry, patient.patientId, showToast, user.uid],
   );
 
-  const handleDelete = useCallback(
-    async (entry: CircleDiaryEntry) => {
-      if (!window.confirm('Delete this diary entry? This cannot be undone.')) return;
-      setError(null);
-      setMessage(null);
-      try {
-        await deleteDiaryEntry(db, patient.patientId, entry.id);
-        setMessage('Entry deleted.');
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not delete entry.');
-      }
-    },
-    [db, patient.patientId],
-  );
+  const confirmDeleteEntry = useCallback(async () => {
+    if (!deleteTarget) return;
+    setDeletingEntry(true);
+    setError(null);
+    try {
+      await deleteDiaryEntry(db, patient.patientId, deleteTarget.id);
+      showToast('Entry deleted.');
+      setDeleteTarget(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not delete entry.');
+    } finally {
+      setDeletingEntry(false);
+    }
+  }, [db, deleteTarget, patient.patientId, showToast]);
 
   return (
     <>
@@ -283,7 +321,7 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
             </div>
           </div>
 
-          <div className={cn(circleSectionBodyClass, circleSectionBodyPaddingClass)}>
+          <div className={cn(circleSectionBodyClass, circleSectionBodyPaddingClass, 'overflow-y-auto')}>
             <p className={circleSectionContextHintClass}>
               {filter === 'mine'
                 ? 'Your personal entries — change sharing when you edit an entry.'
@@ -293,12 +331,6 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
             {(error || loadError) && (
               <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
                 {error || loadError}
-              </p>
-            )}
-
-            {message && (
-              <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
-                {message}
               </p>
             )}
 
@@ -315,18 +347,18 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <ol className="relative border-l-2 border-blue-200 ml-3 sm:ml-4 space-y-6 pb-2">
                 {entries.map((entry) => (
-                  <DiaryEntryCard
+                  <DiaryTimelineEntry
                     key={entry.id}
                     entry={entry}
                     isOwn={entry.authorUid === user.uid}
                     patientDisplayName={patient.displayName}
                     onEdit={() => openEdit(entry)}
-                    onDelete={() => void handleDelete(entry)}
+                    onDelete={() => setDeleteTarget(entry)}
                   />
                 ))}
-              </div>
+              </ol>
             )}
           </div>
         </div>
@@ -340,6 +372,17 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
         onClose={closeModal}
         onSave={(draft) => void handleSave(draft)}
       />
+
+      <DiaryEntryDeleteConfirmModal
+        open={!!deleteTarget}
+        isDeleting={deletingEntry}
+        onClose={() => {
+          if (!deletingEntry) setDeleteTarget(null);
+        }}
+        onConfirm={() => void confirmDeleteEntry()}
+      />
+
+      <CircleAppToast message={toast?.message ?? null} tone={toast?.tone} />
     </>
   );
 }
