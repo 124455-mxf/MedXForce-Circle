@@ -70,7 +70,7 @@ export const ROLE_CAPABILITY_TEMPLATES: Record<CircleMemberRole, PatientCapabili
     viewEngagementTrends: true,
     viewCareTrends: true,
     viewClinicalData: false,
-    remoteSettings: false,
+    remoteSettings: true,
     inviteMembers: false,
     messaging: true,
   },
@@ -82,7 +82,7 @@ export const ROLE_CAPABILITY_TEMPLATES: Record<CircleMemberRole, PatientCapabili
     viewEngagementTrends: true,
     viewCareTrends: true,
     viewClinicalData: false,
-    remoteSettings: false,
+    remoteSettings: true,
     inviteMembers: false,
     messaging: true,
   },
@@ -118,7 +118,9 @@ export function capabilitiesForRole(role: CircleMemberRole): PatientCapabilities
 
 /** Legacy Firestore roles — map to current capability templates. */
 export function normalizeMemberRole(role: string): CircleMemberRole {
-  if (role === 'professional_caregiver' || role === 'facility_staff') return 'caregiver';
+  // Legacy mapping: professional_caregiver behaves like caregiver.
+  // IMPORTANT: facility_staff must keep its own capability template (including `remoteSettings: false`).
+  if (role === 'professional_caregiver') return 'caregiver';
   if (role in ROLE_CAPABILITY_TEMPLATES) return role as CircleMemberRole;
   return 'caregiver';
 }
@@ -128,9 +130,12 @@ export function mergeMemberCapabilities(
   stored?: Partial<PatientCapabilities> | null,
 ): PatientCapabilities {
   const normalizedRole = normalizeMemberRole(role);
+  const base = capabilitiesForRole(normalizedRole);
   return {
-    ...capabilitiesForRole(normalizedRole),
+    ...base,
     ...(stored ?? {}),
+    // Always prefer the role template for RBAC toggles.
+    remoteSettings: base.remoteSettings,
   };
 }
 

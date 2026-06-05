@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Activity,
   Bell,
@@ -5,6 +6,7 @@ import {
   Bot,
   Brain,
   Calendar,
+  ChevronRight,
   Clock,
   Ear,
   Eye,
@@ -20,14 +22,18 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import {
+  ANALYTICS_METRIC_DEFINITIONS,
   ANALYTICS_SECTIONS,
+  buildPlaceholderAnalyticsSummary,
+  canReadAnalyticsAudience,
+  isSameCalendarDay,
   type AnalyticsMetricId,
   type CirclePatientSummary,
   type PatientAnalyticsSummary,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 import {
-  circleInsetCardClass,
+  circleAnalyticsMetricRowClass,
   circleSectionBodyClass,
   circleSectionBodyPaddingClass,
   circleSectionEmptyStateClass,
@@ -39,6 +45,7 @@ import {
 } from '../lib/circleSectionStyles';
 import { useCircleAnalyticsSummaries } from '../hooks/useCircleAnalyticsSummaries';
 import { firebase } from '../lib/firebaseClient';
+import { CircleAnalyticsDetailSheet } from './CircleAnalyticsDetailSheet';
 
 const METRIC_ICONS: Record<AnalyticsMetricId, LucideIcon> = {
   'alert-attention': Bell,
@@ -70,76 +77,115 @@ const METRIC_COLORS: Record<string, string> = {
   mobility: 'bg-emerald-50 text-emerald-600',
   temperature: 'bg-cyan-50 text-cyan-600',
   neurological: 'bg-purple-50 text-purple-600',
+  physiological: 'bg-blue-50 text-blue-600',
   psychological: 'bg-pink-50 text-pink-600',
 };
 
 function footerColorClass(tone: PatientAnalyticsSummary['footerTone']): string {
-  if (tone === 'warning') return 'text-red-500 font-bold';
-  if (tone === 'attention') return 'text-amber-600 font-bold';
-  return 'text-slate-500 font-bold';
+  if (tone === 'warning') return 'text-red-500';
+  if (tone === 'attention') return 'text-amber-600';
+  return 'text-slate-500';
 }
 
-function AnalyticsMetricCard({ summary }: { summary: PatientAnalyticsSummary }) {
+function metricFooterLabel(summary: PatientAnalyticsSummary): string {
+  if (!summary.isReleased || summary.status === 'coming_soon') {
+    return 'To be released';
+  }
+  return summary.summaryText;
+}
+
+function isTodayAlertAttention(summary: PatientAnalyticsSummary): boolean {
+  return (
+    summary.metricId === 'alert-attention' &&
+    summary.latestAt != null &&
+    isSameCalendarDay(summary.latestAt, Date.now())
+  );
+}
+
+function AnalyticsMetricRow({
+  summary,
+  onOpen,
+}: {
+  summary: PatientAnalyticsSummary;
+  onOpen: () => void;
+}) {
   const Icon = METRIC_ICONS[summary.metricId] ?? Activity;
-  const iconClass = METRIC_COLORS[summary.metricId] ?? 'bg-blue-50 text-blue-600';
+  const footerLabel = metricFooterLabel(summary);
+  const unreleased = !summary.isReleased || summary.status === 'coming_soon';
+  const iconClass = unreleased
+    ? 'bg-slate-100 text-slate-400'
+    : METRIC_COLORS[summary.metricId] ?? 'bg-blue-50 text-blue-600';
+  const tappable = summary.isReleased && summary.status !== 'coming_soon';
+  const todayAlertAttention = isTodayAlertAttention(summary);
 
   return (
-    <div className={cn(circleInsetCardClass, 'flex flex-col min-h-[132px]')}>
-      <div className="p-4 flex-1 flex flex-col [@media(max-height:740px)]:p-3">
-        <div
-          className={cn(
-            'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
-            iconClass,
-          )}
-        >
-          <Icon size={20} />
-        </div>
-        <div className="mt-3 space-y-1 min-w-0">
-          <h4 className={circleSectionTitleClass}>{summary.title}</h4>
-          <p className={circleSectionSubtitleClass}>{summary.description}</p>
-        </div>
-      </div>
-      <div className="px-4 pb-3 pt-2 border-t border-slate-50 [@media(max-height:740px)]:px-3">
-        {!summary.isReleased || summary.status === 'coming_soon' ? (
-          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-slate-500 font-bold">
-            <Clock size={10} />
-            <span>To be released</span>
-          </div>
-        ) : (
-          <div
-            className={cn(
-              'flex items-center gap-1.5 text-[10px] uppercase tracking-wider',
-              footerColorClass(summary.footerTone),
-            )}
-          >
-            <Clock size={10} />
-            <span>{summary.summaryText}</span>
-          </div>
+    <button
+      type="button"
+      onClick={onOpen}
+      disabled={!tappable}
+      className={cn(
+        circleAnalyticsMetricRowClass,
+        'w-full text-left transition-colors',
+        tappable && 'hover:border-blue-200 hover:bg-blue-50/30 active:scale-[0.99]',
+        !tappable && 'cursor-default',
+      )}
+    >
+      <div
+        className={cn(
+          'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
+          iconClass,
+          '[@media(max-height:740px)]:w-9 [@media(max-height:740px)]:h-9',
         )}
+      >
+        <Icon size={18} />
       </div>
-    </div>
+      <p
+        className={cn(
+          'flex-1 min-w-0 text-sm font-normal leading-snug truncate',
+          unreleased ? 'text-slate-400' : 'text-slate-800',
+        )}
+      >
+        {summary.title}
+      </p>
+      <div
+        className={cn(
+          'flex items-center gap-1 shrink-0 max-w-[46%] text-[10px] font-bold uppercase tracking-wider',
+          unreleased
+            ? 'text-slate-400'
+            : todayAlertAttention
+              ? 'text-red-500'
+              : footerColorClass(summary.footerTone),
+        )}
+      >
+        <Clock size={10} className="shrink-0 opacity-80" />
+        <span className="truncate">{footerLabel}</span>
+      </div>
+      {tappable && <ChevronRight size={16} className="text-slate-300 shrink-0" />}
+    </button>
   );
 }
 
 export function CircleAnalyticsScreen({ patient }: { patient: CirclePatientSummary }) {
+  const [detailSummary, setDetailSummary] = useState<PatientAnalyticsSummary | null>(null);
   const { byMetricId, totalFromServer, loading, error } = useCircleAnalyticsSummaries(
     firebase.db,
     patient,
   );
 
   return (
+    <>
     <div className="flex flex-col flex-1 min-h-0 max-h-full overflow-hidden">
       <div className={cn(circleSectionPanelClass, 'max-h-full')}>
         <div className={cn(circleSectionHeaderClass, circleSectionHeaderStackClass)}>
           <div className="min-w-0">
             <h3 className={circleSectionTitleClass}>Analytics</h3>
-            <p className={circleSectionSubtitleClass}>
+            <p className={cn(circleSectionSubtitleClass, '[@media(max-height:740px)]:line-clamp-1')}>
               Trends for {patient.displayName} — summaries update when the patient app syncs.
             </p>
           </div>
         </div>
 
-        <div className={cn(circleSectionBodyClass, circleSectionBodyPaddingClass, 'space-y-5')}>
+        <div className={cn(circleSectionBodyClass, circleSectionBodyPaddingClass, 'space-y-4')}>
           {error && (
             <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
               {error}
@@ -147,24 +193,43 @@ export function CircleAnalyticsScreen({ patient }: { patient: CirclePatientSumma
           )}
 
           {loading ? (
-            <div className="py-12 flex justify-center text-slate-400 [@media(max-height:740px)]:py-8">
+            <div className="py-10 flex justify-center text-slate-400 [@media(max-height:740px)]:py-6">
               <Loader2 size={24} className="animate-spin" />
             </div>
           ) : (
             ANALYTICS_SECTIONS.map((section) => {
               const cards = section.itemIds
-                .map((id) => byMetricId.get(id))
+                .map((id) => {
+                  const synced = byMetricId.get(id);
+                  if (synced) return synced;
+                  if (!ANALYTICS_METRIC_DEFINITIONS[id]) return null;
+                  if (
+                    !patient.capabilities ||
+                    !canReadAnalyticsAudience(
+                      ANALYTICS_METRIC_DEFINITIONS[id].audience,
+                      patient.role,
+                      patient.capabilities,
+                    )
+                  ) {
+                    return null;
+                  }
+                  return buildPlaceholderAnalyticsSummary(id, patient.patientId);
+                })
                 .filter((s): s is PatientAnalyticsSummary => s != null);
               if (cards.length === 0) return null;
 
               return (
-                <section key={section.id} className="space-y-2">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5">
+                <section key={section.id} className="space-y-1.5">
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5 pt-0.5">
                     {section.title}
                   </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1.5">
                     {cards.map((summary) => (
-                      <AnalyticsMetricCard key={summary.metricId} summary={summary} />
+                      <AnalyticsMetricRow
+                        key={summary.metricId}
+                        summary={summary}
+                        onOpen={() => setDetailSummary(summary)}
+                      />
                     ))}
                   </div>
                 </section>
@@ -194,5 +259,10 @@ export function CircleAnalyticsScreen({ patient }: { patient: CirclePatientSumma
         </div>
       </div>
     </div>
+    <CircleAnalyticsDetailSheet
+      summary={detailSummary}
+      onClose={() => setDetailSummary(null)}
+    />
+    </>
   );
 }

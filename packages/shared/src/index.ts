@@ -22,3 +22,5 @@ export * from './circlePatientProfileService';
 export * from './diaryEntries';
 export * from './circleMemberThreads';
 export * from './analyticsSummaries';
+export * from './analyticsMetricDetail';
+export * from './remoteSettings';

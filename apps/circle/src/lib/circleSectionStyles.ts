@@ -85,4 +85,13 @@ export function circleTabButtonClass(active: boolean, extra?: string): string {
 export const circleInsetCardClass =
   'bg-white rounded-2xl border border-slate-100 shadow-sm';
 
+/** Compact analytics / analysis metric row (icon + title + status). */
+export const circleAnalyticsMetricRowClass = cn(
+  circleInsetCardClass,
+  'flex items-center gap-3 p-3 min-h-[56px]',
+  `${short}p-2.5`,
+  `${short}min-h-[52px]`,
+  `${short}gap-2.5`,
+);
+
 export const circleCompactCardClass = cn('border rounded-2xl p-4', `${short}p-3`);

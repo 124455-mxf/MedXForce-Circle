@@ -7,11 +7,12 @@ import {
   ScrollText,
   Settings2,
   Sparkles,
+  SlidersHorizontal,
   Users,
   type LucideIcon,
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import { canViewAnalyticsTab, type PatientCapabilities } from '@medxforce/shared';
+import { canViewAnalyticsTab, canViewRemoteSettingsTab, type PatientCapabilities } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 
 export type CircleMainTab =
@@ -22,7 +23,8 @@ export type CircleMainTab =
   | 'admin'
   | 'analytics'
   | 'diary'
-  | 'know';
+  | 'know'
+  | 'remote-settings';
 
 export interface CircleNavItem {
   id: CircleMainTab;
@@ -281,6 +283,14 @@ export function moreNavItemsForPatient(capabilities: PatientCapabilities): Circl
       label: 'Analytics',
       icon: BarChart3,
       description: 'Engagement & care trends',
+    });
+  }
+  if (canViewRemoteSettingsTab(capabilities)) {
+    items.push({
+      id: 'remote-settings',
+      label: 'Remote Settings',
+      icon: SlidersHorizontal,
+      description: 'Configure patient tablet',
     });
   }
 

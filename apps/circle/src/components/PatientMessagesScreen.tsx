@@ -35,7 +35,7 @@ import {
 const REPLY_COLLAPSE_THRESHOLD = 4;
 const REPLY_TAIL_VISIBLE = 2;
 
-/** Thread chrome only — full body lives in the scroll area below. */
+/** Thread title in the combined header + message block. */
 function threadHeaderTitle(msg: CircleThreadMessage): string {
   const subject = msg.subject?.trim();
   if (subject) return subject;
@@ -491,46 +491,42 @@ export function PatientMessagesScreen({
   return (
     <>
     <div className={cn(circleSectionPanelClass, 'max-h-full')}>
-      <div className="shrink-0 flex items-center gap-2 p-4 border-b border-slate-100 bg-white/90">
-        <button
-          type="button"
-          onClick={leaveThread}
-          className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 shrink-0"
-          aria-label="Back to inbox"
-        >
-          <ChevronLeft size={20} />
-        </button>
-        <div className="min-w-0 flex-1">
-          <p className="font-bold text-slate-800 line-clamp-2 leading-snug">
-            {threadHeaderTitle(selectedMessage)}
-          </p>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            {formatThreadTime(selectedMessage.updatedAt || selectedMessage.createdAt)}
-          </p>
+      <div
+        className={cn(
+          'shrink-0 border-b',
+          selectedInitialMessageUnread
+            ? 'bg-red-50/40 border-red-200'
+            : 'bg-white/90 border-slate-100',
+        )}
+      >
+        <div className="flex items-start gap-2 px-4 pt-4">
+          <button
+            type="button"
+            onClick={leaveThread}
+            className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 shrink-0"
+            aria-label="Back to inbox"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <div className="min-w-0 flex-1 pb-1">
+            <p className="font-bold text-slate-800 line-clamp-2 leading-snug">
+              {threadHeaderTitle(selectedMessage)}
+            </p>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              {formatThreadTime(selectedMessage.updatedAt || selectedMessage.createdAt)}
+            </p>
+          </div>
         </div>
+        {selectedInitialMessageUnread ? (
+          <div className="px-4 pt-1">{renderNewDivider('new-initial')}</div>
+        ) : null}
+        <p className="px-4 pb-4 pt-1 pl-14 text-slate-800 leading-relaxed text-sm whitespace-pre-wrap">
+          {selectedMessage.text}
+        </p>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 pb-6 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pt-4 pb-6 space-y-4">
         {error && <p className="text-sm text-red-600">{error}</p>}
-
-        {selectedInitialMessageUnread ? renderNewDivider('new-initial') : null}
-        <div
-          className={cn(
-            'rounded-[32px] p-4 shadow-sm border',
-            selectedInitialMessageUnread
-              ? 'bg-red-50/40 border-red-200'
-              : 'bg-white border-slate-100',
-          )}
-        >
-          {selectedMessage.subject?.trim() ? (
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-              Patient message
-            </p>
-          ) : null}
-          <p className="text-slate-800 leading-relaxed text-sm whitespace-pre-wrap">
-            {selectedMessage.text}
-          </p>
-        </div>
 
         {totalReplies > 0 && (
           <div className="space-y-3">

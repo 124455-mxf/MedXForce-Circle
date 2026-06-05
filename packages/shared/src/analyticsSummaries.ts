@@ -8,6 +8,7 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore';
 import type { CircleMemberRole, PatientCapabilities } from './patientPermissions';
+import { parseAnalyticsMetricDetail, type AnalyticsMetricDetail } from './analyticsMetricDetail';
 
 /** Who may read this summary in Circle (enforced in Firestore rules). */
 export type AnalyticsAudience = 'engagement' | 'care' | 'clinical';
@@ -26,6 +27,8 @@ export interface PatientAnalyticsSummary {
   latestAt: number | null;
   countInWindow: number;
   windowDays: number;
+  /** Mean severity/strength score for physical assessments in the current window. */
+  averageInWindow?: number | null;
   summaryText: string;
   footerTone: AnalyticsFooterTone;
   trend: AnalyticsTrend;
@@ -34,17 +37,19 @@ export interface PatientAnalyticsSummary {
   description: string;
   sectionId: AnalyticsSectionId;
   updatedAt: number;
+  /** 30-day trend payload for Circle detail sheet (synced from patient app). */
+  detail?: AnalyticsMetricDetail;
 }
 
 export const ANALYTICS_SECTIONS = [
   {
     id: 'communication',
-    title: 'Communication & engagement',
+    title: 'Engagement',
     itemIds: ['alert-attention', 'speech-history', 'ai-conversation', 'daily-check-in'],
   },
   {
     id: 'physical',
-    title: 'Physical assessments',
+    title: 'Physical',
     itemIds: [
       'impact',
       'pain',
@@ -57,22 +62,22 @@ export const ANALYTICS_SECTIONS = [
   },
   {
     id: 'visionHearing',
-    title: 'Vision & hearing',
+    title: 'Vision',
     itemIds: ['vision', 'hearing'],
   },
   {
     id: 'speech',
-    title: 'Speech assessments',
+    title: 'Speech',
     itemIds: ['speech'],
   },
   {
     id: 'neurologicalPhysiological',
-    title: 'Neurological & physiological',
+    title: 'Neurological & Physiological',
     itemIds: ['neurological', 'physiological', 'psychological'],
   },
   {
     id: 'postStroke',
-    title: 'Post stroke self assessment',
+    title: 'Post stroke survey & Diary',
     itemIds: ['stroke', 'diary'],
   },
   {
@@ -235,7 +240,7 @@ export const ANALYTICS_METRIC_DEFINITIONS: Record<AnalyticsMetricId, AnalyticsMe
   },
   neurological: {
     id: 'neurological',
-    audience: 'clinical',
+    audience: 'care',
     title: 'Neurological',
     description: 'Cognitive and neurological performance.',
     isReleased: true,
@@ -251,8 +256,8 @@ export const ANALYTICS_METRIC_DEFINITIONS: Record<AnalyticsMetricId, AnalyticsMe
   },
   psychological: {
     id: 'psychological',
-    audience: 'clinical',
-    title: 'Psychological support',
+    audience: 'care',
+    title: 'Psychological',
     description: 'Emotional well-being and mood trends.',
     isReleased: true,
     sectionId: 'neurologicalPhysiological',
@@ -260,7 +265,7 @@ export const ANALYTICS_METRIC_DEFINITIONS: Record<AnalyticsMetricId, AnalyticsMe
   stroke: {
     id: 'stroke',
     audience: 'care',
-    title: 'Post stroke self report',
+    title: 'Post stroke survey',
     description: 'Recovery across strength, mobility, and cognition.',
     isReleased: false,
     sectionId: 'postStroke',
@@ -285,7 +290,7 @@ export const ANALYTICS_METRIC_DEFINITIONS: Record<AnalyticsMetricId, AnalyticsMe
     id: 'soul-vitality',
     audience: 'engagement',
     title: 'Soul',
-    description: 'Media engagement and social interaction trends.',
+    description: 'Family photos and videos shared with the patient.',
     isReleased: true,
     sectionId: 'vitality',
   },
@@ -331,6 +336,33 @@ export function filterSummariesForMember(
   return summaries.filter((s) => canReadAnalyticsAudience(s.audience, role, capabilities));
 }
 
+/** Fallback row when a metric definition exists but the patient has not synced yet. */
+export function buildPlaceholderAnalyticsSummary(
+  metricId: AnalyticsMetricId,
+  patientId: string,
+): PatientAnalyticsSummary {
+  const def = ANALYTICS_METRIC_DEFINITIONS[metricId];
+  const unreleased = !def.isReleased;
+  return {
+    metricId,
+    patientId,
+    audience: def.audience,
+    status: unreleased ? 'coming_soon' : 'none',
+    latestAt: null,
+    countInWindow: 0,
+    windowDays: 30,
+    averageInWindow: null,
+    summaryText: unreleased ? 'To be released' : 'No data yet',
+    footerTone: 'neutral',
+    trend: null,
+    isReleased: def.isReleased,
+    title: def.title,
+    description: def.description,
+    sectionId: def.sectionId,
+    updatedAt: 0,
+  };
+}
+
 export function analyticsSummariesCollection(db: Firestore, patientId: string) {
   return collection(db, 'patients', patientId, 'analytics_summaries');
 }
@@ -355,6 +387,10 @@ export function parsePatientAnalyticsSummary(
     latestAt: typeof data.latestAt === 'number' ? data.latestAt : null,
     countInWindow: typeof data.countInWindow === 'number' ? data.countInWindow : 0,
     windowDays: typeof data.windowDays === 'number' ? data.windowDays : 30,
+    averageInWindow:
+      typeof data.averageInWindow === 'number' && Number.isFinite(data.averageInWindow)
+        ? data.averageInWindow
+        : null,
     summaryText: String(data.summaryText ?? ''),
     footerTone: (data.footerTone as AnalyticsFooterTone) ?? 'neutral',
     trend: (data.trend as AnalyticsTrend) ?? null,
@@ -363,6 +399,7 @@ export function parsePatientAnalyticsSummary(
     description: String(data.description ?? def?.description ?? ''),
     sectionId: (data.sectionId as AnalyticsSectionId) ?? def?.sectionId ?? 'communication',
     updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : 0,
+    detail: parseAnalyticsMetricDetail(data.detail),
   };
 }
 

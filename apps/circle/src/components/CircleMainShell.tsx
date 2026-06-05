@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
 import type { CirclePatientSummary } from '@medxforce/shared';
@@ -19,14 +18,11 @@ import { CircleCircleScreen } from './CircleCircleScreen';
 import { CircleDashboardScreen } from './CircleDashboardScreen';
 import { CircleDiaryScreen } from './CircleDiaryScreen';
 import { CircleKnowScreen } from './CircleKnowScreen';
+import { CircleRemoteSettingsScreen } from './CircleRemoteSettingsScreen';
 import { CirclePatientSwitcher } from './CirclePatientSwitcher';
 import { PatientGalleryScreen } from './PatientGalleryScreen';
 import { PatientMessagesScreen } from './PatientMessagesScreen';
-import {
-  isFirestoreBackgroundWritePaused,
-  isFirestoreQuotaError,
-  pauseFirestoreBackgroundWrites,
-} from '../lib/firestoreQuota';
+import { startCircleMemberPresenceHeartbeat } from '../services/circleMemberPresenceService';
 import { useCircleGalleryMediaCounts } from '../hooks/useCircleGalleryMediaCounts';
 import { useCircleMemberThreadUnread } from '../hooks/useCircleMemberThreadUnread';
 import { useCirclePatientThreads } from '../hooks/useCirclePatientThreads';
@@ -156,33 +152,8 @@ export function CircleMainShell({
 
   useEffect(() => {
     if (!selectedPatient?.patientId || !user?.uid) return;
-
-    let active = true;
-    const beat = () => {
-      if (!active || isFirestoreBackgroundWritePaused()) return;
-      const now = Date.now();
-      void setDoc(
-        doc(db, 'patients', selectedPatient.patientId, 'presence', user.uid),
-        { uid: user.uid, lastSeen: now, status: 'online' },
-        { merge: true },
-      ).catch((err) => {
-        if (isFirestoreQuotaError(err)) pauseFirestoreBackgroundWrites(String(err));
-      });
-    };
-
-    beat();
-    const interval = window.setInterval(beat, 30_000);
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') beat();
-    };
-    document.addEventListener('visibilitychange', onVisibility);
-
-    return () => {
-      active = false;
-      window.clearInterval(interval);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [db, selectedPatient?.patientId, user.uid]);
+    return startCircleMemberPresenceHeartbeat(db, selectedPatient.patientId, user.uid);
+  }, [db, selectedPatient?.patientId, user?.uid]);
 
   if (!selectedPatient) {
     return (
@@ -214,7 +185,7 @@ export function CircleMainShell({
       <main
         className={cn(
           'flex-1 min-h-0',
-          activeTab === 'messages' || activeTab === 'media' || activeTab === 'diary' || activeTab === 'circle' || activeTab === 'analytics'
+          activeTab === 'messages' || activeTab === 'media' || activeTab === 'diary' || activeTab === 'circle' || activeTab === 'analytics' || activeTab === 'remote-settings'
             ? 'flex flex-col overflow-hidden'
             : 'space-y-4 overflow-y-auto',
         )}
@@ -276,6 +247,11 @@ export function CircleMainShell({
           </div>
         )}
         {activeTab === 'know' && <CircleKnowScreen patient={selectedPatient} />}
+        {activeTab === 'remote-settings' && (
+          <div className="flex flex-col flex-1 min-h-0">
+            <CircleRemoteSettingsScreen db={db} user={user} patient={selectedPatient} />
+          </div>
+        )}
       </main>
 
       <CircleBottomNav
