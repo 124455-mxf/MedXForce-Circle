@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import type { User } from 'firebase/auth';
-import { ChevronLeft, ChevronDown, Mail, User as UserIcon } from 'lucide-react';
+import { ChevronLeft, ChevronDown, ChevronUp, ClipboardList, Mail, Mic, Save, User as UserIcon } from 'lucide-react';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import { normalizeInviteEmail, type CirclePatientSummary } from '@medxforce/shared';
@@ -26,20 +26,66 @@ import type { UnsavedReplyDraftGuard } from '../lib/unsavedReplyDraft';
 import { CircleDiscardDraftModal } from './CircleDiscardDraftModal';
 import {
   circleSectionEmptyCardClass,
-  circleSectionHeaderClass,
   circleSectionPanelClass,
-  circleSectionSubtitleClass,
   circleSectionTitleClass,
 } from '../lib/circleSectionStyles';
+import {
+  isIcuDailySummary,
+  orderedSummaryEntries,
+  splitCircleInbox,
+  summaryDateLabel,
+  summaryUtteranceCount,
+  type IcuSummaryEntry,
+} from '../lib/circleCommunicationLog';
 
 const REPLY_COLLAPSE_THRESHOLD = 4;
 const REPLY_TAIL_VISIBLE = 2;
 
 /** Thread title in the combined header + message block. */
 function threadHeaderTitle(msg: CircleThreadMessage): string {
+  if (isIcuDailySummary(msg)) {
+    return `Communication log — ${summaryDateLabel(msg)}`;
+  }
   const subject = msg.subject?.trim();
   if (subject) return subject;
   return 'Patient message';
+}
+
+function IcuUtteranceCard({ entry }: { entry: IcuSummaryEntry }) {
+  const sourceLabel =
+    entry.source === 'speak' ? 'Spoken' : entry.source === 'save' ? 'Saved' : null;
+  const SourceIcon = entry.source === 'speak' ? Mic : Save;
+
+  return (
+    <div className="border rounded-2xl p-4 relative overflow-hidden bg-emerald-50/50 border-emerald-100">
+      <div className="absolute top-0 left-0 w-1 h-full bg-emerald-400" aria-hidden />
+      <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-emerald-100">
+            <Mail size={12} className="text-emerald-600" />
+          </div>
+          <span className="text-xs font-bold uppercase tracking-tight text-emerald-700">
+            Patient
+          </span>
+          {sourceLabel && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <SourceIcon size={10} />
+              {sourceLabel}
+            </span>
+          )}
+        </div>
+        <span className="text-[10px] font-medium tabular-nums shrink-0 text-emerald-600/60">
+          {new Date(entry.timestamp).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </span>
+      </div>
+      <p className="text-slate-700 text-sm font-medium leading-relaxed whitespace-pre-wrap">
+        {entry.text}
+      </p>
+    </div>
+  );
 }
 
 function formatThreadTime(ts: number): string {
@@ -163,6 +209,12 @@ export function PatientMessagesScreen({
     getCircleReplySortOrder(),
   );
   const [showDiscardModal, setShowDiscardModal] = useState(false);
+  const [communicationLogOpen, setCommunicationLogOpen] = useState(true);
+
+  const { communicationLog, directMessages } = useMemo(
+    () => splitCircleInbox(messages),
+    [messages],
+  );
 
   useEffect(() => {
     const syncReplySort = () => setReplySort(getCircleReplySortOrder());
@@ -385,6 +437,68 @@ export function PatientMessagesScreen({
     );
   }
 
+  const renderInboxRow = (msg: CircleThreadMessage, options?: { summaryRow?: boolean }) => {
+    const threadReplies = repliesByMessageId[msg.id] || [];
+    const unread = isInboxThreadUnread(msg);
+    const unreadKind = inboxUnreadKind(
+      msg,
+      threadReplies,
+      patient.patientId,
+      msg.id,
+    );
+    const replyCount = threadReplies.length;
+    const summaryRow = options?.summaryRow === true;
+    const title = summaryRow
+      ? summaryDateLabel(msg)
+      : (msg.subject && msg.subject.trim()) || msg.text?.slice(0, 80) || 'Message';
+    const snippet = summaryRow
+      ? `${summaryUtteranceCount(msg)} ${summaryUtteranceCount(msg) === 1 ? 'utterance' : 'utterances'}`
+      : msg.text?.slice(0, 80) || '';
+
+    return (
+      <li key={msg.id}>
+        <button
+          type="button"
+          onClick={() => openThread(msg.id)}
+          className={cn(
+            'w-full text-left p-4 transition-colors relative overflow-hidden',
+            unread
+              ? 'bg-red-50/40 hover:bg-red-50/60 border-l-0'
+              : 'hover:bg-slate-50',
+          )}
+        >
+          {unread && (
+            <span
+              className="absolute left-0 top-4 bottom-4 w-1.5 rounded-full bg-red-500 shadow-sm shadow-red-200/80"
+              aria-hidden
+            />
+          )}
+          <div className="flex items-start justify-between gap-2 pl-1">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                {unread && (
+                  <span className="bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full animate-pulse">
+                    {summaryRow ? 'New summary' : unreadKind === 'reply' ? 'New reply' : 'New message'}
+                  </span>
+                )}
+                {!summaryRow && replyCount > 0 && !unread && (
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+                  </span>
+                )}
+              </div>
+              <p className="font-bold text-slate-800 truncate">{title}</p>
+              <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">{snippet}</p>
+            </div>
+            <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">
+              {formatThreadTime(msg.updatedAt || msg.createdAt)}
+            </span>
+          </div>
+        </button>
+      </li>
+    );
+  };
+
   if (!selectedMessageId || !selectedMessage) {
     return (
       <div className="bg-[#F8FAFC] rounded-[32px] border border-slate-100 shadow-sm flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -397,63 +511,51 @@ export function PatientMessagesScreen({
               : ''}
           </p>
         </div>
-        <ul className="flex-1 min-h-0 divide-y divide-slate-100 overflow-y-auto overscroll-contain">
-          {messages.map((msg) => {
-            const threadReplies = repliesByMessageId[msg.id] || [];
-            const unread = isInboxThreadUnread(msg);
-            const unreadKind = inboxUnreadKind(
-              msg,
-              threadReplies,
-              patient.patientId,
-              msg.id,
-            );
-            const snippet =
-              (msg.subject && msg.subject.trim()) || msg.text?.slice(0, 80) || 'Message';
-            const replyCount = threadReplies.length;
-            return (
-              <li key={msg.id}>
-                <button
-                  type="button"
-                  onClick={() => openThread(msg.id)}
-                  className={cn(
-                    'w-full text-left p-4 transition-colors relative overflow-hidden',
-                    unread
-                      ? 'bg-red-50/40 hover:bg-red-50/60 border-l-0'
-                      : 'hover:bg-slate-50',
-                  )}
-                >
-                  {unread && (
-                    <span
-                      className="absolute left-0 top-4 bottom-4 w-1.5 rounded-full bg-red-500 shadow-sm shadow-red-200/80"
-                      aria-hidden
-                    />
-                  )}
-                  <div className="flex items-start justify-between gap-2 pl-1">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        {unread && (
-                          <span className="bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full animate-pulse">
-                            {unreadKind === 'reply' ? 'New reply' : 'New message'}
-                          </span>
-                        )}
-                        {replyCount > 0 && !unread && (
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
-                          </span>
-                        )}
-                      </div>
-                      <p className="font-bold text-slate-800 truncate">{snippet}</p>
-                      <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">{msg.text}</p>
-                    </div>
-                    <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">
-                      {formatThreadTime(msg.updatedAt || msg.createdAt)}
-                    </span>
-                  </div>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+          {communicationLog.length > 0 && (
+            <div className="border-b border-slate-100">
+              <button
+                type="button"
+                onClick={() => setCommunicationLogOpen((v) => !v)}
+                className="w-full flex items-center justify-between gap-2 px-4 py-3 bg-indigo-50/60 hover:bg-indigo-50 text-left"
+              >
+                <span className="flex items-center gap-2 min-w-0">
+                  <ClipboardList size={16} className="text-indigo-600 shrink-0" />
+                  <span className="font-bold text-sm text-indigo-900 truncate">
+                    Communication log
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 shrink-0">
+                    {communicationLog.length} {communicationLog.length === 1 ? 'day' : 'days'}
+                  </span>
+                </span>
+                {communicationLogOpen ? (
+                  <ChevronUp size={16} className="text-indigo-500 shrink-0" />
+                ) : (
+                  <ChevronDown size={16} className="text-indigo-500 shrink-0" />
+                )}
+              </button>
+              {communicationLogOpen && (
+                <ul className="divide-y divide-slate-100">
+                  {communicationLog.map((msg) => renderInboxRow(msg, { summaryRow: true }))}
+                </ul>
+              )}
+            </div>
+          )}
+          {directMessages.length > 0 && (
+            <>
+              {communicationLog.length > 0 && (
+                <div className="px-4 py-2 bg-white border-b border-slate-100">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    Direct messages
+                  </p>
+                </div>
+              )}
+              <ul className="divide-y divide-slate-100">
+                {directMessages.map((msg) => renderInboxRow(msg))}
+              </ul>
+            </>
+          )}
+        </div>
       </div>
     );
   }
@@ -487,6 +589,40 @@ export function PatientMessagesScreen({
       </div>
     );
   };
+
+  if (isIcuDailySummary(selectedMessage)) {
+    const utterances = orderedSummaryEntries(selectedMessage);
+    return (
+      <div className={cn(circleSectionPanelClass, 'max-h-full')}>
+        <div className="shrink-0 border-b bg-indigo-50/40 border-indigo-100">
+          <div className="flex items-start gap-2 px-4 pt-4 pb-4">
+            <button
+              type="button"
+              onClick={leaveThread}
+              className="p-2 rounded-xl text-slate-500 hover:bg-white/80 shrink-0"
+              aria-label="Back to inbox"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <div className="min-w-0 flex-1">
+              <p className="font-bold text-slate-800 line-clamp-2 leading-snug">
+                {threadHeaderTitle(selectedMessage)}
+              </p>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                {utterances.length} {utterances.length === 1 ? 'utterance' : 'utterances'} · read-only log
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-3">
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          {utterances.map((entry, index) => (
+            <IcuUtteranceCard key={`${entry.timestamp}-${index}`} entry={entry} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

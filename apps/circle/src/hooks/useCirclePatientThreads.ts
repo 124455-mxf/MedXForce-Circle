@@ -11,6 +11,12 @@ import type { Firestore } from 'firebase/firestore';
 import { normalizeInviteEmail } from '@medxforce/shared';
 import { threadHasUnreadPatientReply } from '../lib/circleMessageRead';
 
+export type IcuSummaryEntry = {
+  text: string;
+  timestamp: number;
+  source?: 'save' | 'speak';
+};
+
 export type CircleThreadMessage = {
   id: string;
   subject?: string;
@@ -23,6 +29,7 @@ export type CircleThreadMessage = {
   recipientEmails?: string[];
   createdAt: number;
   updatedAt: number;
+  summaryEntries?: IcuSummaryEntry[];
 };
 
 export type CircleThreadReply = {
@@ -153,7 +160,7 @@ export function useCirclePatientThreads(
       return;
     }
 
-    const unsubs = messages.map((msg) => {
+    const unsubs = messages.filter((msg) => msg.type !== 'icu_daily_summary').map((msg) => {
       const q = query(
         collection(db, 'patients', patientId, 'messages', msg.id, 'replies'),
         orderBy('timestamp', 'asc'),
