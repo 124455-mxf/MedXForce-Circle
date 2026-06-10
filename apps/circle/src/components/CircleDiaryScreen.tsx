@@ -7,6 +7,7 @@ import {
   Lock,
   Pencil,
   Plus,
+  ScrollText,
   Star,
   Trash2,
   Users,
@@ -28,18 +29,20 @@ import {
   circleSectionBodyPaddingClass,
   circleSectionContextHintClass,
   circleSectionEmptyStateClass,
-  circleSectionHeaderClass,
   circleSectionHeaderStackClass,
-  circleSectionPanelClass,
   circleSectionSubtitleClass,
   circleSectionTitleClass,
   circleTabButtonClass,
   circleTabListClass,
+  circleWorkTabHeaderClass,
+  circleWorkTabPanelClass,
 } from '../lib/circleSectionStyles';
 import { useCircleDiaryEntries, type DiaryListFilter } from '../hooks/useCircleDiaryEntries';
+import { useCircleCompactChrome } from '../lib/circleChromeContext';
 import { useCircleToast } from '../hooks/useCircleToast';
 import { CircleAppToast } from './CircleAppToast';
 import { CircleDiaryEntryModal } from './CircleDiaryEntryModal';
+import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 import { DiaryEntryDeleteConfirmModal } from './DiaryEntryDeleteConfirmModal';
 import { ResponsiveTabLabel } from './ResponsiveTabLabel';
 
@@ -193,6 +196,7 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
   const [deleteTarget, setDeleteTarget] = useState<CircleDiaryEntry | null>(null);
   const [deletingEntry, setDeletingEntry] = useState(false);
   const { toast, showToast } = useCircleToast();
+  const compactChrome = useCircleCompactChrome();
 
   const { loading, error: loadError, entries, allEntries } = useCircleDiaryEntries(
     db,
@@ -276,25 +280,25 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
   return (
     <>
       <div className="flex flex-col flex-1 min-h-0 max-h-full overflow-hidden">
-        <div className={cn(circleSectionPanelClass, 'max-h-full')}>
-          <div className={cn(circleSectionHeaderClass, circleSectionHeaderStackClass)}>
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <h3 className={circleSectionTitleClass}>Diary</h3>
-                <p className={circleSectionSubtitleClass}>
-                  Record visits, mood, and moments. Shared entries build your circle&apos;s story.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={openCreate}
-                className={circleHeaderActionButtonClass}
-                aria-label="New diary entry"
-                title="New entry"
-              >
-                <Plus size={18} className="[@media(max-height:740px)]:size-4" />
-              </button>
-            </div>
+        <div className={cn(circleWorkTabPanelClass(compactChrome), 'max-h-full')}>
+          <div className={cn(circleWorkTabHeaderClass(compactChrome), circleSectionHeaderStackClass, compactChrome && 'space-y-2')}>
+            <CircleWorkTabSectionIntro
+              icon={ScrollText}
+              iconClassName="text-amber-600"
+              title="Diary"
+              subtitle="Record visits, mood, and moments. Shared entries build your circle's story."
+              trailing={
+                <button
+                  type="button"
+                  onClick={openCreate}
+                  className={circleHeaderActionButtonClass}
+                  aria-label="New diary entry"
+                  title="New entry"
+                >
+                  <Plus size={18} className="[@media(max-height:740px)]:size-4" />
+                </button>
+              }
+            />
 
             <div className={circleTabListClass} role="tablist" aria-label="Diary views">
               <button

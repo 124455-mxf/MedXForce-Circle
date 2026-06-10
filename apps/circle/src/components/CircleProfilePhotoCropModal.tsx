@@ -4,31 +4,34 @@ import { Loader2, X } from 'lucide-react';
 import { getCroppedImg } from '../lib/imageCrop';
 
 type CircleProfilePhotoCropModalProps = {
-  imageSrc: string;
+  file: File;
   onCancel: () => void;
   onApply: (croppedDataUrl: string) => void | Promise<void>;
 };
 
 export function CircleProfilePhotoCropModal({
-  imageSrc,
+  file,
   onCancel,
   onApply,
 }: CircleProfilePhotoCropModalProps) {
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [processing, setProcessing] = useState(false);
 
+  // Build a fresh object URL from the File on each mount (StrictMode-safe).
   useEffect(() => {
+    const objectUrl = URL.createObjectURL(file);
+    setImageSrc(objectUrl);
     return () => {
-      if (imageSrc.startsWith('blob:')) {
-        URL.revokeObjectURL(imageSrc);
-      }
+      URL.revokeObjectURL(objectUrl);
+      setImageSrc(null);
     };
-  }, [imageSrc]);
+  }, [file]);
 
   const handleApply = async () => {
-    if (!croppedAreaPixels) return;
+    if (!croppedAreaPixels || !imageSrc) return;
     setProcessing(true);
     try {
       const cropped = await getCroppedImg(imageSrc, croppedAreaPixels);
@@ -58,17 +61,23 @@ export function CircleProfilePhotoCropModal({
         </div>
 
         <div className="relative h-[400px] bg-slate-900">
-          <Cropper
-            image={imageSrc}
-            crop={crop}
-            zoom={zoom}
-            aspect={1}
-            cropShape="round"
-            showGrid={false}
-            onCropChange={setCrop}
-            onCropComplete={(_area, pixels) => setCroppedAreaPixels(pixels)}
-            onZoomChange={setZoom}
-          />
+          {imageSrc ? (
+            <Cropper
+              image={imageSrc}
+              crop={crop}
+              zoom={zoom}
+              aspect={1}
+              cropShape="round"
+              showGrid={false}
+              onCropChange={setCrop}
+              onCropComplete={(_area, pixels) => setCroppedAreaPixels(pixels)}
+              onZoomChange={setZoom}
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-slate-400">
+              <Loader2 size={32} className="animate-spin" />
+            </div>
+          )}
         </div>
 
         <div className="p-8 space-y-6">

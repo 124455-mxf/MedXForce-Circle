@@ -11,14 +11,17 @@ import type { CircleInviteRecord } from './circleInvites';
 import {
   canUploadRichMedia,
   mergeMemberCapabilities,
+  normalizeMemberRole,
   type CircleMemberRole,
   type PatientCapabilities,
 } from './patientPermissions';
+import { resolveCircleAccessForInviteEmail } from './circleMemberRoles';
 
 export interface CirclePatientSummary {
   patientId: string;
   displayName: string;
   role: string;
+  proxyTier?: 'primary' | 'backup';
   canUpload: boolean;
   capabilities: PatientCapabilities;
   /** Patient profile photo from the patient app (Firestore patients/{id}.photoUrl). */
@@ -45,12 +48,38 @@ export async function listCirclePatientsForUser(
     const memberSnap = await getDoc(doc(db, 'patients', invite.patientId, 'members', uid));
     const member = memberSnap.exists() ? memberSnap.data() : null;
     const patientSnap = await getDoc(doc(db, 'patients', invite.patientId));
+    const patientData = patientSnap.exists() ? patientSnap.data() : null;
     const patientName =
-      (patientSnap.exists() && String(patientSnap.data()?.displayName || '')) ||
+      (patientData && String(patientData.displayName || '')) ||
       invite.displayName ||
       'Patient';
 
-    const role = String(member?.role || invite.role) as CircleMemberRole;
+    const resolved = resolveCircleAccessForInviteEmail(
+      patientData as {
+        caregivers?: Record<string, unknown>[];
+        friendsAndFamily?: Record<string, unknown>[];
+        circleAccessByEmail?: Record<string, { role?: string; proxyTier?: string }>;
+      },
+      invite.invitedEmail,
+      {
+        memberRole: typeof member?.role === 'string' ? member.role : undefined,
+        memberProxyTier:
+          member?.proxyTier === 'backup' || member?.proxyTier === 'primary'
+            ? member.proxyTier
+            : undefined,
+        inviteRole: invite.role,
+        inviteProxyTier:
+          invite.proxyTier === 'backup' || invite.proxyTier === 'primary'
+            ? invite.proxyTier
+            : undefined,
+      },
+    );
+    const role = normalizeMemberRole(resolved.role) as CircleMemberRole;
+    const proxyTier =
+      role === 'proxy' &&
+      (resolved.proxyTier === 'backup' || resolved.proxyTier === 'primary')
+        ? resolved.proxyTier
+        : undefined;
     const capabilities = mergeMemberCapabilities(
       role,
       (member?.capabilities as Partial<PatientCapabilities> | undefined) ??
@@ -65,6 +94,7 @@ export async function listCirclePatientsForUser(
       patientId: invite.patientId,
       displayName: patientName,
       role,
+      proxyTier,
       canUpload: canUploadRichMedia(capabilities),
       capabilities,
       photoUrl,

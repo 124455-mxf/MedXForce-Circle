@@ -16,6 +16,7 @@ import type { CircleMemberRole } from './patientPermissions';
 import type { GalleryAlbum, GalleryAlbumMedia } from './galleryAlbums';
 import { MAX_ALBUM_TITLE_LENGTH, MAX_CAPTION_LENGTH } from './galleryAlbums';
 import { uploadCircleGalleryMedia } from './circleGalleryUpload';
+import type { GalleryUploadFileProgress } from './galleryStorageUpload';
 
 function albumsCollection(db: Firestore, patientId: string) {
   return collection(db, 'patients', patientId, 'gallery_albums');
@@ -218,9 +219,12 @@ export async function uploadCircleGalleryMediaToAlbum(params: {
   senderName: string;
   files: File[];
   caption?: string;
+  onProgress?: (progress: GalleryUploadFileProgress) => void;
 }): Promise<string[]> {
   const ids: string[] = [];
-  for (const file of params.files) {
+  const total = params.files.length;
+  for (let i = 0; i < params.files.length; i++) {
+    const file = params.files[i]!;
     const id = await uploadCircleGalleryMedia({
       db: params.db,
       storage: params.storage,
@@ -231,6 +235,9 @@ export async function uploadCircleGalleryMediaToAlbum(params: {
       senderName: params.senderName,
       file,
       caption: params.caption,
+      fileIndex: i + 1,
+      fileCount: total,
+      onProgress: params.onProgress,
     });
     ids.push(id);
   }

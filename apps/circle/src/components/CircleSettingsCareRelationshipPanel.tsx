@@ -3,24 +3,12 @@ import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import { HeartHandshake, LogOut } from 'lucide-react';
 import {
+  circleMemberAccessLabel,
   leaveCircleForPatient,
-  type CircleMemberRole,
   type CirclePatientSummary,
 } from '@medxforce/shared';
+import { useCircleOnlineVisibility } from '../hooks/useCircleOnlineVisibility';
 import { CircleLeaveCircleConfirmModal } from './CircleLeaveCircleConfirmModal';
-
-const ROLE_LABELS: Record<CircleMemberRole, string> = {
-  friend: 'Friend',
-  family: 'Family',
-  caregiver: 'Caregiver',
-  professional_caregiver: 'Professional caregiver',
-  proxy: 'Proxy',
-  facility_staff: 'Facility staff',
-};
-
-function roleLabel(role: string): string {
-  return ROLE_LABELS[role as CircleMemberRole] ?? role.replace(/_/g, ' ');
-}
 
 interface CircleSettingsCareRelationshipPanelProps {
   user: User;
@@ -38,6 +26,12 @@ export function CircleSettingsCareRelationshipPanel({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const {
+    hideOnlineStatusFromPatient,
+    loading: visibilityLoading,
+    saving: visibilitySaving,
+    updateHideOnlineStatusFromPatient,
+  } = useCircleOnlineVisibility(db, user.uid, patient?.patientId);
 
   const handleLeave = async () => {
     if (!patient) return;
@@ -66,7 +60,7 @@ export function CircleSettingsCareRelationshipPanel({
     return (
       <div className="p-5">
         <p className="text-sm text-slate-500 leading-relaxed">
-          Select someone you are caring for on the home screen to manage that relationship.
+          Open Settings → Switch patient to choose who you are supporting.
         </p>
       </div>
     );
@@ -93,16 +87,42 @@ export function CircleSettingsCareRelationshipPanel({
 
         <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">
-              Caring for
-            </p>
             <p className="font-bold text-slate-800">{patient.displayName}</p>
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">
               Your role
             </p>
-            <p className="text-sm font-semibold text-slate-700">{roleLabel(patient.role)}</p>
+            <p className="text-sm font-semibold text-slate-700">
+              {circleMemberAccessLabel(patient.role, patient.proxyTier)}
+            </p>
+          </div>
+          <div className="flex items-start justify-between gap-4 p-4 bg-white rounded-2xl border border-slate-100">
+            <div className="space-y-1 min-w-0">
+              <p className="text-sm font-bold text-slate-800">Hide my online status</p>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                When on, you won&apos;t appear as online in the patient app (sidebar dot and Circle
+                online list).
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={visibilityLoading || visibilitySaving}
+              onClick={() =>
+                void updateHideOnlineStatusFromPatient(!hideOnlineStatusFromPatient)
+              }
+              className={`w-14 h-8 rounded-full transition-all duration-300 relative shrink-0 disabled:opacity-50 ${
+                hideOnlineStatusFromPatient ? 'bg-blue-600' : 'bg-slate-300'
+              }`}
+              aria-pressed={hideOnlineStatusFromPatient}
+              aria-label="Hide my online status"
+            >
+              <span
+                className={`absolute top-1 left-0 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 ${
+                  hideOnlineStatusFromPatient ? 'translate-x-7' : 'translate-x-1'
+                }`}
+              />
+            </button>
           </div>
           <p className="text-xs text-slate-400 leading-relaxed">
             Leaving removes your access to their messages and media in Circle. It works the same

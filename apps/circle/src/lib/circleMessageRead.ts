@@ -1,5 +1,7 @@
 const PREFIX = 'circleMsgRead:';
 
+export const CIRCLE_MSG_READ_CHANGED = 'circleMsgReadChanged';
+
 export function getThreadLastReadAt(patientId: string, messageId: string): number {
   try {
     const raw = localStorage.getItem(`${PREFIX}${patientId}:${messageId}`);
@@ -12,8 +14,38 @@ export function getThreadLastReadAt(patientId: string, messageId: string): numbe
 export function markThreadRead(patientId: string, messageId: string, at = Date.now()): void {
   try {
     localStorage.setItem(`${PREFIX}${patientId}:${messageId}`, String(at));
+    window.dispatchEvent(
+      new CustomEvent(CIRCLE_MSG_READ_CHANGED, { detail: { patientId, messageId, at } }),
+    );
   } catch {
     /* ignore */
+  }
+}
+
+/** ICU daily summary — unread when summary was created/updated after last open. */
+export function communicationLogSummaryActivityAt(msg: {
+  createdAt: number;
+  updatedAt?: number;
+}): number {
+  return msg.updatedAt || msg.createdAt || 0;
+}
+
+export function isCommunicationLogSummaryUnread(
+  msg: { createdAt: number; updatedAt?: number },
+  patientId: string,
+  messageId: string,
+): boolean {
+  const lastRead = getThreadLastReadAt(patientId, messageId);
+  return communicationLogSummaryActivityAt(msg) > lastRead;
+}
+
+export function markAllCommunicationLogRead(
+  patientId: string,
+  summaries: { id: string; createdAt: number; updatedAt?: number }[],
+  at = Date.now(),
+): void {
+  for (const summary of summaries) {
+    markThreadRead(patientId, summary.id, at);
   }
 }
 

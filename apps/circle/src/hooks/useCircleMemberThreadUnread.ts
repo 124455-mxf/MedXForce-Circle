@@ -6,6 +6,7 @@ import {
   canParticipateInCircleOpenThread,
   canSeeCircleRestrictedThread,
   circleMemberThreadPostsCollection,
+  isCircleThreadPostHiddenForUser,
   parseCircleMemberThreadPost,
   type CircleMemberThreadKind,
   type CircleMemberThreadPost,
@@ -15,6 +16,7 @@ import {
   getCircleThreadLastReadAt,
   subscribeCircleThreadRead,
 } from '../lib/circleMemberThreadRead';
+import { useHiddenCircleThreadPosts } from './useHiddenCircleThreadPosts';
 
 function useCircleThreadLastRead(
   patientId: string,
@@ -37,6 +39,7 @@ export function useCircleMemberThreadUnread(
   const userId = user.uid;
   const canOpen = canParticipateInCircleOpenThread(memberRole);
   const canRestricted = canSeeCircleRestrictedThread(memberRole);
+  const { hiddenByPostId } = useHiddenCircleThreadPosts(db, patientId, userId);
 
   const openLastRead = useCircleThreadLastRead(patientId, userId, 'open');
   const restrictedLastRead = useCircleThreadLastRead(patientId, userId, 'restricted');
@@ -80,24 +83,43 @@ export function useCircleMemberThreadUnread(
     });
   }, [canRestricted, db, patientId]);
 
-  const unreadCount = useMemo(() => {
-    let total = 0;
-    if (canOpen) {
-      total += countUnreadCircleThreadPosts(openPosts, userId, openLastRead);
-    }
-    if (canRestricted) {
-      total += countUnreadCircleThreadPosts(restrictedPosts, userId, restrictedLastRead);
-    }
-    return total;
-  }, [
-    canOpen,
-    canRestricted,
-    openLastRead,
-    openPosts,
-    restrictedLastRead,
-    restrictedPosts,
-    userId,
-  ]);
+  const visibleOpenPosts = useMemo(
+    () =>
+      openPosts.filter(
+        (post) => !isCircleThreadPostHiddenForUser(hiddenByPostId, post.id, 'open'),
+      ),
+    [hiddenByPostId, openPosts],
+  );
 
-  return { unreadCount };
+  const visibleRestrictedPosts = useMemo(
+    () =>
+      restrictedPosts.filter(
+        (post) => !isCircleThreadPostHiddenForUser(hiddenByPostId, post.id, 'restricted'),
+      ),
+    [hiddenByPostId, restrictedPosts],
+  );
+
+  const openUnreadCount = useMemo(
+    () =>
+      canOpen ? countUnreadCircleThreadPosts(visibleOpenPosts, userId, openLastRead) : 0,
+    [canOpen, openLastRead, userId, visibleOpenPosts],
+  );
+
+  const restrictedUnreadCount = useMemo(
+    () =>
+      canRestricted
+        ? countUnreadCircleThreadPosts(visibleRestrictedPosts, userId, restrictedLastRead)
+        : 0,
+    [canRestricted, restrictedLastRead, userId, visibleRestrictedPosts],
+  );
+
+  const unreadCount = openUnreadCount + restrictedUnreadCount;
+  const circlePostCount = visibleOpenPosts.length + visibleRestrictedPosts.length;
+
+  return {
+    unreadCount,
+    openUnreadCount,
+    restrictedUnreadCount,
+    circlePostCount,
+  };
 }

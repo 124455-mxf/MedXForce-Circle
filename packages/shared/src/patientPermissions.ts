@@ -34,6 +34,7 @@ export interface PatientMemberRecord {
   invitedEmail?: string;
   contactId?: string;
   inviteRef?: string;
+  proxyTier?: 'primary' | 'backup';
   updatedAt: number;
 }
 
@@ -136,6 +137,8 @@ export function mergeMemberCapabilities(
     ...(stored ?? {}),
     // Always prefer the role template for RBAC toggles.
     remoteSettings: base.remoteSettings,
+    inviteMembers: base.inviteMembers,
+    viewClinicalData: base.viewClinicalData,
   };
 }
 
@@ -153,13 +156,4 @@ export function canInviteMembers(capabilities: PatientCapabilities | undefined):
 
 export function normalizeInviteEmail(email: string): string {
   return email.trim().toLowerCase();
-}
-
-export function roleFromFriendsAndFamilyContact(contact: Record<string, unknown>): CircleMemberRole {
-  const type = String(contact.type || contact.relationship || '').toLowerCase();
-  if (type.includes('friend')) return 'friend';
-  if (type.includes('family') || type.includes('partner') || type.includes('child') || type.includes('parent')) {
-    return 'family';
-  }
-  return 'caregiver';
 }

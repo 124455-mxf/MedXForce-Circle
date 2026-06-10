@@ -26,10 +26,10 @@ export const circleSectionSubtitleClass = cn(
   `${short}line-clamp-2`,
 );
 
-/** Secondary hint under tabs — hidden on short screens to save vertical space. */
+/** Secondary hint under tabs — one line on short screens instead of hidden. */
 export const circleSectionContextHintClass = cn(
   'text-xs text-slate-500 leading-relaxed',
-  `${short}hidden`,
+  `${short}line-clamp-1`,
 );
 
 export const circleSectionBodyClass =
@@ -79,6 +79,41 @@ export function circleTabButtonClass(active: boolean, extra?: string): string {
     `${short}rounded-md`,
     active ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500',
     extra,
+  );
+}
+
+/** Horizontally scrollable browse pills (matches patient app Media Gallery). */
+export const circleBrowsePillListClass = cn(
+  'max-w-full overflow-x-auto overscroll-x-contain p-1.5 bg-slate-50 rounded-2xl border border-slate-100',
+  '[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden',
+  `${short}p-1`,
+);
+
+export const circleBrowsePillRowClass = 'flex flex-nowrap gap-2 w-max min-w-full';
+
+export function circleBrowsePillButtonClass(active: boolean): string {
+  return cn(
+    'px-4 py-2 rounded-xl text-sm font-bold transition-all shrink-0 whitespace-nowrap',
+    `${short}px-3`,
+    `${short}py-1.5`,
+    `${short}text-xs`,
+    active
+      ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+      : 'text-slate-500 hover:text-slate-700 hover:bg-white',
+  );
+}
+
+/** Work-tab chrome: tighter panels when the compact app header is active. */
+export function circleWorkTabPanelClass(compact: boolean): string {
+  return cn(circleSectionPanelClass, compact && 'rounded-2xl');
+}
+
+export function circleWorkTabHeaderClass(compact: boolean): string {
+  return cn(
+    'shrink-0 border-b border-slate-100 bg-white/80',
+    compact ? 'px-3 pt-3.5 pb-3' : 'p-4',
+    `${short}px-3`,
+    compact ? `${short}pt-3 ${short}pb-2.5` : `${short}p-3`,
   );
 }
 

@@ -19,3 +19,95 @@ body {
     transform: translate(-50%, calc(-50% - 120px)) scale(2.5);
   }
 }
+
+@keyframes circle-urgency-banner-alert {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.08);
+  }
+}
+
+@keyframes circle-urgency-banner-attention {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.08);
+  }
+}
+
+@keyframes circle-urgency-nav-alert {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.15);
+    background-color: rgba(254, 242, 242, 0.95);
+  }
+  50% {
+    box-shadow: inset 0 0 0 2px rgba(239, 68, 68, 0.45);
+    background-color: rgba(254, 226, 226, 0.98);
+  }
+}
+
+@keyframes circle-urgency-nav-attention {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.15);
+    background-color: rgba(239, 246, 255, 0.95);
+  }
+  50% {
+    box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.45);
+    background-color: rgba(219, 234, 254, 0.98);
+  }
+}
+
+@keyframes circle-urgency-tab-alert {
+  0%,
+  100% {
+    background-color: rgb(220, 38, 38);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45);
+  }
+  50% {
+    background-color: rgb(185, 28, 28);
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.25);
+  }
+}
+
+@keyframes circle-urgency-tab-attention {
+  0%,
+  100% {
+    background-color: rgb(37, 99, 235);
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45);
+  }
+  50% {
+    background-color: rgb(29, 78, 216);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25);
+  }
+}
+
+.circle-urgency-banner-alert {
+  animation: circle-urgency-banner-alert 1.4s ease-in-out infinite;
+}
+
+.circle-urgency-banner-attention {
+  animation: circle-urgency-banner-attention 1.4s ease-in-out infinite;
+}
+
+.circle-urgency-nav-alert {
+  animation: circle-urgency-nav-alert 1.4s ease-in-out infinite;
+}
+
+.circle-urgency-nav-attention {
+  animation: circle-urgency-nav-attention 1.4s ease-in-out infinite;
+}
+
+.circle-urgency-tab-alert {
+  animation: circle-urgency-tab-alert 1.4s ease-in-out infinite;
+}
+
+.circle-urgency-tab-attention {
+  animation: circle-urgency-tab-attention 1.4s ease-in-out infinite;
+}

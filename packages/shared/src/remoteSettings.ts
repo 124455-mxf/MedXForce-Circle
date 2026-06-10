@@ -394,6 +394,162 @@ export function canViewRemoteSettingsTab(
   return !!capabilities?.remoteSettings;
 }
 
+const REMOTE_DAILY_CHECKIN_QUIET_HOURS = {
+  enabled: true,
+  start: '22:00',
+  end: '06:00',
+} as const;
+
+/** Remote-settings fields that match each application mode preset (subset of patient app modes). */
+function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload {
+  const visibleAll = { phrases: true, categories: true, emojis: true, unicode: true };
+
+  if (mode === 'intensive_care') {
+    return {
+      appMode: 'intensive_care',
+      showUserInSidebar: false,
+      showQuickSettings: false,
+      showSettingsInSidebar: false,
+      hideRightSidebar: true,
+      betterVisibleCursor: true,
+      showAiSuggestions: false,
+      speakOnSelection: true,
+      showFrequentlyUsed: false,
+      featuresVisibility: {
+        dashboard: false,
+        communication: true,
+        messaging: false,
+        aiCompanion: false,
+        healthAssessments: false,
+        analytics: false,
+        journeyDiary: false,
+        activity: { enabled: false },
+      },
+      journeyDiary: { allowViewSharedEntries: false },
+      dailyCheckIn: { enabled: true, quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS } },
+      visibleAreas: { phrases: false, categories: false, emojis: false, unicode: true },
+      contentFontSize: 'medium',
+    };
+  }
+
+  if (mode === 'user') {
+    return {
+      appMode: 'user',
+      showUserInSidebar: true,
+      showQuickSettings: true,
+      showSettingsInSidebar: true,
+      hideRightSidebar: true,
+      betterVisibleCursor: true,
+      showAiSuggestions: true,
+      speakOnSelection: true,
+      showFrequentlyUsed: true,
+      featuresVisibility: {
+        dashboard: true,
+        communication: true,
+        messaging: true,
+        aiCompanion: true,
+        healthAssessments: true,
+        analytics: true,
+        journeyDiary: false,
+        activity: { enabled: true },
+      },
+      journeyDiary: { allowViewSharedEntries: false },
+      dailyCheckIn: {
+        enabled: false,
+        quietHours: { enabled: false, start: '22:00', end: '06:00' },
+      },
+      visibleAreas: visibleAll,
+      contentFontSize: 'medium',
+    };
+  }
+
+  return {
+    appMode: 'hospital',
+    showUserInSidebar: false,
+    showQuickSettings: false,
+    showSettingsInSidebar: false,
+    hideRightSidebar: true,
+    betterVisibleCursor: true,
+    showAiSuggestions: true,
+    speakOnSelection: false,
+    showFrequentlyUsed: true,
+    featuresVisibility: {
+      dashboard: false,
+      communication: true,
+      messaging: false,
+      aiCompanion: true,
+      healthAssessments: false,
+      analytics: false,
+      journeyDiary: false,
+      activity: { enabled: false },
+    },
+    journeyDiary: { allowViewSharedEntries: false },
+    dailyCheckIn: { enabled: true, quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS } },
+    visibleAreas: visibleAll,
+    contentFontSize: 'medium',
+  };
+}
+
+function remoteBoolMatches(
+  left: boolean | undefined,
+  right: boolean | undefined,
+): boolean {
+  return !!left === !!right;
+}
+
+/** True when remote toggles differ from the selected application mode preset. */
+export function isRemoteSettingsCustomized(doc: PatientRemoteSettingsDoc): boolean {
+  const mode = doc.appMode ?? 'hospital';
+  const preset = remotePresetPayloadForMode(mode);
+
+  for (const item of REMOTE_FEATURE_TOGGLES) {
+    if (
+      !remoteBoolMatches(
+        getRemoteSettingValue(doc, item.path),
+        getRemoteSettingValue(preset, item.path),
+      )
+    ) {
+      return true;
+    }
+  }
+
+  for (const item of REMOTE_QUICK_SETTING_TOGGLES) {
+    if (
+      !remoteBoolMatches(
+        getRemoteSettingValue(doc, item.path),
+        getRemoteSettingValue(preset, item.path),
+      )
+    ) {
+      return true;
+    }
+  }
+
+  for (const item of REMOTE_VISIBLE_AREA_TOGGLES) {
+    if (!remoteBoolMatches(doc.visibleAreas?.[item.key], preset.visibleAreas?.[item.key])) {
+      return true;
+    }
+  }
+
+  if (!remoteBoolMatches(doc.dailyCheckIn?.enabled, preset.dailyCheckIn?.enabled)) {
+    return true;
+  }
+
+  return false;
+}
+
+export function formatDashboardApplicationModeLine(
+  doc: PatientRemoteSettingsDoc | null | undefined,
+  loading = false,
+): string {
+  if (loading) return 'Mode: …';
+  if (!doc?.appMode || isRemoteSettingsCustomized(doc)) {
+    return 'Mode: custom';
+  }
+
+  const label = REMOTE_APP_MODES.find((mode) => mode.key === doc.appMode)?.label ?? 'custom';
+  return `Mode: ${label}`;
+}
+
 export function createDefaultRemoteSettings(patientId: string): PatientRemoteSettingsDoc {
   return {
     patientId,

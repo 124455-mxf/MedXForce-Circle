@@ -1,8 +1,9 @@
-import { doc, getDoc, getDocs, collection, query, where } from 'firebase/firestore';
+import { getDocs, collection, query, where } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import { circleInviteDocId, type CircleInviteStatus } from './circleInvites';
+import { lookupCircleInviteByPatientEmail, type CircleInviteStatus } from './circleInvites';
 import type { CircleContactKind, CircleManagedContact } from './circleContactManagement';
 import { normalizeInviteEmail } from './patientPermissions';
+import { circleMemberRoleFromManagedContact } from './circleMemberRoles';
 
 export type CircleInvitePreviewAction = 'invite' | 'reinvite' | 'revoke';
 
@@ -19,11 +20,11 @@ function isValidInviteEmail(raw: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 }
 
-function roleFromKind(kind: CircleContactKind): string | null {
-  if (kind === 'caregiver') return 'caregiver';
-  if (kind === 'family') return 'family';
-  if (kind === 'friend') return 'friend';
-  return null;
+function roleFromManagedContact(
+  contact: Pick<CircleManagedContact, 'kind' | 'circleRole' | 'proxyTier'>,
+): string | null {
+  const role = circleMemberRoleFromManagedContact(contact);
+  return role;
 }
 
 /** Preview Circle invite grant/revoke before proxy saves a managed contact. */
@@ -40,34 +41,32 @@ export async function previewManagedContactInviteChange(
 
   const pushRevokeIfActive = async (targetEmail: string, name: string) => {
     if (!targetEmail) return;
-    const inviteRef = doc(db, 'circle_invites', circleInviteDocId(patientId, targetEmail));
-    const existing = await getDoc(inviteRef);
-    if (!existing.exists()) return;
-    const status = existing.data()?.status as CircleInviteStatus | undefined;
+    const existing = await lookupCircleInviteByPatientEmail(db, patientId, targetEmail);
+    if (!existing.exists) return;
+    const status = existing.data.status;
     if (status === 'revoked') return;
     items.push({
       name: name || targetEmail,
       email: targetEmail,
-      role: String(existing.data()?.role ?? 'member'),
+      role: String(existing.data.role ?? 'member'),
       action: 'revoke',
     });
   };
 
-  const pushInviteIfNeeded = async (targetEmail: string, name: string, kind: CircleContactKind) => {
-    const role = roleFromKind(kind);
+  const pushInviteIfNeeded = async (
+    targetEmail: string,
+    name: string,
+    managed: Pick<CircleManagedContact, 'kind' | 'circleRole' | 'proxyTier'>,
+  ) => {
+    const role = roleFromManagedContact(managed);
     if (!role || !isValidInviteEmail(targetEmail)) return;
 
-    const inviteRef = doc(db, 'circle_invites', circleInviteDocId(patientId, targetEmail));
-    const existing = await getDoc(inviteRef);
-    const status = existing.exists()
-      ? (existing.data()?.status as CircleInviteStatus | undefined)
-      : undefined;
-
-    if (!existing.exists()) {
+    const existing = await lookupCircleInviteByPatientEmail(db, patientId, targetEmail);
+    if (!existing.exists) {
       items.push({ name, email: targetEmail, role, action: 'invite' });
       return;
     }
-    if (status === 'revoked') {
+    if (existing.data.status === 'revoked') {
       items.push({ name, email: targetEmail, role, action: 'reinvite' });
     }
   };
@@ -85,7 +84,7 @@ export async function previewManagedContactInviteChange(
   }
 
   if (email) {
-    await pushInviteIfNeeded(email, displayName, contact.kind);
+    await pushInviteIfNeeded(email, displayName, contact);
   }
 
   return items;
@@ -100,19 +99,16 @@ export async function previewManagedContactDeleteInviteChange(
   const email = normalizeInviteEmail(contact.email || '');
   if (!email || contact.kind === 'contact') return [];
 
-  const inviteRef = doc(db, 'circle_invites', circleInviteDocId(patientId, email));
-  const existing = await getDoc(inviteRef);
-  if (!existing.exists()) return [];
-
-  const status = existing.data()?.status as CircleInviteStatus | undefined;
-  if (status === 'revoked') return [];
+  const existing = await lookupCircleInviteByPatientEmail(db, patientId, email);
+  if (!existing.exists) return [];
+  if (existing.data.status === 'revoked') return [];
 
   const displayName = contact.name.trim() || email;
   return [
     {
       name: displayName,
       email,
-      role: String(existing.data()?.role ?? 'member'),
+      role: String(existing.data.role ?? 'member'),
       action: 'revoke',
     },
   ];
@@ -128,18 +124,15 @@ export async function previewCircleAccessRevoke(
   const email = normalizeInviteEmail(invitedEmail);
   if (!email) return [];
 
-  const inviteRef = doc(db, 'circle_invites', circleInviteDocId(patientId, email));
-  const existing = await getDoc(inviteRef);
-  if (!existing.exists()) return [];
-
-  const status = existing.data()?.status as CircleInviteStatus | undefined;
-  if (status === 'revoked') return [];
+  const existing = await lookupCircleInviteByPatientEmail(db, patientId, email);
+  if (!existing.exists) return [];
+  if (existing.data.status === 'revoked') return [];
 
   return [
     {
       name: displayName?.trim() || email,
       email,
-      role: String(existing.data()?.role ?? 'member'),
+      role: String(existing.data.role ?? 'member'),
       action: 'revoke',
     },
   ];

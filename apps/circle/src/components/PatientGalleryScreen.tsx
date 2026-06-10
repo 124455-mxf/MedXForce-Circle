@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { User } from 'firebase/auth';
 import {
   ChevronLeft,
-  ChevronRight,
   FolderPlus,
   Image as ImageIcon,
   Pencil,
@@ -10,6 +9,7 @@ import {
   Plus,
   Trash2,
   Upload,
+  Loader2,
 } from 'lucide-react';
 import {
   assignMediaToAlbum,
@@ -27,6 +27,7 @@ import {
   type CirclePatientSummary,
   type GalleryAlbum,
   type GalleryAlbumMedia,
+  type GalleryUploadFileProgress,
 } from '@medxforce/shared';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
@@ -37,30 +38,51 @@ import {
 } from '../lib/circleGalleryPreferences';
 import { useCircleGalleryThumbnailSize } from '../hooks/useCircleGalleryThumbnailSize';
 import { useCircleGallerySkipPhotoDeleteConfirm } from '../hooks/useCircleGallerySkipPhotoDeleteConfirm';
+import { useCircleCompactChrome } from '../lib/circleChromeContext';
 import { CircleGalleryLightbox, GalleryThumb } from './CircleGalleryLightbox';
+import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 import { CircleDeleteAlbumConfirmModal } from './CircleDeleteAlbumConfirmModal';
 import { CircleDeleteMediaConfirmModal } from './CircleDeleteMediaConfirmModal';
 import { cn } from '../lib/utils';
 import {
   circleInsetCardClass,
   circleSectionBodyClass,
-  circleSectionHeaderClass,
   circleSectionHeaderStackClass,
-  circleSectionPanelClass,
   circleSectionSubtitleClass,
   circleSectionTitleClass,
+  circleBrowsePillButtonClass,
+  circleBrowsePillListClass,
+  circleBrowsePillRowClass,
   circleTabButtonClass,
   circleTabListClass,
+  circleWorkTabHeaderClass,
+  circleWorkTabPanelClass,
 } from '../lib/circleSectionStyles';
 
 type MainMode = 'browse' | 'manage';
 type BrowseTab = 'shared' | 'patient';
-type BrowseLayout = 'albums' | 'newest';
+type SharedBrowseMode = 'photos' | 'videos' | 'album' | 'my-albums' | 'newest';
 type ManageScreen = 'albums' | 'album';
 type ManageEntryPoint = 'upload-flow' | 'shared-browse';
-/** Virtual browse scopes (not real albums). */
-const VIRTUAL_PHOTOS = '__virtual_photos__';
-const VIRTUAL_VIDEOS = '__virtual_videos__';
+
+function galleryUploadOverallPercent(progress: GalleryUploadFileProgress): number {
+  const fileSpan = 100 / progress.total;
+  const done = (progress.index - 1) * fileSpan;
+  if (progress.phase === 'preparing') {
+    return Math.min(99, Math.round(done + fileSpan * 0.12));
+  }
+  const pct = progress.percent ?? 0;
+  return Math.min(99, Math.round(done + fileSpan * (0.12 + (pct / 100) * 0.88)));
+}
+
+function galleryUploadStatusLabel(progress: GalleryUploadFileProgress): string {
+  const itemLabel = progress.total > 1 ? ` ${progress.index} of ${progress.total}` : '';
+  if (progress.phase === 'preparing') {
+    return `Preparing${itemLabel}…`;
+  }
+  const base = `Uploading${itemLabel}`;
+  return progress.percent != null && progress.percent > 0 ? `${base} (${progress.percent}%)` : `${base}…`;
+}
 
 function mediaInAlbum(item: GalleryAlbumMedia, album: GalleryAlbum): boolean {
   if (album.isDefault) return !item.albumId || item.albumId === album.id;
@@ -137,6 +159,7 @@ export function PatientGalleryScreen({
   db,
   storage,
 }: PatientGalleryScreenProps) {
+  const compactChrome = useCircleCompactChrome();
   const caps = patient.capabilities;
   const showPatientTab = canViewPatientUploads(caps);
   const canUpload = patient.canUpload;
@@ -147,8 +170,8 @@ export function PatientGalleryScreen({
 
   const [mainMode, setMainMode] = useState<MainMode>('browse');
   const [browseTab, setBrowseTab] = useState<BrowseTab>('shared');
-  const [browseLayout, setBrowseLayout] = useState<BrowseLayout>('albums');
-  const [gridScope, setGridScope] = useState<'all' | string>('all');
+  const [sharedBrowseMode, setSharedBrowseMode] = useState<SharedBrowseMode>('album');
+  const [gridScope, setGridScope] = useState<string>('all');
   const [showGrid, setShowGrid] = useState(false);
 
   const [manageScreen, setManageScreen] = useState<ManageScreen>('albums');
@@ -165,6 +188,7 @@ export function PatientGalleryScreen({
   const [newAlbumTitle, setNewAlbumTitle] = useState('');
   const [showCreateAlbum, setShowCreateAlbum] = useState(false);
   const [uploadCaption, setUploadCaption] = useState('');
+  const [uploadProgress, setUploadProgress] = useState<GalleryUploadFileProgress | null>(null);
   const [editingMedia, setEditingMedia] = useState<GalleryAlbumMedia | null>(null);
   const [editCaption, setEditCaption] = useState('');
   const [showAddExisting, setShowAddExisting] = useState(false);
@@ -313,33 +337,56 @@ export function PatientGalleryScreen({
     }
   }, [browseTab, showPatientTab]);
 
+  const sortByNewest = (items: GalleryAlbumMedia[]) =>
+    [...items].sort((a, b) => b.timestamp - a.timestamp);
+
   const gridItems = useMemo(() => {
     if (browseTab === 'patient') {
-      return [...patientMedia].sort((a, b) => b.timestamp - a.timestamp);
-    }
-    if (gridScope === VIRTUAL_PHOTOS) {
-      return [...circlePhotos].sort((a, b) => b.timestamp - a.timestamp);
-    }
-    if (gridScope === VIRTUAL_VIDEOS) {
-      return [...circleVideos].sort((a, b) => b.timestamp - a.timestamp);
-    }
-    if (gridScope === 'all') {
-      return [...circleMedia].sort((a, b) => b.timestamp - a.timestamp);
+      return sortByNewest(patientMedia);
     }
     const album = albums.find((a) => a.id === gridScope);
     if (!album) return [];
-    return circleMedia
-      .filter((m) => mediaInAlbum(m, album))
-      .sort((a, b) => b.timestamp - a.timestamp);
-  }, [albums, browseTab, circleMedia, circlePhotos, circleVideos, gridScope, patientMedia]);
+    return sortByNewest(circleMedia.filter((m) => mediaInAlbum(m, album)));
+  }, [albums, browseTab, circleMedia, gridScope, patientMedia]);
+
+  const inlineBrowseItems = useMemo(() => {
+    if (browseTab !== 'shared' || showGrid) return [];
+    switch (sharedBrowseMode) {
+      case 'photos':
+        return sortByNewest(circlePhotos);
+      case 'videos':
+        return sortByNewest(circleVideos);
+      case 'newest':
+        return sortByNewest(circleMedia);
+      default:
+        return [];
+    }
+  }, [
+    browseTab,
+    circleMedia,
+    circlePhotos,
+    circleVideos,
+    sharedBrowseMode,
+    showGrid,
+  ]);
 
   const gridTitle = useMemo(() => {
     if (browseTab === 'patient') return `From ${patient.displayName}`;
-    if (gridScope === VIRTUAL_PHOTOS) return 'All pictures';
-    if (gridScope === VIRTUAL_VIDEOS) return 'All videos';
-    if (gridScope === 'all') return 'Newest shared';
     return albums.find((a) => a.id === gridScope)?.title ?? 'Album';
   }, [albums, browseTab, gridScope, patient.displayName]);
+
+  const inlineBrowseTitle = useMemo(() => {
+    switch (sharedBrowseMode) {
+      case 'photos':
+        return 'All pictures';
+      case 'videos':
+        return 'All videos';
+      case 'newest':
+        return 'Newest';
+      default:
+        return '';
+    }
+  }, [sharedBrowseMode]);
 
   const openLightbox = (
     items: GalleryAlbumMedia[],
@@ -350,36 +397,72 @@ export function PatientGalleryScreen({
     refreshViewed();
   };
 
-  const openGrid = (
-    scope: 'all' | typeof VIRTUAL_PHOTOS | typeof VIRTUAL_VIDEOS | string,
-  ) => {
-    if (
-      scope !== 'all' &&
-      scope !== VIRTUAL_PHOTOS &&
-      scope !== VIRTUAL_VIDEOS
-    ) {
-      const album = albums.find((a) => a.id === scope);
-      if (album && canUpload && canManageAlbum(album)) {
-        openManageAlbum(album, 'shared-browse');
-        return;
-      }
-    }
-    setGridScope(scope);
+  const openAlbumGrid = (albumId: string) => {
+    setGridScope(albumId);
     setShowGrid(true);
   };
+
+  const selectSharedBrowseMode = (mode: SharedBrowseMode) => {
+    setSharedBrowseMode(mode);
+    setShowGrid(false);
+  };
+
+  const gridAlbum = useMemo(
+    () => albums.find((a) => a.id === gridScope),
+    [albums, gridScope],
+  );
 
   const backFromSharedGrid = () => {
     setShowGrid(false);
-    if (browseLayout === 'newest' && gridScope === 'all') {
-      setBrowseLayout('albums');
-    }
   };
 
-  const openNewestGrid = () => {
-    setBrowseLayout('newest');
-    setGridScope('all');
-    setShowGrid(true);
-  };
+  const sharedBrowsePills: { id: SharedBrowseMode; label: string }[] = [
+    { id: 'photos', label: 'All pictures' },
+    { id: 'videos', label: 'All videos' },
+    { id: 'album', label: 'By album' },
+    ...(canUpload ? [{ id: 'my-albums' as const, label: 'My albums' }] : []),
+    { id: 'newest', label: 'Newest' },
+  ];
+
+  const renderBrowsePills = () => (
+    <div
+      className={circleBrowsePillListClass}
+      role="tablist"
+      aria-label="Browse shared media"
+    >
+      <div className={circleBrowsePillRowClass}>
+        {sharedBrowsePills.map((pill) => (
+          <button
+            key={pill.id}
+            type="button"
+            role="tab"
+            aria-selected={sharedBrowseMode === pill.id && !showGrid}
+            onClick={() => selectSharedBrowseMode(pill.id)}
+            className={circleBrowsePillButtonClass(
+              sharedBrowseMode === pill.id && !showGrid,
+            )}
+          >
+            {pill.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderMediaGrid = (items: GalleryAlbumMedia[]) => (
+    <div className={photoGridClass}>
+      {items.map((item, index) => (
+        <button
+          key={item.id}
+          type="button"
+          onClick={() => openLightbox(items, index)}
+          className="aspect-square rounded-2xl overflow-hidden border border-slate-100 bg-slate-50"
+        >
+          <GalleryThumb item={item} unseen={!viewedIds.has(item.id)} />
+        </button>
+      ))}
+    </div>
+  );
 
   const handleCreateAlbum = async () => {
     if (!canUpload) return;
@@ -409,9 +492,11 @@ export function PatientGalleryScreen({
 
   const handleUploadFiles = async (files: FileList | null) => {
     if (!files?.length || !selectedAlbum || !canUpload) return;
+    const fileList = Array.from(files);
     setBusy(true);
     setError(null);
     setMessage(null);
+    setUploadProgress({ index: 1, total: fileList.length, phase: 'preparing' });
     try {
       await uploadCircleGalleryMediaToAlbum({
         db,
@@ -421,16 +506,23 @@ export function PatientGalleryScreen({
         uploadedByUid: user.uid,
         uploadedByRole: role,
         senderName,
-        files: Array.from(files),
+        files: fileList,
         caption: uploadCaption,
+        onProgress: setUploadProgress,
       });
       setUploadCaption('');
       await loadAll();
       await loadAlbumDetail(selectedAlbum);
+      setMessage(
+        fileList.length === 1
+          ? 'Photo uploaded.'
+          : `${fileList.length} items uploaded.`,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed.');
     } finally {
       setBusy(false);
+      setUploadProgress(null);
     }
   };
 
@@ -568,33 +660,34 @@ export function PatientGalleryScreen({
 
   return (
     <div className="flex flex-col flex-1 min-h-0 max-h-full overflow-hidden">
-      <div className={cn(circleSectionPanelClass, 'max-h-full')}>
-        <div className={cn(circleSectionHeaderClass, circleSectionHeaderStackClass)}>
+      <div className={cn(circleWorkTabPanelClass(compactChrome), 'max-h-full')}>
+        <div className={cn(circleWorkTabHeaderClass(compactChrome), circleSectionHeaderStackClass, compactChrome && 'space-y-2')}>
           <div className="flex items-start justify-between gap-2">
             {mainMode === 'browse' && (
-              <>
-                <div className="min-w-0">
-                  <h3 className={circleSectionTitleClass}>Media gallery</h3>
-                  <p className={circleSectionSubtitleClass}>
-                    Photos and videos shared with your loved one.
-                  </p>
-                </div>
-                {canUpload && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMainMode('manage');
-                      setManageScreen('albums');
-                      setMessage(null);
-                    }}
-                    className="shrink-0 w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm hover:bg-blue-700 transition-colors"
-                    aria-label="Upload photos or videos"
-                    title="Upload"
-                  >
-                    <Upload size={18} />
-                  </button>
-                )}
-              </>
+              <CircleWorkTabSectionIntro
+                className="w-full"
+                icon={ImageIcon}
+                iconClassName="text-blue-600"
+                title="Media gallery"
+                subtitle="Photos and videos shared with your loved one."
+                trailing={
+                  canUpload ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMainMode('manage');
+                        setManageScreen('albums');
+                        setMessage(null);
+                      }}
+                      className="shrink-0 w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm hover:bg-blue-700 transition-colors"
+                      aria-label="Upload photos or videos"
+                      title="Upload"
+                    >
+                      <Upload size={18} />
+                    </button>
+                  ) : undefined
+                }
+              />
             )}
             {mainMode === 'manage' && manageScreen === 'albums' && (
               <>
@@ -691,117 +784,138 @@ export function PatientGalleryScreen({
 
         {mainMode === 'browse' && browseTab === 'shared' && !showGrid && !loading && (
           <div className="space-y-4">
-            <div className={circleTabListClass}>
-              <button
-                type="button"
-                onClick={() => {
-                  setBrowseLayout('albums');
-                  setShowGrid(false);
-                }}
-                className={circleTabButtonClass(browseLayout === 'albums')}
-              >
-                Albums
-              </button>
-              <button
-                type="button"
-                onClick={openNewestGrid}
-                className={circleTabButtonClass(browseLayout === 'newest')}
-              >
-                Newest
-              </button>
-            </div>
+            {renderBrowsePills()}
 
-            {browseLayout === 'albums' && (
-              <div className="space-y-4">
-                {circleMedia.length > 0 && (
-                  <div className="space-y-2">
+            {sharedBrowseMode === 'album' && albumCards.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 px-1">
+                  Browse by album
+                </p>
+                <div className={photoGridClass}>
+                  {albumCards.map(({ album, cover, count, lastModified, unseen }) => (
                     <button
+                      key={album.id}
                       type="button"
-                      onClick={() => openGrid(VIRTUAL_PHOTOS)}
-                      className="w-full text-left p-3.5 rounded-2xl border border-blue-100 bg-white hover:border-blue-200 hover:bg-blue-50/30 transition-colors shadow-sm"
+                      onClick={() => openAlbumGrid(album.id)}
+                      className="text-left rounded-2xl overflow-hidden border border-slate-100 bg-white shadow-sm"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                          <ImageIcon size={18} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className={circleSectionTitleClass}>All pictures</p>
-                          <p className={circleSectionSubtitleClass}>
-                            {circlePhotos.length} photo{circlePhotos.length === 1 ? '' : 's'}
-                          </p>
-                        </div>
-                        <ChevronRight className="text-slate-300 shrink-0" size={18} />
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openGrid(VIRTUAL_VIDEOS)}
-                      className="w-full text-left p-3.5 rounded-2xl border border-violet-100 bg-white hover:border-violet-200 hover:bg-violet-50/30 transition-colors shadow-sm"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-violet-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                          <Play size={18} fill="currentColor" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className={circleSectionTitleClass}>All videos</p>
-                          <p className={circleSectionSubtitleClass}>
-                            {circleVideos.length} video{circleVideos.length === 1 ? '' : 's'}
-                          </p>
-                        </div>
-                        <ChevronRight className="text-slate-300 shrink-0" size={18} />
-                      </div>
-                    </button>
-                  </div>
-                )}
-
-                {albumCards.length > 0 && (
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 px-1">
-                      Browse by album
-                    </p>
-                    <div className={photoGridClass}>
-                      {albumCards.map(({ album, cover, count, lastModified, unseen }) => (
-                        <button
-                          key={album.id}
-                          type="button"
-                          onClick={() => openGrid(album.id)}
-                          className="text-left rounded-2xl overflow-hidden border border-slate-100 bg-white shadow-sm"
-                        >
-                          <div className="aspect-square relative bg-slate-50">
-                            {cover ? (
-                              <GalleryThumb item={cover} />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-slate-200">
-                                <ImageIcon size={36} />
-                              </div>
-                            )}
-                            {unseen > 0 && (
-                              <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[9px] font-bold uppercase">
-                                {unseen} new
-                              </span>
-                            )}
-                            <AlbumThumbnailOverlay
-                              title={album.title}
-                              count={count}
-                              lastModified={lastModified}
-                              compact={compactAlbumTiles}
-                            />
+                      <div className="aspect-square relative bg-slate-50">
+                        {cover ? (
+                          <GalleryThumb item={cover} />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-200">
+                            <ImageIcon size={36} />
                           </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                        )}
+                        {unseen > 0 && (
+                          <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[9px] font-bold uppercase">
+                            {unseen} new
+                          </span>
+                        )}
+                        <AlbumThumbnailOverlay
+                          title={album.title}
+                          count={count}
+                          lastModified={lastModified}
+                          compact={compactAlbumTiles}
+                        />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-                {circleMedia.length === 0 && (
-                  <div className="p-8 text-center rounded-2xl border border-dashed border-slate-200 bg-white">
-                    <p className="text-sm text-slate-500 leading-relaxed">
-                      No shared photos yet.
-                      {canUpload ? ' Tap the upload button to add the first album.' : ''}
+            {sharedBrowseMode === 'my-albums' && canUpload && myAlbumCards.length > 0 && (
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 px-1">
+                  Your albums
+                </p>
+                <div className={photoGridClass}>
+                  {myAlbumCards.map(({ album, cover, count, lastModified, unseen }) => (
+                    <button
+                      key={album.id}
+                      type="button"
+                      onClick={() => openAlbumGrid(album.id)}
+                      className="text-left rounded-2xl overflow-hidden border border-slate-100 bg-white shadow-sm"
+                    >
+                      <div className="aspect-square relative bg-slate-50">
+                        {cover ? (
+                          <GalleryThumb item={cover} unseen={unseen > 0} />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-200">
+                            <ImageIcon size={36} />
+                          </div>
+                        )}
+                        {unseen > 0 && (
+                          <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[9px] font-bold uppercase">
+                            {unseen} new
+                          </span>
+                        )}
+                        <AlbumThumbnailOverlay
+                          title={album.title}
+                          count={count}
+                          lastModified={lastModified}
+                          compact={compactAlbumTiles}
+                        />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {sharedBrowseMode === 'my-albums' && canUpload && myAlbumCards.length === 0 && (
+              <div className="p-8 text-center rounded-2xl border border-dashed border-slate-200 bg-white">
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  Create an album to start sharing photos and videos.
+                </p>
+              </div>
+            )}
+
+            {sharedBrowseMode !== 'album' && inlineBrowseItems.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2 px-1">
+                  <div className="min-w-0">
+                    <h3 className={circleSectionTitleClass}>{inlineBrowseTitle}</h3>
+                    <p className={circleSectionSubtitleClass}>
+                      {inlineBrowseItems.length} item
+                      {inlineBrowseItems.length === 1 ? '' : 's'}
                     </p>
                   </div>
-                )}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openLightbox(inlineBrowseItems, 0, { slideshow: true })
+                    }
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold shrink-0"
+                  >
+                    <Play size={14} fill="currentColor" />
+                    Play all
+                  </button>
+                </div>
+                {renderMediaGrid(inlineBrowseItems)}
               </div>
+            )}
+
+            {sharedBrowseMode !== 'album' &&
+              sharedBrowseMode !== 'my-albums' &&
+              inlineBrowseItems.length === 0 && (
+              <p className="text-sm text-slate-500 px-1">
+                {sharedBrowseMode === 'videos' ? 'No videos shared yet.' : 'Nothing here yet.'}
+              </p>
+            )}
+
+            {sharedBrowseMode === 'album' && circleMedia.length === 0 && (
+              <div className="p-8 text-center rounded-2xl border border-dashed border-slate-200 bg-white">
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  No shared photos yet.
+                  {canUpload ? ' Tap the upload button to add the first album.' : ''}
+                </p>
+              </div>
+            )}
+
+            {sharedBrowseMode === 'album' && circleMedia.length > 0 && albumCards.length === 0 && (
+              <p className="text-sm text-slate-500 px-1">No albums yet.</p>
             )}
           </div>
         )}
@@ -825,16 +939,28 @@ export function PatientGalleryScreen({
                   {gridItems.length} item{gridItems.length === 1 ? '' : 's'}
                 </p>
               </div>
-              {gridItems.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => openLightbox(gridItems, 0, { slideshow: true })}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold"
-                >
-                  <Play size={14} fill="currentColor" />
-                  Play all
-                </button>
-              )}
+              <div className="flex items-center gap-2 shrink-0">
+                {gridAlbum && canUpload && canManageAlbum(gridAlbum) && (
+                  <button
+                    type="button"
+                    onClick={() => openManageAlbum(gridAlbum, 'shared-browse')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50"
+                  >
+                    <Pencil size={14} />
+                    Manage
+                  </button>
+                )}
+                {gridItems.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => openLightbox(gridItems, 0, { slideshow: true })}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold"
+                  >
+                    <Play size={14} fill="currentColor" />
+                    Play all
+                  </button>
+                )}
+              </div>
             </div>
 
             {browseTab === 'patient' && (
@@ -850,21 +976,7 @@ export function PatientGalleryScreen({
                   : 'Nothing here yet.'}
               </p>
             ) : (
-              <div className={photoGridClass}>
-                {gridItems.map((item, index) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => openLightbox(gridItems, index)}
-                    className="aspect-square rounded-2xl overflow-hidden border border-slate-100 bg-slate-50"
-                  >
-                    <GalleryThumb
-                      item={item}
-                      unseen={!viewedIds.has(item.id)}
-                    />
-                  </button>
-                ))}
-              </div>
+              renderMediaGrid(gridItems)
             )}
           </div>
         )}
@@ -983,17 +1095,42 @@ export function PatientGalleryScreen({
               />
               <label
                 className={cn(
-                  'flex flex-col items-center justify-center gap-2 py-8 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-blue-300',
-                  busy && 'opacity-50 pointer-events-none',
+                  'flex flex-col items-center justify-center gap-3 py-8 border-2 border-dashed rounded-2xl transition-colors',
+                  uploadProgress
+                    ? 'border-blue-200 bg-blue-50/40 pointer-events-none'
+                    : 'border-slate-200 cursor-pointer hover:border-blue-300',
+                  busy && !uploadProgress && 'opacity-50 pointer-events-none',
                 )}
               >
-                <Upload size={24} className="text-blue-600" />
-                <span className="font-semibold text-slate-700 text-sm text-center px-4">
-                  {busy ? 'Uploading…' : 'Choose photos or videos'}
-                </span>
+                {uploadProgress ? (
+                  <div className="w-full max-w-sm px-6 space-y-3">
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 size={20} className="text-blue-600 animate-spin shrink-0" />
+                      <span className="font-semibold text-slate-700 text-sm text-center">
+                        {galleryUploadStatusLabel(uploadProgress)}
+                      </span>
+                    </div>
+                    <div className="h-2.5 w-full bg-white rounded-full overflow-hidden border border-blue-100">
+                      <div
+                        className="h-full bg-blue-600 transition-[width] duration-300 ease-out"
+                        style={{ width: `${galleryUploadOverallPercent(uploadProgress)}%` }}
+                      />
+                    </div>
+                    <p className="text-[11px] text-slate-500 text-center">
+                      Large photos are resized for faster sharing — this may take a moment.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <Upload size={24} className="text-blue-600" />
+                    <span className="font-semibold text-slate-700 text-sm text-center px-4">
+                      Choose photos or videos
+                    </span>
+                  </>
+                )}
                 <input
                   type="file"
-                  accept="image/*,video/*"
+                  accept="image/*,video/*,.heic,.heif"
                   multiple
                   className="hidden"
                   disabled={busy}
@@ -1101,6 +1238,7 @@ export function PatientGalleryScreen({
           db={db}
           user={user}
           patientId={patient.patientId}
+          patientDisplayName={patient.displayName}
           items={lightbox.items}
           index={lightbox.index}
           autoPlaySlideshow={lightbox.slideshow}

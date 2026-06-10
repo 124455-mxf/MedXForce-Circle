@@ -3,10 +3,17 @@ import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
 import type { CirclePatientSummary } from '@medxforce/shared';
+import {
+  canSendPatientRemoteCommands,
+  canStartVisitCapture,
+  normalizeMemberRole,
+} from '@medxforce/shared';
 import { cn } from '../lib/utils';
+import { CircleChromeProvider } from '../lib/circleChromeContext';
 
 import { CircleAdminScreen } from './CircleAdminScreen';
 import { CircleAnalyticsScreen } from './CircleAnalyticsScreen';
+import { CircleAppHeader } from './CircleAppHeader';
 import {
   CircleBottomNav,
   allNavItemsForPatient,
@@ -22,36 +29,61 @@ import { CircleRemoteSettingsScreen } from './CircleRemoteSettingsScreen';
 import { CirclePatientSwitcher } from './CirclePatientSwitcher';
 import { PatientGalleryScreen } from './PatientGalleryScreen';
 import { PatientMessagesScreen } from './PatientMessagesScreen';
+import { useCircleOnlineVisibility } from '../hooks/useCircleOnlineVisibility';
 import { startCircleMemberPresenceHeartbeat } from '../services/circleMemberPresenceService';
+import { useCircleAlertAttentionState } from '../hooks/useCircleAlertAttentionState';
 import { useCircleGalleryMediaCounts } from '../hooks/useCircleGalleryMediaCounts';
 import { useCircleMemberThreadUnread } from '../hooks/useCircleMemberThreadUnread';
 import { useCirclePatientThreads } from '../hooks/useCirclePatientThreads';
+import { useCircleToast } from '../hooks/useCircleToast';
+import {
+  isPatientDoNotDisturbSection,
+  usePatientOnlinePresence,
+} from '../hooks/usePatientOnlinePresence';
 import type { UnsavedReplyDraftGuard } from '../lib/unsavedReplyDraft';
+import { CircleAppToast } from './CircleAppToast';
+import { VisitCaptureFlow } from './VisitCaptureFlow';
+import { useCirclePatientRemoteCommandResponse } from '../hooks/useCirclePatientRemoteCommandResponse';
+import { CirclePatientCommandResponseModal } from './CirclePatientCommandResponseModal';
+import { CircleDropInConfirmModal } from './CircleDropInConfirmModal';
+import { CircleDropInChatModal } from './CircleDropInChatModal';
+import { CircleDropInShareModal } from './CircleDropInShareModal';
+import { CircleDropInResponseModal } from './CircleDropInResponseModal';
+import { useCircleDropIn } from '../hooks/useCircleDropIn';
+import { useCircleDropInResponseNotice } from '../hooks/useCircleDropInResponseNotice';
 
 interface CircleMainShellProps {
   user: User;
+  accountPhotoUrl?: string;
+  onOpenProfile: () => void;
   patients: CirclePatientSummary[];
   db: Firestore;
   storage: FirebaseStorage;
   inviteError: string | null;
   onSignOut?: () => void;
-  onSelectedPatientChange?: (patientId: string | null) => void;
+  selectedPatientId: string | null;
+  onSelectPatient: (patient: CirclePatientSummary) => void;
 }
 
 export function CircleMainShell({
   user,
+  accountPhotoUrl,
+  onOpenProfile,
   patients,
   db,
   storage,
   inviteError,
-  onSelectedPatientChange,
+  selectedPatientId,
+  onSelectPatient,
 }: CircleMainShellProps) {
-  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(
-    () => patients[0]?.patientId ?? null,
-  );
   const [activeTab, setActiveTab] = useState<CircleMainTab>('dashboard');
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [visitCaptureOpen, setVisitCaptureOpen] = useState(false);
+  const [dropInConfirmOpen, setDropInConfirmOpen] = useState(false);
+  const [dropInSentThisOpen, setDropInSentThisOpen] = useState(false);
   const replyDraftGuardRef = useRef<UnsavedReplyDraftGuard | null>(null);
+
+  const compactChrome = activeTab !== 'dashboard';
 
   const guardedNavigate = useCallback(
     (proceed: () => void) => {
@@ -66,10 +98,21 @@ export function CircleMainShell({
 
   const handleTabChange = useCallback(
     (tab: CircleMainTab) => {
+      if (tab === 'messages' && activeTab === 'messages') {
+        const guard = replyDraftGuardRef.current;
+        if (guard?.isThreadOpen?.()) {
+          guard.popToInbox?.();
+        }
+        return;
+      }
       guardedNavigate(() => setActiveTab(tab));
     },
-    [guardedNavigate],
+    [activeTab, guardedNavigate],
   );
+
+  const handleBackToDashboard = useCallback(() => {
+    guardedNavigate(() => setActiveTab('dashboard'));
+  }, [guardedNavigate]);
 
   const selectedPatient = useMemo((): CirclePatientSummary | null => {
     if (patients.length === 0) return null;
@@ -80,9 +123,84 @@ export function CircleMainShell({
     return patients[0];
   }, [patients, selectedPatientId]);
 
+  const memberRole = selectedPatient ? normalizeMemberRole(selectedPatient.role) : 'friend';
+  const showVisitCapture = !!selectedPatient && canStartVisitCapture(memberRole);
+  const canReceiveRemoteCommandResponses =
+    !!selectedPatient && canSendPatientRemoteCommands(selectedPatient.role);
+
+  const { notice: remoteCommandResponseNotice, dismissNotice: dismissRemoteCommandResponse } =
+    useCirclePatientRemoteCommandResponse(
+      db,
+      selectedPatient?.patientId,
+      user.uid,
+      canReceiveRemoteCommandResponses,
+    );
+
+  const caregiverDisplayName = user.displayName?.trim() || user.email?.split('@')[0] || 'Care team';
+
+  const patientPresence = usePatientOnlinePresence(db, selectedPatient?.patientId);
+
+  const circleDropIn = useCircleDropIn(
+    db,
+    selectedPatient?.patientId,
+    user.uid,
+    caregiverDisplayName,
+    memberRole,
+    selectedPatient?.displayName ?? 'Patient',
+    canReceiveRemoteCommandResponses,
+    patientPresence.online,
+  );
+
+  const openDropInConfirmModal = useCallback(() => {
+    setDropInSentThisOpen(false);
+    setDropInConfirmOpen(true);
+  }, []);
+
+  const closeDropInConfirmModal = useCallback(() => {
+    setDropInConfirmOpen(false);
+    setDropInSentThisOpen(false);
+  }, []);
+
+  const handleDropInConfirmClose = useCallback(() => {
+    if (circleDropIn.busy && !circleDropIn.awaitingPatientResponse) return;
+    if (circleDropIn.awaitingPatientResponse) {
+      void circleDropIn.cancelPendingDropIn().finally(closeDropInConfirmModal);
+      return;
+    }
+    closeDropInConfirmModal();
+  }, [
+    circleDropIn.awaitingPatientResponse,
+    circleDropIn.busy,
+    circleDropIn.cancelPendingDropIn,
+    closeDropInConfirmModal,
+  ]);
+
   useEffect(() => {
-    onSelectedPatientChange?.(selectedPatient?.patientId ?? null);
-  }, [selectedPatient?.patientId, onSelectedPatientChange]);
+    if (!dropInConfirmOpen || !dropInSentThisOpen || circleDropIn.awaitingPatientResponse) return;
+    if (!circleDropIn.session || circleDropIn.session.requestedByUid !== user.uid) return;
+    closeDropInConfirmModal();
+  }, [
+    circleDropIn.awaitingPatientResponse,
+    circleDropIn.session,
+    closeDropInConfirmModal,
+    dropInConfirmOpen,
+    dropInSentThisOpen,
+    user.uid,
+  ]);
+
+  const { notice: dropInDeclineNotice, dismissNotice: dismissDropInDeclineNotice } =
+    useCircleDropInResponseNotice(
+      db,
+      selectedPatient?.patientId,
+      user.uid,
+      canReceiveRemoteCommandResponses,
+    );
+
+  const { hideOnlineStatusFromPatient } = useCircleOnlineVisibility(
+    db,
+    user.uid,
+    selectedPatient?.patientId,
+  );
 
   const primaryNavItems = useMemo(() => {
     if (!selectedPatient) return [];
@@ -105,6 +223,32 @@ export function CircleMainShell({
     user,
   );
 
+  const alertAttention = useCircleAlertAttentionState(
+    threadState.messages,
+    selectedPatient?.patientId ?? '',
+    threadState.repliesByMessageId,
+  );
+
+  const { toast, showToast } = useCircleToast(4500);
+  const toastedUrgentIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    toastedUrgentIdsRef.current.clear();
+  }, [selectedPatient?.patientId]);
+
+  useEffect(() => {
+    for (const item of alertAttention.urgentItems) {
+      if (toastedUrgentIdsRef.current.has(item.id)) continue;
+      toastedUrgentIdsRef.current.add(item.id);
+      showToast(
+        item.kind === 'alert'
+          ? 'Alert — your loved one needs you'
+          : 'Attention request from your loved one',
+        item.kind === 'alert' ? 'error' : 'info',
+      );
+    }
+  }, [alertAttention.urgentItems, showToast]);
+
   const circleThreadUnread = useCircleMemberThreadUnread(
     db,
     selectedPatient?.patientId ?? '',
@@ -126,34 +270,26 @@ export function CircleMainShell({
     }
   }, [allNavItems, activeTab]);
 
-  const moreActive = moreNavItems.some((item) => item.id === activeTab);
-
   const navBadges = useMemo(() => {
-    const messagesUnread =
-      activeTab === 'messages' || !selectedPatient?.capabilities.messaging
-        ? 0
-        : threadState.unreadCount;
-    const circleUnread = activeTab === 'circle' ? 0 : circleThreadUnread.unreadCount;
-    const moreCount = moreActive || moreNavItems.length === 0 ? 0 : moreNavItems.length;
+    const messagesUnread = selectedPatient?.capabilities.messaging
+      ? threadState.unreadCount
+      : 0;
 
     return {
       messages: messagesUnread,
-      circle: circleUnread,
-      more: moreCount,
+      circle: circleThreadUnread.unreadCount,
+      more: 0,
     };
   }, [
-    activeTab,
     circleThreadUnread.unreadCount,
-    moreActive,
-    moreNavItems.length,
     selectedPatient?.capabilities.messaging,
     threadState.unreadCount,
   ]);
 
   useEffect(() => {
-    if (!selectedPatient?.patientId || !user?.uid) return;
+    if (!selectedPatient?.patientId || !user?.uid || hideOnlineStatusFromPatient) return;
     return startCircleMemberPresenceHeartbeat(db, selectedPatient.patientId, user.uid);
-  }, [db, selectedPatient?.patientId, user?.uid]);
+  }, [db, hideOnlineStatusFromPatient, selectedPatient?.patientId, user?.uid]);
 
   if (!selectedPatient) {
     return (
@@ -163,104 +299,247 @@ export function CircleMainShell({
     );
   }
 
+  const handleSelectPatient = (patient: CirclePatientSummary) => {
+    guardedNavigate(() => {
+      onSelectPatient(patient);
+      setActiveTab('dashboard');
+    });
+  };
+
   return (
-    <div className="flex flex-col flex-1 min-h-0 overflow-hidden gap-1.5 [@media(max-height:740px)]:gap-1">
-      <header className="mb-3 shrink-0 rounded-2xl bg-slate-50 border border-slate-100 px-2 py-2 shadow-sm [@media(max-height:740px)]:mb-1.5 [@media(max-height:740px)]:py-1.5">
-        <CirclePatientSwitcher
-          patients={patients}
-          selected={selectedPatient}
-          open={switcherOpen}
-          onOpenChange={setSwitcherOpen}
-          onSelect={(p) => {
-            guardedNavigate(() => {
-              setSelectedPatientId(p.patientId);
-              setActiveTab('dashboard');
-            });
-          }}
-        />
-      </header>
-
-      {inviteError && <p className="text-sm text-red-600 mb-3 shrink-0">{inviteError}</p>}
-
-      <main
+    <CircleChromeProvider compact={compactChrome} onBackToDashboard={handleBackToDashboard}>
+      <div
         className={cn(
-          'flex-1 min-h-0',
-          activeTab === 'messages' || activeTab === 'media' || activeTab === 'diary' || activeTab === 'circle' || activeTab === 'analytics' || activeTab === 'remote-settings'
-            ? 'flex flex-col overflow-hidden'
-            : 'space-y-4 overflow-y-auto',
+          'flex flex-col flex-1 min-h-0 overflow-hidden gap-2.5 [@media(max-height:740px)]:gap-2',
+          compactChrome && 'gap-4 sm:gap-5 [@media(max-height:740px)]:gap-3',
         )}
       >
-        {activeTab === 'dashboard' && (
-          <CircleDashboardScreen
-            user={user}
-            db={db}
-            patient={selectedPatient}
-            unreadCount={threadState.unreadCount}
-            messageCount={threadState.messages.length}
-            totalMediaCount={galleryCounts.totalCount}
-            myMediaUploadCount={galleryCounts.myUploadCount}
-            mediaCountsLoading={galleryCounts.loading}
-            onGoToTab={handleTabChange}
-          />
-        )}
-        {activeTab === 'messages' && (
-          <div className="flex flex-col flex-1 min-h-0">
-            <PatientMessagesScreen
-              user={user}
-              patient={selectedPatient}
-              db={db}
-              loading={threadState.loading}
-              error={threadState.error}
-              messages={threadState.messages}
-              repliesByMessageId={threadState.repliesByMessageId}
-              unreadCount={threadState.unreadCount}
-              draftGuardRef={replyDraftGuardRef}
-            />
-          </div>
-        )}
-        {activeTab === 'media' && (
-          <div className="flex flex-col flex-1 min-h-0">
-            <PatientGalleryScreen
-              user={user}
-              patient={selectedPatient}
-              db={db}
-              storage={storage}
-            />
-          </div>
-        )}
-        {activeTab === 'circle' && (
-          <div className="flex flex-col flex-1 min-h-0">
-            <CircleCircleScreen user={user} db={db} patient={selectedPatient} />
-          </div>
-        )}
-        {activeTab === 'admin' && (
-          <CircleAdminScreen user={user} db={db} patient={selectedPatient} />
-        )}
-        {activeTab === 'analytics' && (
-          <div className="flex flex-col flex-1 min-h-0">
-            <CircleAnalyticsScreen patient={selectedPatient} />
-          </div>
-        )}
-        {activeTab === 'diary' && (
-          <div className="flex flex-col flex-1 min-h-0">
-            <CircleDiaryScreen user={user} db={db} patient={selectedPatient} />
-          </div>
-        )}
-        {activeTab === 'know' && <CircleKnowScreen patient={selectedPatient} />}
-        {activeTab === 'remote-settings' && (
-          <div className="flex flex-col flex-1 min-h-0">
-            <CircleRemoteSettingsScreen db={db} user={user} patient={selectedPatient} />
-          </div>
-        )}
-      </main>
+        <CircleAppHeader
+          variant={compactChrome ? 'compact' : 'comfortable'}
+          user={user}
+          accountPhotoUrl={accountPhotoUrl}
+          onOpenProfile={onOpenProfile}
+          selectedPatient={selectedPatient}
+          patientOnline={patientPresence.online}
+          patientLastSeen={patientPresence.lastSeen}
+          onOpenPatientSwitcher={
+            patients.length > 1 ? () => setSwitcherOpen(true) : undefined
+          }
+        />
 
-      <CircleBottomNav
-        primaryItems={primaryNavItems}
-        moreItems={moreNavItems}
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        badges={navBadges}
-      />
-    </div>
+        {compactChrome ? (
+          <CirclePatientSwitcher
+            variant="modal-only"
+            patients={patients}
+            selected={selectedPatient}
+            open={switcherOpen}
+            onOpenChange={setSwitcherOpen}
+            onSelect={handleSelectPatient}
+            patientOnline={patientPresence.online}
+          />
+        ) : (
+          <header className="mb-1 shrink-0 rounded-2xl bg-slate-50 border border-slate-100 px-2 py-2 shadow-sm [@media(max-height:740px)]:mb-1 [@media(max-height:740px)]:py-1.5">
+            <CirclePatientSwitcher
+              variant="card"
+              patients={patients}
+              selected={selectedPatient}
+              open={switcherOpen}
+              onOpenChange={setSwitcherOpen}
+              onSelect={handleSelectPatient}
+              patientOnline={patientPresence.online}
+              patientLastSeen={patientPresence.lastSeen}
+            />
+          </header>
+        )}
+
+        {inviteError && (
+          <p className={cn('text-sm text-red-600 shrink-0', compactChrome ? 'mb-1' : 'mb-3')}>
+            {inviteError}
+          </p>
+        )}
+
+        <main
+          className={cn(
+            'flex-1 min-h-0',
+            activeTab === 'messages' ||
+              activeTab === 'media' ||
+              activeTab === 'diary' ||
+              activeTab === 'circle' ||
+              activeTab === 'analytics' ||
+              activeTab === 'remote-settings'
+              ? 'flex flex-col overflow-hidden'
+              : 'space-y-4 overflow-y-auto',
+          )}
+        >
+          {activeTab === 'dashboard' && (
+            <CircleDashboardScreen
+              user={user}
+              db={db}
+              patient={selectedPatient}
+              unreadCount={threadState.unreadCount}
+              messageCount={threadState.messages.length}
+              circleUnreadCount={circleThreadUnread.unreadCount}
+              circlePostCount={circleThreadUnread.circlePostCount}
+              totalMediaCount={galleryCounts.totalCount}
+              myMediaUploadCount={galleryCounts.myUploadCount}
+              mediaCountsLoading={galleryCounts.loading}
+              urgentAlertAttention={alertAttention.urgentItems}
+              subduedAlertAttention={alertAttention.subduedItems}
+              onGoToTab={handleTabChange}
+              onOpenVisitCapture={
+                showVisitCapture ? () => setVisitCaptureOpen(true) : undefined
+              }
+              onRequestDropIn={
+                canReceiveRemoteCommandResponses &&
+                patientPresence.online &&
+                !isPatientDoNotDisturbSection(patientPresence.activeSection)
+                  ? openDropInConfirmModal
+                  : undefined
+              }
+              onResumeDropIn={circleDropIn.resumeChat}
+              dropInActive={!!circleDropIn.activeSession}
+              dropInChatOpen={circleDropIn.chatOpen}
+            />
+          )}
+          {activeTab === 'messages' && (
+            <div className="flex flex-col flex-1 min-h-0">
+              <PatientMessagesScreen
+                user={user}
+                patient={selectedPatient}
+                db={db}
+                loading={threadState.loading}
+                error={threadState.error}
+                messages={threadState.messages}
+                repliesByMessageId={threadState.repliesByMessageId}
+                hiddenAtByMessageId={threadState.hiddenAtByMessageId}
+                unreadCount={threadState.unreadCount}
+                draftGuardRef={replyDraftGuardRef}
+              />
+            </div>
+          )}
+          {activeTab === 'media' && (
+            <div className="flex flex-col flex-1 min-h-0">
+              <PatientGalleryScreen
+                user={user}
+                patient={selectedPatient}
+                db={db}
+                storage={storage}
+              />
+            </div>
+          )}
+          {activeTab === 'circle' && (
+            <div className="flex flex-col flex-1 min-h-0">
+              <CircleCircleScreen
+                user={user}
+                db={db}
+                patient={selectedPatient}
+                unreadCount={circleThreadUnread.unreadCount}
+                openUnreadCount={circleThreadUnread.openUnreadCount}
+                restrictedUnreadCount={circleThreadUnread.restrictedUnreadCount}
+              />
+            </div>
+          )}
+          {activeTab === 'admin' && (
+            <CircleAdminScreen user={user} db={db} patient={selectedPatient} />
+          )}
+          {activeTab === 'analytics' && (
+            <div className="flex flex-col flex-1 min-h-0">
+              <CircleAnalyticsScreen patient={selectedPatient} />
+            </div>
+          )}
+          {activeTab === 'diary' && (
+            <div className="flex flex-col flex-1 min-h-0">
+              <CircleDiaryScreen user={user} db={db} patient={selectedPatient} />
+            </div>
+          )}
+          {activeTab === 'know' && <CircleKnowScreen />}
+          {activeTab === 'remote-settings' && (
+            <div className="flex flex-col flex-1 min-h-0">
+              <CircleRemoteSettingsScreen db={db} user={user} patient={selectedPatient} />
+            </div>
+          )}
+        </main>
+
+        <CircleBottomNav
+          primaryItems={primaryNavItems}
+          moreItems={moreNavItems}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          badges={navBadges}
+          messagesUrgency={alertAttention.navUrgencyKind}
+          pulseNavForUrgency={
+            alertAttention.hasUrgentPulse &&
+            activeTab !== 'dashboard' &&
+            selectedPatient?.capabilities.messaging === true
+          }
+          className={compactChrome ? 'mt-0.5' : undefined}
+        />
+        <CircleAppToast message={toast?.message ?? null} tone={toast?.tone} />
+
+        {selectedPatient && showVisitCapture ? (
+          <VisitCaptureFlow
+            open={visitCaptureOpen}
+            onClose={() => setVisitCaptureOpen(false)}
+            patientId={selectedPatient.patientId}
+            capturedBy={{
+              uid: user.uid,
+              name: user.displayName || user.email || 'Circle member',
+              role: memberRole,
+              app: 'circle',
+            }}
+          />
+        ) : null}
+
+        {selectedPatient ? (
+          <CirclePatientCommandResponseModal
+            open={remoteCommandResponseNotice != null}
+            status={remoteCommandResponseNotice?.status ?? null}
+            type={remoteCommandResponseNotice?.type ?? null}
+            patientName={selectedPatient.displayName}
+            onClose={dismissRemoteCommandResponse}
+          />
+        ) : null}
+
+        {selectedPatient ? (
+          <>
+            <CircleDropInConfirmModal
+              open={dropInConfirmOpen}
+              patientName={selectedPatient.displayName}
+              onConfirm={() => {
+                void circleDropIn.requestDropIn().then(() => setDropInSentThisOpen(true));
+              }}
+              onClose={handleDropInConfirmClose}
+              sending={circleDropIn.busy && !circleDropIn.awaitingPatientResponse}
+              awaiting={circleDropIn.awaitingPatientResponse}
+              secondsRemaining={circleDropIn.responseSecondsRemaining}
+              error={circleDropIn.error}
+            />
+            <CircleDropInChatModal
+              open={circleDropIn.chatOpen}
+              patientName={selectedPatient.displayName}
+              caregiverName={caregiverDisplayName}
+              messages={circleDropIn.sessionMessages}
+              busy={circleDropIn.busy}
+              onSend={circleDropIn.sendMessage}
+              onEnd={circleDropIn.endConversation}
+              onClose={circleDropIn.closeChat}
+            />
+            <CircleDropInShareModal
+              open={circleDropIn.sharePrompt != null}
+              patientName={selectedPatient.displayName}
+              onShare={() => void circleDropIn.shareToCareCoordination()}
+              onDismiss={circleDropIn.dismissSharePrompt}
+              sharing={circleDropIn.busy}
+              error={circleDropIn.error}
+            />
+            <CircleDropInResponseModal
+              open={dropInDeclineNotice != null}
+              patientName={selectedPatient.displayName}
+              onClose={dismissDropInDeclineNotice}
+            />
+          </>
+        ) : null}
+      </div>
+    </CircleChromeProvider>
   );
 }

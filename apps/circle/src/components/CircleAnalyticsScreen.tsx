@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   Activity,
+  BarChart3,
   Bell,
   BookOpen,
   Bot,
@@ -37,15 +38,15 @@ import {
   circleSectionBodyClass,
   circleSectionBodyPaddingClass,
   circleSectionEmptyStateClass,
-  circleSectionHeaderClass,
   circleSectionHeaderStackClass,
-  circleSectionPanelClass,
-  circleSectionSubtitleClass,
-  circleSectionTitleClass,
+  circleWorkTabHeaderClass,
+  circleWorkTabPanelClass,
 } from '../lib/circleSectionStyles';
 import { useCircleAnalyticsSummaries } from '../hooks/useCircleAnalyticsSummaries';
+import { useCircleCompactChrome } from '../lib/circleChromeContext';
 import { firebase } from '../lib/firebaseClient';
 import { CircleAnalyticsDetailSheet } from './CircleAnalyticsDetailSheet';
+import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 
 const METRIC_ICONS: Record<AnalyticsMetricId, LucideIcon> = {
   'alert-attention': Bell,
@@ -167,6 +168,7 @@ function AnalyticsMetricRow({
 
 export function CircleAnalyticsScreen({ patient }: { patient: CirclePatientSummary }) {
   const [detailSummary, setDetailSummary] = useState<PatientAnalyticsSummary | null>(null);
+  const compactChrome = useCircleCompactChrome();
   const { byMetricId, totalFromServer, loading, error } = useCircleAnalyticsSummaries(
     firebase.db,
     patient,
@@ -175,14 +177,14 @@ export function CircleAnalyticsScreen({ patient }: { patient: CirclePatientSumma
   return (
     <>
     <div className="flex flex-col flex-1 min-h-0 max-h-full overflow-hidden">
-      <div className={cn(circleSectionPanelClass, 'max-h-full')}>
-        <div className={cn(circleSectionHeaderClass, circleSectionHeaderStackClass)}>
-          <div className="min-w-0">
-            <h3 className={circleSectionTitleClass}>Analytics</h3>
-            <p className={cn(circleSectionSubtitleClass, '[@media(max-height:740px)]:line-clamp-1')}>
-              Trends for {patient.displayName} — summaries update when the patient app syncs.
-            </p>
-          </div>
+      <div className={cn(circleWorkTabPanelClass(compactChrome), 'max-h-full')}>
+        <div className={cn(circleWorkTabHeaderClass(compactChrome), circleSectionHeaderStackClass)}>
+          <CircleWorkTabSectionIntro
+            icon={BarChart3}
+            iconClassName="text-blue-600"
+            title="Analytics"
+            subtitle={`Trends for ${patient.displayName} — summaries update when the patient app syncs.`}
+          />
         </div>
 
         <div className={cn(circleSectionBodyClass, circleSectionBodyPaddingClass, 'space-y-4')}>

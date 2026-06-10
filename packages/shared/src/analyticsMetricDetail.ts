@@ -39,6 +39,11 @@ export type DailyCheckInTimelinePoint = {
   skipped: number;
 };
 
+export type AssessmentCountTimelinePoint = {
+  date: string;
+  count: number;
+};
+
 export type DailyCheckInAnswerTrendPoint = {
   date: string;
   label: string;
@@ -146,6 +151,7 @@ export type AnalyticsMetricDetail =
       topItems: TopCountItem[];
       messagingBreakdown?: MessagesMessagingBreakdown;
       timeline?: MessagesTimelinePoint[];
+      lastCommunicationInputMethod?: 'keyboard' | 'touch' | null;
     }
   | {
       kind: 'daily_check_in';
@@ -154,6 +160,9 @@ export type AnalyticsMetricDetail =
       total: number;
       skipRate: number;
       trend?: AnalyticsTrendDirection;
+      latestCompletedAt?: number | null;
+      completedLast7?: number;
+      skippedLast7?: number;
       timeline?: DailyCheckInTimelinePoint[];
       answerTrend?: DailyCheckInAnswerTrendPoint[];
     }
@@ -172,6 +181,7 @@ export type AnalyticsMetricDetail =
       count: number;
       average?: number;
       trend: AnalyticsTrendDirection;
+      timeline?: AssessmentCountTimelinePoint[];
     }
   | {
       kind: 'diary';
@@ -185,7 +195,9 @@ export type AnalyticsMetricDetail =
       albumCount: number;
       photoCount: number;
       videoCount: number;
+      totalPhotoCount: number;
       unseenPhotoCount: number;
+      unseenMediaCount: number;
       reactionCount: number;
       latestAt: number | null;
       trend: AnalyticsTrendDirection;
@@ -388,6 +400,10 @@ function parseDailyCheckInAnswerTrend(raw: unknown): DailyCheckInAnswerTrendPoin
 }
 
 function parseDailyCheckInDetail(raw: Record<string, unknown>): AnalyticsMetricDetail {
+  const latestCompletedAt =
+    typeof raw.latestCompletedAt === 'number' && Number.isFinite(raw.latestCompletedAt)
+      ? raw.latestCompletedAt
+      : null;
   return {
     kind: 'daily_check_in',
     completed: asFiniteNumber(raw.completed),
@@ -395,6 +411,15 @@ function parseDailyCheckInDetail(raw: Record<string, unknown>): AnalyticsMetricD
     total: asFiniteNumber(raw.total),
     skipRate: asFiniteNumber(raw.skipRate),
     trend: parseTrend(raw.trend),
+    latestCompletedAt,
+    completedLast7:
+      typeof raw.completedLast7 === 'number' && Number.isFinite(raw.completedLast7)
+        ? raw.completedLast7
+        : undefined,
+    skippedLast7:
+      typeof raw.skippedLast7 === 'number' && Number.isFinite(raw.skippedLast7)
+        ? raw.skippedLast7
+        : undefined,
     timeline: parseDailyCheckInTimeline(raw.timeline),
     answerTrend: parseDailyCheckInAnswerTrend(raw.answerTrend),
   };
@@ -415,12 +440,18 @@ function parseDiaryDetail(raw: Record<string, unknown>): AnalyticsMetricDetail {
 function parseSoulGalleryDetail(raw: Record<string, unknown>): AnalyticsMetricDetail {
   const latestAt =
     typeof raw.latestAt === 'number' && Number.isFinite(raw.latestAt) ? raw.latestAt : null;
+  const photoCount = asFiniteNumber(raw.photoCount);
+  const totalPhotoCount = asFiniteNumber(raw.totalPhotoCount) || photoCount;
+  const unseenPhotoCount = asFiniteNumber(raw.unseenPhotoCount);
+  const unseenMediaCount = asFiniteNumber(raw.unseenMediaCount) || unseenPhotoCount;
   return {
     kind: 'soul_gallery',
     albumCount: asFiniteNumber(raw.albumCount),
-    photoCount: asFiniteNumber(raw.photoCount),
+    photoCount,
     videoCount: asFiniteNumber(raw.videoCount),
-    unseenPhotoCount: asFiniteNumber(raw.unseenPhotoCount),
+    totalPhotoCount,
+    unseenPhotoCount,
+    unseenMediaCount,
     reactionCount: asFiniteNumber(raw.reactionCount),
     latestAt,
     trend: parseTrend(raw.trend),
@@ -612,6 +643,22 @@ function parsePsychologicalDetail(raw: Record<string, unknown>): AnalyticsMetric
   };
 }
 
+function parseAssessmentCountTimeline(raw: unknown): AssessmentCountTimelinePoint[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const points = raw
+    .filter(
+      (item): item is AssessmentCountTimelinePoint =>
+        item != null &&
+        typeof item === 'object' &&
+        typeof (item as AssessmentCountTimelinePoint).date === 'string',
+    )
+    .map((item) => ({
+      date: item.date,
+      count: asFiniteNumber(item.count),
+    }));
+  return points.length > 0 ? points : undefined;
+}
+
 function parseAssessmentCountDetail(raw: Record<string, unknown>): AnalyticsMetricDetail {
   const average =
     typeof raw.average === 'number' && Number.isFinite(raw.average) ? raw.average : undefined;
@@ -620,6 +667,7 @@ function parseAssessmentCountDetail(raw: Record<string, unknown>): AnalyticsMetr
     count: asFiniteNumber(raw.count),
     ...(average !== undefined ? { average } : {}),
     trend: parseTrend(raw.trend),
+    timeline: parseAssessmentCountTimeline(raw.timeline),
   };
 }
 
@@ -658,6 +706,9 @@ function parseVitalityGameDetail(raw: Record<string, unknown>): AnalyticsMetricD
 }
 
 function parseMessagesDetail(raw: Record<string, unknown>): AnalyticsMetricDetail {
+  const method = raw.lastCommunicationInputMethod;
+  const lastCommunicationInputMethod =
+    method === 'keyboard' || method === 'touch' ? method : null;
   return {
     kind: 'messages',
     communication: asFiniteNumber(raw.communication),
@@ -666,6 +717,7 @@ function parseMessagesDetail(raw: Record<string, unknown>): AnalyticsMetricDetai
     topItems: parseTopItems(raw.topItems),
     messagingBreakdown: parseMessagingBreakdown(raw.messagingBreakdown),
     timeline: parseMessagesTimeline(raw.timeline),
+    lastCommunicationInputMethod,
   };
 }
 

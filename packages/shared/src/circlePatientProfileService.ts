@@ -13,6 +13,7 @@ import type { Firestore } from 'firebase/firestore';
 import {
   buildProfileChangeSummary,
   describeProfileSnapshotChanges,
+  meaningfulProfileChangedLabels,
   parseCircleProfileMeta,
   parseCircleProfileSnapshot,
   type CirclePatientProfileMeta,
@@ -69,6 +70,18 @@ export async function updateCirclePatientProfileFromProxy(
     },
     { merge: true },
   );
+
+  const meaningfulChanges = meaningfulProfileChangedLabels(changedLabels);
+  if (meaningfulChanges.length > 0) {
+    const notificationId = `proxy_edit_${meta.updatedAt}`;
+    await setDoc(doc(db, 'patients', patientId, 'profile_notifications', notificationId), {
+      type: 'patient_edit',
+      timestamp: meta.updatedAt,
+      summary: meta.summary || buildProfileChangeSummary('proxy', patientDisplayName, changedLabels),
+      changedLabels,
+      readBy: { [actorUid]: meta.updatedAt },
+    });
+  }
 }
 
 export interface CircleProfileNotificationRow extends CircleProfileNotification {

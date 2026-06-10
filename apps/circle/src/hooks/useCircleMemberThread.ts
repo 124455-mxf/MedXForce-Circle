@@ -1,26 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { onSnapshot, orderBy, query } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import {
   circleMemberThreadPostsCollection,
+  isCircleThreadPostHiddenForUser,
   parseCircleMemberThreadPost,
   type CircleMemberThreadKind,
   type CircleMemberThreadPost,
 } from '@medxforce/shared';
+import { useHiddenCircleThreadPosts } from './useHiddenCircleThreadPosts';
 
 export function useCircleMemberThread(
   db: Firestore,
   patientId: string,
   threadKind: CircleMemberThreadKind,
   enabled: boolean,
+  uid?: string,
 ) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [posts, setPosts] = useState<CircleMemberThreadPost[]>([]);
+  const [rawPosts, setRawPosts] = useState<CircleMemberThreadPost[]>([]);
+  const { hiddenByPostId } = useHiddenCircleThreadPosts(db, patientId, uid);
 
   useEffect(() => {
     if (!patientId || !enabled) {
-      setPosts([]);
+      setRawPosts([]);
       setLoading(false);
       return;
     }
@@ -39,7 +43,7 @@ export function useCircleMemberThread(
         const items = snap.docs.map((d) =>
           parseCircleMemberThreadPost(d.id, d.data() as Record<string, unknown>),
         );
-        setPosts(items);
+        setRawPosts(items);
         setLoading(false);
       },
       (err) => {
@@ -50,6 +54,14 @@ export function useCircleMemberThread(
 
     return () => unsubscribe();
   }, [db, enabled, patientId, threadKind]);
+
+  const posts = useMemo(
+    () =>
+      rawPosts.filter(
+        (post) => !isCircleThreadPostHiddenForUser(hiddenByPostId, post.id, threadKind),
+      ),
+    [hiddenByPostId, rawPosts, threadKind],
+  );
 
   return { loading, error, posts };
 }

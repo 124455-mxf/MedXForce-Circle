@@ -14,6 +14,7 @@ import { MedXForceBrandLogo } from './components/MedXForceBrandLogo';
 import {
   acceptPendingCircleInvites,
   ensureMemberCapabilitiesForUser,
+  reconcileAcceptedMemberRolesForUser,
   isFirestoreQuotaError,
   listCirclePatientsForUser,
   normalizeInviteEmail,
@@ -47,8 +48,23 @@ export default function App() {
     return patients[0];
   }, [patients, selectedPatientId]);
 
+  useEffect(() => {
+    if (patients.length === 0) {
+      setSelectedPatientId(null);
+      return;
+    }
+    if (!selectedPatientId || !patients.some((p) => p.patientId === selectedPatientId)) {
+      setSelectedPatientId(patients[0].patientId);
+    }
+  }, [patients, selectedPatientId]);
+
+  const handleSelectPatient = (patient: CirclePatientSummary) => {
+    setSelectedPatientId(patient.patientId);
+  };
+
   const refreshPatients = async (currentUser: User) => {
     const accepted = await acceptPendingCircleInvites(firebase.db, currentUser);
+    await reconcileAcceptedMemberRolesForUser(firebase.db, currentUser.uid);
     await ensureMemberCapabilitiesForUser(firebase.db, currentUser.uid);
     const list = await listCirclePatientsForUser(firebase.db, currentUser.uid);
     setPatients(list);
@@ -281,46 +297,19 @@ export default function App() {
   const accountPhotoUrl = user.photoURL || undefined;
 
   return (
-    <div
-      className={
-        patients.length > 0
-          ? 'flex flex-col h-dvh max-h-dvh overflow-hidden box-border p-4 sm:p-8 max-w-2xl mx-auto'
-          : 'min-h-screen p-4 sm:p-8 max-w-2xl mx-auto'
-      }
-    >
-      <div
-        className={`flex items-center gap-3 shrink-0 ${patients.length > 0 ? 'mb-4' : 'mb-6'}`}
-      >
-        <div className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shrink-0">
-          <MedXForceBrandLogo />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold text-slate-800">MedXForce Circle</h1>
-          <p className="text-xs text-slate-500 truncate">Friends &amp; family</p>
-        </div>
-        {patients.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setProfileOpen(true)}
-            className="flex flex-col items-center gap-0.5 shrink-0"
-            title="Your account"
-          >
-            <span className="w-11 h-11 rounded-full bg-blue-100 border-2 border-blue-200 overflow-hidden flex items-center justify-center">
-              {accountPhotoUrl ? (
-                <img src={accountPhotoUrl} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-sm font-bold text-blue-700">
-                  {(user.displayName || user.email || '?').charAt(0).toUpperCase()}
-                </span>
-              )}
-            </span>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">You</span>
-          </button>
-        )}
-      </div>
-
+    <div className="flex flex-col h-dvh max-h-dvh overflow-hidden box-border max-w-2xl mx-auto w-full pt-4 px-3 pb-2.5 sm:pt-5 sm:px-4 sm:pb-3 [@media(max-height:740px)]:pt-3.5 [@media(max-height:740px)]:px-2.5 [@media(max-height:740px)]:pb-2">
       {patients.length === 0 ? (
-        <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-4">
+        <>
+          <div className="flex items-center gap-3 shrink-0 mb-6">
+            <div className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shrink-0">
+              <MedXForceBrandLogo />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl font-bold text-slate-800">MedXForce Circle</h1>
+              <p className="text-xs text-slate-500 truncate">Friends &amp; family</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-4">
           <div className="flex items-center justify-between gap-2 text-slate-700">
             <div className="flex items-center gap-2">
               <Users size={18} />
@@ -348,25 +337,31 @@ export default function App() {
             Sign out
           </button>
         </div>
+        </>
       ) : (
         <>
           <div className="flex flex-col flex-1 min-h-0">
             <CircleMainShell
               user={user}
+              accountPhotoUrl={accountPhotoUrl}
+              onOpenProfile={() => setProfileOpen(true)}
               patients={patients}
               db={firebase.db}
               storage={firebase.storage}
               inviteError={authError}
-              onSelectedPatientChange={setSelectedPatientId}
+              selectedPatientId={selectedPatientId}
+              onSelectPatient={handleSelectPatient}
             />
           </div>
           <CircleProfileDrawer
             user={user}
             db={firebase.db}
             storage={firebase.storage}
+            patients={patients}
             patient={selectedPatientForSettings}
             open={profileOpen}
             onClose={() => setProfileOpen(false)}
+            onSelectPatient={handleSelectPatient}
             onSignOut={() => signOut(firebase.auth)}
             onLeftCircle={async () => {
               if (!user) return;

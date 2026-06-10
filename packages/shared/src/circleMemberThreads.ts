@@ -1,5 +1,17 @@
-import { addDoc, collection, type Firestore } from 'firebase/firestore';
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  orderBy,
+  query,
+  writeBatch,
+  type Firestore,
+} from 'firebase/firestore';
 import type { CircleMemberRole } from './patientPermissions';
+
+/** Author or proxy may delete for everyone within this window (unless someone responded). */
+export const CIRCLE_THREAD_POST_DELETE_WINDOW_MS = 30 * 60 * 1000;
 
 /** All-to-all circle member threads (not patient ↔ member messaging). */
 export type CircleMemberThreadKind = 'open' | 'restricted';
@@ -13,6 +25,10 @@ export interface CircleMemberThreadPost {
   authorRole: CircleMemberRole;
   text: string;
   createdAt: number;
+  /** Set when another member posts after this one — blocks delete-for-everyone. */
+  respondLocked?: boolean;
+  postKind?: 'visit_capture';
+  visitCaptureId?: string;
 }
 
 const OPEN_THREAD_ROLES = new Set<CircleMemberRole>([
@@ -94,7 +110,33 @@ export function parseCircleMemberThreadPost(
     authorRole: String(data.authorRole || 'friend') as CircleMemberRole,
     text: String(data.text || ''),
     createdAt: Number(data.createdAt || 0),
+    respondLocked: data.respondLocked === true,
+    postKind: data.postKind === 'visit_capture' ? 'visit_capture' : undefined,
+    visitCaptureId: data.visitCaptureId ? String(data.visitCaptureId) : undefined,
   };
+}
+
+export function isWithinCircleThreadDeleteWindow(createdAt: number, now = Date.now()): boolean {
+  return createdAt > 0 && now - createdAt < CIRCLE_THREAD_POST_DELETE_WINDOW_MS;
+}
+
+export function canDeleteCircleThreadPostForEveryone(
+  post: Pick<CircleMemberThreadPost, 'authorUid' | 'createdAt' | 'respondLocked'>,
+  options: { uid: string; isProxy: boolean; now?: number },
+): boolean {
+  if (post.respondLocked) return false;
+  if (!isWithinCircleThreadDeleteWindow(post.createdAt, options.now)) return false;
+  if (post.authorUid === options.uid) return true;
+  return options.isProxy;
+}
+
+export async function deleteCircleThreadPostForEveryone(
+  db: Firestore,
+  patientId: string,
+  threadKind: CircleMemberThreadKind,
+  postId: string,
+): Promise<void> {
+  await deleteDoc(doc(db, 'patients', patientId, 'circle_threads', threadKind, 'posts', postId));
 }
 
 export async function createCircleMemberThreadPost(
@@ -112,7 +154,20 @@ export async function createCircleMemberThreadPost(
   if (!body) throw new Error('Please write a message before sending.');
 
   const now = Date.now();
-  const ref = await addDoc(circleMemberThreadPostsCollection(db, params.patientId, params.threadKind), {
+  const col = circleMemberThreadPostsCollection(db, params.patientId, params.threadKind);
+  const priorSnap = await getDocs(query(col, orderBy('createdAt', 'asc')));
+  const batch = writeBatch(db);
+
+  for (const prior of priorSnap.docs) {
+    const priorData = prior.data();
+    const priorAuthor = String(priorData.authorUid || '');
+    if (priorAuthor && priorAuthor !== params.authorUid && priorData.respondLocked !== true) {
+      batch.update(prior.ref, { respondLocked: true });
+    }
+  }
+
+  const postRef = doc(col);
+  batch.set(postRef, {
     patientId: params.patientId,
     threadKind: params.threadKind,
     authorUid: params.authorUid,
@@ -120,6 +175,9 @@ export async function createCircleMemberThreadPost(
     authorRole: params.authorRole,
     text: body,
     createdAt: now,
+    respondLocked: false,
   });
-  return ref.id;
+
+  await batch.commit();
+  return postRef.id;
 }

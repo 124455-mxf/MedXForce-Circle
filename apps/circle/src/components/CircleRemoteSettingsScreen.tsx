@@ -19,13 +19,13 @@ import { cn } from '../lib/utils';
 import {
   circleSectionBodyClass,
   circleSectionBodyPaddingClass,
-  circleSectionHeaderClass,
   circleSectionHeaderStackClass,
-  circleSectionPanelClass,
-  circleSectionSubtitleClass,
-  circleSectionTitleClass,
+  circleWorkTabHeaderClass,
+  circleWorkTabPanelClass,
 } from '../lib/circleSectionStyles';
 import { useCircleRemoteSettings } from '../hooks/useCircleRemoteSettings';
+import { useCircleCompactChrome } from '../lib/circleChromeContext';
+import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 
 function ToggleRow({
   label,
@@ -104,6 +104,7 @@ export function CircleRemoteSettingsScreen({
     patient,
     user,
   );
+  const compactChrome = useCircleCompactChrome();
 
   const patch = (next: PatientRemoteSettingsDoc) => {
     persist({ ...next, patientId: patient.patientId });
@@ -119,20 +120,21 @@ export function CircleRemoteSettingsScreen({
 
   return (
     <div className="flex flex-col flex-1 min-h-0 max-h-full overflow-hidden">
-      <div className={cn(circleSectionPanelClass, 'max-h-full')}>
-        <div className={cn(circleSectionHeaderClass, circleSectionHeaderStackClass)}>
-          <div className="min-w-0">
-            <h3 className={circleSectionTitleClass}>Remote Settings</h3>
-            <p className={circleSectionSubtitleClass}>
-              Configure {patient.displayName}&apos;s tablet — changes sync when the patient app is
-              online.
-            </p>
-          </div>
-          {(saving || savedAt) && (
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-              {saving ? 'Saving…' : 'Saved'}
-            </p>
-          )}
+      <div className={cn(circleWorkTabPanelClass(compactChrome), 'max-h-full')}>
+        <div className={cn(circleWorkTabHeaderClass(compactChrome), circleSectionHeaderStackClass)}>
+          <CircleWorkTabSectionIntro
+            icon={SlidersHorizontal}
+            iconClassName="text-slate-600"
+            title="Remote Settings"
+            subtitle={`Configure ${patient.displayName}'s tablet — changes sync when the patient app is online.`}
+            trailing={
+              saving || savedAt ? (
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider shrink-0 pt-1">
+                  {saving ? 'Saving…' : 'Saved'}
+                </p>
+              ) : undefined
+            }
+          />
         </div>
 
         <div className={cn(circleSectionBodyClass, circleSectionBodyPaddingClass, 'space-y-5 pb-6')}>
@@ -222,6 +224,8 @@ export function CircleRemoteSettingsScreen({
                     setRemoteDailyCheckIn(settings, {
                       quietHours: {
                         enabled: !(settings.dailyCheckIn?.quietHours?.enabled ?? false),
+                        start: settings.dailyCheckIn?.quietHours?.start ?? '22:00',
+                        end: settings.dailyCheckIn?.quietHours?.end ?? '06:00',
                       },
                     }),
                   )
@@ -237,7 +241,11 @@ export function CircleRemoteSettingsScreen({
                       onChange={(e) =>
                         patch(
                           setRemoteDailyCheckIn(settings, {
-                            quietHours: { start: e.target.value },
+                            quietHours: {
+                              enabled: settings.dailyCheckIn?.quietHours?.enabled ?? false,
+                              start: e.target.value,
+                              end: settings.dailyCheckIn?.quietHours?.end ?? '06:00',
+                            },
                           }),
                         )
                       }
@@ -252,7 +260,11 @@ export function CircleRemoteSettingsScreen({
                       onChange={(e) =>
                         patch(
                           setRemoteDailyCheckIn(settings, {
-                            quietHours: { end: e.target.value },
+                            quietHours: {
+                              enabled: settings.dailyCheckIn?.quietHours?.enabled ?? false,
+                              start: settings.dailyCheckIn?.quietHours?.start ?? '22:00',
+                              end: e.target.value,
+                            },
                           }),
                         )
                       }

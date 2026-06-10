@@ -4,13 +4,25 @@ import {
   setDoc,
   type Firestore,
 } from 'firebase/firestore';
-import { circleInviteDocId, type CircleInviteStatus } from './circleInvites';
+import {
+  circleInviteRefForPatientEmail,
+  lookupCircleInviteByPatientEmail,
+  type CircleInviteStatus,
+} from './circleInvites';
 import {
   capabilitiesForRole,
   normalizeInviteEmail,
   type CircleMemberRole,
+  type PatientCapabilities,
 } from './patientPermissions';
 import { revokeCircleInviteByEmail } from './circleMemberManagement';
+import {
+  buildCircleAccessByEmailIndex,
+  circleMemberRoleFromManagedContact,
+  proxyTierFromContact,
+  roleFromCaregiverContact,
+  roleFromFriendsAndFamilyContact,
+} from './circleMemberRoles';
 
 export type CircleContactKind = 'caregiver' | 'family' | 'friend' | 'contact';
 
@@ -21,6 +33,8 @@ export interface CircleManagedContact {
   mobile: string;
   relationship: string;
   kind: CircleContactKind;
+  circleRole?: CircleMemberRole;
+  proxyTier?: 'primary' | 'backup';
   language: string;
   message: boolean;
   sms: boolean;
@@ -160,6 +174,8 @@ function contactKindFromFriendsFamily(contact: Record<string, unknown>): CircleC
 function mapCaregiver(contact: Record<string, unknown>): CircleManagedContact {
   const defaults = notifyDefaultsForKind('caregiver');
   const existingId = readString(contact, 'id');
+  const circleRole = roleFromCaregiverContact(contact);
+  const tier = proxyTierFromContact(contact);
   return {
     id: existingId || `legacy_${legacyKeyFromCaregiverRecord(contact)}`,
     name: readString(contact, 'name'),
@@ -167,6 +183,8 @@ function mapCaregiver(contact: Record<string, unknown>): CircleManagedContact {
     mobile: readString(contact, 'mobile'),
     relationship: readString(contact, 'relationship') || readString(contact, 'type') || 'Other',
     kind: 'caregiver',
+    circleRole,
+    ...(tier ? { proxyTier: tier } : {}),
     language: readString(contact, 'language') || defaults.language,
     message: readOptionalBool(contact, 'message') ?? defaults.message,
     sms: readOptionalBool(contact, 'sms') ?? defaults.sms,
@@ -176,9 +194,11 @@ function mapCaregiver(contact: Record<string, unknown>): CircleManagedContact {
 }
 
 function mapFriendsFamily(contact: Record<string, unknown>): CircleManagedContact {
-  const kind = contactKindFromFriendsFamily(contact);
+  const circleRole = roleFromFriendsAndFamilyContact(contact);
+  const kind = circleRole === 'proxy' ? 'family' : contactKindFromFriendsFamily(contact);
   const defaults = notifyDefaultsForKind(kind);
   const existingId = readString(contact, 'id');
+  const tier = proxyTierFromContact(contact);
   return {
     id: existingId || `legacy_${legacyKeyFromFriendsFamilyRecord(contact)}`,
     name: readString(contact, 'name'),
@@ -187,6 +207,8 @@ function mapFriendsFamily(contact: Record<string, unknown>): CircleManagedContac
     relationship:
       readString(contact, 'relationship') || readString(contact, 'type') || (kind === 'friend' ? 'Friend' : 'Family'),
     kind,
+    circleRole,
+    ...(tier ? { proxyTier: tier } : {}),
     language: readString(contact, 'language') || defaults.language,
     message: readOptionalBool(contact, 'message') ?? defaults.message,
     sms: readOptionalBool(contact, 'sms') ?? defaults.sms,
@@ -218,20 +240,19 @@ function hasVisibleContactIdentity(contact: CircleManagedContact): boolean {
 }
 
 function roleFromKind(kind: CircleContactKind): CircleMemberRole | null {
-  if (kind === 'caregiver') return 'caregiver';
-  if (kind === 'family') return 'family';
-  if (kind === 'friend') return 'friend';
-  return null;
+  return circleMemberRoleFromManagedContact({ kind });
 }
 
 function toCaregiverRecord(contact: CircleManagedContact): Record<string, unknown> {
+  const circleRole = contact.circleRole || 'caregiver';
   return {
     id: contact.id,
     name: contact.name,
     email: contact.email,
     mobile: contact.mobile,
     relationship: contact.relationship || 'Other',
-    circleRole: 'caregiver',
+    circleRole,
+    ...(circleRole === 'proxy' && contact.proxyTier ? { proxyTier: contact.proxyTier } : {}),
     language: contact.language || 'English',
     alert: !!contact.alert,
     attention: !!contact.attention,
@@ -241,7 +262,8 @@ function toCaregiverRecord(contact: CircleManagedContact): Record<string, unknow
 }
 
 function toFriendsFamilyRecord(contact: CircleManagedContact): Record<string, unknown> {
-  const isFriend = contact.kind === 'friend';
+  const isFriend = contact.kind === 'friend' && contact.circleRole !== 'proxy';
+  const circleRole = contact.circleRole || (isFriend ? 'friend' : 'family');
   return {
     id: contact.id,
     name: contact.name,
@@ -249,7 +271,8 @@ function toFriendsFamilyRecord(contact: CircleManagedContact): Record<string, un
     mobile: contact.mobile,
     relationship: contact.relationship || (isFriend ? 'Friend' : 'Family'),
     type: isFriend ? 'Friend' : 'Family',
-    circleRole: isFriend ? 'friend' : 'family',
+    circleRole,
+    ...(circleRole === 'proxy' && contact.proxyTier ? { proxyTier: contact.proxyTier } : {}),
     language: contact.language || 'English',
     alert: !!contact.alert,
     attention: !!contact.attention,
@@ -272,33 +295,79 @@ function toSimpleContactRecord(contact: CircleManagedContact): Record<string, un
   };
 }
 
+function inviteAccessUnchanged(
+  existing: Record<string, unknown> | undefined,
+  role: CircleMemberRole,
+  capabilities: PatientCapabilities,
+  proxyTier: 'primary' | 'backup' | undefined,
+): boolean {
+  if (!existing) return false;
+  if (existing.role !== role) return false;
+  if (role === 'proxy' && existing.proxyTier !== proxyTier) return false;
+  const stored = existing.capabilities;
+  if (!stored || typeof stored !== 'object') return false;
+  const storedCaps = stored as Partial<PatientCapabilities>;
+  return (
+    !!storedCaps.inviteMembers === !!capabilities.inviteMembers &&
+    !!storedCaps.messaging === !!capabilities.messaging &&
+    !!storedCaps.remoteSettings === !!capabilities.remoteSettings &&
+    !!storedCaps.viewClinicalData === !!capabilities.viewClinicalData
+  );
+}
+
 async function syncInviteForCircleRoleContact(
   db: Firestore,
   patientId: string,
   contact: CircleManagedContact,
 ): Promise<void> {
-  const role = roleFromKind(contact.kind);
+  const role = circleMemberRoleFromManagedContact(contact);
   const email = normalizeInviteEmail(contact.email);
   if (!role || !email) return;
 
-  const inviteRef = doc(db, 'circle_invites', circleInviteDocId(patientId, email));
-  const existing = await getDoc(inviteRef);
-  const existingStatus = existing.exists()
-    ? (existing.data()?.status as CircleInviteStatus | undefined)
-    : undefined;
+  const capabilities = capabilitiesForRole(role);
+  const proxyTier =
+    role === 'proxy' ? (contact.proxyTier === 'backup' ? 'backup' : 'primary') : undefined;
+
+  const existing = await lookupCircleInviteByPatientEmail(db, patientId, email);
+  const existingData = existing.exists ? existing.data : undefined;
+  const existingStatus = existingData?.status as CircleInviteStatus | undefined;
+  const inviteRef = circleInviteRefForPatientEmail(
+    db,
+    patientId,
+    email,
+    existing.exists ? existing.id : undefined,
+  );
+  const accessUnchanged = inviteAccessUnchanged(existingData, role, capabilities, proxyTier);
+
+  const invitePatch: Record<string, unknown> = {
+    displayName: contact.name || undefined,
+    contactId: contact.id,
+    updatedAt: Date.now(),
+  };
+  if (!accessUnchanged) {
+    invitePatch.role = role;
+    invitePatch.capabilities = capabilities;
+    if (proxyTier) invitePatch.proxyTier = proxyTier;
+  }
 
   if (existingStatus === 'accepted') {
-    await setDoc(
-      inviteRef,
-      {
-        role,
-        capabilities: capabilitiesForRole(role),
-        displayName: contact.name || undefined,
-        contactId: contact.id,
-        updatedAt: Date.now(),
-      },
-      { merge: true },
-    );
+    await setDoc(inviteRef, invitePatch, { merge: true });
+
+    if (!accessUnchanged) {
+      const acceptedByUid = existingData?.acceptedByUid;
+      if (typeof acceptedByUid === 'string' && acceptedByUid.trim()) {
+        await setDoc(
+          doc(db, 'patients', patientId, 'members', acceptedByUid.trim()),
+          {
+            role,
+            capabilities,
+            ...(proxyTier ? { proxyTier } : {}),
+            updatedAt: Date.now(),
+          },
+          { merge: true },
+        );
+      }
+    }
     return;
   }
 
@@ -307,13 +376,9 @@ async function syncInviteForCircleRoleContact(
     {
       patientId,
       invitedEmail: email,
-      role,
-      capabilities: capabilitiesForRole(role),
-      displayName: contact.name || undefined,
-      contactId: contact.id,
       status: 'pending',
-      updatedAt: Date.now(),
-      createdAt: existing.exists() ? existing.data()?.createdAt ?? Date.now() : Date.now(),
+      createdAt: existing.exists ? existingData?.createdAt ?? Date.now() : Date.now(),
+      ...invitePatch,
     },
     { merge: true },
   );
@@ -399,9 +464,17 @@ export async function upsertPatientManagedContact(
       return true;
     });
 
+  const existingManaged = parsePatientManagedContacts(data).find((contact) => {
+    if (id && contact.id === id) return true;
+    return normalizedEmail && normalizeInviteEmail(contact.email) === normalizedEmail;
+  });
+
   const nextCaregivers = removeFromList(caregivers, 'caregiver');
   const nextFriendsAndFamily = removeFromList(friendsAndFamily, 'family');
   const nextContacts = removeFromList(contacts, 'contact');
+
+  const circleRole = input.circleRole ?? existingManaged?.circleRole;
+  const proxyTier = input.proxyTier ?? existingManaged?.proxyTier;
 
   const next: CircleManagedContact = {
     id,
@@ -415,6 +488,8 @@ export async function upsertPatientManagedContact(
     sms: !!input.sms,
     alert: !!input.alert,
     attention: !!input.attention,
+    ...(circleRole ? { circleRole } : {}),
+    ...(proxyTier ? { proxyTier } : {}),
   };
 
   if (input.kind === 'caregiver') nextCaregivers.push(toCaregiverRecord(next));
@@ -423,23 +498,39 @@ export async function upsertPatientManagedContact(
   }
   if (input.kind === 'contact') nextContacts.push(toSimpleContactRecord(next));
 
-  await setDoc(
-    doc(db, 'patients', patientId),
-    {
-      caregivers: nextCaregivers,
-      friendsAndFamily: nextFriendsAndFamily,
-      contacts: nextContacts,
-      updatedAt: Date.now(),
-    },
-    { merge: true },
-  );
+  const circleAccessByEmail = buildCircleAccessByEmailIndex({
+    caregivers: nextCaregivers,
+    friendsAndFamily: nextFriendsAndFamily,
+  });
+
+  try {
+    await setDoc(
+      doc(db, 'patients', patientId),
+      {
+        caregivers: nextCaregivers,
+        friendsAndFamily: nextFriendsAndFamily,
+        contacts: nextContacts,
+        circleAccessByEmail,
+        updatedAt: Date.now(),
+      },
+      { merge: true },
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Could not save contact list: ${message}`);
+  }
 
   const syncInvite = options.syncInvite !== false;
 
-  if (syncInvite && normalizedEmail && input.kind !== 'contact') {
-    await syncInviteForCircleRoleContact(db, patientId, next);
-  } else if (syncInvite && normalizedEmail && input.kind === 'contact') {
-    await revokeCircleInviteByEmail(db, patientId, normalizedEmail);
+  try {
+    if (syncInvite && normalizedEmail && input.kind !== 'contact') {
+      await syncInviteForCircleRoleContact(db, patientId, next);
+    } else if (syncInvite && normalizedEmail && input.kind === 'contact') {
+      await revokeCircleInviteByEmail(db, patientId, normalizedEmail);
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Contact saved, but Circle access sync failed: ${message}`);
   }
 
   return next;
@@ -459,6 +550,55 @@ export type OwnNotifyPreferencesPatch = {
   alert?: boolean;
   attention?: boolean;
 };
+
+export type OwnContactProfilePatch = {
+  name?: string;
+  language?: string;
+  relationship?: string;
+};
+
+/** Any Circle member may update their own name, language, and relationship on the patient contact record. */
+export async function updateOwnCircleContactProfile(
+  db: Firestore,
+  patientId: string,
+  actorEmail: string,
+  patch: OwnContactProfilePatch,
+  options: { expectedPatientUpdatedAt?: number } = {},
+): Promise<CircleManagedContact> {
+  const contacts = await listPatientManagedContacts(db, patientId);
+  const existing = findManagedContactByEmail(contacts, actorEmail);
+  if (!existing) {
+    throw new Error('Your contact record was not found. Ask the patient or proxy to add your email.');
+  }
+
+  const name = patch.name !== undefined ? patch.name.trim() : existing.name;
+  if (!name) {
+    throw new Error('Name is required.');
+  }
+
+  const language =
+    patch.language !== undefined ? patch.language.trim() || 'English' : existing.language;
+
+  let relationship = existing.relationship;
+  if (
+    patch.relationship !== undefined &&
+    (existing.kind === 'caregiver' || existing.kind === 'family')
+  ) {
+    relationship = patch.relationship.trim() || existing.relationship;
+  }
+
+  return upsertPatientManagedContact(
+    db,
+    patientId,
+    {
+      ...existing,
+      name,
+      language,
+      relationship,
+    },
+    { expectedPatientUpdatedAt: options.expectedPatientUpdatedAt, syncInvite: false },
+  );
+}
 
 /** Non-proxy members may only change alert / attention / message on their own contact row. */
 export async function updateOwnCircleNotifyPreferences(
@@ -558,12 +698,18 @@ export async function deletePatientManagedContact(
       ),
   );
 
+  const circleAccessByEmail = buildCircleAccessByEmailIndex({
+    caregivers: nextCaregivers,
+    friendsAndFamily: nextFriendsAndFamily,
+  });
+
   await setDoc(
     doc(db, 'patients', patientId),
     {
       caregivers: nextCaregivers,
       friendsAndFamily: nextFriendsAndFamily,
       contacts: nextContacts,
+      circleAccessByEmail,
       updatedAt: Date.now(),
     },
     { merge: true },

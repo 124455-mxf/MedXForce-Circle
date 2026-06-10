@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react';
-import { Loader2, Sparkles, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Loader2, Mic, MicOff, Sparkles, X } from 'lucide-react';
 import type { CircleMemberRole } from '@medxforce/shared';
 import { askCircleAiGuidance, isCircleAiAssistAvailable } from '../lib/circleAiAssist';
 import { CIRCLE_AI_PRIVACY_DISCLOSURE } from '../lib/circleAiGuardrails';
+import { useDictation } from '../hooks/useDictation';
 import { cn } from '../lib/utils';
 import { CircleAiGuidanceContent } from './CircleAiGuidanceContent';
+
+const QUESTION_MAX_LENGTH = 1000;
 
 type CircleAiGuidanceModalProps = {
   open: boolean;
@@ -26,8 +29,13 @@ export function CircleAiGuidanceModal({
   const [answer, setAnswer] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { isRecording, micError, setMicError, toggleRecording, stopRecording } = useDictation();
 
   const canIncludeContext = Boolean(recentContext?.trim());
+
+  const setQuestionText = useCallback((text: string) => {
+    setQuestion(text.slice(0, QUESTION_MAX_LENGTH));
+  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -36,8 +44,10 @@ export function CircleAiGuidanceModal({
       setError(null);
       setIncludeRecentMessages(false);
       setLoading(false);
+      setMicError(null);
+      stopRecording();
     }
-  }, [open]);
+  }, [open, setMicError, stopRecording]);
 
   useEffect(() => {
     if (!open) return;
@@ -46,12 +56,19 @@ export function CircleAiGuidanceModal({
 
   const handleClose = () => {
     if (loading) return;
+    stopRecording();
     onClose();
+  };
+
+  const handleQuestionDictation = () => {
+    setMicError(null);
+    void toggleRecording(() => question, setQuestionText);
   };
 
   const handleAsk = async () => {
     const q = question.trim();
     if (!q || loading) return;
+    stopRecording();
     setLoading(true);
     setError(null);
     setAnswer(null);
@@ -72,17 +89,23 @@ export function CircleAiGuidanceModal({
   };
 
   const askAnother = () => {
+    stopRecording();
+    setMicError(null);
     setAnswer(null);
     setError(null);
     setQuestion('');
     setIncludeRecentMessages(false);
   };
 
+  useEffect(() => {
+    if (loading) stopRecording();
+  }, [loading, stopRecording]);
+
   if (!open || !isCircleAiAssistAvailable()) return null;
 
   return (
     <div className="fixed inset-0 z-[140] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="bg-white w-full sm:max-w-lg rounded-t-[28px] sm:rounded-[28px] border border-slate-100 shadow-2xl max-h-[92vh] flex flex-col min-h-0">
+      <div className="bg-white w-full sm:max-w-xl rounded-t-[28px] sm:rounded-[28px] border border-slate-100 shadow-2xl max-h-[94vh] min-h-[65vh] sm:min-h-[480px] flex flex-col">
         <div className="flex items-center justify-between gap-3 p-5 border-b border-slate-100 shrink-0">
           <div className="min-w-0">
             <h3 className="font-bold text-slate-800 flex items-center gap-2">
@@ -102,13 +125,22 @@ export function CircleAiGuidanceModal({
           </button>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 space-y-4">
+        <div
+          className={cn(
+            'flex-1 min-h-0 p-5',
+            answer
+              ? 'overflow-y-auto overscroll-contain space-y-4'
+              : 'flex flex-col gap-4 overflow-hidden',
+          )}
+        >
           {!answer && (
             <>
-              <p className="text-xs text-slate-500 leading-relaxed">{CIRCLE_AI_PRIVACY_DISCLOSURE}</p>
+              <p className="text-xs text-slate-500 leading-relaxed shrink-0">
+                {CIRCLE_AI_PRIVACY_DISCLOSURE}
+              </p>
 
               {canIncludeContext && (
-                <label className="flex items-start gap-2 cursor-pointer">
+                <label className="flex items-start gap-2 cursor-pointer shrink-0">
                   <input
                     type="checkbox"
                     checked={includeRecentMessages}
@@ -122,18 +154,47 @@ export function CircleAiGuidanceModal({
                 </label>
               )}
 
-              <label className="block space-y-1.5">
-                <span className="text-xs font-bold text-slate-500 uppercase">Your question</span>
+              <label className="flex flex-col flex-1 min-h-0 gap-1.5">
+                <div className="flex items-center justify-between gap-2 shrink-0">
+                  <span className="text-xs font-bold text-slate-500 uppercase">Your question</span>
+                  <button
+                    type="button"
+                    onClick={handleQuestionDictation}
+                    disabled={loading}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-colors disabled:opacity-50',
+                      isRecording
+                        ? 'bg-red-50 text-red-600 ring-2 ring-red-200 animate-pulse'
+                        : 'text-slate-500 hover:bg-slate-100 hover:text-violet-600',
+                    )}
+                    aria-label={isRecording ? 'Stop dictation' : 'Dictate your question'}
+                    aria-pressed={isRecording}
+                  >
+                    {isRecording ? <MicOff size={14} /> : <Mic size={14} />}
+                    {isRecording ? 'Stop' : 'Dictate'}
+                  </button>
+                </div>
                 <textarea
                   value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  rows={4}
+                  onChange={(e) => setQuestionText(e.target.value)}
                   placeholder="e.g. How can I encourage my father to do his daily check-ins?"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm resize-none min-h-[100px]"
-                  maxLength={1000}
+                  className={cn(
+                    'w-full flex-1 min-h-[120px] px-4 py-3 rounded-xl border text-sm resize-none outline-none focus:outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-500/15',
+                    isRecording ? 'border-red-200 ring-2 ring-red-100' : 'border-slate-200',
+                  )}
+                  maxLength={QUESTION_MAX_LENGTH}
                   disabled={loading}
-                  autoFocus
                 />
+                {isRecording && (
+                  <p className="text-xs text-red-600 font-medium shrink-0">
+                    Listening… speak your question, then tap Stop.
+                  </p>
+                )}
+                {micError && (
+                  <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 shrink-0">
+                    {micError}
+                  </p>
+                )}
               </label>
             </>
           )}

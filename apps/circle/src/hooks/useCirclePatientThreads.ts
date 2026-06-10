@@ -8,8 +8,18 @@ import {
   where,
 } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import { normalizeInviteEmail } from '@medxforce/shared';
-import { threadHasUnreadPatientReply } from '../lib/circleMessageRead';
+import {
+  isPatientReplyVisibleToCircleMember,
+  normalizeInviteEmail,
+  shouldShowCircleThreadInInbox,
+  isCirclePatientMessageActive,
+} from '@medxforce/shared';
+import {
+  CIRCLE_MSG_READ_CHANGED,
+  isCommunicationLogSummaryUnread,
+  threadHasUnreadPatientReply,
+} from '../lib/circleMessageRead';
+import { isIcuDailySummary } from '../lib/circleCommunicationLog';
 
 export type IcuSummaryEntry = {
   text: string;
@@ -42,6 +52,8 @@ export type CircleThreadReply = {
   text: string;
   isPatient: boolean;
   channel: 'app' | 'email';
+  recipientEmails?: string[];
+  circleMemberUids?: string[];
   timestamp: number;
 };
 
@@ -70,7 +82,8 @@ export function useCirclePatientThreads(
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [messages, setMessages] = useState<CircleThreadMessage[]>([]);
+  const [rawMessages, setRawMessages] = useState<CircleThreadMessage[]>([]);
+  const [hiddenAtByMessageId, setHiddenAtByMessageId] = useState<Record<string, number>>({});
   const [repliesByMessageId, setRepliesByMessageId] = useState<
     Record<string, CircleThreadReply[]>
   >({});
@@ -89,7 +102,8 @@ export function useCirclePatientThreads(
 
   useEffect(() => {
     if (!patientId) {
-      setMessages([]);
+      setRawMessages([]);
+      setHiddenAtByMessageId({});
       setRepliesByMessageId({});
       setLoading(false);
       return;
@@ -109,7 +123,7 @@ export function useCirclePatientThreads(
           byId.set(item.id, item);
         }
       }
-      setMessages(sortThreadMessages([...byId.values()].filter(matchesRecipient)));
+      setRawMessages(sortThreadMessages([...byId.values()].filter(matchesRecipient)));
       setLoading(false);
     };
 
@@ -155,12 +169,48 @@ export function useCirclePatientThreads(
   }, [db, patientId, normalizedEmail, user.uid, matchesRecipient]);
 
   useEffect(() => {
-    if (!patientId || messages.length === 0) {
+    if (!patientId || !user.uid) {
+      setHiddenAtByMessageId({});
+      return;
+    }
+
+    const hiddenRef = collection(db, 'patients', patientId, 'message_inbox', user.uid, 'hidden');
+    return onSnapshot(
+      hiddenRef,
+      (snap) => {
+        const next: Record<string, number> = {};
+        for (const row of snap.docs) {
+          const hiddenAt = row.data().hiddenAt;
+          if (typeof hiddenAt === 'number' && hiddenAt > 0) {
+            next[row.id] = hiddenAt;
+          }
+        }
+        setHiddenAtByMessageId(next);
+      },
+      (err) => {
+        console.warn('[useCirclePatientThreads] hidden inbox', err);
+      },
+    );
+  }, [db, patientId, user.uid]);
+
+  const messages = useMemo(() => {
+    return rawMessages.filter((msg) => {
+      if (isIcuDailySummary(msg)) return true;
+      const hiddenAt = hiddenAtByMessageId[msg.id];
+      if (isCirclePatientMessageActive(msg.status)) {
+        return shouldShowCircleThreadInInbox(hiddenAt, repliesByMessageId[msg.id] || []);
+      }
+      return true;
+    });
+  }, [rawMessages, hiddenAtByMessageId, repliesByMessageId]);
+
+  useEffect(() => {
+    if (!patientId || rawMessages.length === 0) {
       setRepliesByMessageId({});
       return;
     }
 
-    const unsubs = messages.filter((msg) => msg.type !== 'icu_daily_summary').map((msg) => {
+    const unsubs = rawMessages.filter((msg) => msg.type !== 'icu_daily_summary').map((msg) => {
       const q = query(
         collection(db, 'patients', patientId, 'messages', msg.id, 'replies'),
         orderBy('timestamp', 'asc'),
@@ -174,23 +224,53 @@ export function useCirclePatientThreads(
     });
 
     return () => unsubs.forEach((u) => u());
-  }, [db, patientId, messages]);
+  }, [db, patientId, rawMessages]);
+
+  const [readTick, setReadTick] = useState(0);
+
+  useEffect(() => {
+    const onReadChanged = (event: Event) => {
+      const detail = (event as CustomEvent<{ patientId?: string }>).detail;
+      if (!detail?.patientId || detail.patientId === patientId) {
+        setReadTick((v) => v + 1);
+      }
+    };
+    window.addEventListener(CIRCLE_MSG_READ_CHANGED, onReadChanged);
+    return () => window.removeEventListener(CIRCLE_MSG_READ_CHANGED, onReadChanged);
+  }, [patientId]);
+
+  const memberAudience = useMemo(
+    () => ({ uid: user.uid, email: normalizedEmail }),
+    [normalizedEmail, user.uid],
+  );
+
+  const repliesVisibleToMember = useCallback(
+    (replies: CircleThreadReply[] = []) =>
+      replies.filter((reply) => isPatientReplyVisibleToCircleMember(reply, memberAudience)),
+    [memberAudience],
+  );
 
   const unreadCount = useMemo(() => {
-    return messages.filter((m) =>
-      threadHasUnreadPatientReply(
-        repliesByMessageId[m.id] || [],
+    return messages.filter((m) => {
+      if (isIcuDailySummary(m)) {
+        return isCommunicationLogSummaryUnread(m, patientId, m.id);
+      }
+      if (!isCirclePatientMessageActive(m.status)) return false;
+      return threadHasUnreadPatientReply(
+        repliesVisibleToMember(repliesByMessageId[m.id] || []),
         patientId,
         m.id,
         m,
-      ),
-    ).length;
-  }, [messages, repliesByMessageId, patientId]);
+      );
+    }).length;
+  }, [messages, repliesByMessageId, patientId, readTick, repliesVisibleToMember]);
 
   return {
     loading,
     error,
     messages,
+    rawMessages,
+    hiddenAtByMessageId,
     repliesByMessageId,
     unreadCount,
   };

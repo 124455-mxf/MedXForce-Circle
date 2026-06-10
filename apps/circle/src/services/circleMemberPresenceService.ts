@@ -16,6 +16,19 @@ function shouldSkipPresenceBeat(): boolean {
   return false;
 }
 
+/** Clear live presence so the patient app stops showing this member as online. */
+export async function markCircleMemberPresenceOffline(
+  db: Firestore,
+  patientId: string,
+  uid: string,
+): Promise<void> {
+  await setDoc(
+    doc(db, 'patients', patientId, 'presence', uid),
+    { uid, lastSeen: 0, status: 'offline' },
+    { merge: true },
+  );
+}
+
 export function startCircleMemberPresenceHeartbeat(
   db: Firestore,
   patientId: string,

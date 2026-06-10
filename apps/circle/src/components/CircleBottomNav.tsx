@@ -39,33 +39,23 @@ export interface CircleBottomNavBadges {
   more?: number;
 }
 
+export type CircleBottomNavUrgencyKind = 'alert' | 'attention';
+
 interface CircleBottomNavProps {
   primaryItems: CircleNavItem[];
   moreItems: CircleNavItem[];
   activeTab: CircleMainTab;
   onTabChange: (tab: CircleMainTab) => void;
   badges?: CircleBottomNavBadges;
+  /** Pulsating Messages tab + bar tint for fresh alert/attention (first 2 minutes). */
+  messagesUrgency?: CircleBottomNavUrgencyKind | null;
+  pulseNavForUrgency?: boolean;
+  className?: string;
 }
 
-function NavIconShell({
-  active,
-  compact,
-  children,
-}: {
-  active: boolean;
-  compact: boolean;
-  children: ReactNode;
-}) {
+function NavIconSlot({ children }: { children: ReactNode }) {
   return (
-    <span
-      className={cn(
-        'relative inline-flex items-center justify-center rounded-xl transition-all duration-200',
-        compact ? 'w-7 h-7' : 'w-8 h-8',
-        active
-          ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-          : 'text-slate-500',
-      )}
-    >
+    <span className="relative inline-flex shrink-0 items-center justify-center">
       {children}
     </span>
   );
@@ -97,6 +87,9 @@ export function CircleBottomNav({
   activeTab,
   onTabChange,
   badges,
+  messagesUrgency = null,
+  pulseNavForUrgency = false,
+  className,
 }: CircleBottomNavProps) {
   const [moreOpen, setMoreOpen] = useState(false);
   const barItems = [...primaryItems];
@@ -111,35 +104,53 @@ export function CircleBottomNav({
     onTabChange(tab);
   };
 
+  const navUrgencyClass =
+    pulseNavForUrgency && messagesUrgency === 'alert'
+      ? 'circle-urgency-nav-alert border-red-200'
+      : pulseNavForUrgency && messagesUrgency === 'attention'
+        ? 'circle-urgency-nav-attention border-blue-200'
+        : '';
+
   return (
     <>
       <nav
-        className="shrink-0 rounded-xl border border-slate-200 bg-white/95 backdrop-blur-md shadow-sm pb-[max(0.125rem,env(safe-area-inset-bottom))]"
+        className={cn(
+          'shrink-0 rounded-xl border border-slate-200 bg-white/95 backdrop-blur-md shadow-sm pb-[max(0.125rem,env(safe-area-inset-bottom))]',
+          navUrgencyClass,
+          className,
+        )}
         aria-label="Bottom navigation"
       >
         <div className="flex items-center justify-around px-0.5 py-0.5">
           {barItems.map((item) => {
             const Icon = item.icon;
             const active = item.id === activeTab;
+            const showMessagesUrgency = item.id === 'messages' && messagesUrgency && pulseNavForUrgency;
             return (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => selectTab(item.id)}
                 className={cn(
-                  'flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1 min-h-[40px] transition-colors min-w-0',
-                  active ? 'text-blue-600' : 'text-slate-500 hover:text-slate-600',
+                  'flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-1 py-0.5 min-h-[40px] min-w-0 transition-all duration-200',
+                  showMessagesUrgency
+                    ? messagesUrgency === 'alert'
+                      ? 'circle-urgency-tab-alert text-white shadow-lg'
+                      : 'circle-urgency-tab-attention text-white shadow-lg'
+                    : active
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-600',
                 )}
               >
-                <NavIconShell active={active} compact={compact}>
-                  <Icon size={compact ? 15 : 16} strokeWidth={active ? 2.25 : 1.75} />
+                <NavIconSlot>
+                  <Icon size={compact ? 18 : 19} strokeWidth={active ? 2.25 : 1.75} />
                   <NavBadge count={badgeCountForTab(item.id, badges)} />
-                </NavIconShell>
+                </NavIconSlot>
                 <span
                   className={cn(
-                    'font-bold uppercase tracking-wide leading-none truncate w-full text-center mt-0.5',
+                    'font-bold uppercase tracking-wide leading-none truncate w-full text-center',
                     compact ? 'text-[7px]' : 'text-[8px]',
-                    active ? 'text-blue-600' : 'text-slate-400',
+                    showMessagesUrgency || active ? 'text-white' : 'text-slate-400',
                   )}
                 >
                   {item.label}
@@ -155,19 +166,21 @@ export function CircleBottomNav({
               aria-expanded={moreOpen}
               aria-haspopup="dialog"
               className={cn(
-                'flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1 min-h-[40px] transition-colors min-w-0',
-                moreActive ? 'text-blue-600' : 'text-slate-500 hover:text-slate-600',
+                'flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-1 py-0.5 min-h-[40px] min-w-0 transition-all duration-200',
+                moreActive
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-600',
               )}
             >
-              <NavIconShell active={moreActive} compact={compact}>
-                <MoreHorizontal size={compact ? 15 : 16} strokeWidth={moreActive ? 2.25 : 1.75} />
-                <NavBadge count={moreActive || moreOpen ? 0 : (badges?.more ?? 0)} />
-              </NavIconShell>
+              <NavIconSlot>
+                <MoreHorizontal size={compact ? 18 : 19} strokeWidth={moreActive ? 2.25 : 1.75} />
+                <NavBadge count={moreOpen ? 0 : (badges?.more ?? 0)} />
+              </NavIconSlot>
               <span
                 className={cn(
-                  'font-bold uppercase tracking-wide leading-none truncate w-full text-center mt-0.5',
+                  'font-bold uppercase tracking-wide leading-none truncate w-full text-center',
                   compact ? 'text-[7px]' : 'text-[8px]',
-                  moreActive ? 'text-blue-600' : 'text-slate-400',
+                  moreActive ? 'text-white' : 'text-slate-400',
                 )}
               >
                 More

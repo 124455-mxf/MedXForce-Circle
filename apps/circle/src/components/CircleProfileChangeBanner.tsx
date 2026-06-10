@@ -5,9 +5,17 @@ import { Bell, Sparkles, X } from 'lucide-react';
 import {
   listUnreadProfileNotifications,
   markProfileNotificationRead,
+  publishCircleAccessIndexFromPatientDoc,
+  circleProfileNotificationChanges,
+  circleProfileNotificationResolvedFields,
+  circleProfileNotificationTitle,
+  isGenericProfileSummary,
+  parseCircleProfileMeta,
+  type CirclePatientProfileMeta,
   type CirclePatientSummary,
   type CircleProfileNotificationRow,
 } from '@medxforce/shared';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface CircleProfileChangeBannerProps {
   user: User;
@@ -15,10 +23,20 @@ interface CircleProfileChangeBannerProps {
   patient: CirclePatientSummary;
 }
 
+function formatNotificationTime(ts: number): string {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const today = new Date();
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === today.toDateString()) return `Today, ${time}`;
+  return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}`;
+}
+
 export function CircleProfileChangeBanner({ user, db, patient }: CircleProfileChangeBannerProps) {
   const [notifications, setNotifications] = useState<CircleProfileNotificationRow[]>([]);
+  const [profileMeta, setProfileMeta] = useState<CirclePatientProfileMeta | null>(null);
 
-  const isProxy = !!patient.capabilities.inviteMembers;
+  const isProxy = patient.role === 'proxy' && !!patient.capabilities.inviteMembers;
 
   useEffect(() => {
     if (!isProxy) {
@@ -29,8 +47,18 @@ export function CircleProfileChangeBanner({ user, db, patient }: CircleProfileCh
     let active = true;
     const load = async () => {
       try {
+        const patientSnap = await getDoc(doc(db, 'patients', patient.patientId));
+        let meta: CirclePatientProfileMeta | null = null;
+        if (patientSnap.exists()) {
+          const patientData = patientSnap.data();
+          await publishCircleAccessIndexFromPatientDoc(db, patient.patientId, patientData);
+          meta = parseCircleProfileMeta(patientData.profileMeta);
+        }
         const rows = await listUnreadProfileNotifications(db, patient.patientId, user.uid, 3);
-        if (active) setNotifications(rows);
+        if (active) {
+          setProfileMeta(meta);
+          setNotifications(rows);
+        }
       } catch (err) {
         console.warn('[CircleProfileChangeBanner]', err);
       }
@@ -57,7 +85,19 @@ export function CircleProfileChangeBanner({ user, db, patient }: CircleProfileCh
 
   return (
     <div className="space-y-2">
-      {notifications.map((row) => (
+      {notifications.map((row) => {
+        const rowMeta =
+          profileMeta &&
+          profileMeta.updatedAt > 0 &&
+          Math.abs(row.timestamp - profileMeta.updatedAt) <= 60_000
+            ? profileMeta
+            : null;
+        const fieldList = circleProfileNotificationResolvedFields(
+          row.changedLabels,
+          row.summary,
+          rowMeta,
+        );
+        return (
         <div
           key={row.id}
           className="flex items-start gap-3 p-4 rounded-2xl border border-amber-100 bg-amber-50/80"
@@ -66,12 +106,31 @@ export function CircleProfileChangeBanner({ user, db, patient }: CircleProfileCh
             {row.type === 'ai_discovery' ? <Sparkles size={18} /> : <Bell size={18} />}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold text-amber-800 uppercase tracking-wide">
-              {row.type === 'ai_discovery' ? 'MedIsOn profile update' : 'Patient profile update'}
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-xs font-bold text-amber-800 uppercase tracking-wide">
+                {circleProfileNotificationTitle(row.type, row.summary)}
+              </p>
+              {row.timestamp > 0 && (
+                <span className="text-[10px] text-slate-400 shrink-0 tabular-nums whitespace-nowrap">
+                  {formatNotificationTime(row.timestamp)}
+                </span>
+              )}
+            </div>
+            <p className="text-sm font-medium text-slate-800 mt-1 leading-snug">
+              {circleProfileNotificationChanges(row.changedLabels, row.type, row.summary, rowMeta)}
             </p>
-            <p className="text-sm text-slate-700 mt-1 leading-relaxed">{row.summary}</p>
-            {row.changedLabels.length > 0 && (
-              <p className="text-xs text-slate-500 mt-1">{row.changedLabels.join(' · ')}</p>
+            {fieldList.length > 0 && (
+              <ul className="mt-2 space-y-1">
+                {fieldList.map((field) => (
+                  <li key={field} className="text-xs text-slate-600 leading-snug flex items-start gap-1.5">
+                    <span className="text-amber-600 shrink-0">•</span>
+                    <span>{field}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {row.summary && fieldList.length === 0 && !isGenericProfileSummary(row.summary) && (
+              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{row.summary}</p>
             )}
           </div>
           <button
@@ -83,7 +142,8 @@ export function CircleProfileChangeBanner({ user, db, patient }: CircleProfileCh
             <X size={16} />
           </button>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

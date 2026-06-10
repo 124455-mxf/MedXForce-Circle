@@ -11,6 +11,7 @@ import {
 } from './CircleContactEditorModal';
 import { CircleInviteConfirmModal } from './CircleInviteConfirmModal';
 import {
+  circleMemberAccessLabel,
   ContactConflictError,
   deletePatientManagedContact,
   listPatientManagedContacts,
@@ -21,13 +22,13 @@ import {
   previewManagedContactDeleteInviteChange,
   previewManagedContactInviteChange,
   readPatientDocUpdatedAt,
+  reconcileAcceptedMemberRolesForUser,
   revokeCircleInviteByEmail,
   upsertPatientManagedContact,
   type CircleContactKind,
   type CircleInviteListItem,
   type CircleInvitePreviewItem,
   type CircleManagedContact,
-  type CircleMemberRole,
   type CirclePatientSummary,
 } from '@medxforce/shared';
 import { circleTabButtonClass, circleTabListClass } from '../lib/circleSectionStyles';
@@ -47,15 +48,6 @@ function isValidInviteEmail(raw: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 }
 
-const ROLE_LABELS: Record<CircleMemberRole, string> = {
-  friend: 'Friend',
-  family: 'Family',
-  caregiver: 'Caregiver',
-  professional_caregiver: 'Professional caregiver',
-  proxy: 'Proxy',
-  facility_staff: 'Facility staff',
-};
-
 const KIND_LABEL: Record<CircleContactKind, string> = {
   caregiver: 'Caregiver',
   family: 'Family',
@@ -69,10 +61,6 @@ const KIND_BADGE: Record<CircleContactKind, string> = {
   friend: 'bg-cyan-50 text-cyan-700 border-cyan-100',
   contact: 'bg-slate-100 text-slate-600 border-slate-200',
 };
-
-function roleLabel(role: string): string {
-  return ROLE_LABELS[role as CircleMemberRole] ?? role.replace(/_/g, ' ');
-}
 
 function statusLabel(status: CircleInviteListItem['status']) {
   if (status === 'accepted') return 'Active';
@@ -146,17 +134,94 @@ function isCurrentUserInvite(item: CircleInviteListItem, user: User): boolean {
   return false;
 }
 
+function inviteForContactEmail(
+  contact: CircleManagedContact,
+  members: CircleInviteListItem[],
+): CircleInviteListItem | undefined {
+  const email = normalizeInviteEmail(contact.email);
+  if (!email) return undefined;
+  return members.find(
+    (item) =>
+      item.status !== 'revoked' && normalizeInviteEmail(item.invitedEmail) === email,
+  );
+}
+
+function resolvedContactAccess(
+  contact: CircleManagedContact,
+  members: CircleInviteListItem[],
+): { label: string; badgeClass: string } {
+  const invite = inviteForContactEmail(contact, members);
+  const role =
+    contact.circleRole === 'proxy'
+      ? 'proxy'
+      : invite?.role === 'proxy'
+        ? 'proxy'
+        : contact.circleRole ?? invite?.role;
+  const proxyTier =
+    role === 'proxy'
+      ? contact.proxyTier ??
+        (invite?.proxyTier as CircleManagedContact['proxyTier'] | undefined)
+      : contact.proxyTier ?? invite?.proxyTier;
+
+  if (role && contact.kind !== 'contact') {
+    const label = circleMemberAccessLabel(role, proxyTier);
+    const badgeClass =
+      role === 'proxy'
+        ? proxyTier === 'backup'
+          ? 'bg-indigo-50 text-indigo-700 border-indigo-100'
+          : 'bg-violet-50 text-violet-700 border-violet-100'
+        : KIND_BADGE[contact.kind];
+    return { label, badgeClass };
+  }
+
+  return { label: KIND_LABEL[contact.kind], badgeClass: KIND_BADGE[contact.kind] };
+}
+
+function resolvedInviteAccessLabel(
+  item: CircleInviteListItem,
+  contacts: CircleManagedContact[],
+): string {
+  const email = normalizeInviteEmail(item.invitedEmail);
+  const linked = contacts.find((contact) => normalizeInviteEmail(contact.email) === email);
+  if (linked?.circleRole) {
+    return circleMemberAccessLabel(linked.circleRole, linked.proxyTier);
+  }
+  return circleMemberAccessLabel(item.role, item.proxyTier);
+}
+
+function formatContactSaveError(err: unknown): string {
+  if (err instanceof ContactConflictError) return err.message;
+  const code =
+    err && typeof err === 'object' && 'code' in err
+      ? String((err as { code: string }).code)
+      : '';
+  const message = err instanceof Error ? err.message : String(err);
+  if (
+    code === 'permission-denied' ||
+    /permission-denied|insufficient permissions/i.test(message)
+  ) {
+    return 'You do not have permission to save contacts. Refresh and try again.';
+  }
+  if (code === 'internal') {
+    return 'Save failed on the server. Wait a moment, refresh, and try again.';
+  }
+  return err instanceof Error ? err.message : 'Could not save.';
+}
+
 function PersonRow({
   contact,
+  members,
   onView,
   onEdit,
   onDelete,
 }: {
   contact: CircleManagedContact;
+  members: CircleInviteListItem[];
   onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const access = resolvedContactAccess(contact, members);
   return (
     <div
       role="button"
@@ -176,10 +241,10 @@ function PersonRow({
           <span
             className={cn(
               'shrink-0 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border',
-              KIND_BADGE[contact.kind],
+              access.badgeClass,
             )}
           >
-            {KIND_LABEL[contact.kind]}
+            {access.label}
           </span>
         </div>
         <p className="text-sm text-slate-500 truncate mt-0.5">
@@ -240,6 +305,9 @@ export function CircleSettingsUserManagementPanel({
   const [editorBaselineUpdatedAt, setEditorBaselineUpdatedAt] = useState(0);
   const [initialDraftFingerprint, setInitialDraftFingerprint] = useState('');
   const [remoteStale, setRemoteStale] = useState(false);
+  const [editorAccess, setEditorAccess] = useState<{ label: string; badgeClass: string } | null>(
+    null,
+  );
   const draftRef = useRef(draft);
   draftRef.current = draft;
 
@@ -265,6 +333,13 @@ export function CircleSettingsUserManagementPanel({
       setLoading(false);
     }
   }, [db, patient?.patientId]);
+
+  useEffect(() => {
+    if (!patient?.patientId || !patient.capabilities.inviteMembers) return;
+    void reconcileAcceptedMemberRolesForUser(db, user.uid).catch((err) => {
+      console.warn('[CircleSettingsUserManagementPanel] proxy access heal', err);
+    });
+  }, [db, patient?.capabilities.inviteMembers, patient?.patientId, user.uid]);
 
   useEffect(() => {
     void loadMembers();
@@ -406,9 +481,14 @@ export function CircleSettingsUserManagementPanel({
     }
   };
 
-  const openEditorWithDraft = (nextDraft: ContactEditorDraft, mode: ContactEditorMode) => {
+  const openEditorWithDraft = (
+    nextDraft: ContactEditorDraft,
+    mode: ContactEditorMode,
+    contact?: CircleManagedContact,
+  ) => {
     setDraft(nextDraft);
     setEditorMode(mode);
+    setEditorAccess(contact ? resolvedContactAccess(contact, members) : null);
     if (mode !== 'view') {
       setInitialDraftFingerprint(draftFingerprint(nextDraft));
       setEditorBaselineUpdatedAt(patientDocUpdatedAt);
@@ -426,11 +506,11 @@ export function CircleSettingsUserManagementPanel({
   };
 
   const openView = (contact: CircleManagedContact) => {
-    openEditorWithDraft(contactToDraft(contact), 'view');
+    openEditorWithDraft(contactToDraft(contact), 'view', contact);
   };
 
   const openEdit = (contact: CircleManagedContact) => {
-    openEditorWithDraft(contactToDraft(contact), 'edit');
+    openEditorWithDraft(contactToDraft(contact), 'edit', contact);
   };
 
   const switchViewToEdit = () => {
@@ -457,6 +537,7 @@ export function CircleSettingsUserManagementPanel({
     if (!remoteContact) return;
     const refreshed = contactToDraft(remoteContact);
     setDraft(refreshed);
+    setEditorAccess(resolvedContactAccess(remoteContact, members));
     setInitialDraftFingerprint(draftFingerprint(refreshed));
     setEditorBaselineUpdatedAt(patientDocUpdatedAt);
     setRemoteStale(false);
@@ -481,6 +562,18 @@ export function CircleSettingsUserManagementPanel({
     const normalizedMobile = currentDraft.mobile.trim();
     const nextMessage = currentDraft.message && !!normalizedEmail;
     const nextSms = currentDraft.sms && !!normalizedMobile;
+    const existing = currentDraft.id
+      ? contacts.find((contact) => contact.id === currentDraft.id)
+      : undefined;
+    const invite = existing ? inviteForContactEmail(existing, members) : undefined;
+    const circleRole =
+      existing?.circleRole === 'proxy' || invite?.role === 'proxy'
+        ? 'proxy'
+        : existing?.circleRole;
+    const proxyTier =
+      circleRole === 'proxy'
+        ? existing?.proxyTier ?? (invite?.proxyTier as CircleManagedContact['proxyTier'] | undefined)
+        : existing?.proxyTier;
 
     await upsertPatientManagedContact(
       db,
@@ -497,6 +590,8 @@ export function CircleSettingsUserManagementPanel({
         sms: nextSms,
         alert: currentDraft.alert && !!normalizedEmail,
         attention: currentDraft.attention && !!normalizedEmail,
+        ...(circleRole ? { circleRole } : {}),
+        ...(proxyTier ? { proxyTier } : {}),
       },
       { expectedPatientUpdatedAt: editorBaselineUpdatedAt },
     );
@@ -532,9 +627,9 @@ export function CircleSettingsUserManagementPanel({
         db,
         patient.patientId,
         {
-          id: draft.id,
+          id: draft.id ?? '',
           name: draft.name,
-          email: draft.email,
+          email: draft.email ?? '',
           kind: draft.kind,
         },
         { previousEmail: previous?.email },
@@ -549,10 +644,8 @@ export function CircleSettingsUserManagementPanel({
       console.warn('[CircleSettingsUserManagementPanel] save', err);
       if (err instanceof ContactConflictError) {
         setRemoteStale(true);
-        setEditorError(err.message);
-      } else {
-        setEditorError(err instanceof Error ? err.message : 'Could not save.');
       }
+      setEditorError(formatContactSaveError(err));
     } finally {
       setSaving(false);
     }
@@ -639,7 +732,7 @@ export function CircleSettingsUserManagementPanel({
     return (
       <div className="p-5">
         <p className="text-sm text-slate-500 leading-relaxed">
-          Select someone you are caring for on the home screen first.
+          Open Settings → Switch patient to choose who you are supporting first.
         </p>
       </div>
     );
@@ -744,6 +837,7 @@ export function CircleSettingsUserManagementPanel({
                   <PersonRow
                     key={contact.id}
                     contact={contact}
+                    members={members}
                     onView={() => openView(contact)}
                     onEdit={() => openEdit(contact)}
                     onDelete={() => setConfirmDelete(contact)}
@@ -789,7 +883,9 @@ export function CircleSettingsUserManagementPanel({
                               )}
                             </div>
                             <p className="text-sm text-slate-500 truncate">{item.invitedEmail}</p>
-                            <p className="text-xs text-slate-400 mt-1">{roleLabel(item.role)}</p>
+                            <p className="text-xs text-slate-400 mt-1">
+                              {resolvedInviteAccessLabel(item, contacts)}
+                            </p>
                           </div>
                           <div className="flex items-center justify-between gap-2">
                             <span
@@ -860,6 +956,8 @@ export function CircleSettingsUserManagementPanel({
         saving={saving}
         error={editorError}
         remoteStale={remoteStale}
+        circleAccessLabel={editorAccess?.label}
+        circleAccessBadgeClass={editorAccess?.badgeClass}
         onRefreshFromRemote={refreshDraftFromRemote}
         onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
         onClose={closeEditor}

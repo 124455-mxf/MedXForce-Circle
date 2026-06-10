@@ -50,6 +50,7 @@ export function buildCircleGalleryUpload(params: {
   caption?: string;
   isVideo?: boolean;
   thumbnailUrl?: string;
+  albumId?: string;
 }): GalleryMessageWrite {
   const base: GalleryMessageWrite = {
     patientId: params.patientId,

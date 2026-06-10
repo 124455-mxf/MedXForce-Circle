@@ -30,7 +30,7 @@ const KIND_OPTIONS: { id: CircleContactKind; label: string; hint: string }[] = [
   { id: 'contact', label: 'Contact', hint: 'Messaging only — no Circle sign-in' },
 ];
 
-const CONTACT_LANGUAGE_OPTIONS = [
+export const CONTACT_LANGUAGE_OPTIONS = [
   'English',
   'Albanian',
   'Arabic',
@@ -151,6 +151,9 @@ type CircleContactEditorModalProps = {
   lockEmailAndMobile?: boolean;
   /** Non-proxy self-service: SMS toggle disabled. */
   lockSmsNotify?: boolean;
+  /** Circle sign-in role (e.g. Backup proxy), distinct from person type. */
+  circleAccessLabel?: string;
+  circleAccessBadgeClass?: string;
 };
 
 export function CircleContactEditorModal({
@@ -167,6 +170,8 @@ export function CircleContactEditorModal({
   onSwitchToEdit,
   lockEmailAndMobile = false,
   lockSmsNotify = false,
+  circleAccessLabel,
+  circleAccessBadgeClass,
 }: CircleContactEditorModalProps) {
   if (!open) return null;
 
@@ -279,6 +284,26 @@ export function CircleContactEditorModal({
               </div>
             )}
           </section>
+
+          {circleAccessLabel && (isView || mode === 'edit') && (
+            <section className="space-y-3">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Circle access
+              </h4>
+              <span
+                className={cn(
+                  'inline-flex px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wide border',
+                  circleAccessBadgeClass ?? 'bg-indigo-50 text-indigo-700 border-indigo-100',
+                )}
+              >
+                {circleAccessLabel}
+              </span>
+              <p className="text-[11px] text-slate-400 leading-snug">
+                Sign-in role for the Circle app. Person type above is how they are grouped in the
+                care list.
+              </p>
+            </section>
+          )}
 
           <section className="space-y-4 p-5 bg-slate-50 rounded-2xl border border-slate-100">
             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">

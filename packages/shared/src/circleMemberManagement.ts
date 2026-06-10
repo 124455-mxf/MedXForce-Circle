@@ -1,14 +1,18 @@
 import {
   collection,
   doc,
-  getDoc,
   getDocs,
   query,
   where,
   writeBatch,
   type Firestore,
 } from 'firebase/firestore';
-import { circleInviteDocId, type CircleInviteRecord, type CircleInviteStatus } from './circleInvites';
+import {
+  circleInviteRefForPatientEmail,
+  lookupCircleInviteByPatientEmail,
+  type CircleInviteRecord,
+  type CircleInviteStatus,
+} from './circleInvites';
 import { normalizeInviteEmail } from './patientPermissions';
 
 export interface CircleInviteListItem {
@@ -16,6 +20,7 @@ export interface CircleInviteListItem {
   invitedEmail: string;
   displayName?: string;
   role: string;
+  proxyTier?: 'primary' | 'backup';
   status: CircleInviteStatus;
   updatedAt: number;
   acceptedByUid?: string;
@@ -40,6 +45,8 @@ export async function listCircleInvitesForPatient(
         invitedEmail: data.invitedEmail || '',
         displayName: data.displayName,
         role: data.role || 'member',
+        proxyTier:
+          data.proxyTier === 'backup' || data.proxyTier === 'primary' ? data.proxyTier : undefined,
         status,
         updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : 0,
         acceptedByUid: typeof data.acceptedByUid === 'string' ? data.acceptedByUid : undefined,
@@ -64,11 +71,11 @@ export async function revokeCircleInviteByEmail(
   const email = normalizeInviteEmail(invitedEmail);
   if (!email) return false;
 
-  const inviteRef = doc(db, 'circle_invites', circleInviteDocId(patientId, email));
-  const existing = await getDoc(inviteRef);
-  if (!existing.exists()) return false;
+  const existing = await lookupCircleInviteByPatientEmail(db, patientId, email);
+  if (!existing.exists) return false;
 
-  const data = existing.data();
+  const inviteRef = circleInviteRefForPatientEmail(db, patientId, email, existing.id);
+  const data = existing.data;
   const status = data?.status as CircleInviteStatus | undefined;
   if (status === 'revoked') return false;
 

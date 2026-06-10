@@ -1,10 +1,5 @@
-import {
-  doc,
-  getDoc,
-  writeBatch,
-  type Firestore,
-} from 'firebase/firestore';
-import { circleInviteDocId } from './circleInvites';
+import { doc, writeBatch, type Firestore } from 'firebase/firestore';
+import { circleInviteRefForPatientEmail, lookupCircleInviteByPatientEmail } from './circleInvites';
 import { normalizeInviteEmail } from './patientPermissions';
 
 /** Circle member voluntarily ends access for one patient (same outcome as patient revoke). */
@@ -15,11 +10,11 @@ export async function leaveCircleForPatient(
   const email = normalizeInviteEmail(params.email);
   if (!email) return false;
 
-  const inviteRef = doc(db, 'circle_invites', circleInviteDocId(params.patientId, email));
-  const inviteSnap = await getDoc(inviteRef);
-  if (!inviteSnap.exists()) return false;
+  const invite = await lookupCircleInviteByPatientEmail(db, params.patientId, email);
+  if (!invite.exists) return false;
 
-  const data = inviteSnap.data();
+  const inviteRef = circleInviteRefForPatientEmail(db, params.patientId, email, invite.id);
+  const data = invite.data;
   if (data.status !== 'accepted' || data.acceptedByUid !== params.uid) {
     return false;
   }

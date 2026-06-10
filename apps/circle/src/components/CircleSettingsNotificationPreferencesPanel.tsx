@@ -93,7 +93,7 @@ export function CircleSettingsNotificationPreferencesPanel({
   if (!patient) {
     return (
       <div className="p-5">
-        <p className="text-sm text-slate-500">Select someone you are caring for on the home screen first.</p>
+        <p className="text-sm text-slate-500">Open Settings → Switch patient to choose who you are supporting first.</p>
       </div>
     );
   }

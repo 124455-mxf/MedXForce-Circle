@@ -1,9 +1,12 @@
 import type { LucideIcon } from 'lucide-react';
+import { CircleWorkTabDashboardBackButton } from './CircleWorkTabSectionIntro';
+import { cn } from '../lib/utils';
 
 type PlaceholderItem = {
   title: string;
   description: string;
   icon: LucideIcon;
+  iconClassName?: string;
   badge?: string;
 };
 
@@ -12,63 +15,84 @@ type CircleTabPlaceholderProps = {
   iconClassName?: string;
   title: string;
   subtitle: string;
-  patientName?: string;
+  badge?: string;
   items?: PlaceholderItem[];
 };
 
-export function CircleTabPlaceholder({
+function PlaceholderBadge({ label }: { label: string }) {
+  return (
+    <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-500 text-[9px] font-bold uppercase shrink-0">
+      {label}
+    </span>
+  );
+}
+
+function PlaceholderCard({
   icon: Icon,
-  iconClassName = 'bg-blue-50 text-blue-600',
+  iconClassName = 'text-slate-500',
+  title,
+  description,
+  badge,
+  className,
+}: {
+  icon: LucideIcon;
+  iconClassName?: string;
+  title: string;
+  description: string;
+  badge?: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        'p-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 text-left opacity-90',
+        className,
+      )}
+    >
+      <div className="flex items-center gap-2 flex-wrap">
+        <Icon size={18} className={`shrink-0 ${iconClassName}`} strokeWidth={2} />
+        <p className="font-bold text-slate-700">{title}</p>
+        {badge && <PlaceholderBadge label={badge} />}
+      </div>
+      <p className="text-xs text-slate-500 mt-2 leading-relaxed">{description}</p>
+    </div>
+  );
+}
+
+export function CircleTabPlaceholder({
+  icon,
+  iconClassName = 'text-cyan-600',
   title,
   subtitle,
-  patientName,
+  badge = 'Coming soon',
   items,
 }: CircleTabPlaceholderProps) {
   return (
-    <div className="space-y-4">
-      <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-4 text-center">
-        <div
-          className={`w-14 h-14 mx-auto rounded-2xl flex items-center justify-center ${iconClassName}`}
-        >
-          <Icon size={28} />
-        </div>
-        <div>
-          <h3 className="font-bold text-slate-800 text-lg">{title}</h3>
-          {patientName && (
-            <p className="text-sm mt-1">
-              For{' '}
-              <span className="font-bold text-red-600">{patientName}</span>
-            </p>
-          )}
-          <p className="text-sm text-slate-500 mt-2 leading-relaxed max-w-md mx-auto">{subtitle}</p>
-        </div>
-        <span className="inline-block px-3 py-1 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
-          Coming soon
-        </span>
+    <div className="space-y-3">
+      <div className="flex items-start gap-2">
+        <CircleWorkTabDashboardBackButton className="-ml-1" />
+        <PlaceholderCard
+          icon={icon}
+          iconClassName={iconClassName}
+          title={title}
+          description={subtitle}
+          badge={badge}
+          className="flex-1 min-w-0"
+        />
       </div>
 
       {items && items.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {items.map((item) => {
-            const ItemIcon = item.icon;
-            return (
-              <div
-                key={item.title}
-                className="p-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 text-left opacity-90"
-              >
-                <ItemIcon size={20} className="text-slate-400 mb-2" />
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-bold text-slate-700">{item.title}</p>
-                  {item.badge && (
-                    <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-500 text-[9px] font-bold uppercase">
-                      {item.badge}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">{item.description}</p>
-              </div>
-            );
-          })}
+          {items.map((item) => (
+            <PlaceholderCard
+              key={item.title}
+              icon={item.icon}
+              iconClassName={item.iconClassName ?? 'text-slate-500'}
+              title={item.title}
+              description={item.description}
+              badge={item.badge}
+            />
+          ))}
         </div>
       )}
     </div>
