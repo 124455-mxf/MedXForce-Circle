@@ -131,6 +131,55 @@ function strList(v: unknown): string[] {
   return v.map((item) => str(item)).filter(Boolean);
 }
 
+export type CircleProfilePreferencesInput = {
+  fullUserDetails?: Record<string, unknown> | null;
+  nickName?: string;
+  userName?: string;
+  userDob?: string;
+  primaryLanguage?: string;
+  userGender?: string;
+};
+
+/** Merge top-level preference fields into fullUserDetails before building a Circle snapshot. */
+export function preferencesToCircleProfileDetails(
+  preferences: CircleProfilePreferencesInput | null | undefined,
+): Record<string, unknown> | null {
+  const base = preferences?.fullUserDetails;
+  if (!base || typeof base !== 'object') return null;
+
+  const identity = { ...((base.identity as Record<string, unknown>) || {}) };
+  const extended = { ...((base.extended as Record<string, unknown>) || {}) };
+
+  const nickName = str(identity.nickName) || str(preferences?.nickName);
+  if (nickName) identity.nickName = nickName;
+
+  if (!str(identity.dob) && preferences?.userDob) {
+    identity.dob = str(preferences.userDob);
+  }
+
+  if (!str(identity.language) && preferences?.primaryLanguage) {
+    identity.language = str(preferences.primaryLanguage);
+  }
+
+  if (!str(extended.sex) && preferences?.userGender) {
+    extended.sex = str(preferences.userGender);
+  }
+
+  if (!str(identity.firstName) && !str(identity.lastName) && preferences?.userName) {
+    const parts = str(preferences.userName).split(/\s+/).filter(Boolean);
+    if (parts[0]) identity.firstName = parts[0];
+    if (parts.length > 1) identity.lastName = parts.slice(1).join(' ');
+  }
+
+  return { ...base, identity, extended };
+}
+
+export function buildCircleProfileSnapshotFromPreferences(
+  preferences: CircleProfilePreferencesInput | null | undefined,
+): CirclePatientProfileSnapshot {
+  return buildCircleProfileSnapshot(preferencesToCircleProfileDetails(preferences));
+}
+
 /** Build a circle-readable snapshot from patient-app UserDetails-shaped data. */
 export function buildCircleProfileSnapshot(
   details: Record<string, unknown> | null | undefined,
@@ -204,7 +253,11 @@ export function buildCircleProfileSnapshot(
 
 export function parseCircleProfileSnapshot(raw: unknown): CirclePatientProfileSnapshot | null {
   if (!raw || typeof raw !== 'object') return null;
-  return buildCircleProfileSnapshot(raw as Record<string, unknown>);
+  const data = raw as Record<string, unknown>;
+  if (data.identity && typeof data.identity === 'object') {
+    return buildCircleProfileSnapshot(data);
+  }
+  return buildCircleProfileSnapshot(data);
 }
 
 export function parseCircleProfileMeta(raw: unknown): CirclePatientProfileMeta | null {

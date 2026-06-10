@@ -27,8 +27,6 @@ import {
   diaryMoodLabel,
   formatDashboardApplicationModeLine,
   normalizeMemberRole,
-  sendPatientRemoteCommand,
-  writeCircleAwaitingRemoteCommandResponse,
   type CirclePatientSummary,
   type PatientRemoteCommandType,
 } from '@medxforce/shared';
@@ -56,6 +54,7 @@ import {
   diaryEntryPreviewLine,
   useDiaryDashboardPreview,
 } from '../hooks/useDiaryDashboardPreview';
+import { useCirclePatientRemoteCommandAwaiting } from '../hooks/useCirclePatientRemoteCommandAwaiting';
 
 import {
   formatAssistiveDeviceLabel,
@@ -370,9 +369,21 @@ export function CircleDashboardScreen({
 
   const [confirmCommandType, setConfirmCommandType] =
     useState<PatientRemoteCommandType | null>(null);
-  const [sendingRemoteCommand, setSendingRemoteCommand] = useState(false);
-  const [remoteCommandError, setRemoteCommandError] = useState<string | null>(null);
+  const [sentCommandThisOpen, setSentCommandThisOpen] = useState(false);
   const [, setLiveTick] = useState(0);
+
+  const remoteCommandAwaiting = useCirclePatientRemoteCommandAwaiting(
+    db,
+    patient.patientId,
+    user.uid,
+    showRemotePrompts,
+  );
+
+  useEffect(() => {
+    if (!sentCommandThisOpen || remoteCommandAwaiting.awaitingPatientResponse) return;
+    setConfirmCommandType(null);
+    setSentCommandThisOpen(false);
+  }, [remoteCommandAwaiting.awaitingPatientResponse, sentCommandThisOpen]);
 
   useEffect(() => {
     if (!patientPresence.online) return;
@@ -782,23 +793,29 @@ export function CircleDashboardScreen({
 
   const handleConfirmRemoteCommand = async () => {
     if (!confirmCommandType || !canSendPatientRemoteCommands(patient.role)) return;
-    setSendingRemoteCommand(true);
-    setRemoteCommandError(null);
     try {
-      const sent = await sendPatientRemoteCommand(db, {
-        patientId: patient.patientId,
+      await remoteCommandAwaiting.sendRemoteCommand({
         type: confirmCommandType,
-        requestedByUid: user.uid,
         requestedByName: user.displayName || user.email || 'Care team',
         requestedByRole: normalizeMemberRole(patient.role),
       });
-      writeCircleAwaitingRemoteCommandResponse(patient.patientId, sent.commandId);
-      setConfirmCommandType(null);
-    } catch (err) {
-      setRemoteCommandError(err instanceof Error ? err.message : 'Could not send prompt.');
-    } finally {
-      setSendingRemoteCommand(false);
+      setSentCommandThisOpen(true);
+    } catch {
+      /* error surfaced on modal */
     }
+  };
+
+  const handleCloseRemoteCommandModal = () => {
+    if (remoteCommandAwaiting.busy && !remoteCommandAwaiting.awaitingPatientResponse) return;
+    if (remoteCommandAwaiting.awaitingPatientResponse) {
+      void remoteCommandAwaiting.cancelPendingCommand().finally(() => {
+        setConfirmCommandType(null);
+        setSentCommandThisOpen(false);
+      });
+      return;
+    }
+    setConfirmCommandType(null);
+    setSentCommandThisOpen(false);
   };
 
   return (
@@ -816,13 +833,11 @@ export function CircleDashboardScreen({
         type={confirmCommandType}
         patientName={patient.displayName}
         onConfirm={() => void handleConfirmRemoteCommand()}
-        onClose={() => {
-          if (sendingRemoteCommand) return;
-          setConfirmCommandType(null);
-          setRemoteCommandError(null);
-        }}
-        sending={sendingRemoteCommand}
-        error={remoteCommandError}
+        onClose={handleCloseRemoteCommandModal}
+        sending={remoteCommandAwaiting.busy && !remoteCommandAwaiting.awaitingPatientResponse}
+        awaiting={remoteCommandAwaiting.awaitingPatientResponse}
+        secondsRemaining={remoteCommandAwaiting.responseSecondsRemaining}
+        error={remoteCommandAwaiting.error}
       />
 
       <div className="space-y-5">
@@ -845,11 +860,11 @@ export function CircleDashboardScreen({
                 activeSectionLabel={formatPatientActiveSection(patientPresence.activeSection)}
                 showRemotePrompts={showRemotePrompts}
                 onPromptCheckIn={() => {
-                  setRemoteCommandError(null);
+                  setSentCommandThisOpen(false);
                   setConfirmCommandType('open_daily_check_in');
                 }}
                 onPromptDoctorVisit={() => {
-                  setRemoteCommandError(null);
+                  setSentCommandThisOpen(false);
                   setConfirmCommandType('open_doctor_visit');
                 }}
                 onDropIn={showRemotePrompts ? onRequestDropIn : undefined}

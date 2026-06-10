@@ -11,7 +11,11 @@ import { normalizeMemberRole, type CircleMemberRole } from './patientPermissions
 /** Single live doc: patients/{patientId}/patient_commands/live */
 export const PATIENT_REMOTE_COMMAND_DOC_ID = 'live';
 
-export const PATIENT_REMOTE_COMMAND_TTL_MS = 5 * 60 * 1000;
+/** How long the patient prompt stays visible and Circle waits for a response. */
+export const PATIENT_REMOTE_COMMAND_RESPONSE_TIMEOUT_MS = 120 * 1000;
+
+/** @deprecated Use PATIENT_REMOTE_COMMAND_RESPONSE_TIMEOUT_MS */
+export const PATIENT_REMOTE_COMMAND_TTL_MS = PATIENT_REMOTE_COMMAND_RESPONSE_TIMEOUT_MS;
 
 export type PatientRemoteCommandType = 'open_daily_check_in' | 'open_doctor_visit';
 
@@ -92,7 +96,48 @@ export function isPatientRemoteCommandPending(
 ): boolean {
   if (!command) return false;
   if (command.status !== 'pending') return false;
-  return command.expiresAt > now;
+  return patientRemoteCommandResponseDeadline(command) > now;
+}
+
+export function patientRemoteCommandResponseDeadline(
+  command: PatientRemoteCommandDoc,
+): number {
+  return Math.min(
+    command.requestedAt + PATIENT_REMOTE_COMMAND_RESPONSE_TIMEOUT_MS,
+    command.expiresAt,
+  );
+}
+
+export function patientRemoteCommandCircleAwaitingTitle(): string {
+  return 'Waiting for patient…';
+}
+
+export function patientRemoteCommandCircleAwaitingBody(
+  type: PatientRemoteCommandType,
+): string {
+  switch (type) {
+    case 'open_daily_check_in':
+      return 'The patient will see a prompt to open daily check-in. This request closes automatically if there is no response.';
+    case 'open_doctor_visit':
+      return 'The patient will see a prompt to start doctor visit capture. This request closes automatically if there is no response.';
+    default:
+      return 'The patient will see a prompt on their tablet. This request closes automatically if there is no response.';
+  }
+}
+
+export function patientRemoteCommandCircleAwaitingCountdownLabel(
+  secondsRemaining: number,
+): string {
+  const seconds = Math.max(0, secondsRemaining);
+  if (seconds === 1) return 'Closing in 1 second if there is no response';
+  return `Closing in ${seconds} seconds if there is no response`;
+}
+
+export async function expirePatientRemoteCommand(
+  db: Firestore,
+  command: PatientRemoteCommandDoc,
+): Promise<void> {
+  await respondToPatientRemoteCommand(db, command, 'expired');
 }
 
 export function patientRemoteCommandLabel(type: PatientRemoteCommandType): string {
@@ -250,7 +295,7 @@ export async function sendPatientRemoteCommand(
     type: params.type,
     status: 'pending',
     requestedAt: now,
-    expiresAt: now + PATIENT_REMOTE_COMMAND_TTL_MS,
+    expiresAt: now + PATIENT_REMOTE_COMMAND_RESPONSE_TIMEOUT_MS,
     requestedByUid: params.requestedByUid,
     requestedByName: params.requestedByName.trim() || 'Care team',
     requestedByRole: params.requestedByRole,

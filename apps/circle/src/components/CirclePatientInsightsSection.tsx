@@ -95,26 +95,28 @@ function CelebrationCard({
           Preview
         </span>
       ) : null}
-      <div className="flex items-start gap-2.5">
-        <div
-          className={cn(
-            'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
-            tone === 'birthday' ? 'bg-violet-100 text-violet-700' : 'bg-emerald-100 text-emerald-700',
-          )}
-        >
-          <Icon size={18} />
+      <div className="flex h-full flex-col gap-2.5">
+        <div className="flex items-start justify-between gap-2">
+          <div
+            className={cn(
+              'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
+              tone === 'birthday' ? 'bg-violet-100 text-violet-700' : 'bg-emerald-100 text-emerald-700',
+            )}
+          >
+            <Icon size={18} />
+          </div>
+          {onOpenProfile && !isPreview ? (
+            <ChevronRight size={18} className="text-slate-400 shrink-0" />
+          ) : null}
         </div>
-        <div className="min-w-0 flex-1">
+        <div className={cn('min-w-0 flex-1 flex flex-col gap-1.5', isPreview && 'pr-14')}>
           <p className="font-bold text-slate-800 text-xs sm:text-sm leading-snug line-clamp-2">
             {headline}
           </p>
-          <p className="text-[11px] sm:text-xs text-slate-600 mt-1 leading-snug line-clamp-2">
+          <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed line-clamp-3">
             {body}
           </p>
         </div>
-        {onOpenProfile && !isPreview ? (
-          <ChevronRight size={18} className="text-slate-400 shrink-0 mt-1" />
-        ) : null}
       </div>
     </Wrapper>
   );
@@ -186,7 +188,7 @@ export function CirclePatientInsightsSection({
   onOpenProfile,
 }: CirclePatientInsightsSectionProps) {
   const previewReminders = useMemo(() => isPatientInsightsPreviewRemindersEnabled(), []);
-  const [expanded, setExpanded] = useState(previewReminders);
+  const [expanded, setExpanded] = useState(false);
 
   if (loading) {
     return (
