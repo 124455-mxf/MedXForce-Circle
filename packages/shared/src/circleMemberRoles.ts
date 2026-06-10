@@ -217,6 +217,37 @@ export function buildCircleAccessByEmailIndex(preferences: {
   return map;
 }
 
+export type ManagedProxyContact = {
+  name: string;
+  email: string;
+  tier: ProxyTier;
+};
+
+export function listManagedProxyContacts(
+  contacts: Array<{
+    name: string;
+    email: string;
+    kind: 'caregiver' | 'family' | 'friend' | 'contact';
+    circleRole?: CircleMemberRole;
+    proxyTier?: ProxyTier;
+  }>,
+): ManagedProxyContact[] {
+  return contacts
+    .filter((contact) => circleMemberRoleFromManagedContact(contact) === 'proxy')
+    .map((contact) => ({
+      name: contact.name.trim() || contact.email.trim(),
+      email: contact.email.trim(),
+      tier: contact.proxyTier === 'backup' ? 'backup' : 'primary',
+    }))
+    .filter((contact) => contact.email || contact.name)
+    .sort((left, right) => {
+      if (left.tier === right.tier) {
+        return left.name.localeCompare(right.name);
+      }
+      return left.tier === 'primary' ? -1 : 1;
+    });
+}
+
 export function circleMemberAccessLabel(
   role: string,
   proxyTier?: ProxyTier | null,

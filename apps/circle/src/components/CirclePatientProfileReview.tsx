@@ -77,6 +77,7 @@ export function CirclePatientProfileReview({
         { label: 'Active hobbies', value: listValue(snapshot.engagement.activeHobbies), aiDiscovered: isAiField(snapshot, 'hobby_active') },
         { label: 'Passive hobbies', value: listValue(snapshot.engagement.passiveHobbies), aiDiscovered: isAiField(snapshot, 'hobby_passive') },
         { label: 'Social anchors', value: listValue(snapshot.engagement.socialAnchors), aiDiscovered: isAiField(snapshot, 'social_anchors') },
+        { label: 'Topic triggers', value: listValue(snapshot.engagement.topicTriggers), aiDiscovered: isAiField(snapshot, 'topic_triggers') },
         { label: 'Personal goals', value: listValue(snapshot.engagement.personalGoals) },
         { label: 'Daily rituals', value: listValue(snapshot.engagement.dailyRituals) },
         { label: 'Fitness level', value: textValue(snapshot.engagement.fitnessLevel) },

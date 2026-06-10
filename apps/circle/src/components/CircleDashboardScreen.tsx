@@ -4,6 +4,8 @@ import {
   BookOpen,
   Calendar,
   ClipboardList,
+  Heart,
+  Image as ImageIcon,
   MessageCircle,
   MessageSquare,
   Radio,
@@ -22,6 +24,7 @@ import type { Firestore } from 'firebase/firestore';
 import {
   canViewRemoteSettingsTab,
   canSendPatientRemoteCommands,
+  diaryMoodLabel,
   formatDashboardApplicationModeLine,
   normalizeMemberRole,
   sendPatientRemoteCommand,
@@ -33,6 +36,8 @@ import {
 import type { CircleMainTab } from './CircleBottomNav';
 
 import { CircleProfileChangeBanner } from './CircleProfileChangeBanner';
+import { CirclePatientInsightsSection } from './CirclePatientInsightsSection';
+import { CircleGalleryRotatingPreviewWidget } from './CircleGalleryRotatingPreviewWidget';
 
 import { CirclePatientCommandConfirmModal } from './CirclePatientCommandConfirmModal';
 
@@ -45,6 +50,12 @@ import { useCircleAnalyticsSummaries } from '../hooks/useCircleAnalyticsSummarie
 import { useCircleRemoteSettings } from '../hooks/useCircleRemoteSettings';
 
 import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfileSnapshot';
+
+import { useFamilyGalleryDashboard } from '../hooks/useFamilyGalleryDashboard';
+import {
+  diaryEntryPreviewLine,
+  useDiaryDashboardPreview,
+} from '../hooks/useDiaryDashboardPreview';
 
 import {
   formatAssistiveDeviceLabel,
@@ -64,6 +75,7 @@ import {
   DASHBOARD_STATS_DAYS,
   getAlertAttentionRecencyUrgency,
   getDailyCheckInRecencyUrgency,
+  getDiaryRecencyUrgency,
   sumAlertAttentionLast7,
   getLatestAssessment,
   sumAssessmentsLast7,
@@ -343,8 +355,11 @@ export function CircleDashboardScreen({
   dropInChatOpen,
 }: CircleDashboardScreenProps) {
   const caps = patient.capabilities;
+  const memberRole = normalizeMemberRole(patient.role);
   const showEngagementStats = caps.viewEngagementTrends !== false;
   const showRemoteSettings = canViewRemoteSettingsTab(caps);
+  const showLiveTile = memberRole !== 'friend';
+  const canOpenFullProfile = memberRole === 'proxy';
 
   const patientPresence = usePatientOnlinePresence(db, patient.patientId);
   const showRemotePrompts =
@@ -377,6 +392,16 @@ export function CircleDashboardScreen({
     db,
     patient.patientId,
   );
+
+  const galleryDashboard = useFamilyGalleryDashboard(
+    db,
+    patient.patientId,
+    user.uid,
+    caps,
+    DASHBOARD_STATS_DAYS,
+  );
+
+  const diaryPreview = useDiaryDashboardPreview(db, patient.patientId, user, DASHBOARD_STATS_DAYS);
 
   const dailyCheckIn = byMetricId.get('daily-check-in');
   const dailyDetail =
@@ -553,19 +578,41 @@ export function CircleDashboardScreen({
       key: 'diary',
       title: 'Diary',
       icon: BookOpen,
-      ...(analyticsLoading
+      ...(diaryPreview.loading || analyticsLoading
         ? loadingRows()
-        : diaryDetail
+        : diaryPreview.sharedCount === 0
           ? {
-              row1: `${diaryDetail.entryCount} entr${diaryDetail.entryCount === 1 ? 'y' : 'ies'}`,
-              row2: `${diaryDetail.milestoneCount} milestone${
-                diaryDetail.milestoneCount === 1 ? '' : 's'
-              }`,
-            }
-          : {
               row1: 'No shared entries yet',
-              row2: '',
-            }),
+              row2: 'Add a recovery note for the circle',
+            }
+          : (() => {
+              const latest = diaryPreview.latest;
+              const latestAt = latest?.experienceAt ?? diaryDetail?.latestAt ?? null;
+              const mood = latest?.mood ? diaryMoodLabel(latest.mood) : undefined;
+              const authorLine = latest
+                ? latest.authorUid === user.uid
+                  ? 'Your latest entry'
+                  : `From ${latest.authorName}`
+                : undefined;
+
+              return {
+                row1:
+                  diaryPreview.entriesLast7 > 0
+                    ? `${diaryPreview.entriesLast7} entr${
+                        diaryPreview.entriesLast7 === 1 ? 'y' : 'ies'
+                      } this week`
+                    : `${diaryPreview.sharedCount} entr${
+                        diaryPreview.sharedCount === 1 ? 'y' : 'ies'
+                      }`,
+                row2: latest ? diaryEntryPreviewLine(latest) : 'Tap to read the journal',
+                row3: latest?.isMilestone
+                  ? `Milestone · ${formatLastLine(latestAt)}`
+                  : mood
+                    ? `${mood} · ${authorLine ?? formatLastLine(latestAt)}`
+                    : authorLine ?? formatLastLine(latestAt),
+                recencyTint: getDiaryRecencyUrgency(latestAt),
+              };
+            })()),
       onClick: () => onGoToTab('diary'),
     });
   }
@@ -583,6 +630,122 @@ export function CircleDashboardScreen({
           : 'All caught up',
     onClick: () => onGoToTab('circle'),
   });
+
+  const canSeeGallery =
+    caps.viewCircleMedia !== false || caps.richMediaUpload !== false;
+  if (canSeeGallery) {
+    const patientFirstName =
+      profileSnapshot?.identity.firstName?.trim() ||
+      patient.displayName.trim().split(/\s+/)[0] ||
+      'Patient';
+
+    youWidgets.push({
+      key: 'gallery-engagement',
+      title: 'Your photos',
+      icon: ImageIcon,
+      ...(galleryDashboard.loading
+        ? loadingRows()
+        : galleryDashboard.myUploadCount === 0
+          ? {
+              row1: 'Share a moment',
+              row2: 'Upload a photo for the family',
+            }
+          : galleryDashboard.reactionsOnMyUploadsLast7 > 0
+            ? {
+                row1: `${galleryDashboard.reactionsOnMyUploadsLast7} reaction${
+                  galleryDashboard.reactionsOnMyUploadsLast7 === 1 ? '' : 's'
+                } this week`,
+                row2:
+                  galleryDashboard.patientReactionsOnMyUploads > 0
+                    ? `${patientFirstName}: ${galleryDashboard.patientReactionsOnMyUploads} reaction${
+                        galleryDashboard.patientReactionsOnMyUploads === 1 ? '' : 's'
+                      }`
+                    : `${galleryDashboard.myUploadCount} photo${
+                        galleryDashboard.myUploadCount === 1 ? '' : 's'
+                      } shared`,
+                row3:
+                  galleryDashboard.reactionsOnMyUploads >
+                  galleryDashboard.reactionsOnMyUploadsLast7
+                    ? `${galleryDashboard.reactionsOnMyUploads} total reactions`
+                    : undefined,
+                recencyTint: 'green' as const,
+              }
+            : galleryDashboard.reactionsOnMyUploads > 0
+              ? {
+                  row1: `${galleryDashboard.reactionsOnMyUploads} reaction${
+                    galleryDashboard.reactionsOnMyUploads === 1 ? '' : 's'
+                  } on your photos`,
+                  row2: 'None in the last 7 days',
+                  row3: `${galleryDashboard.myUploadCount} photo${
+                    galleryDashboard.myUploadCount === 1 ? '' : 's'
+                  } shared`,
+                }
+              : {
+                  row1: `${galleryDashboard.myUploadCount} photo${
+                    galleryDashboard.myUploadCount === 1 ? '' : 's'
+                  } shared`,
+                  row2: 'No reactions yet — tap to view',
+                }),
+      onClick: () => onGoToTab('media'),
+    });
+  }
+
+  const unseenGalleryCount =
+    soulDetail?.unseenMediaCount ?? soulDetail?.unseenPhotoCount ?? 0;
+
+  const familyGalleryWidget: DashboardWidgetSpec | null = canSeeGallery
+    ? {
+        key: 'family-gallery',
+        title: 'Media gallery',
+        icon: Heart,
+        ...(galleryDashboard.loading
+          ? loadingRows()
+          : galleryDashboard.reactionsLast7 > 0
+            ? {
+                row1: `${galleryDashboard.reactionsLast7} reaction${
+                  galleryDashboard.reactionsLast7 === 1 ? '' : 's'
+                } this week`,
+                row2: `${galleryDashboard.photoCount} photo${
+                  galleryDashboard.photoCount === 1 ? '' : 's'
+                } in the gallery`,
+                row3:
+                  unseenGalleryCount > 0
+                    ? `${unseenGalleryCount} unseen by patient`
+                    : galleryDashboard.totalReactions > galleryDashboard.reactionsLast7
+                      ? `${galleryDashboard.totalReactions} total reactions`
+                      : undefined,
+                recencyTint: 'green' as const,
+              }
+            : galleryDashboard.totalReactions > 0
+              ? {
+                  row1: `${galleryDashboard.totalReactions} reaction${
+                    galleryDashboard.totalReactions === 1 ? '' : 's'
+                  } on family photos`,
+                  row2: `${galleryDashboard.photoCount} photo${
+                    galleryDashboard.photoCount === 1 ? '' : 's'
+                  } shared`,
+                  row3:
+                    unseenGalleryCount > 0
+                      ? `${unseenGalleryCount} unseen by patient`
+                      : undefined,
+                }
+              : galleryDashboard.photoCount > 0
+                ? {
+                    row1: `${galleryDashboard.photoCount} photo${
+                      galleryDashboard.photoCount === 1 ? '' : 's'
+                    } shared`,
+                    row2:
+                      unseenGalleryCount > 0
+                        ? `${unseenGalleryCount} unseen by patient`
+                        : 'Be the first to react',
+                  }
+                : {
+                    row1: 'No photos yet',
+                    row2: 'Upload a memory for the family',
+                  }),
+        onClick: () => onGoToTab('media'),
+      }
+    : null;
 
   if (showRemoteSettings) {
     const checkInLabel =
@@ -669,7 +832,7 @@ export function CircleDashboardScreen({
           </div>
         ) : null}
 
-        {patientPresence.online ? (
+        {patientPresence.online && showLiveTile ? (
           <div className="grid grid-cols-2 gap-3">
             <div
               className={cn(
@@ -696,6 +859,31 @@ export function CircleDashboardScreen({
               />
             </div>
           </div>
+        ) : null}
+
+        <CirclePatientInsightsSection
+          patient={patient}
+          snapshot={profileSnapshot}
+          loading={profileLoading}
+          onOpenProfile={canOpenFullProfile ? () => onGoToTab('admin') : undefined}
+        />
+
+        {familyGalleryWidget ? (
+          <section className="space-y-2">
+            <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>Stay connected</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className={DASHBOARD_WIDGET_CELL_CLASS}>
+                <DashboardWidget spec={familyGalleryWidget} />
+              </div>
+              <div className={DASHBOARD_WIDGET_CELL_CLASS}>
+                <CircleGalleryRotatingPreviewWidget
+                  photos={galleryDashboard.previewPhotos}
+                  loading={galleryDashboard.loading}
+                  onOpenGallery={() => onGoToTab('media')}
+                />
+              </div>
+            </div>
+          </section>
         ) : null}
 
         {lastSevenDayWidgets.length > 0 ? (

@@ -66,6 +66,17 @@ function calendarDaysSince(ts: number): number {
   return Math.floor((startOfToday.getTime() - startOfEventDay.getTime()) / DAY_MS);
 }
 
+/** Tint when a shared diary entry was added recently (engagement signal). */
+export function getDiaryRecencyUrgency(
+  latestAt: number | null | undefined,
+): AlertAttentionRecencyUrgency {
+  if (latestAt == null || !Number.isFinite(latestAt)) return 'neutral';
+  const daysAgo = calendarDaysSince(latestAt);
+  if (daysAgo <= 3) return 'green';
+  if (daysAgo <= 7) return 'orange';
+  return 'neutral';
+}
+
 /** Tint for Alerts & attention card from last confirmed alert/attention date. */
 export function getAlertAttentionRecencyUrgency(
   latestAt: number | null | undefined,

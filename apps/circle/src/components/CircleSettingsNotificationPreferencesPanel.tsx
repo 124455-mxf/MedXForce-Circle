@@ -1,18 +1,23 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
-import type { Firestore } from 'firebase/firestore';
+import { doc, onSnapshot, type Firestore } from 'firebase/firestore';
 import { Bell, Loader2 } from 'lucide-react';
 import {
   findManagedContactByEmail,
   listPatientManagedContacts,
+  mergeContactWithMemberNotifyPreferences,
+  parseMemberNotifyPreferences,
+  readMemberNotifyPreferences,
   parsePatientManagedContacts,
-  readPatientDocUpdatedAt,
   updateOwnCircleNotifyPreferences,
   type CircleManagedContact,
   type CirclePatientSummary,
 } from '@medxforce/shared';
 import { CircleContactNotifyGrid } from './CircleContactNotifyGrid';
+import {
+  CircleNotifyTurnOffConfirmModal,
+  type CircleNotifyTurnOffKey,
+} from './CircleNotifyTurnOffConfirmModal';
 
 type CircleSettingsNotificationPreferencesPanelProps = {
   user: User;
@@ -30,8 +35,7 @@ export function CircleSettingsNotificationPreferencesPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [patientDocUpdatedAt, setPatientDocUpdatedAt] = useState(0);
-
+  const [turnOffConfirm, setTurnOffConfirm] = useState<CircleNotifyTurnOffKey | null>(null);
   const loadOwnContact = useCallback(async () => {
     if (!patient?.patientId || !user.email) {
       setContact(null);
@@ -42,7 +46,13 @@ export function CircleSettingsNotificationPreferencesPanel({
     setError(null);
     try {
       const listed = await listPatientManagedContacts(db, patient.patientId);
-      setContact(findManagedContactByEmail(listed, user.email) ?? null);
+      const base = findManagedContactByEmail(listed, user.email) ?? null;
+      if (!base || !user.uid) {
+        setContact(base);
+        return;
+      }
+      const memberPrefs = await readMemberNotifyPreferences(db, patient.patientId, user.uid);
+      setContact(mergeContactWithMemberNotifyPreferences(base, memberPrefs));
     } catch (err) {
       console.warn('[CircleSettingsNotificationPreferencesPanel]', err);
       setError('Could not load your notification settings.');
@@ -56,18 +66,44 @@ export function CircleSettingsNotificationPreferencesPanel({
   }, [loadOwnContact]);
 
   useEffect(() => {
-    if (!patient?.patientId) return;
-    return onSnapshot(doc(db, 'patients', patient.patientId), (snap) => {
-      if (!snap.exists() || !user.email) return;
-      setPatientDocUpdatedAt(readPatientDocUpdatedAt(snap.data() as Record<string, unknown>));
-      const listed = parsePatientManagedContacts(snap.data() as Record<string, unknown>);
-      setContact(findManagedContactByEmail(listed, user.email) ?? null);
+    if (!patient?.patientId || !user.uid || !user.email) return;
+
+    const patientRef = doc(db, 'patients', patient.patientId);
+    const memberRef = doc(db, 'patients', patient.patientId, 'members', user.uid);
+
+    const apply = (patientData: Record<string, unknown> | undefined, memberData: Record<string, unknown> | undefined) => {
+      if (!patientData) return;
+      const listed = parsePatientManagedContacts(patientData);
+      const base = findManagedContactByEmail(listed, user.email ?? '');
+      if (!base) {
+        setContact(null);
+        return;
+      }
+      const memberPrefs = parseMemberNotifyPreferences(memberData);
+      setContact(mergeContactWithMemberNotifyPreferences(base, memberPrefs));
+    };
+
+    let latestPatient: Record<string, unknown> | undefined;
+    let latestMember: Record<string, unknown> | undefined;
+
+    const unsubPatient = onSnapshot(patientRef, (snap) => {
+      latestPatient = snap.exists() ? (snap.data() as Record<string, unknown>) : undefined;
+      apply(latestPatient, latestMember);
     });
-  }, [db, patient?.patientId, user.email]);
+    const unsubMember = onSnapshot(memberRef, (snap) => {
+      latestMember = snap.exists() ? (snap.data() as Record<string, unknown>) : undefined;
+      apply(latestPatient, latestMember);
+    });
+
+    return () => {
+      unsubPatient();
+      unsubMember();
+    };
+  }, [db, patient?.patientId, user.email, user.uid]);
 
   const hasEmail = !!contact?.email.trim();
 
-  const handleToggle = async (key: 'alert' | 'attention' | 'message') => {
+  const saveToggle = async (key: 'alert' | 'attention' | 'message', nextValue: boolean) => {
     if (!patient?.patientId || !user.email || !contact) return;
     setSaving(true);
     setError(null);
@@ -76,9 +112,9 @@ export function CircleSettingsNotificationPreferencesPanel({
       const next = await updateOwnCircleNotifyPreferences(
         db,
         patient.patientId,
+        user.uid,
         user.email,
-        { [key]: !contact[key] },
-        { expectedPatientUpdatedAt: patientDocUpdatedAt },
+        { [key]: nextValue },
       );
       setContact(next);
       setSaved(true);
@@ -88,6 +124,25 @@ export function CircleSettingsNotificationPreferencesPanel({
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleToggle = (key: 'alert' | 'attention' | 'message') => {
+    if (!contact || saving) return;
+
+    const turningOff = contact[key];
+    if (turningOff && (key === 'alert' || key === 'attention')) {
+      setTurnOffConfirm(key);
+      return;
+    }
+
+    void saveToggle(key, !contact[key]);
+  };
+
+  const handleConfirmTurnOff = async () => {
+    if (!turnOffConfirm) return;
+    const key = turnOffConfirm;
+    setTurnOffConfirm(null);
+    await saveToggle(key, false);
   };
 
   if (!patient) {
@@ -176,6 +231,15 @@ export function CircleSettingsNotificationPreferencesPanel({
           )}
         </>
       )}
+
+      <CircleNotifyTurnOffConfirmModal
+        open={turnOffConfirm !== null}
+        notifyKey={turnOffConfirm ?? 'alert'}
+        patientDisplayName={patient.displayName}
+        onConfirm={() => void handleConfirmTurnOff()}
+        onCancel={() => setTurnOffConfirm(null)}
+        isSubmitting={saving}
+      />
     </div>
   );
 }

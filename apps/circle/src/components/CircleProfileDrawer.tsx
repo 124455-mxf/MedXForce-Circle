@@ -23,6 +23,7 @@ import { CircleSettingsCareRelationshipPanel } from './CircleSettingsCareRelatio
 import { CircleSettingsUserManagementPanel } from './CircleSettingsUserManagementPanel';
 import { CircleSettingsNotificationPreferencesPanel } from './CircleSettingsNotificationPreferencesPanel';
 import { CircleSettingsMyContactPanel } from './CircleSettingsMyContactPanel';
+import { CircleDiscardChangesModal } from './CircleDiscardChangesModal';
 import { CircleProfilePhotoCropModal } from './CircleProfilePhotoCropModal';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
@@ -86,7 +87,11 @@ export function CircleProfileDrawer({
   const canSwitchPatient = patients.length > 1;
 
   useEffect(() => {
-    if (!open) setDrawerView('account');
+    if (!open) {
+      setDrawerView('account');
+      setMyContactDirty(false);
+      setDiscardPrompt(null);
+    }
   }, [open]);
 
   useEffect(() => {
@@ -105,6 +110,8 @@ export function CircleProfileDrawer({
   }, [open, user.uid, db]);
 
   const [profileDisplayName, setProfileDisplayName] = useState<string | null>(null);
+  const [myContactDirty, setMyContactDirty] = useState(false);
+  const [discardPrompt, setDiscardPrompt] = useState<'close' | 'back' | null>(null);
 
   const displayName =
     profileDisplayName?.trim() ||
@@ -161,6 +168,47 @@ export function CircleProfileDrawer({
     setFileToCrop(null);
   };
 
+  const navigateBack = () => {
+    if (
+      drawerView === 'messaging' ||
+      drawerView === 'media' ||
+      drawerView === 'careRelationship' ||
+      drawerView === 'userManagement' ||
+      drawerView === 'switchPatient'
+    ) {
+      setDrawerView('settings');
+      return;
+    }
+    setDrawerView('account');
+  };
+
+  const requestCloseDrawer = () => {
+    if (drawerView === 'myContact' && myContactDirty) {
+      setDiscardPrompt('close');
+      return;
+    }
+    onClose();
+  };
+
+  const requestNavigateBack = () => {
+    if (drawerView === 'myContact' && myContactDirty) {
+      setDiscardPrompt('back');
+      return;
+    }
+    navigateBack();
+  };
+
+  const confirmDiscardChanges = () => {
+    const action = discardPrompt;
+    setDiscardPrompt(null);
+    setMyContactDirty(false);
+    if (action === 'close') {
+      onClose();
+      return;
+    }
+    navigateBack();
+  };
+
   if (!open) return null;
 
   return (
@@ -169,25 +217,14 @@ export function CircleProfileDrawer({
         type="button"
         className="flex-1 bg-slate-900/40"
         aria-label="Close menu"
-        onClick={onClose}
+        onClick={requestCloseDrawer}
       />
       <aside className="w-full max-w-sm bg-white shadow-2xl flex flex-col h-full">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 gap-2">
           {drawerView !== 'account' ? (
             <button
               type="button"
-              onClick={() =>
-                setDrawerView(
-                  drawerView === 'messaging' ||
-                    drawerView === 'media' ||
-                    drawerView === 'careRelationship' ||
-                    drawerView === 'userManagement' ||
-                    drawerView === 'myContact' ||
-                    drawerView === 'switchPatient'
-                    ? 'settings'
-                    : 'account',
-                )
-              }
+              onClick={requestNavigateBack}
               className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 shrink-0"
               aria-label="Back"
             >
@@ -209,7 +246,7 @@ export function CircleProfileDrawer({
           </h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestCloseDrawer}
             className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 shrink-0"
           >
             <X size={20} />
@@ -383,6 +420,7 @@ export function CircleProfileDrawer({
               user={user}
               db={db}
               patient={patient}
+              onDirtyChange={setMyContactDirty}
               onProfileSaved={(nextName) => {
                 setProfileDisplayName(nextName);
                 setProfile((prev) =>
@@ -514,6 +552,13 @@ export function CircleProfileDrawer({
           onApply={uploadCroppedPhoto}
         />
       )}
+
+      <CircleDiscardChangesModal
+        open={discardPrompt !== null}
+        message="You edited your contact details but haven't saved yet. If you leave now, those changes will be lost."
+        onDiscard={confirmDiscardChanges}
+        onKeepEditing={() => setDiscardPrompt(null)}
+      />
     </div>
   );
 }

@@ -411,7 +411,12 @@ export async function upsertPatientManagedContact(
   db: Firestore,
   patientId: string,
   input: Omit<CircleManagedContact, 'id'> & { id?: string },
-  options: { expectedPatientUpdatedAt?: number; syncInvite?: boolean } = {},
+  options: {
+    expectedPatientUpdatedAt?: number;
+    syncInvite?: boolean;
+    /** Proxy contact saves rebuild the index; member self-service edits must not. */
+    updateAccessIndex?: boolean;
+  } = {},
 ): Promise<CircleManagedContact> {
   const snap = await getDoc(doc(db, 'patients', patientId));
   if (!snap.exists()) throw new Error('Patient record not found.');
@@ -498,10 +503,13 @@ export async function upsertPatientManagedContact(
   }
   if (input.kind === 'contact') nextContacts.push(toSimpleContactRecord(next));
 
-  const circleAccessByEmail = buildCircleAccessByEmailIndex({
-    caregivers: nextCaregivers,
-    friendsAndFamily: nextFriendsAndFamily,
-  });
+  const shouldUpdateAccessIndex = options.updateAccessIndex !== false;
+  const circleAccessByEmail = shouldUpdateAccessIndex
+    ? buildCircleAccessByEmailIndex({
+        caregivers: nextCaregivers,
+        friendsAndFamily: nextFriendsAndFamily,
+      })
+    : undefined;
 
   try {
     await setDoc(
@@ -510,7 +518,7 @@ export async function upsertPatientManagedContact(
         caregivers: nextCaregivers,
         friendsAndFamily: nextFriendsAndFamily,
         contacts: nextContacts,
-        circleAccessByEmail,
+        ...(circleAccessByEmail ? { circleAccessByEmail } : {}),
         updatedAt: Date.now(),
       },
       { merge: true },
@@ -543,94 +551,6 @@ export function findManagedContactByEmail(
   const normalized = normalizeInviteEmail(actorEmail);
   if (!normalized) return undefined;
   return contacts.find((contact) => normalizeInviteEmail(contact.email) === normalized);
-}
-
-export type OwnNotifyPreferencesPatch = {
-  message?: boolean;
-  alert?: boolean;
-  attention?: boolean;
-};
-
-export type OwnContactProfilePatch = {
-  name?: string;
-  language?: string;
-  relationship?: string;
-};
-
-/** Any Circle member may update their own name, language, and relationship on the patient contact record. */
-export async function updateOwnCircleContactProfile(
-  db: Firestore,
-  patientId: string,
-  actorEmail: string,
-  patch: OwnContactProfilePatch,
-  options: { expectedPatientUpdatedAt?: number } = {},
-): Promise<CircleManagedContact> {
-  const contacts = await listPatientManagedContacts(db, patientId);
-  const existing = findManagedContactByEmail(contacts, actorEmail);
-  if (!existing) {
-    throw new Error('Your contact record was not found. Ask the patient or proxy to add your email.');
-  }
-
-  const name = patch.name !== undefined ? patch.name.trim() : existing.name;
-  if (!name) {
-    throw new Error('Name is required.');
-  }
-
-  const language =
-    patch.language !== undefined ? patch.language.trim() || 'English' : existing.language;
-
-  let relationship = existing.relationship;
-  if (
-    patch.relationship !== undefined &&
-    (existing.kind === 'caregiver' || existing.kind === 'family')
-  ) {
-    relationship = patch.relationship.trim() || existing.relationship;
-  }
-
-  return upsertPatientManagedContact(
-    db,
-    patientId,
-    {
-      ...existing,
-      name,
-      language,
-      relationship,
-    },
-    { expectedPatientUpdatedAt: options.expectedPatientUpdatedAt, syncInvite: false },
-  );
-}
-
-/** Non-proxy members may only change alert / attention / message on their own contact row. */
-export async function updateOwnCircleNotifyPreferences(
-  db: Firestore,
-  patientId: string,
-  actorEmail: string,
-  patch: OwnNotifyPreferencesPatch,
-  options: { expectedPatientUpdatedAt?: number } = {},
-): Promise<CircleManagedContact> {
-  const contacts = await listPatientManagedContacts(db, patientId);
-  const existing = findManagedContactByEmail(contacts, actorEmail);
-  if (!existing) {
-    throw new Error('Your contact record was not found. Ask the patient or proxy to add your email.');
-  }
-
-  const hasEmail = !!existing.email.trim();
-  const nextMessage =
-    patch.message !== undefined ? patch.message && hasEmail : existing.message;
-  const nextAlert = patch.alert !== undefined ? patch.alert : existing.alert;
-  const nextAttention = patch.attention !== undefined ? patch.attention : existing.attention;
-
-  return upsertPatientManagedContact(
-    db,
-    patientId,
-    {
-      ...existing,
-      message: nextMessage,
-      alert: nextAlert,
-      attention: nextAttention,
-    },
-    { expectedPatientUpdatedAt: options.expectedPatientUpdatedAt, syncInvite: false },
-  );
 }
 
 export async function deletePatientManagedContact(
