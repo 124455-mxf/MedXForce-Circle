@@ -58,9 +58,11 @@ import {
 } from '../lib/circleSectionStyles';
 import {
   isIcuDailySummary,
+  isSummaryDeliveredOnDifferentDay,
   orderedSummaryEntries,
   splitCircleInbox,
   summaryDateLabel,
+  summaryDeliveredAt,
   summaryUtteranceCount,
   type IcuSummaryEntry,
 } from '../lib/circleCommunicationLog';
@@ -127,6 +129,18 @@ function formatThreadTime(ts: number): string {
   const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   if (d.toDateString() === today) return `Today, ${time}`;
   return `${d.toLocaleDateString()}, ${time}`;
+}
+
+function communicationLogInboxTime(msg: CircleThreadMessage): string | null {
+  if (!isSummaryDeliveredOnDifferentDay(msg)) return null;
+  return `Sent ${formatThreadTime(summaryDeliveredAt(msg))}`;
+}
+
+function communicationLogThreadSubtitle(msg: CircleThreadMessage): string {
+  if (!isSummaryDeliveredOnDifferentDay(msg)) {
+    return 'Read-only log';
+  }
+  return `Sent to Circle ${formatThreadTime(summaryDeliveredAt(msg))}`;
 }
 
 type CircleReplySenderKind = 'patient' | 'self' | 'member';
@@ -842,8 +856,10 @@ export function PatientMessagesScreen({
                 {snippet}
               </p>
             </div>
-            <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap">
-              {formatThreadTime(msg.updatedAt || msg.createdAt)}
+            <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap text-right max-w-[42%] leading-snug">
+              {summaryRow
+                ? communicationLogInboxTime(msg)
+                : formatThreadTime(msg.updatedAt || msg.createdAt)}
             </span>
           </div>
           </button>
@@ -1093,7 +1109,9 @@ export function PatientMessagesScreen({
               {threadHeaderTitle(selectedMessage)}
             </p>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              {formatThreadTime(selectedMessage.updatedAt || selectedMessage.createdAt)}
+              {isIcuDailySummary(selectedMessage)
+                ? communicationLogThreadSubtitle(selectedMessage)
+                : formatThreadTime(selectedMessage.updatedAt || selectedMessage.createdAt)}
             </p>
           </div>
           {circlePatientMessageBucket(selectedMessage.status) === 'in_out' ? (

@@ -36,11 +36,38 @@ export function splitCircleInbox<T extends CircleInboxMessage>(messages: T[]): {
   return { communicationLog, directMessages };
 }
 
+const ICU_SUMMARY_ID_PREFIX = 'msg_icu_summary_';
+
+/** Calendar day the patient spoke/saved (YYYY-MM-DD), encoded in the Firestore message id. */
+export function summaryDateKeyFromMessage(msg: CircleInboxMessage): string | null {
+  if (!msg.id.startsWith(ICU_SUMMARY_ID_PREFIX)) return null;
+  const key = msg.id.slice(ICU_SUMMARY_ID_PREFIX.length);
+  return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
+}
+
+function localDateKeyFromTimestamp(ts: number): string {
+  const d = new Date(ts);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+export function summaryDeliveredAt(msg: CircleInboxMessage): number {
+  return msg.updatedAt || msg.createdAt || Date.now();
+}
+
+/** True when the summary reached Circle on a later calendar day than the patient log day. */
+export function isSummaryDeliveredOnDifferentDay(msg: CircleInboxMessage): boolean {
+  const logKey = summaryDateKeyFromMessage(msg);
+  if (!logKey) return false;
+  return localDateKeyFromTimestamp(summaryDeliveredAt(msg)) !== logKey;
+}
+
 export function summaryDateLabel(msg: CircleInboxMessage): string {
-  const prefix = 'msg_icu_summary_';
-  if (msg.id.startsWith(prefix)) {
-    const key = msg.id.slice(prefix.length);
-    const [y, m, d] = key.split('-').map((x) => parseInt(x, 10));
+  const logKey = summaryDateKeyFromMessage(msg);
+  if (logKey) {
+    const [y, m, d] = logKey.split('-').map((x) => parseInt(x, 10));
     if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) {
       return new Date(y, m - 1, d).toLocaleDateString(undefined, {
         weekday: 'short',
