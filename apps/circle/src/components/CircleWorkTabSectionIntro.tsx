@@ -48,10 +48,10 @@ export function CircleWorkTabSectionIntro({
       <CircleWorkTabDashboardBackButton className="-ml-1" />
       <div className="min-w-0 flex-1 flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <Icon size={18} className={cn('shrink-0', iconClassName)} strokeWidth={2} />
             <h3 className={circleSectionTitleClass}>{title}</h3>
-            {titleExtra}
+            {titleExtra ? <span className="inline-flex shrink-0">{titleExtra}</span> : null}
           </div>
           {subtitle && (
             <p

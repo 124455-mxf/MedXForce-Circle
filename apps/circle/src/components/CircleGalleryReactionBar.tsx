@@ -6,6 +6,7 @@ import {
   reactionCountForEmoji,
   type GalleryReactionRecord,
 } from '@medxforce/shared';
+import { formatCircleBadgeCount } from './CircleCountBadge';
 
 type TaggedPersonChip = {
   id: string;
@@ -95,7 +96,7 @@ export function CircleGalleryReactionBar({
                 <span>{emoji}</span>
                 {count > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 rounded-full bg-slate-800 text-white text-[10px] font-bold leading-[17px] text-center tabular-nums shadow-sm">
-                    {count}
+                    {formatCircleBadgeCount(count)}
                   </span>
                 )}
               </button>

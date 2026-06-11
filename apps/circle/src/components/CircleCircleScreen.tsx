@@ -79,15 +79,7 @@ function formatPostTime(ts: number): string {
   return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}`;
 }
 
-function ThreadTabBadge({ count }: { count: number }) {
-  if (count <= 0) return null;
-  const label = count > 99 ? '99+' : String(count);
-  return (
-    <span className="min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none inline-flex items-center justify-center tabular-nums">
-      {label}
-    </span>
-  );
-}
+import { CircleTabCountBadge, formatCircleBadgeCount } from './CircleCountBadge';
 
 const CIRCLE_THREAD_POST_PREVIEW_LENGTH = 200;
 
@@ -477,11 +469,11 @@ export function CircleCircleScreen({
               icon={Users}
               iconClassName="text-indigo-600"
               title="Circle"
-              subtitle="Stay connected with everyone in the circle — all members see the same conversation."
+              subtitle="Stay connected with everyone in the circle."
               titleExtra={
                 unreadCount > 0 ? (
                   <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold inline-flex items-center justify-center tabular-nums">
-                    {unreadCount > 99 ? '99+' : unreadCount} unread
+                    {formatCircleBadgeCount(unreadCount)} unread
                   </span>
                 ) : undefined
               }
@@ -499,7 +491,7 @@ export function CircleCircleScreen({
               <span className="inline-flex items-center justify-center gap-1.5">
                 <Users size={14} className="shrink-0 [@media(max-height:740px)]:hidden" />
                 <ResponsiveTabLabel long="Circle conversation" compact="Circle" />
-                <ThreadTabBadge count={openUnreadCount} />
+                <CircleTabCountBadge count={openUnreadCount} />
               </span>
             </button>
             {canRestricted && (
@@ -513,7 +505,7 @@ export function CircleCircleScreen({
                 <span className="inline-flex items-center justify-center gap-1.5">
                   <Shield size={14} className="shrink-0 [@media(max-height:740px)]:hidden" />
                   <ResponsiveTabLabel long="Care coordination" compact="Care team" />
-                  <ThreadTabBadge count={restrictedUnreadCount} />
+                  <CircleTabCountBadge count={restrictedUnreadCount} />
                 </span>
               </button>
             )}

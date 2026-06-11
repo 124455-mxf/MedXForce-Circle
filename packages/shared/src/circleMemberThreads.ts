@@ -65,9 +65,9 @@ export function circleMemberThreadLabel(kind: CircleMemberThreadKind): string {
 
 export function circleMemberThreadDescription(kind: CircleMemberThreadKind): string {
   if (kind === 'open') {
-    return 'All circle members share updates here — everyone sees every message.';
+    return 'All circle members share updates here.';
   }
-  return 'Proxies and caregivers only — for care coordination the wider circle does not see.';
+  return 'Proxies and caregivers only.';
 }
 
 export function circleMemberRoleLabel(role: CircleMemberRole): string {

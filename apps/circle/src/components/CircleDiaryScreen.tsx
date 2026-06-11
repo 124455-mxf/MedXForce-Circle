@@ -42,7 +42,9 @@ import { useCircleCompactChrome } from '../lib/circleChromeContext';
 import { useCircleToast } from '../hooks/useCircleToast';
 import { CircleAppToast } from './CircleAppToast';
 import { CircleDiaryEntryModal } from './CircleDiaryEntryModal';
+import { CircleDiaryEntryBodyPreview } from './CircleDiaryEntryBodyPreview';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
+import { CircleFolderCountBadge } from './CircleCountBadge';
 import { DiaryEntryDeleteConfirmModal } from './DiaryEntryDeleteConfirmModal';
 import { ResponsiveTabLabel } from './ResponsiveTabLabel';
 
@@ -60,12 +62,6 @@ function formatDiaryDate(ts: number): string {
       year: 'numeric',
     })
     .toUpperCase();
-}
-
-function entryPreview(body: string, max = 160): string {
-  const text = body.trim().replace(/\s+/g, ' ');
-  if (text.length <= max) return text;
-  return `${text.slice(0, max)}…`;
 }
 
 function DiaryTimelineEntry({
@@ -179,9 +175,7 @@ function DiaryTimelineEntry({
         {entry.title?.trim() && (
           <h3 className="font-bold text-slate-800 text-sm">{entry.title.trim()}</h3>
         )}
-        <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
-          {entryPreview(entry.body, 320)}
-        </p>
+        <CircleDiaryEntryBodyPreview text={entry.body} />
       </article>
     </li>
   );
@@ -314,13 +308,16 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
                 type="button"
                 role="tab"
                 aria-selected={filter === 'circle'}
+                aria-label={
+                  sharedCount > 0 ? `Circle story, ${sharedCount} shared entries` : 'Circle story'
+                }
                 onClick={() => setFilter('circle')}
                 className={circleTabButtonClass(filter === 'circle')}
               >
-                <ResponsiveTabLabel
-                  long={`Circle story (${sharedCount})`}
-                  compact={`Shared (${sharedCount})`}
-                />
+                <span className="inline-flex items-center justify-center gap-1.5">
+                  <ResponsiveTabLabel long="Circle story" compact="Shared" />
+                  <CircleFolderCountBadge unread={0} total={sharedCount} />
+                </span>
               </button>
             </div>
           </div>

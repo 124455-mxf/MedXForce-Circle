@@ -14,6 +14,7 @@ import {
 import { useState, type ReactNode } from 'react';
 import { canViewAnalyticsTab, canViewRemoteSettingsTab, type PatientCapabilities } from '@medxforce/shared';
 import { cn } from '../lib/utils';
+import { CircleNavBadge } from './CircleCountBadge';
 import { useCircleT } from '../lib/circleI18nContext';
 import type { CircleTranslator } from '../lib/circleI18nContext';
 
@@ -59,19 +60,6 @@ function NavIconSlot({ children }: { children: ReactNode }) {
   return (
     <span className="relative inline-flex shrink-0 items-center justify-center">
       {children}
-    </span>
-  );
-}
-
-function NavBadge({ count }: { count: number }) {
-  if (count <= 0) return null;
-  const label = count > 99 ? '99+' : String(count);
-  return (
-    <span
-      className="absolute -top-1 -right-2 min-w-[14px] h-[14px] px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none flex items-center justify-center tabular-nums pointer-events-none ring-2 ring-white"
-      aria-hidden
-    >
-      {label}
     </span>
   );
 }
@@ -136,24 +124,41 @@ export function CircleBottomNav({
                 onClick={() => selectTab(item.id)}
                 className={cn(
                   'flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-1 py-0.5 min-h-[40px] min-w-0 transition-all duration-200',
-                  showMessagesUrgency
-                    ? messagesUrgency === 'alert'
-                      ? 'circle-urgency-tab-alert text-white shadow-lg'
-                      : 'circle-urgency-tab-attention text-white shadow-lg'
-                    : active
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+                  active
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+                    : showMessagesUrgency
+                      ? messagesUrgency === 'alert'
+                        ? 'text-red-700 hover:bg-red-50/50'
+                        : 'text-sky-700 hover:bg-sky-50/50'
                       : 'text-slate-500 hover:bg-slate-50 hover:text-slate-600',
                 )}
               >
                 <NavIconSlot>
-                  <Icon size={compact ? 18 : 19} strokeWidth={active ? 2.25 : 1.75} />
-                  <NavBadge count={badgeCountForTab(item.id, badges)} />
+                  <span
+                    className={cn(
+                      'inline-flex items-center justify-center rounded-full p-0.5',
+                      showMessagesUrgency &&
+                        !active &&
+                        (messagesUrgency === 'alert'
+                          ? 'circle-urgency-nav-icon-alert'
+                          : 'circle-urgency-nav-icon-attention'),
+                    )}
+                  >
+                    <Icon size={compact ? 18 : 19} strokeWidth={active ? 2.25 : 1.75} />
+                  </span>
+                  <CircleNavBadge count={badgeCountForTab(item.id, badges)} />
                 </NavIconSlot>
                 <span
                   className={cn(
                     'font-bold uppercase tracking-wide leading-none truncate w-full text-center',
                     compact ? 'text-[7px]' : 'text-[8px]',
-                    showMessagesUrgency || active ? 'text-white' : 'text-slate-400',
+                    active
+                      ? 'text-white'
+                      : showMessagesUrgency
+                        ? messagesUrgency === 'alert'
+                          ? 'text-red-600'
+                          : 'text-sky-600'
+                        : 'text-slate-400',
                   )}
                 >
                   {item.label}
@@ -177,7 +182,7 @@ export function CircleBottomNav({
             >
               <NavIconSlot>
                 <MoreHorizontal size={compact ? 18 : 19} strokeWidth={moreActive ? 2.25 : 1.75} />
-                <NavBadge count={moreOpen ? 0 : (badges?.more ?? 0)} />
+                <CircleNavBadge count={moreOpen ? 0 : (badges?.more ?? 0)} />
               </NavIconSlot>
               <span
                 className={cn(

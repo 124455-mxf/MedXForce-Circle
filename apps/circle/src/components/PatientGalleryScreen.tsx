@@ -43,6 +43,7 @@ import { CircleGalleryLightbox, GalleryThumb } from './CircleGalleryLightbox';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 import { CircleDeleteAlbumConfirmModal } from './CircleDeleteAlbumConfirmModal';
 import { CircleDeleteMediaConfirmModal } from './CircleDeleteMediaConfirmModal';
+import { CircleFolderCountBadge, formatCircleBadgeCount } from './CircleCountBadge';
 import { cn } from '../lib/utils';
 import {
   circleInsetCardClass,
@@ -416,6 +417,53 @@ export function PatientGalleryScreen({
     setShowGrid(false);
   };
 
+  const myAlbumItems = useMemo(
+    () => myAlbumCards.flatMap(({ items }) => items),
+    [myAlbumCards],
+  );
+
+  const countUnseenMedia = useCallback(
+    (items: GalleryAlbumMedia[]) =>
+      items.filter((item) => !viewedIds.has(item.id)).length,
+    [viewedIds],
+  );
+
+  const sharedBrowseTabCounts = useMemo(
+    (): Record<
+      SharedBrowseMode,
+      { total: number; unread: number }
+    > => ({
+      photos: {
+        total: circlePhotos.length,
+        unread: countUnseenMedia(circlePhotos),
+      },
+      videos: {
+        total: circleVideos.length,
+        unread: countUnseenMedia(circleVideos),
+      },
+      album: {
+        total: albumCards.length,
+        unread: countUnseenMedia(circleMedia),
+      },
+      'my-albums': {
+        total: myAlbumItems.length,
+        unread: countUnseenMedia(myAlbumItems),
+      },
+      newest: {
+        total: circleMedia.length,
+        unread: countUnseenMedia(circleMedia),
+      },
+    }),
+    [
+      albumCards.length,
+      circleMedia,
+      circlePhotos,
+      circleVideos,
+      countUnseenMedia,
+      myAlbumItems,
+    ],
+  );
+
   const sharedBrowsePills: { id: SharedBrowseMode; label: string }[] = [
     { id: 'photos', label: 'All pictures' },
     { id: 'videos', label: 'All videos' },
@@ -431,20 +479,29 @@ export function PatientGalleryScreen({
       aria-label="Browse shared media"
     >
       <div className={circleBrowsePillRowClass}>
-        {sharedBrowsePills.map((pill) => (
+        {sharedBrowsePills.map((pill) => {
+          const active = sharedBrowseMode === pill.id && !showGrid;
+          const counts = sharedBrowseTabCounts[pill.id];
+          return (
           <button
             key={pill.id}
             type="button"
             role="tab"
-            aria-selected={sharedBrowseMode === pill.id && !showGrid}
+            aria-selected={active}
             onClick={() => selectSharedBrowseMode(pill.id)}
-            className={circleBrowsePillButtonClass(
-              sharedBrowseMode === pill.id && !showGrid,
-            )}
+            className={circleBrowsePillButtonClass(active)}
           >
-            {pill.label}
+            <span className="inline-flex items-center justify-center gap-1.5">
+              {pill.label}
+              <CircleFolderCountBadge
+                unread={counts.unread}
+                total={counts.total}
+                onPrimary={active}
+              />
+            </span>
           </button>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -809,7 +866,7 @@ export function PatientGalleryScreen({
                         )}
                         {unseen > 0 && (
                           <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[9px] font-bold uppercase">
-                            {unseen} new
+                            {formatCircleBadgeCount(unseen)} new
                           </span>
                         )}
                         <AlbumThumbnailOverlay
@@ -848,7 +905,7 @@ export function PatientGalleryScreen({
                         )}
                         {unseen > 0 && (
                           <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[9px] font-bold uppercase">
-                            {unseen} new
+                            {formatCircleBadgeCount(unseen)} new
                           </span>
                         )}
                         <AlbumThumbnailOverlay

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import type { User } from 'firebase/auth';
-import { ChevronLeft, ChevronDown, ChevronUp, ClipboardList, Mail, MessageSquare, Mic, Save, Trash2, User as UserIcon, Users } from 'lucide-react';
+import { ChevronLeft, ChevronDown, ClipboardList, Mail, MessageSquare, Mic, Save, Trash2, User as UserIcon, Users, AlertCircle, Bell } from 'lucide-react';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import {
@@ -15,7 +15,6 @@ import {
   isPatientReplyVisibleToCircleMember,
   normalizeInviteEmail,
   shouldShowCircleThreadInitialMessage,
-  type CirclePatientMessageBucket,
   type CirclePatientSummary,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
@@ -46,6 +45,7 @@ import { CircleDiscardDraftModal } from './CircleDiscardDraftModal';
 import { CircleExpandableMessageComposer } from './CircleExpandableMessageComposer';
 import { CircleMessageDeleteConfirmModal } from './CircleMessageDeleteConfirmModal';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
+import { CircleFolderCountBadge, formatCircleBadgeCount } from './CircleCountBadge';
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
 import {
   circleSectionEmptyCardClass,
@@ -72,6 +72,21 @@ import {
   circleMessageAlertAttentionKind,
   isUrgentUnreadAlertAttentionMessage,
 } from '../lib/circleAlertAttentionUrgency';
+import {
+  countUnreadAlertsInInbox,
+  countUnreadAttentionsInInbox,
+  countAlertsInInbox,
+  countAttentionsInInbox,
+  countDirectMessagesForInboxView,
+  filterDirectMessagesForInboxView,
+  messageMatchesInboxView,
+  type CircleMessagesInboxView,
+} from '../lib/circleMessageInboxViews';
+import {
+  circleUrgencyInboxRowClass,
+  circleUrgencyLeftAccentClass,
+  circleUrgencyStatusBadgeClass,
+} from '../lib/circleUrgencyStyles';
 
 const REPLY_COLLAPSE_THRESHOLD = 4;
 const REPLY_TAIL_VISIBLE = 2;
@@ -326,34 +341,108 @@ export function PatientMessagesScreen({
   const [showDiscardModal, setShowDiscardModal] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [communicationLogOpen, setCommunicationLogOpen] = useState(true);
-  const [inboxBucket, setInboxBucket] = useState<CirclePatientMessageBucket>('in_out');
+  const [inboxView, setInboxView] = useState<CircleMessagesInboxView>('in_out');
   const [readTick, setReadTick] = useState(0);
   const compactChrome = useCircleCompactChrome();
+
+  const memberAudience = useMemo(
+    () => ({ uid: user.uid, email: normalizedEmail }),
+    [normalizedEmail, user.uid],
+  );
 
   const { communicationLog, directMessages } = useMemo(
     () => splitCircleInbox(messages),
     [messages],
   );
 
-  const bucketCounts = useMemo(() => {
-    const counts: Record<CirclePatientMessageBucket, number> = {
-      in_out: 0,
-      archived: 0,
-      deleted: 0,
+  const unreadCommunicationLog = useMemo(
+    () =>
+      communicationLog.filter((msg) =>
+        isCommunicationLogSummaryUnread(msg, patient.patientId, msg.id),
+      ),
+    [communicationLog, patient.patientId, readTick],
+  );
+
+  const inboxTabCounts = useMemo(() => {
+    const countUnreadInView = (view: CircleMessagesInboxView) =>
+      filterDirectMessagesForInboxView(
+        directMessages,
+        view,
+        repliesByMessageId,
+        patient.patientId,
+      ).filter((msg) => {
+        const memberReplies = (repliesByMessageId[msg.id] || []).filter((reply) =>
+          isPatientReplyVisibleToCircleMember(reply, memberAudience),
+        );
+        return threadHasUnreadPatientReply(
+          memberReplies,
+          patient.patientId,
+          msg.id,
+          msg,
+        );
+      }).length;
+
+    const countTotalInView = (view: CircleMessagesInboxView) =>
+      countDirectMessagesForInboxView(
+        directMessages,
+        view,
+        repliesByMessageId,
+        patient.patientId,
+      );
+
+    return {
+      communication_log: {
+        unread: unreadCommunicationLog.length,
+        total: communicationLog.length,
+      },
+      in_out: {
+        unread: countUnreadInView('in_out'),
+        total: countTotalInView('in_out'),
+      },
+      archived: {
+        unread: countUnreadInView('archived'),
+        total: countTotalInView('archived'),
+      },
+      deleted: {
+        unread: countUnreadInView('deleted'),
+        total: countTotalInView('deleted'),
+      },
+      alert: {
+        unread: countUnreadAlertsInInbox(
+          directMessages,
+          repliesByMessageId,
+          patient.patientId,
+        ),
+        total: countAlertsInInbox(directMessages),
+      },
+      attention: {
+        unread: countUnreadAttentionsInInbox(
+          directMessages,
+          repliesByMessageId,
+          patient.patientId,
+        ),
+        total: countAttentionsInInbox(directMessages),
+      },
     };
-    for (const msg of directMessages) {
-      counts[circlePatientMessageBucket(msg.status)] += 1;
-    }
-    return counts;
-  }, [directMessages]);
+  }, [
+    communicationLog.length,
+    directMessages,
+    memberAudience,
+    patient.patientId,
+    repliesByMessageId,
+    readTick,
+    unreadCommunicationLog.length,
+  ]);
 
   const bucketDirectMessages = useMemo(
     () =>
-      directMessages.filter(
-        (msg) => circlePatientMessageBucket(msg.status) === inboxBucket,
+      filterDirectMessagesForInboxView(
+        directMessages,
+        inboxView,
+        repliesByMessageId,
+        patient.patientId,
       ),
-    [directMessages, inboxBucket],
+    [directMessages, inboxView, patient.patientId, repliesByMessageId, readTick],
   );
 
   useEffect(() => {
@@ -366,15 +455,16 @@ export function PatientMessagesScreen({
       return;
     }
     if (isIcuDailySummary(selected)) {
-      if (inboxBucket !== 'in_out') {
+      if (inboxView !== 'communication_log') {
         setSelectedMessageId(null);
       }
       return;
     }
-    if (circlePatientMessageBucket(selected.status) !== inboxBucket) {
+    const replies = repliesByMessageId[selected.id] || [];
+    if (!messageMatchesInboxView(selected, inboxView, replies, patient.patientId)) {
       setSelectedMessageId(null);
     }
-  }, [communicationLog, directMessages, inboxBucket, selectedMessageId]);
+  }, [communicationLog, directMessages, inboxView, patient.patientId, repliesByMessageId, selectedMessageId]);
 
   useEffect(() => {
     const onReadChanged = (event: Event) => {
@@ -386,22 +476,6 @@ export function PatientMessagesScreen({
     window.addEventListener(CIRCLE_MSG_READ_CHANGED, onReadChanged);
     return () => window.removeEventListener(CIRCLE_MSG_READ_CHANGED, onReadChanged);
   }, [patient.patientId]);
-
-  const unreadCommunicationLog = useMemo(
-    () =>
-      communicationLog.filter((msg) =>
-        isCommunicationLogSummaryUnread(msg, patient.patientId, msg.id),
-      ),
-    [communicationLog, patient.patientId, readTick],
-  );
-
-  const showCommunicationLogSection = communicationLog.length > 0;
-
-  useEffect(() => {
-    if (showCommunicationLogSection) {
-      setCommunicationLogOpen(true);
-    }
-  }, [showCommunicationLogSection, unreadCommunicationLog.length]);
 
   const handleMarkAllCommunicationLogRead = useCallback(() => {
     markAllCommunicationLogRead(patient.patientId, communicationLog);
@@ -440,15 +514,18 @@ export function PatientMessagesScreen({
     [messages, selectedMessageId],
   );
 
+  useEffect(() => {
+    if (!selectedMessageId || !selectedMessage) return;
+    if (circleMessageAlertAttentionKind(selectedMessage)) {
+      markThreadRead(patient.patientId, selectedMessageId);
+    }
+  }, [patient.patientId, selectedMessage, selectedMessageId]);
+
   const replies = selectedMessageId ? repliesByMessageId[selectedMessageId] || [] : [];
   const selectedHiddenAt = selectedMessageId ? hiddenAtByMessageId[selectedMessageId] : undefined;
   const selectedThreadResurrected = selectedHiddenAt
     ? isCircleThreadResurrected(selectedHiddenAt, replies)
     : false;
-  const memberAudience = useMemo(
-    () => ({ uid: user.uid, email: normalizedEmail }),
-    [normalizedEmail, user.uid],
-  );
   const visibleReplies = useMemo(() => {
     const afterHide = circleRepliesAfterInboxHide(selectedHiddenAt, replies);
     return afterHide.filter((reply) =>
@@ -495,6 +572,13 @@ export function PatientMessagesScreen({
       });
     },
     [confirmNavigate, selectedMessageId],
+  );
+
+  const acknowledgeAlertAttention = useCallback(
+    (messageId: string) => {
+      markThreadRead(patient.patientId, messageId);
+    },
+    [patient.patientId],
   );
 
   const leaveThread = useCallback(() => {
@@ -762,78 +846,69 @@ export function PatientMessagesScreen({
           className={cn(
             'flex items-stretch transition-colors relative overflow-hidden',
             summaryRow
-              ? cn(
-                  'rounded-xl border bg-white shadow-sm',
-                  unread
-                    ? 'border-indigo-200 bg-indigo-50/60'
-                    : 'border-indigo-100 hover:border-indigo-200 hover:bg-indigo-50/40',
-                )
-              : urgentAlertAttention
-                ? alertKind === 'alert'
-                  ? 'bg-red-50/70 circle-urgency-banner-alert'
-                  : 'bg-blue-50/70 circle-urgency-banner-attention'
-                : unread
-                  ? 'bg-red-50/40'
-                  : 'hover:bg-slate-50',
+              ? cn('rounded-xl border', circleUrgencyInboxRowClass(null, false, unread, true))
+              : circleUrgencyInboxRowClass(alertKind, !!urgentAlertAttention, unread, false),
           )}
         >
-          <button
-            type="button"
-            onClick={() => openThread(msg.id)}
+          {(() => {
+            const accentClass = circleUrgencyLeftAccentClass(
+              alertKind,
+              !!urgentAlertAttention,
+              unread,
+              summaryRow,
+            );
+            return accentClass ? <span className={accentClass} aria-hidden /> : null;
+          })()}
+          <div
             className={cn(
-              'flex-1 min-w-0 text-left',
-              compactChrome ? 'p-3' : 'p-4',
+              'flex flex-1 min-w-0 items-center gap-2',
+              compactChrome ? 'py-2.5 px-3' : 'py-3 px-3',
+              unread ? 'pl-3' : undefined,
             )}
           >
-          {unread && (
-            <span
-              className={cn(
-                'absolute left-0 top-3 bottom-3 w-1 rounded-full',
-                summaryRow ? 'bg-indigo-500 shadow-sm shadow-indigo-200/80' : 'w-1.5 bg-red-500 shadow-sm shadow-red-200/80',
-              )}
-              aria-hidden
-            />
-          )}
-          <div className={cn('flex items-start justify-between gap-2', summaryRow ? 'pl-2' : 'pl-1')}>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                {urgentAlertAttention && alertKind && (
-                  <span
-                    className={cn(
-                      'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full text-white',
-                      alertKind === 'alert' ? 'bg-red-600 animate-pulse' : 'bg-blue-600 animate-pulse',
-                    )}
-                  >
-                    {alertAttentionKindLabel(alertKind)}
-                  </span>
+            {!summaryRow && alertKind && unread && (
+              <button
+                type="button"
+                onClick={() => acknowledgeAlertAttention(msg.id)}
+                className={cn(
+                  circleUrgencyStatusBadgeClass(alertKind),
+                  'cursor-pointer hover:brightness-95 active:scale-[0.98] transition-transform shrink-0 self-center',
                 )}
-                {unread && !urgentAlertAttention && (
+                aria-label={`Acknowledge ${alertAttentionKindLabel(alertKind).toLowerCase()}`}
+                title={`Acknowledge ${alertAttentionKindLabel(alertKind).toLowerCase()}`}
+              >
+                {alertAttentionKindLabel(alertKind)}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => openThread(msg.id)}
+              className="flex-1 min-w-0 text-left"
+            >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                {unread && !urgentAlertAttention && !alertKind && (
                   <span
-                    className={cn(
-                      'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full',
+                    className={circleUrgencyStatusBadgeClass(
                       summaryRow
-                        ? 'bg-indigo-600 text-white animate-pulse'
-                        : 'bg-red-600 text-white animate-pulse',
+                        ? 'new-summary'
+                        : unreadKind === 'reply'
+                          ? 'new-reply'
+                          : 'new-message',
                     )}
                   >
                     {summaryRow ? 'New summary' : unreadKind === 'reply' ? 'New reply' : 'New message'}
                   </span>
                 )}
-                {!summaryRow && alertKind && !urgentAlertAttention && unread && (
-                  <span
-                    className={cn(
-                      'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full',
-                      alertKind === 'alert'
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-blue-100 text-blue-700',
-                    )}
-                  >
-                    {alertAttentionKindLabel(alertKind)}
-                  </span>
-                )}
                 {!summaryRow && replyCount > 0 && !unread && (
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+                  </span>
+                )}
+                {!summaryRow && msg.status === 'failed' && (
+                  <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md ring-1 ring-inset bg-rose-50 text-rose-700 ring-rose-200/70">
+                    Failed
                   </span>
                 )}
                 {!summaryRow && msg.status && msg.status !== 'sent' && msg.status !== 'sending' && msg.status !== 'failed' && (
@@ -849,25 +924,26 @@ export function PatientMessagesScreen({
                   </span>
                 )}
               </div>
-              <p className={cn('font-bold truncate', summaryRow ? 'text-indigo-950' : 'text-slate-800')}>
+              <p className={cn('font-bold truncate leading-snug', summaryRow ? 'text-indigo-950' : 'text-slate-800')}>
                 {title}
               </p>
-              <p className={cn('text-[11px] mt-1 line-clamp-2', summaryRow ? 'text-indigo-700/80' : 'text-slate-500')}>
+              <p className={cn('text-[11px] mt-0.5 line-clamp-2 leading-relaxed', summaryRow ? 'text-indigo-700/80' : 'text-slate-500')}>
                 {snippet}
               </p>
             </div>
-            <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap text-right max-w-[42%] leading-snug">
+            <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap text-right leading-snug pt-0.5">
               {summaryRow
                 ? communicationLogInboxTime(msg)
                 : formatThreadTime(msg.updatedAt || msg.createdAt)}
             </span>
           </div>
-          </button>
-          {!summaryRow && inboxBucket === 'in_out' && (
+            </button>
+          </div>
+          {!summaryRow && circlePatientMessageBucket(msg.status) === 'in_out' && (
             <button
               type="button"
               onClick={() => requestRemoveFromInbox(msg.id)}
-              className="shrink-0 px-3 text-slate-400 hover:text-red-600 hover:bg-red-50/80 transition-colors"
+              className="shrink-0 self-center px-2 text-slate-400 hover:text-red-600 hover:bg-red-50/80 transition-colors"
               aria-label="Remove from your inbox"
             >
               <Trash2 size={16} />
@@ -882,125 +958,218 @@ export function PatientMessagesScreen({
     return (
       <>
       <div className={circleWorkTabPanelClass(compactChrome)}>
-        <div className={cn(circleWorkTabHeaderClass(compactChrome), 'space-y-3')}>
+        <div className={cn(circleWorkTabHeaderClass(compactChrome), 'space-y-2')}>
           <CircleWorkTabSectionIntro
             icon={MessageSquare}
             iconClassName="text-blue-600"
             title="Messages"
             subtitle={
-              inboxBucket === 'archived'
+              inboxView === 'communication_log'
+                ? 'Daily spoken and saved notes from Intensive Care mode — read only.'
+                : inboxView === 'archived'
                 ? 'Archived on the patient tablet — you can still reply.'
-                : inboxBucket === 'deleted'
+                : inboxView === 'deleted'
                   ? 'Deleted on the patient tablet — read only, no replies.'
-                  : 'Tap a conversation to read and reply.'
+                  : inboxView === 'alert'
+                    ? 'Unread alerts also appear in In/Out until you acknowledge them.'
+                    : inboxView === 'attention'
+                      ? 'Unread attention requests also appear in In/Out until you acknowledge them.'
+                      : 'Tap a conversation to read and reply. Tap Alert or Attention to acknowledge.'
             }
             titleExtra={
-              unreadCount > 0 && inboxBucket === 'in_out' ? (
+              unreadCount > 0 && inboxView === 'in_out' ? (
                 <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold inline-flex items-center justify-center tabular-nums">
-                  {unreadCount > 99 ? '99+' : unreadCount} unread
+                  {formatCircleBadgeCount(unreadCount)} unread
                 </span>
               ) : undefined
             }
           />
-          <div className={circleTabListClass} role="tablist" aria-label="Message buckets">
+          <div
+            className={cn(
+              circleTabListClass,
+              'flex-nowrap items-center gap-0.5 p-1',
+              'overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden',
+            )}
+            role="tablist"
+            aria-label="Message buckets"
+          >
+            <div className="flex items-center gap-0.5 shrink-0">
             <button
               type="button"
               role="tab"
-              aria-selected={inboxBucket === 'in_out'}
-              onClick={() => setInboxBucket('in_out')}
-              className={circleTabButtonClass(inboxBucket === 'in_out')}
+              aria-selected={inboxView === 'communication_log'}
+              aria-label="Communication log"
+              onClick={() => setInboxView('communication_log')}
+              className={circleTabButtonClass(
+                inboxView === 'communication_log',
+                'shrink-0 flex-none justify-center min-w-[2.125rem] px-2 py-2',
+              )}
             >
-              In/Out ({bucketCounts.in_out})
+              <span className="relative inline-flex items-center justify-center pr-1 pt-0.5">
+                <ClipboardList
+                  size={16}
+                  className={inboxView === 'communication_log' ? 'text-indigo-600' : 'text-slate-500'}
+                  aria-hidden
+                />
+                <CircleFolderCountBadge
+                  {...inboxTabCounts.communication_log}
+                  placement="overlay"
+                />
+              </span>
             </button>
             <button
               type="button"
               role="tab"
-              aria-selected={inboxBucket === 'archived'}
-              onClick={() => setInboxBucket('archived')}
-              className={circleTabButtonClass(inboxBucket === 'archived')}
+              aria-selected={inboxView === 'alert'}
+              aria-label="Alerts"
+              onClick={() => setInboxView('alert')}
+              className={circleTabButtonClass(
+                inboxView === 'alert',
+                'shrink-0 flex-none justify-center min-w-[2.125rem] px-2 py-2',
+              )}
             >
-              Archived ({bucketCounts.archived})
+              <span className="relative inline-flex items-center justify-center pr-1 pt-0.5">
+                <AlertCircle
+                  size={16}
+                  className={inboxView === 'alert' ? 'text-red-600' : 'text-slate-500'}
+                  aria-hidden
+                />
+                <CircleFolderCountBadge {...inboxTabCounts.alert} placement="overlay" />
+              </span>
             </button>
             <button
               type="button"
               role="tab"
-              aria-selected={inboxBucket === 'deleted'}
-              onClick={() => setInboxBucket('deleted')}
-              className={circleTabButtonClass(inboxBucket === 'deleted')}
+              aria-selected={inboxView === 'attention'}
+              aria-label="Attention"
+              onClick={() => setInboxView('attention')}
+              className={circleTabButtonClass(
+                inboxView === 'attention',
+                'shrink-0 flex-none justify-center min-w-[2.125rem] px-2 py-2',
+              )}
             >
-              Deleted ({bucketCounts.deleted})
+              <span className="relative inline-flex items-center justify-center pr-1 pt-0.5">
+                <Bell
+                  size={16}
+                  className={inboxView === 'attention' ? 'text-blue-600' : 'text-slate-500'}
+                  aria-hidden
+                />
+                <CircleFolderCountBadge {...inboxTabCounts.attention} placement="overlay" />
+              </span>
             </button>
+            </div>
+            <span className="w-px h-5 bg-slate-200/90 shrink-0 mx-0.5 self-center" aria-hidden />
+            <div className="flex items-center gap-0.5 shrink-0">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={inboxView === 'in_out'}
+              onClick={() => setInboxView('in_out')}
+              className={circleTabButtonClass(
+                inboxView === 'in_out',
+                'shrink-0 flex-none justify-center px-2.5 py-2',
+              )}
+            >
+              <span className="inline-flex items-center justify-center gap-1">
+                In/Out
+                <CircleFolderCountBadge {...inboxTabCounts.in_out} />
+              </span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={inboxView === 'archived'}
+              onClick={() => setInboxView('archived')}
+              className={circleTabButtonClass(
+                inboxView === 'archived',
+                'shrink-0 flex-none justify-center px-2.5 py-2',
+              )}
+            >
+              <span className="inline-flex items-center justify-center gap-1">
+                Archived
+                <CircleFolderCountBadge {...inboxTabCounts.archived} />
+              </span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={inboxView === 'deleted'}
+              onClick={() => setInboxView('deleted')}
+              className={circleTabButtonClass(
+                inboxView === 'deleted',
+                'shrink-0 flex-none justify-center px-2.5 py-2',
+              )}
+            >
+              <span className="inline-flex items-center justify-center gap-1">
+                Deleted
+                <CircleFolderCountBadge {...inboxTabCounts.deleted} />
+              </span>
+            </button>
+            </div>
           </div>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-          {inboxBucket === 'in_out' && showCommunicationLogSection && (
-            <div className="border-b border-slate-100">
-              <div className="flex items-center gap-2 px-4 py-3 bg-indigo-50/60">
-                <button
-                  type="button"
-                  onClick={() => setCommunicationLogOpen((v) => !v)}
-                  className="flex flex-1 items-center justify-between gap-2 min-w-0 text-left hover:opacity-90"
-                >
-                  <span className="flex items-center gap-2 min-w-0">
-                    <ClipboardList size={16} className="text-indigo-600 shrink-0" />
+          {inboxView === 'communication_log' ? (
+            communicationLog.length > 0 ? (
+              <>
+                <div className="flex items-center gap-2 px-4 py-3 bg-indigo-50/60 border-b border-indigo-100">
+                  <span className="flex flex-1 items-center gap-2 min-w-0">
                     <span className="font-bold text-sm text-indigo-900 truncate">
                       Communication log
                     </span>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500 shrink-0">
-                      {unreadCommunicationLog.length > 0 ? (
-                        <>
-                          {unreadCommunicationLog.length}{' '}
-                          {unreadCommunicationLog.length === 1 ? 'new day' : 'new days'}
-                          {' · '}
-                        </>
-                      ) : null}
                       {communicationLog.length}{' '}
                       {communicationLog.length === 1 ? 'day' : 'days'}
                     </span>
                   </span>
-                  {communicationLogOpen ? (
-                    <ChevronUp size={16} className="text-indigo-500 shrink-0" />
-                  ) : (
-                    <ChevronDown size={16} className="text-indigo-500 shrink-0" />
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleMarkAllCommunicationLogRead}
-                  className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-indigo-700 hover:text-indigo-900 px-2 py-1 rounded-lg hover:bg-indigo-100/80"
-                >
-                  Mark all read
-                </button>
-              </div>
-              {communicationLogOpen && (
-                <ul className="px-3 pb-3 pt-2 space-y-2 bg-indigo-50/40">
+                  <button
+                    type="button"
+                    onClick={handleMarkAllCommunicationLogRead}
+                    className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-indigo-700 hover:text-indigo-900 px-2 py-1 rounded-lg hover:bg-indigo-100/80"
+                  >
+                    Mark all read
+                  </button>
+                </div>
+                <ul className="px-3 py-3 space-y-2 bg-indigo-50/40">
                   {communicationLog.map((msg) => renderInboxRow(msg, { summaryRow: true }))}
                 </ul>
-              )}
-            </div>
-          )}
-          {bucketDirectMessages.length > 0 ? (
+              </>
+            ) : (
+              <div className="p-8 text-center text-sm text-slate-500 leading-relaxed max-w-sm mx-auto">
+                No communication summaries yet. These appear when your loved one uses Intensive
+                Care mode with auto-send enabled and speaks or saves notes during the day.
+              </div>
+            )
+          ) : bucketDirectMessages.length > 0 ? (
             <>
-              {inboxBucket === 'in_out' && showCommunicationLogSection && (
-                <div className="px-4 py-2 bg-white border-b border-slate-100">
+              {inboxView === 'alert' || inboxView === 'attention' || inboxView === 'in_out' ? (
+                <div className="px-3 py-1.5 bg-white border-b border-slate-100">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    Direct messages
+                    {inboxView === 'alert'
+                      ? 'Alerts'
+                      : inboxView === 'attention'
+                        ? 'Attention'
+                        : 'Direct messages'}
                   </p>
                 </div>
-              )}
+              ) : null}
               <ul className="divide-y divide-slate-200 bg-white">
                 {sortedDirectMessages.map((msg) => renderInboxRow(msg))}
               </ul>
             </>
-          ) : inboxBucket !== 'in_out' || !showCommunicationLogSection ? (
+          ) : (
             <div className="p-8 text-center text-sm text-slate-500">
-              {inboxBucket === 'archived'
+              {inboxView === 'archived'
                 ? 'No archived conversations.'
-                : inboxBucket === 'deleted'
+                : inboxView === 'deleted'
                   ? 'No deleted conversations.'
-                  : 'No messages in In/Out.'}
+                  : inboxView === 'alert'
+                    ? 'No alerts yet. New alerts appear in In/Out until you acknowledge them.'
+                    : inboxView === 'attention'
+                      ? 'No attention requests yet. New ones appear in In/Out until you acknowledge them.'
+                      : 'No messages in In/Out.'}
             </div>
-          ) : null}
+          )}
         </div>
       </div>
       {messageModals}

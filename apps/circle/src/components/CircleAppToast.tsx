@@ -2,9 +2,11 @@ import { cn } from '../lib/utils';
 import type { CircleToastTone } from '../hooks/useCircleToast';
 
 const toneClass: Record<CircleToastTone, string> = {
-  success: 'bg-slate-900 text-white',
-  error: 'bg-red-600 text-white',
-  info: 'bg-blue-600 text-white',
+  success: 'bg-slate-900/95 text-white border border-slate-700/50 backdrop-blur-sm',
+  error:
+    'bg-white text-slate-800 border border-red-100 shadow-lg shadow-red-100/40 circle-urgency-banner-card-alert pl-5',
+  info:
+    'bg-white text-slate-800 border border-sky-100 shadow-lg shadow-sky-100/40 circle-urgency-banner-card-attention pl-5',
 };
 
 export function CircleAppToast({
@@ -24,7 +26,7 @@ export function CircleAppToast({
     >
       <p
         className={cn(
-          'rounded-2xl px-4 py-3 text-sm font-semibold text-center shadow-lg',
+          'relative overflow-hidden rounded-2xl px-4 py-3 text-sm font-semibold text-center',
           toneClass[tone],
         )}
       >

@@ -20,94 +20,179 @@ body {
   }
 }
 
-@keyframes circle-urgency-banner-alert {
+/* --- Urgency: refined motion (no harsh full-tab fills or Tailwind pulse) --- */
+
+@keyframes circle-urgency-ring-breathe {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35);
+    box-shadow:
+      0 0 0 0 rgba(220, 38, 38, 0.22),
+      0 1px 2px rgba(15, 23, 42, 0.06);
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.08);
+    box-shadow:
+      0 0 0 3px rgba(220, 38, 38, 0.1),
+      0 1px 2px rgba(15, 23, 42, 0.06);
   }
 }
 
-@keyframes circle-urgency-banner-attention {
+@keyframes circle-urgency-ring-breathe-blue {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.35);
+    box-shadow:
+      0 0 0 0 rgba(14, 165, 233, 0.22),
+      0 1px 2px rgba(15, 23, 42, 0.06);
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.08);
+    box-shadow:
+      0 0 0 3px rgba(14, 165, 233, 0.1),
+      0 1px 2px rgba(15, 23, 42, 0.06);
   }
 }
 
-@keyframes circle-urgency-nav-alert {
+@keyframes circle-urgency-edge-glow-alert {
   0%,
   100% {
-    box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.15);
-    background-color: rgba(254, 242, 242, 0.95);
+    opacity: 0.85;
   }
   50% {
-    box-shadow: inset 0 0 0 2px rgba(239, 68, 68, 0.45);
-    background-color: rgba(254, 226, 226, 0.98);
+    opacity: 1;
   }
 }
 
-@keyframes circle-urgency-nav-attention {
+@keyframes circle-urgency-edge-glow-attention {
   0%,
   100% {
-    box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.15);
-    background-color: rgba(239, 246, 255, 0.95);
+    opacity: 0.85;
   }
   50% {
-    box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.45);
-    background-color: rgba(219, 234, 254, 0.98);
+    opacity: 1;
   }
 }
 
-@keyframes circle-urgency-tab-alert {
+@keyframes circle-urgency-nav-tint-alert {
   0%,
   100% {
-    background-color: rgb(220, 38, 38);
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45);
+    background-color: rgba(255, 255, 255, 0.96);
+    box-shadow: inset 0 1px 0 rgba(254, 226, 226, 0.5);
   }
   50% {
-    background-color: rgb(185, 28, 28);
-    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.25);
+    background-color: rgba(255, 251, 251, 0.98);
+    box-shadow: inset 0 0 0 1px rgba(254, 202, 202, 0.35);
   }
 }
 
-@keyframes circle-urgency-tab-attention {
+@keyframes circle-urgency-nav-tint-attention {
   0%,
   100% {
-    background-color: rgb(37, 99, 235);
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45);
+    background-color: rgba(255, 255, 255, 0.96);
+    box-shadow: inset 0 1px 0 rgba(224, 242, 254, 0.5);
   }
   50% {
-    background-color: rgb(29, 78, 216);
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25);
+    background-color: rgba(248, 252, 255, 0.98);
+    box-shadow: inset 0 0 0 1px rgba(186, 230, 253, 0.4);
   }
 }
 
-.circle-urgency-banner-alert {
-  animation: circle-urgency-banner-alert 1.4s ease-in-out infinite;
+/* Left accent bars on inbox rows */
+.circle-urgency-accent-alert,
+.circle-urgency-accent-attention,
+.circle-urgency-accent-alert-soft,
+.circle-urgency-accent-attention-soft,
+.circle-urgency-accent-unread,
+.circle-urgency-accent-indigo {
+  position: absolute;
+  left: 0;
+  top: 0.625rem;
+  bottom: 0.625rem;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
 }
 
-.circle-urgency-banner-attention {
-  animation: circle-urgency-banner-attention 1.4s ease-in-out infinite;
+.circle-urgency-accent-alert {
+  background: linear-gradient(180deg, #fca5a5 0%, #ef4444 50%, #dc2626 100%);
+  animation: circle-urgency-edge-glow-alert 2.6s ease-in-out infinite;
 }
 
+.circle-urgency-accent-attention {
+  background: linear-gradient(180deg, #7dd3fc 0%, #0ea5e9 50%, #0284c7 100%);
+  animation: circle-urgency-edge-glow-attention 2.6s ease-in-out infinite;
+}
+
+.circle-urgency-accent-alert-soft {
+  background: linear-gradient(180deg, #fecaca 0%, #f87171 100%);
+}
+
+.circle-urgency-accent-attention-soft {
+  background: linear-gradient(180deg, #bae6fd 0%, #38bdf8 100%);
+}
+
+.circle-urgency-accent-unread {
+  background: linear-gradient(180deg, #fca5a5 0%, #ef4444 100%);
+}
+
+.circle-urgency-accent-indigo {
+  background: linear-gradient(180deg, #a5b4fc 0%, #6366f1 100%);
+}
+
+/* Status badges */
+.circle-urgency-badge-alert {
+  animation: circle-urgency-ring-breathe 2.8s ease-in-out infinite;
+}
+
+.circle-urgency-badge-attention {
+  animation: circle-urgency-ring-breathe-blue 2.8s ease-in-out infinite;
+}
+
+/* Banner cards (dashboard + global patterns) */
+.circle-urgency-banner-card-alert::before,
+.circle-urgency-banner-card-attention::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  pointer-events: none;
+}
+
+.circle-urgency-banner-card-alert::before {
+  background: linear-gradient(180deg, #fca5a5, #ef4444, #b91c1c);
+  animation: circle-urgency-edge-glow-alert 2.6s ease-in-out infinite;
+}
+
+.circle-urgency-banner-card-attention::before {
+  background: linear-gradient(180deg, #7dd3fc, #0ea5e9, #0369a1);
+  animation: circle-urgency-edge-glow-attention 2.6s ease-in-out infinite;
+}
+
+/* Bottom nav: subtle bar tint + icon ring (not solid red tab) */
 .circle-urgency-nav-alert {
-  animation: circle-urgency-nav-alert 1.4s ease-in-out infinite;
+  animation: circle-urgency-nav-tint-alert 3s ease-in-out infinite;
 }
 
 .circle-urgency-nav-attention {
-  animation: circle-urgency-nav-attention 1.4s ease-in-out infinite;
+  animation: circle-urgency-nav-tint-attention 3s ease-in-out infinite;
 }
 
-.circle-urgency-tab-alert {
-  animation: circle-urgency-tab-alert 1.4s ease-in-out infinite;
+.circle-urgency-nav-icon-alert {
+  animation: circle-urgency-ring-breathe 2.8s ease-in-out infinite;
+  border-radius: 9999px;
 }
 
+.circle-urgency-nav-icon-attention {
+  animation: circle-urgency-ring-breathe-blue 2.8s ease-in-out infinite;
+  border-radius: 9999px;
+}
+
+/* Legacy aliases — keep for any straggler references */
+.circle-urgency-banner-alert {
+  animation: none;
+}
+
+.circle-urgency-banner-attention {
+  animation: none;
+}
+
+.circle-urgency-tab-alert,
 .circle-urgency-tab-attention {
-  animation: circle-urgency-tab-attention 1.4s ease-in-out infinite;
+  animation: none;
 }

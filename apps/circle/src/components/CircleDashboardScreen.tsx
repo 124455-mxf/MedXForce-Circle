@@ -94,6 +94,7 @@ import {
 } from '../lib/circleDashboardStats';
 
 import { cn } from '../lib/utils';
+import { formatCircleBadgeCount } from './CircleCountBadge';
 
 interface CircleDashboardScreenProps {
   user: User;
@@ -534,7 +535,9 @@ export function CircleDashboardScreen({
               caps.messaging && messageCount > 0
                 ? dashboardPlural(t, 'thread', messageCount)
                 : t('common.last7Days'),
-            row3: caps.messaging ? t('common.unread', { count: unreadCount }) : undefined,
+            row3: caps.messaging
+              ? t('common.unread', { count: formatCircleBadgeCount(unreadCount) })
+              : undefined,
           }),
       onClick: () => onGoToTab(caps.messaging ? 'messages' : 'analytics'),
     });
@@ -637,7 +640,7 @@ export function CircleDashboardScreen({
     row1: dashboardPlural(t, 'post', circlePostCount),
     row2:
       circleUnreadCount > 0
-        ? t('common.unread', { count: circleUnreadCount })
+        ? t('common.unread', { count: formatCircleBadgeCount(circleUnreadCount) })
         : circlePostCount === 0
           ? t('dashboard.noFamilyPostsYet')
           : t('dashboard.allCaughtUp'),

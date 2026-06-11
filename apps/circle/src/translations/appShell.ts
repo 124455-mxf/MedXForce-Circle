@@ -405,6 +405,11 @@ export const appShellEnglish = {
     needsAttention: 'Needs your attention',
     openMessages: 'Open Messages to read more.',
   },
+  orientation: {
+    portraitTitle: 'Use portrait mode',
+    portraitMessage:
+      'MedXForce Circle is designed for phones in portrait. Rotate your device upright to continue.',
+  },
 };
 
 export const appShellGerman = {
@@ -809,6 +814,11 @@ export const appShellGerman = {
     alertFromLovedOne: 'Alarm von Ihrem Angehörigen',
     needsAttention: 'Benötigt Ihre Aufmerksamkeit',
     openMessages: 'Öffnen Sie Nachrichten, um mehr zu lesen.',
+  },
+  orientation: {
+    portraitTitle: 'Bitte Hochformat nutzen',
+    portraitMessage:
+      'MedXForce Circle ist für Smartphones im Hochformat optimiert. Drehen Sie Ihr Gerät, um fortzufahren.',
   },
   profile: {
     patientLanguageConfirmTitle: 'Patienten-App-Sprache ändern?',
@@ -1220,6 +1230,11 @@ export const appShellSpanish = {
     needsAttention: 'Necesita su atención',
     openMessages: 'Abra Mensajes para leer más.',
   },
+  orientation: {
+    portraitTitle: 'Use el modo vertical',
+    portraitMessage:
+      'MedXForce Circle está diseñado para teléfonos en vertical. Gire su dispositivo para continuar.',
+  },
   profile: {
     patientLanguageConfirmTitle: '¿Cambiar idioma de la app del paciente?',
     patientLanguageConfirmDesc:
@@ -1629,6 +1644,11 @@ export const appShellPolish = {
     alertFromLovedOne: 'Alarm od bliskiej osoby',
     needsAttention: 'Wymaga Twojej uwagi',
     openMessages: 'Otwórz Wiadomości, aby przeczytać więcej.',
+  },
+  orientation: {
+    portraitTitle: 'Tryb pionowy',
+    portraitMessage:
+      'MedXForce Circle jest przeznaczony dla telefonów w orientacji pionowej. Obróć urządzenie, aby kontynuować.',
   },
   profile: {
     patientLanguageConfirmTitle: 'Zmienić język aplikacji pacjenta?',
