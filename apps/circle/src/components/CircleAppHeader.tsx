@@ -2,6 +2,7 @@ import type { User } from 'firebase/auth';
 import { HeartHandshake } from 'lucide-react';
 import type { CirclePatientSummary } from '@medxforce/shared';
 import { cn } from '../lib/utils';
+import { useCircleT } from '../lib/circleI18nContext';
 import { MedXForceBrandLogo } from './MedXForceBrandLogo';
 import { PatientOnlineIndicator } from './PatientOnlineIndicator';
 import { PatientPresenceCaption } from './PatientPresenceCaption';
@@ -111,6 +112,7 @@ export function CircleAppHeader({
   patientLastSeen = 0,
   onOpenPatientSwitcher,
 }: CircleAppHeaderProps) {
+  const t = useCircleT();
   const compact = variant === 'compact';
 
   return (
@@ -134,7 +136,7 @@ export function CircleAppHeader({
         ) : (
           <>
             <h1 className={TITLE_CLASS}>MedXForce Circle</h1>
-            <p className="text-xs text-slate-500 truncate mt-0.5 leading-normal">Friends &amp; family</p>
+            <p className="text-xs text-slate-500 truncate mt-0.5 leading-normal">{t('common.friendsFamily')}</p>
           </>
         )}
       </div>

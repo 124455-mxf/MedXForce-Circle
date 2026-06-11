@@ -6,9 +6,6 @@ import {
   listUnreadProfileNotifications,
   markProfileNotificationRead,
   publishCircleAccessIndexFromPatientDoc,
-  circleProfileNotificationChanges,
-  circleProfileNotificationResolvedFields,
-  circleProfileNotificationTitle,
   isGenericProfileSummary,
   parseCircleProfileMeta,
   type CirclePatientProfileMeta,
@@ -16,6 +13,13 @@ import {
   type CircleProfileNotificationRow,
 } from '@medxforce/shared';
 import { doc, getDoc } from 'firebase/firestore';
+import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
+import {
+  formatProfileNotificationTimeT,
+  profileNotificationChangesT,
+  profileNotificationFieldListT,
+  profileNotificationTitleT,
+} from '../lib/profileNotificationI18n';
 
 interface CircleProfileChangeBannerProps {
   user: User;
@@ -23,16 +27,9 @@ interface CircleProfileChangeBannerProps {
   patient: CirclePatientSummary;
 }
 
-function formatNotificationTime(ts: number): string {
-  if (!ts) return '';
-  const d = new Date(ts);
-  const today = new Date();
-  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  if (d.toDateString() === today.toDateString()) return `Today, ${time}`;
-  return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}`;
-}
-
 export function CircleProfileChangeBanner({ user, db, patient }: CircleProfileChangeBannerProps) {
+  const t = useCircleT();
+  const { language } = useCircleI18nContext();
   const [notifications, setNotifications] = useState<CircleProfileNotificationRow[]>([]);
   const [profileMeta, setProfileMeta] = useState<CirclePatientProfileMeta | null>(null);
 
@@ -92,7 +89,8 @@ export function CircleProfileChangeBanner({ user, db, patient }: CircleProfileCh
           Math.abs(row.timestamp - profileMeta.updatedAt) <= 60_000
             ? profileMeta
             : null;
-        const fieldList = circleProfileNotificationResolvedFields(
+        const fieldList = profileNotificationFieldListT(
+          t,
           row.changedLabels,
           row.summary,
           rowMeta,
@@ -108,16 +106,16 @@ export function CircleProfileChangeBanner({ user, db, patient }: CircleProfileCh
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
               <p className="text-xs font-bold text-amber-800 uppercase tracking-wide">
-                {circleProfileNotificationTitle(row.type, row.summary)}
+                {profileNotificationTitleT(t, row.type, row.summary)}
               </p>
               {row.timestamp > 0 && (
                 <span className="text-[10px] text-slate-400 shrink-0 tabular-nums whitespace-nowrap">
-                  {formatNotificationTime(row.timestamp)}
+                  {formatProfileNotificationTimeT(t, language, row.timestamp)}
                 </span>
               )}
             </div>
             <p className="text-sm font-medium text-slate-800 mt-1 leading-snug">
-              {circleProfileNotificationChanges(row.changedLabels, row.type, row.summary, rowMeta)}
+              {profileNotificationChangesT(t, row.changedLabels, row.type, row.summary, rowMeta)}
             </p>
             {fieldList.length > 0 && (
               <ul className="mt-2 space-y-1">
@@ -137,7 +135,7 @@ export function CircleProfileChangeBanner({ user, db, patient }: CircleProfileCh
             type="button"
             onClick={() => void dismiss(row)}
             className="p-2 rounded-xl text-slate-400 hover:bg-white/80 shrink-0"
-            aria-label="Dismiss"
+            aria-label={t('common.close')}
           >
             <X size={16} />
           </button>

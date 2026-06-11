@@ -223,7 +223,13 @@ export default function App() {
   const startup = useCircleStartupSequence(!authLoading);
 
   if (startup.visible) {
-    return <CircleStartupSequence phase={startup.phase} exiting={startup.exiting} />;
+    return (
+      <CircleStartupSequence
+        phase={startup.phase}
+        exiting={startup.exiting}
+        tagline={t('brand.startupTagline')}
+      />
+    );
   }
 
   if (!user) {

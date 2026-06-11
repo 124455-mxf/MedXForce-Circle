@@ -1,13 +1,9 @@
 import { AlertCircle, Bell, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { CircleAlertAttentionItem } from '../hooks/useCircleAlertAttentionState';
-import {
-  alertAttentionBannerTitle,
-  alertAttentionKindLabel,
-  alertAttentionMessagePreview,
-  formatAlertAttentionTime,
-  type CircleAlertAttentionKind,
-} from '../lib/circleAlertAttentionUrgency';
+import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
+import { formatDashboardTimestamp } from '../lib/dashboardI18n';
+import { alertAttentionMessagePreview, type CircleAlertAttentionKind } from '../lib/circleAlertAttentionUrgency';
 
 interface CircleAlertAttentionBannerProps {
   urgentItems: CircleAlertAttentionItem[];
@@ -51,8 +47,16 @@ function BannerRow({
   urgent: boolean;
   onOpenMessages: () => void;
 }) {
+  const t = useCircleT();
+  const { language } = useCircleI18nContext();
   const styles = bannerStyles(item.kind, urgent);
   const Icon = item.kind === 'alert' ? AlertCircle : Bell;
+  const kindLabel =
+    item.kind === 'alert' ? t('alertAttention.alert') : t('alertAttention.attention');
+  const bannerTitle =
+    item.kind === 'alert'
+      ? t('alertAttention.alertFromLovedOne')
+      : t('alertAttention.needsAttention');
 
   return (
     <button
@@ -74,16 +78,16 @@ function BannerRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <p className={cn('text-xs font-bold uppercase tracking-wide', styles.title)}>
-            {urgent ? alertAttentionBannerTitle(item.kind) : alertAttentionKindLabel(item.kind)}
+            {urgent ? bannerTitle : kindLabel}
           </p>
           {item.createdAt > 0 && (
             <span className="text-[10px] text-slate-400 shrink-0 tabular-nums whitespace-nowrap">
-              {formatAlertAttentionTime(item.createdAt)}
+              {formatDashboardTimestamp(t, language, item.createdAt)}
             </span>
           )}
         </div>
         <p className="text-sm text-slate-700 mt-1 leading-relaxed">
-          {alertAttentionMessagePreview(item)}
+          {alertAttentionMessagePreview(item) || t('alertAttention.openMessages')}
         </p>
       </div>
       <ChevronRight size={16} className="text-slate-400 shrink-0 mt-1" aria-hidden />

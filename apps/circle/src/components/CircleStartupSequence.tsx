@@ -12,9 +12,10 @@ const STEPS = [
 type CircleStartupSequenceProps = {
   phase: CircleStartupPhase;
   exiting: boolean;
+  tagline: string;
 };
 
-export function CircleStartupSequence({ phase, exiting }: CircleStartupSequenceProps) {
+export function CircleStartupSequence({ phase, exiting, tagline }: CircleStartupSequenceProps) {
   const progress = ((phase + 1) / STEPS.length) * 100;
 
   return (
@@ -39,7 +40,7 @@ export function CircleStartupSequence({ phase, exiting }: CircleStartupSequenceP
       >
         <header className="shrink-0 pt-[clamp(0.5rem,2vh,1.5rem)] text-center landscape:pt-[clamp(0.25rem,1.5vh,1rem)]">
           <p className="mx-auto max-w-2xl text-[clamp(0.625rem,1.8vw,0.9375rem)] font-medium leading-snug text-white/95">
-            MedXForce Circle — friends &amp; family
+            {tagline}
           </p>
         </header>
 

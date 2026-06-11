@@ -17,20 +17,23 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import {
   buildPatientInsightItems,
-  buildPreviewBirthdayReminder,
-  buildPreviewOnsetMilestoneFiveYear,
-  buildPreviewOnsetMilestoneOneYear,
   countFilledPatientInsights,
   isPatientInsightsPreviewRemindersEnabled,
-  resolveBirthdayReminder,
-  resolveOnsetMilestone,
   type CirclePatientInsightItem,
   type CirclePatientInsightKey,
 } from '@medxforce/shared';
 import type { CirclePatientProfileSnapshot } from '@medxforce/shared';
 import type { CirclePatientSummary } from '@medxforce/shared';
-import { useCircleT } from '../lib/circleI18nContext';
-import { insightLabelT } from '../lib/dashboardI18n';
+import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
+import {
+  insightLabelT,
+  localizeBirthdayReminder,
+  localizeInsightItem,
+  localizeOnsetMilestone,
+  localizePreviewBirthdayReminder,
+  localizePreviewOnsetMilestoneFiveYear,
+  localizePreviewOnsetMilestoneOneYear,
+} from '../lib/dashboardI18n';
 import { cn } from '../lib/utils';
 
 function patientFirstName(
@@ -196,6 +199,7 @@ export function CirclePatientInsightsSection({
   onOpenProfile,
 }: CirclePatientInsightsSectionProps) {
   const t = useCircleT();
+  const { language } = useCircleI18nContext();
   const previewReminders = useMemo(() => isPatientInsightsPreviewRemindersEnabled(), []);
   const [expanded, setExpanded] = useState(false);
 
@@ -212,18 +216,20 @@ export function CirclePatientInsightsSection({
     );
   }
 
-  const items = buildPatientInsightItems(snapshot, patient.role);
+  const items = buildPatientInsightItems(snapshot, patient.role).map((item) =>
+    localizeInsightItem(t, item),
+  );
   if (items.length === 0) return null;
 
-  const birthday = resolveBirthdayReminder(snapshot, patient.displayName);
-  const onsetMilestone = resolveOnsetMilestone(snapshot);
+  const birthday = localizeBirthdayReminder(t, language, snapshot, patient.displayName);
+  const onsetMilestone = localizeOnsetMilestone(t, snapshot);
   const counts = countFilledPatientInsights(items);
   const firstName = patientFirstName(snapshot, patient.displayName);
   const sectionTitle = t('dashboard.getToKnow', { name: firstName });
 
-  const previewBirthday = previewReminders ? buildPreviewBirthdayReminder(firstName) : null;
-  const previewOnsetFiveYear = previewReminders ? buildPreviewOnsetMilestoneFiveYear() : null;
-  const previewOnsetOneYear = previewReminders ? buildPreviewOnsetMilestoneOneYear() : null;
+  const previewBirthday = previewReminders ? localizePreviewBirthdayReminder(t, firstName) : null;
+  const previewOnsetFiveYear = previewReminders ? localizePreviewOnsetMilestoneFiveYear(t) : null;
+  const previewOnsetOneYear = previewReminders ? localizePreviewOnsetMilestoneOneYear(t) : null;
 
   const hasReminder = !!(birthday || onsetMilestone || previewReminders);
 

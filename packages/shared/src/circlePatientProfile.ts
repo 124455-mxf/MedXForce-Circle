@@ -674,6 +674,28 @@ export function describeProfileSnapshotChanges(
 
 const GENERIC_PROFILE_CHANGE_LABEL = 'Profile updated';
 
+/** Map a stored English profile-change label back to a field path or discovery key. */
+export function lookupProfileFieldPathByLabel(label: string): string | null {
+  const trimmed = label.trim();
+  if (!trimmed) return null;
+
+  for (const [path, english] of Object.entries(FIELD_LABELS)) {
+    if (english === trimmed) return path;
+  }
+
+  for (const [key, english] of Object.entries(DISCOVERED_CATEGORY_LABELS)) {
+    if (english === trimmed) return `discovery.${key}`;
+  }
+
+  const plusItems = trimmed.match(/^(.+) \(\+(\d+) items\)$/);
+  if (plusItems) {
+    const base = lookupProfileFieldPathByLabel(plusItems[1]);
+    if (base) return `${base}:plusItems:${plusItems[2]}`;
+  }
+
+  return null;
+}
+
 export function meaningfulProfileChangedLabels(changedLabels: string[]): string[] {
   return changedLabels.filter((label) => label !== GENERIC_PROFILE_CHANGE_LABEL);
 }

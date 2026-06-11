@@ -103,3 +103,8 @@ export function alertAttentionMessagePreview(msg: {
 function kindFallbackPreview(): string {
   return 'Open Messages to read more.';
 }
+
+/** @deprecated Use translated preview in CircleAlertAttentionBanner when possible. */
+export function alertAttentionFallbackPreview(): string {
+  return kindFallbackPreview();
+}

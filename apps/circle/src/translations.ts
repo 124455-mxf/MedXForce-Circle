@@ -12,7 +12,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
   English: {
     auth: {
       title: 'MedXForce Circle',
-      subtitle: 'Friends & family — share moments with your loved one',
+      subtitle: 'Family & Friends — share moments with your loved one',
       emailPlaceholder: 'Email (must match patient invite)',
       passwordPlaceholder: 'Password',
       continueGoogle: 'Continue with Google',
@@ -21,7 +21,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       signIn: 'Sign in',
       createAccount: 'Create account',
       googleHint:
-        'MedXForce patient app uses Google — use Continue with Google if you already sign in there. The Google email must match the Friends & Family invite exactly.',
+        'MedXForce patient app uses Google — use Continue with Google if you already sign in there. The Google email must match the Family & Friends invite exactly.',
       wrongPassword:
         'Wrong password — or this account uses Google sign-in. Try Continue with Google instead.',
       emailInUse:
@@ -31,7 +31,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       userNotFound: 'No account for this email yet. Use Create account instead.',
       authFailed: 'Authentication failed',
       noInviteForEmail:
-        'No invite found for {{email}}. In the patient app, save Friends & Family contact with this exact email, click Done, then Refresh.',
+        'No invite found for {{email}}. In the patient app, save Family & Friends contact with this exact email, click Done, then Refresh.',
       inviteLinkFailed:
         'Invite found but could not link your account. Check the browser console for details.',
       firestoreQuota:
@@ -41,7 +41,10 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     patients: {
       yourPatients: 'Your patients',
       noInvitesYet:
-        'No active invites yet. In the patient app, open Settings → Friends & Family, confirm your email is saved, click Done, then tap Refresh here.',
+        'No active invites yet. In the patient app, open Settings → Family & Friends, confirm your email is saved, click Done, then tap Refresh here.',
+    },
+    brand: {
+      startupTagline: 'MedXForce Circle — Family & Friends',
     },
     ...appShellEnglish,
     common: {
@@ -50,14 +53,14 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       signOut: 'Sign out',
       saving: 'Saving…',
       saved: 'Saved',
-      friendsFamily: 'Friends & family',
+      friendsFamily: 'Family & Friends',
       ...appShellEnglish.common,
     },
   },
   German: {
     auth: {
       title: 'MedXForce Circle',
-      subtitle: 'Freunde & Familie — Momente mit Ihrem Angehörigen teilen',
+      subtitle: 'Familie & Freunde — Momente mit Ihrem Angehörigen teilen',
       emailPlaceholder: 'E-Mail (muss mit der Patienteneinladung übereinstimmen)',
       passwordPlaceholder: 'Passwort',
       continueGoogle: 'Mit Google fortfahren',
@@ -66,7 +69,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       signIn: 'Anmelden',
       createAccount: 'Konto erstellen',
       googleHint:
-        'Die MedXForce-Patienten-App nutzt Google — verwenden Sie „Mit Google fortfahren“, wenn Sie sich dort bereits anmelden. Die Google-E-Mail muss exakt mit der Freunde-&-Familie-Einladung übereinstimmen.',
+        'Die MedXForce-Patienten-App nutzt Google — verwenden Sie „Mit Google fortfahren“, wenn Sie sich dort bereits anmelden. Die Google-E-Mail muss exakt mit der Familie-&-Freunde-Einladung übereinstimmen.',
       wrongPassword:
         'Falsches Passwort — oder dieses Konto nutzt Google-Anmeldung. Versuchen Sie „Mit Google fortfahren“.',
       emailInUse:
@@ -76,7 +79,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       userNotFound: 'Kein Konto für diese E-Mail. Nutzen Sie „Konto erstellen“.',
       authFailed: 'Anmeldung fehlgeschlagen',
       noInviteForEmail:
-        'Keine Einladung für {{email}} gefunden. Speichern Sie im Patienten-App-Kontakt unter Freunde & Familie diese E-Mail, tippen Sie auf Fertig und dann hier auf Aktualisieren.',
+        'Keine Einladung für {{email}} gefunden. Speichern Sie im Patienten-App-Kontakt unter Familie & Freunde diese E-Mail, tippen Sie auf Fertig und dann hier auf Aktualisieren.',
       inviteLinkFailed:
         'Einladung gefunden, aber Konto konnte nicht verknüpft werden. Prüfen Sie die Browser-Konsole.',
       firestoreQuota:
@@ -86,7 +89,10 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     patients: {
       yourPatients: 'Ihre Patienten',
       noInvitesYet:
-        'Noch keine aktiven Einladungen. Öffnen Sie in der Patienten-App Einstellungen → Freunde & Familie, speichern Sie Ihre E-Mail, tippen Sie auf Fertig und dann hier auf Aktualisieren.',
+        'Noch keine aktiven Einladungen. Öffnen Sie in der Patienten-App Einstellungen → Familie & Freunde, speichern Sie Ihre E-Mail, tippen Sie auf Fertig und dann hier auf Aktualisieren.',
+    },
+    brand: {
+      startupTagline: 'MedXForce Circle — Familie & Freunde',
     },
     ...appShellGerman,
     common: {
@@ -95,14 +101,14 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       signOut: 'Abmelden',
       saving: 'Speichern…',
       saved: 'Gespeichert',
-      friendsFamily: 'Freunde & Familie',
+      friendsFamily: 'Familie & Freunde',
       ...appShellGerman.common,
     },
   },
   Spanish: {
     auth: {
       title: 'MedXForce Circle',
-      subtitle: 'Amigos y familia — comparta momentos con su ser querido',
+      subtitle: 'Familia y amigos — comparta momentos con su ser querido',
       emailPlaceholder: 'Correo (debe coincidir con la invitación del paciente)',
       passwordPlaceholder: 'Contraseña',
       continueGoogle: 'Continuar con Google',
@@ -111,7 +117,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       signIn: 'Iniciar sesión',
       createAccount: 'Crear cuenta',
       googleHint:
-        'La app del paciente MedXForce usa Google — use Continuar con Google si ya inicia sesión allí. El correo de Google debe coincidir exactamente con la invitación de Amigos y familia.',
+        'La app del paciente MedXForce usa Google — use Continuar con Google si ya inicia sesión allí. El correo de Google debe coincidir exactamente con la invitación de Familia y amigos.',
       wrongPassword:
         'Contraseña incorrecta — o esta cuenta usa Google. Pruebe Continuar con Google.',
       emailInUse:
@@ -121,7 +127,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       userNotFound: 'No hay cuenta para este correo. Use Crear cuenta.',
       authFailed: 'Error de autenticación',
       noInviteForEmail:
-        'No se encontró invitación para {{email}}. En la app del paciente, guarde el contacto en Amigos y familia con este correo, pulse Hecho y luego Actualizar aquí.',
+        'No se encontró invitación para {{email}}. En la app del paciente, guarde el contacto en Familia y amigos con este correo, pulse Hecho y luego Actualizar aquí.',
       inviteLinkFailed:
         'Invitación encontrada pero no se pudo vincular la cuenta. Revise la consola del navegador.',
       firestoreQuota:
@@ -131,7 +137,10 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     patients: {
       yourPatients: 'Sus pacientes',
       noInvitesYet:
-        'Aún no hay invitaciones activas. En la app del paciente, abra Ajustes → Amigos y familia, confirme su correo, pulse Hecho y luego Actualizar aquí.',
+        'Aún no hay invitaciones activas. En la app del paciente, abra Ajustes → Familia y amigos, confirme su correo, pulse Hecho y luego Actualizar aquí.',
+    },
+    brand: {
+      startupTagline: 'MedXForce Circle — Familia y amigos',
     },
     ...appShellSpanish,
     common: {
@@ -140,14 +149,14 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       signOut: 'Cerrar sesión',
       saving: 'Guardando…',
       saved: 'Guardado',
-      friendsFamily: 'Amigos y familia',
+      friendsFamily: 'Familia y amigos',
       ...appShellSpanish.common,
     },
   },
   Polish: {
     auth: {
       title: 'MedXForce Circle',
-      subtitle: 'Przyjaciele i rodzina — dziel się chwilami z bliską osobą',
+      subtitle: 'Rodzina i przyjaciele — dziel się chwilami z bliską osobą',
       emailPlaceholder: 'E-mail (musi zgadzać się z zaproszeniem pacjenta)',
       passwordPlaceholder: 'Hasło',
       continueGoogle: 'Kontynuuj z Google',
@@ -156,7 +165,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       signIn: 'Zaloguj się',
       createAccount: 'Utwórz konto',
       googleHint:
-        'Aplikacja pacjenta MedXForce używa Google — wybierz Kontynuuj z Google, jeśli tam się logujesz. Adres Google musi dokładnie odpowiadać zaproszeniu Przyjaciele i rodzina.',
+        'Aplikacja pacjenta MedXForce używa Google — wybierz Kontynuuj z Google, jeśli tam się logujesz. Adres Google musi dokładnie odpowiadać zaproszeniu Rodzina i przyjaciele.',
       wrongPassword:
         'Błędne hasło — lub to konto używa logowania Google. Spróbuj Kontynuuj z Google.',
       emailInUse:
@@ -166,7 +175,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       userNotFound: 'Brak konta dla tego e-maila. Użyj Utwórz konto.',
       authFailed: 'Uwierzytelnianie nie powiodło się',
       noInviteForEmail:
-        'Nie znaleziono zaproszenia dla {{email}}. W aplikacji pacjenta zapisz kontakt w Przyjaciele i rodzina z tym e-mailem, naciśnij Gotowe, a potem Odśwież tutaj.',
+        'Nie znaleziono zaproszenia dla {{email}}. W aplikacji pacjenta zapisz kontakt w Rodzina i przyjaciele z tym e-mailem, naciśnij Gotowe, a potem Odśwież tutaj.',
       inviteLinkFailed:
         'Znaleziono zaproszenie, ale nie udało się połączyć konta. Sprawdź konsolę przeglądarki.',
       firestoreQuota:
@@ -176,7 +185,10 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     patients: {
       yourPatients: 'Twoi pacjenci',
       noInvitesYet:
-        'Brak aktywnych zaproszeń. W aplikacji pacjenta otwórz Ustawienia → Przyjaciele i rodzina, zapisz e-mail, naciśnij Gotowe, a potem Odśwież tutaj.',
+        'Brak aktywnych zaproszeń. W aplikacji pacjenta otwórz Ustawienia → Rodzina i przyjaciele, zapisz e-mail, naciśnij Gotowe, a potem Odśwież tutaj.',
+    },
+    brand: {
+      startupTagline: 'MedXForce Circle — Rodzina i przyjaciele',
     },
     ...appShellPolish,
     common: {
@@ -185,7 +197,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       signOut: 'Wyloguj się',
       saving: 'Zapisywanie…',
       saved: 'Zapisano',
-      friendsFamily: 'Przyjaciele i rodzina',
+      friendsFamily: 'Rodzina i przyjaciele',
       ...appShellPolish.common,
     },
   },

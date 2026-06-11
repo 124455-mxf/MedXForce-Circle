@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Clock } from 'lucide-react';
-import { formatPatientLastSeen } from '../hooks/usePatientOnlinePresence';
+import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
+import { formatPatientLastSeenT } from '../lib/dashboardI18n';
 import { cn } from '../lib/utils';
 
 type PatientPresenceCaptionProps = {
@@ -17,6 +18,8 @@ export function PatientPresenceCaption({
   variant = 'card',
   className,
 }: PatientPresenceCaptionProps) {
+  const t = useCircleT();
+  const { language } = useCircleI18nContext();
   const isHeader = variant === 'header';
 
   return (
@@ -33,15 +36,15 @@ export function PatientPresenceCaption({
       <span className="truncate">
         {isHeader ? (
           <>
-            Last seen: {online ? 'Now' : formatPatientLastSeen(lastSeen)}
+            {t('presence.lastSeen')}: {online ? t('presence.now') : formatPatientLastSeenT(t, language, lastSeen)}
           </>
         ) : online ? (
-          <span className="text-emerald-700 font-semibold">Online in patient app</span>
+          <span className="text-emerald-700 font-semibold">{t('presence.onlineInPatientApp')}</span>
         ) : (
           <>
-            Last seen{' '}
+            {t('presence.lastSeenLabel')}{' '}
             <span className="font-medium text-slate-600">
-              {formatPatientLastSeen(lastSeen)}
+              {formatPatientLastSeenT(t, language, lastSeen)}
             </span>
           </>
         )}
@@ -61,6 +64,8 @@ export function PatientAvatarPresenceRing({
   children,
   className,
 }: PatientAvatarPresenceRingProps) {
+  const t = useCircleT();
+
   return (
     <div className={cn('relative shrink-0', className)}>
       {children}
@@ -69,7 +74,7 @@ export function PatientAvatarPresenceRing({
           'absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm',
           online ? 'bg-emerald-500' : 'bg-slate-300',
         )}
-        title={online ? 'Patient app is active' : 'Patient app is not active'}
+        title={online ? t('presence.patientAppActive') : t('presence.patientAppInactive')}
         aria-hidden
       />
     </div>

@@ -1,4 +1,4 @@
-# MedXForce Circle (Friends & Family)
+# MedXForce Circle (Family & Friends)
 
 Separate monorepo from the **patient tablet app** (`medxforce`). **Do not merge these repos** — open this folder as its **own Cursor window** (File → Open Folder → `medxforce-circle`) so patient and circle code never intermingle.
 

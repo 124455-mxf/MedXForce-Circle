@@ -25,7 +25,6 @@ import {
   canViewRemoteSettingsTab,
   canSendPatientRemoteCommands,
   diaryMoodLabel,
-  formatDashboardApplicationModeLine,
   normalizeMemberRole,
   type AnalyticsMetricId,
   type CirclePatientSummary,
@@ -64,7 +63,6 @@ import {
 
 import {
   isPatientDoNotDisturbSection,
-  formatPatientOnlineDurationLabel,
   usePatientOnlinePresence,
 } from '../hooks/usePatientOnlinePresence';
 
@@ -72,9 +70,11 @@ import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import {
   assistiveDevicesLabelT,
   dashboardPlural,
+  formatDashboardApplicationModeLineT,
   formatDashboardLastLine,
   formatDashboardTimestamp,
   formatPatientActiveSectionT,
+  formatPatientOnlineDurationLabelT,
   profileCompletenessLabelT,
   treatmentPhaseLabelT,
 } from '../lib/dashboardI18n';
@@ -450,7 +450,8 @@ export function CircleDashboardScreen({
   const patientAppWidgets: DashboardWidgetSpec[] = [];
 
   const liveOnlineDurationLabel = patientPresence.online
-    ? formatPatientOnlineDurationLabel(
+    ? formatPatientOnlineDurationLabelT(
+        t,
         patientPresence.onlineSince || patientPresence.lastSeen,
       )
     : '';
@@ -753,7 +754,7 @@ export function CircleDashboardScreen({
       key: 'remote-settings',
       title: t('dashboard.remoteSettings'),
       icon: SlidersHorizontal,
-      row1: formatDashboardApplicationModeLine(remoteSettings, remoteSettingsLoading),
+      row1: formatDashboardApplicationModeLineT(t, remoteSettings, remoteSettingsLoading),
       row2: remoteSettingsLoading ? '' : checkInLabel,
       onClick: () => onGoToTab('remote-settings'),
     });
