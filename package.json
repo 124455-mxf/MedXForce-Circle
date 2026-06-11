@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "npm run dev -w @medxforce/circle",
     "build": "npm run build -w @medxforce/circle",
+    "build:production": "npm run build -w @medxforce/circle -- --mode production",
+    "deploy:hosting": "npm run build:production && firebase deploy --only hosting --project gen-lang-client-0333368246",
     "lint": "npm run lint -w @medxforce/shared && npm run lint -w @medxforce/circle"
   }
 }
