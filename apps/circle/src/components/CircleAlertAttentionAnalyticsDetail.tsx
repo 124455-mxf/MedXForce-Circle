@@ -3,17 +3,30 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
   YAxis,
 } from 'recharts';
 import { BarChart3, ChartLine, Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import type { AlertAttentionTimelinePoint, AnalyticsTrendDirection } from '@medxforce/shared';
+import {
+  CIRCLE_ANALYTICS_CHART_HEIGHT,
+  circleAnalyticsChartMargin,
+  circleAnalyticsPlotInsetLeft,
+  circleAnalyticsPlotInsetRight,
+  circleAnalyticsTooltipLabelFormatter,
+  prepareDailyBucketChartData,
+} from '../lib/circleAnalyticsChart';
 import { cn } from '../lib/utils';
+import { CircleAnalyticsChartFooter } from './CircleAnalyticsChartFooter';
+import { CircleAnalyticsChartXAxis } from './CircleAnalyticsChartXAxis';
+
+const ALERT_ATTENTION_LEGEND = [
+  { color: '#ef4444', label: 'Alert' },
+  { color: '#3b82f6', label: 'Attention' },
+] as const;
 
 type CircleAlertAttentionAnalyticsDetailProps = {
   alerts?: number;
@@ -56,17 +69,20 @@ export function CircleAlertAttentionAnalyticsDetail({
   timeline,
 }: CircleAlertAttentionAnalyticsDetailProps) {
   const [chartType, setChartType] = useState<'line' | 'bar'>('line');
-  const chartData = Array.isArray(timeline)
-    ? timeline.map((point) => ({
-        date: point.date,
-        alert: typeof point.alert === 'number' && Number.isFinite(point.alert) ? point.alert : 0,
-        attention:
-          typeof point.attention === 'number' && Number.isFinite(point.attention)
-            ? point.attention
-            : 0,
-      }))
-    : [];
+  const chartData = prepareDailyBucketChartData(
+    Array.isArray(timeline)
+      ? timeline.map((point) => ({
+          date: point.date,
+          alert: typeof point.alert === 'number' && Number.isFinite(point.alert) ? point.alert : 0,
+          attention:
+            typeof point.attention === 'number' && Number.isFinite(point.attention)
+              ? point.attention
+              : 0,
+        }))
+      : undefined,
+  );
   const hasCharts = chartData.length > 0;
+  const chartMargin = circleAnalyticsChartMargin();
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -128,18 +144,12 @@ export function CircleAlertAttentionAnalyticsDetail({
         </div>
 
         {hasCharts ? (
-          <div className="h-44 w-full min-w-0" style={{ minHeight: 176 }}>
-            <ResponsiveContainer width="100%" height={176} debounce={50}>
+          <div className="w-full min-w-0 overflow-visible">
+            <ResponsiveContainer width="100%" height={CIRCLE_ANALYTICS_CHART_HEIGHT} debounce={50}>
               {chartType === 'line' ? (
-                <LineChart key="alert-line" data={chartData} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+                <LineChart key="alert-line" data={chartData} margin={chartMargin}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis
-                    dataKey="date"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 9, fill: '#94a3b8' }}
-                    interval="preserveStartEnd"
-                  />
+                  <CircleAnalyticsChartXAxis />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
@@ -148,6 +158,7 @@ export function CircleAlertAttentionAnalyticsDetail({
                     width={32}
                   />
                   <Tooltip
+                    labelFormatter={circleAnalyticsTooltipLabelFormatter}
                     contentStyle={{
                       borderRadius: '12px',
                       border: 'none',
@@ -173,21 +184,11 @@ export function CircleAlertAttentionAnalyticsDetail({
                     dot={false}
                     activeDot={{ r: 3 }}
                   />
-                  <Legend
-                    iconType="circle"
-                    wrapperStyle={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase' }}
-                  />
                 </LineChart>
               ) : (
-                <BarChart key="alert-bar" data={chartData} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+                <BarChart key="alert-bar" data={chartData} margin={chartMargin}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis
-                    dataKey="date"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 9, fill: '#94a3b8' }}
-                    interval="preserveStartEnd"
-                  />
+                  <CircleAnalyticsChartXAxis />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
@@ -196,6 +197,7 @@ export function CircleAlertAttentionAnalyticsDetail({
                     width={32}
                   />
                   <Tooltip
+                    labelFormatter={circleAnalyticsTooltipLabelFormatter}
                     contentStyle={{
                       borderRadius: '12px',
                       border: 'none',
@@ -205,13 +207,14 @@ export function CircleAlertAttentionAnalyticsDetail({
                   />
                   <Bar dataKey="alert" name="Alert" fill="#ef4444" radius={[3, 3, 0, 0]} />
                   <Bar dataKey="attention" name="Attention" fill="#3b82f6" radius={[3, 3, 0, 0]} />
-                  <Legend
-                    iconType="circle"
-                    wrapperStyle={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase' }}
-                  />
                 </BarChart>
               )}
             </ResponsiveContainer>
+            <CircleAnalyticsChartFooter
+              legend={[...ALERT_ATTENTION_LEGEND]}
+              plotInsetLeft={circleAnalyticsPlotInsetLeft(chartMargin)}
+              plotInsetRight={circleAnalyticsPlotInsetRight(chartMargin)}
+            />
           </div>
         ) : (
           <p className="text-[11px] text-slate-400 text-center leading-relaxed py-2">

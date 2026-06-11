@@ -3,12 +3,10 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
   YAxis,
 } from 'recharts';
 import { BarChart3, ChartLine, Minus, TrendingDown, TrendingUp } from 'lucide-react';
@@ -18,7 +16,22 @@ import type {
   MessagesTimelinePoint,
   TopCountItem,
 } from '@medxforce/shared';
+import {
+  CIRCLE_ANALYTICS_CHART_HEIGHT,
+  circleAnalyticsChartMargin,
+  circleAnalyticsPlotInsetLeft,
+  circleAnalyticsPlotInsetRight,
+  circleAnalyticsTooltipLabelFormatter,
+  prepareDailyBucketChartData,
+} from '../lib/circleAnalyticsChart';
 import { cn } from '../lib/utils';
+import { CircleAnalyticsChartFooter } from './CircleAnalyticsChartFooter';
+import { CircleAnalyticsChartXAxis } from './CircleAnalyticsChartXAxis';
+
+const MESSAGES_LEGEND = [
+  { color: '#6366f1', label: 'Communication' },
+  { color: '#10b981', label: 'Messaging' },
+] as const;
 
 type CircleMessagesAnalyticsDetailProps = {
   communication: number;
@@ -93,18 +106,23 @@ export function CircleMessagesAnalyticsDetail({
   timeline,
 }: CircleMessagesAnalyticsDetailProps) {
   const [chartType, setChartType] = useState<'line' | 'bar'>('line');
-  const chartData = Array.isArray(timeline)
-    ? timeline.map((point) => ({
-        date: point.date,
-        communication:
-          typeof point.communication === 'number' && Number.isFinite(point.communication)
-            ? point.communication
-            : 0,
-        messaging:
-          typeof point.messaging === 'number' && Number.isFinite(point.messaging) ? point.messaging : 0,
-      }))
-    : [];
+  const chartData = prepareDailyBucketChartData(
+    Array.isArray(timeline)
+      ? timeline.map((point) => ({
+          date: point.date,
+          communication:
+            typeof point.communication === 'number' && Number.isFinite(point.communication)
+              ? point.communication
+              : 0,
+          messaging:
+            typeof point.messaging === 'number' && Number.isFinite(point.messaging)
+              ? point.messaging
+              : 0,
+        }))
+      : undefined,
+  );
   const hasCharts = chartData.length > 0;
+  const chartMargin = circleAnalyticsChartMargin();
   const breakdownRows = messagingBreakdown
     ? BREAKDOWN_ROWS.filter((row) => safeBreakdownValue(messagingBreakdown, row.key) > 0)
     : [];
@@ -180,18 +198,12 @@ export function CircleMessagesAnalyticsDetail({
         </div>
 
         {hasCharts ? (
-          <div className="h-44 w-full min-w-0" style={{ minHeight: 176 }}>
-            <ResponsiveContainer width="100%" height={176} debounce={50}>
+          <div className="w-full min-w-0 overflow-visible">
+            <ResponsiveContainer width="100%" height={CIRCLE_ANALYTICS_CHART_HEIGHT} debounce={50}>
               {chartType === 'line' ? (
-                <LineChart key="messages-line" data={chartData} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+                <LineChart key="messages-line" data={chartData} margin={chartMargin}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis
-                    dataKey="date"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 9, fill: '#94a3b8' }}
-                    interval="preserveStartEnd"
-                  />
+                  <CircleAnalyticsChartXAxis />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
@@ -200,6 +212,7 @@ export function CircleMessagesAnalyticsDetail({
                     width={32}
                   />
                   <Tooltip
+                    labelFormatter={circleAnalyticsTooltipLabelFormatter}
                     contentStyle={{
                       borderRadius: '12px',
                       border: 'none',
@@ -225,21 +238,11 @@ export function CircleMessagesAnalyticsDetail({
                     dot={false}
                     activeDot={{ r: 3 }}
                   />
-                  <Legend
-                    iconType="circle"
-                    wrapperStyle={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase' }}
-                  />
                 </LineChart>
               ) : (
-                <BarChart key="messages-bar" data={chartData} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+                <BarChart key="messages-bar" data={chartData} margin={chartMargin}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis
-                    dataKey="date"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 9, fill: '#94a3b8' }}
-                    interval="preserveStartEnd"
-                  />
+                  <CircleAnalyticsChartXAxis />
                   <YAxis
                     axisLine={false}
                     tickLine={false}
@@ -248,6 +251,7 @@ export function CircleMessagesAnalyticsDetail({
                     width={32}
                   />
                   <Tooltip
+                    labelFormatter={circleAnalyticsTooltipLabelFormatter}
                     contentStyle={{
                       borderRadius: '12px',
                       border: 'none',
@@ -257,13 +261,14 @@ export function CircleMessagesAnalyticsDetail({
                   />
                   <Bar dataKey="communication" name="Communication" fill="#6366f1" radius={[3, 3, 0, 0]} />
                   <Bar dataKey="messaging" name="Messaging" fill="#10b981" radius={[3, 3, 0, 0]} />
-                  <Legend
-                    iconType="circle"
-                    wrapperStyle={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase' }}
-                  />
                 </BarChart>
               )}
             </ResponsiveContainer>
+            <CircleAnalyticsChartFooter
+              legend={[...MESSAGES_LEGEND]}
+              plotInsetLeft={circleAnalyticsPlotInsetLeft(chartMargin)}
+              plotInsetRight={circleAnalyticsPlotInsetRight(chartMargin)}
+            />
           </div>
         ) : (
           <p className="text-[11px] text-slate-400 text-center leading-relaxed py-2">

@@ -1,11 +1,9 @@
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
   YAxis,
 } from 'recharts';
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
@@ -14,7 +12,26 @@ import type {
   PsychologicalScoreTrend,
   PsychologicalTimelinePoint,
 } from '@medxforce/shared';
+import {
+  CIRCLE_ANALYTICS_CHART_HEIGHT,
+  circleAnalyticsChartMargin,
+  circleAnalyticsPlotInsetLeft,
+  circleAnalyticsPlotInsetRight,
+  circleAnalyticsSparseLineProps,
+  circleAnalyticsTooltipLabelFormatter,
+  prepareSparseTimelineChartData,
+} from '../lib/circleAnalyticsChart';
 import { cn } from '../lib/utils';
+import { CircleAnalyticsChartFooter } from './CircleAnalyticsChartFooter';
+import { CircleAnalyticsChartXAxis } from './CircleAnalyticsChartXAxis';
+
+const PSYCHOLOGICAL_LEGEND = [
+  { color: '#db2777', label: 'Mood' },
+  { color: '#dc2626', label: 'Anxiety' },
+  { color: '#2563eb', label: 'Sleep' },
+  { color: '#d97706', label: 'Stress' },
+  { color: '#059669', label: 'Energy' },
+] as const;
 
 type CirclePsychologicalAnalyticsDetailProps = {
   count?: number;
@@ -88,8 +105,11 @@ export function CirclePsychologicalAnalyticsDetail({
   energy,
   timeline,
 }: CirclePsychologicalAnalyticsDetailProps) {
-  const chartData = Array.isArray(timeline) ? timeline : [];
+  const chartData = prepareSparseTimelineChartData(
+    Array.isArray(timeline) ? timeline : undefined,
+  );
   const hasChart = chartData.length > 0;
+  const chartMargin = circleAnalyticsChartMargin({ right: 8, left: -18 });
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -125,23 +145,29 @@ export function CirclePsychologicalAnalyticsDetail({
         )}
 
         {hasChart ? (
-          <div className="h-44 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 4, right: 8, left: -18, bottom: 0 }}>
+          <div className="w-full overflow-visible">
+            <ResponsiveContainer width="100%" height={CIRCLE_ANALYTICS_CHART_HEIGHT}>
+              <LineChart data={chartData} margin={chartMargin}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8' }} interval="preserveStartEnd" />
+                <CircleAnalyticsChartXAxis variant="sparse" />
                 <YAxis domain={[0, 10]} tick={{ fontSize: 9, fill: '#94a3b8' }} width={28} />
                 <Tooltip
+                  labelFormatter={circleAnalyticsTooltipLabelFormatter}
                   contentStyle={{ fontSize: 11, borderRadius: 12, border: '1px solid #e2e8f0' }}
                 />
-                <Legend wrapperStyle={{ fontSize: 10 }} />
-                <Line type="monotone" dataKey="mood" name="Mood" stroke="#db2777" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="anxiety" name="Anxiety" stroke="#dc2626" strokeWidth={1.5} dot={false} />
-                <Line type="monotone" dataKey="sleep" name="Sleep" stroke="#2563eb" strokeWidth={1.5} dot={false} />
-                <Line type="monotone" dataKey="stress" name="Stress" stroke="#d97706" strokeWidth={1.5} dot={false} />
-                <Line type="monotone" dataKey="energy" name="Energy" stroke="#059669" strokeWidth={1.5} dot={false} />
+                <Line dataKey="mood" name="Mood" stroke="#db2777" strokeWidth={2} {...circleAnalyticsSparseLineProps} />
+                <Line dataKey="anxiety" name="Anxiety" stroke="#dc2626" strokeWidth={1.5} {...circleAnalyticsSparseLineProps} />
+                <Line dataKey="sleep" name="Sleep" stroke="#2563eb" strokeWidth={1.5} {...circleAnalyticsSparseLineProps} />
+                <Line dataKey="stress" name="Stress" stroke="#d97706" strokeWidth={1.5} {...circleAnalyticsSparseLineProps} />
+                <Line dataKey="energy" name="Energy" stroke="#059669" strokeWidth={1.5} {...circleAnalyticsSparseLineProps} />
               </LineChart>
             </ResponsiveContainer>
+            <CircleAnalyticsChartFooter
+              legend={[...PSYCHOLOGICAL_LEGEND]}
+              plotInsetLeft={circleAnalyticsPlotInsetLeft(chartMargin, 28)}
+              plotInsetRight={circleAnalyticsPlotInsetRight(chartMargin)}
+              sparsePointCount={chartData.length}
+            />
           </div>
         ) : (
           <p className="text-[11px] text-slate-400 italic text-center py-2">

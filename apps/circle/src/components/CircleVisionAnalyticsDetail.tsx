@@ -2,11 +2,9 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
-  Legend,
   Line,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
   YAxis,
 } from 'recharts';
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
@@ -16,7 +14,25 @@ import type {
   VisionFindingItem,
   VisionTimelinePoint,
 } from '@medxforce/shared';
+import {
+  CIRCLE_ANALYTICS_CHART_HEIGHT,
+  circleAnalyticsChartMargin,
+  circleAnalyticsPlotInsetLeft,
+  circleAnalyticsPlotInsetRight,
+  circleAnalyticsSparseLineProps,
+  circleAnalyticsTooltipLabelFormatter,
+  prepareSparseTimelineChartData,
+} from '../lib/circleAnalyticsChart';
 import { cn } from '../lib/utils';
+import { CircleAnalyticsChartFooter } from './CircleAnalyticsChartFooter';
+import { CircleAnalyticsChartXAxis } from './CircleAnalyticsChartXAxis';
+
+const VISION_LEGEND = [
+  { color: '#6366f1', label: 'Overall severity' },
+  { color: '#ef4444', label: 'Field issues' },
+  { color: '#f59e0b', label: 'Focus issues' },
+  { color: '#8b5cf6', label: 'Motor issues' },
+] as const;
 
 type CircleVisionAnalyticsDetailProps = {
   count?: number;
@@ -82,8 +98,11 @@ export function CircleVisionAnalyticsDetail({
   latestFindings,
   categoryTrends,
 }: CircleVisionAnalyticsDetailProps) {
-  const chartData = Array.isArray(timeline) ? timeline : [];
+  const chartData = prepareSparseTimelineChartData(
+    Array.isArray(timeline) ? timeline : undefined,
+  );
   const hasChart = chartData.length > 0;
+  const chartMargin = circleAnalyticsChartMargin({ top: 8, right: 8, left: 8 });
   const findings = Array.isArray(latestFindings) ? latestFindings : [];
 
   return (
@@ -124,9 +143,9 @@ export function CircleVisionAnalyticsDetail({
         )}
 
         {hasChart ? (
-          <div className="h-52 w-full min-w-0">
-            <ResponsiveContainer width="100%" height={208} debounce={50}>
-              <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+          <div className="w-full min-w-0 overflow-visible">
+            <ResponsiveContainer width="100%" height={CIRCLE_ANALYTICS_CHART_HEIGHT} debounce={50}>
+              <AreaChart data={chartData} margin={chartMargin}>
                 <defs>
                   <linearGradient id="visionSeverity" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15} />
@@ -134,13 +153,7 @@ export function CircleVisionAnalyticsDetail({
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis
-                  dataKey="label"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 9, fill: '#94a3b8' }}
-                  interval="preserveStartEnd"
-                />
+                <CircleAnalyticsChartXAxis variant="sparse" />
                 <YAxis
                   domain={[0, 10]}
                   axisLine={false}
@@ -149,6 +162,7 @@ export function CircleVisionAnalyticsDetail({
                   width={24}
                 />
                 <Tooltip
+                  labelFormatter={circleAnalyticsTooltipLabelFormatter}
                   contentStyle={{
                     borderRadius: '12px',
                     border: 'none',
@@ -156,52 +170,43 @@ export function CircleVisionAnalyticsDetail({
                     fontSize: '11px',
                   }}
                 />
-                <Legend
-                  iconType="circle"
-                  wrapperStyle={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase' }}
-                />
                 <Area
-                  type="monotone"
                   dataKey="severity"
                   name="Overall severity"
                   stroke="#6366f1"
                   strokeWidth={3}
                   fill="url(#visionSeverity)"
-                  dot={false}
-                  activeDot={{ r: 3 }}
+                  {...circleAnalyticsSparseLineProps}
                 />
                 <Line
-                  type="monotone"
                   dataKey="fieldIssues"
                   name="Field issues"
                   stroke="#ef4444"
                   strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 3 }}
-                  connectNulls
+                  {...circleAnalyticsSparseLineProps}
                 />
                 <Line
-                  type="monotone"
                   dataKey="focusIssues"
                   name="Focus issues"
                   stroke="#f59e0b"
                   strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 3 }}
-                  connectNulls
+                  {...circleAnalyticsSparseLineProps}
                 />
                 <Line
-                  type="monotone"
                   dataKey="motorIssues"
                   name="Motor issues"
                   stroke="#8b5cf6"
                   strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 3 }}
-                  connectNulls
+                  {...circleAnalyticsSparseLineProps}
                 />
               </AreaChart>
             </ResponsiveContainer>
+            <CircleAnalyticsChartFooter
+              legend={[...VISION_LEGEND]}
+              plotInsetLeft={circleAnalyticsPlotInsetLeft(chartMargin, 24)}
+              plotInsetRight={circleAnalyticsPlotInsetRight(chartMargin)}
+              sparsePointCount={chartData.length}
+            />
           </div>
         ) : (
           <p className="text-[11px] text-slate-400 text-center leading-relaxed py-2">

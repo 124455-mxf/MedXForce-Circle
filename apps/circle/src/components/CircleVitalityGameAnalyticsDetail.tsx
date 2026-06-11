@@ -3,17 +3,30 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
   Tooltip,
-  XAxis,
   YAxis,
 } from 'recharts';
 import { BarChart3, ChartLine, Clock, Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import type { AnalyticsTrendDirection, VitalityGameTimelinePoint } from '@medxforce/shared';
+import {
+  CIRCLE_ANALYTICS_CHART_HEIGHT,
+  circleAnalyticsChartMargin,
+  circleAnalyticsPlotInsetLeft,
+  circleAnalyticsPlotInsetRight,
+  circleAnalyticsTooltipLabelFormatter,
+  prepareDailyBucketChartData,
+} from '../lib/circleAnalyticsChart';
 import { cn } from '../lib/utils';
+import { CircleAnalyticsChartFooter } from './CircleAnalyticsChartFooter';
+import { CircleAnalyticsChartXAxis } from './CircleAnalyticsChartXAxis';
+
+const VITALITY_LEGEND = [
+  { color: '#a855f7', label: 'Games' },
+  { color: '#3b82f6', label: 'Accuracy %' },
+] as const;
 
 type CircleVitalityGameAnalyticsDetailProps = {
   gamesPlayed?: number;
@@ -92,8 +105,9 @@ export function CircleVitalityGameAnalyticsDetail({
   timeline,
 }: CircleVitalityGameAnalyticsDetailProps) {
   const [chartType, setChartType] = useState<'line' | 'bar'>('bar');
-  const chartData = Array.isArray(timeline) ? timeline : [];
+  const chartData = prepareDailyBucketChartData(Array.isArray(timeline) ? timeline : undefined);
   const hasChart = chartData.some((point) => point.games > 0);
+  const chartMargin = circleAnalyticsChartMargin({ right: 8, left: 0 });
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -186,18 +200,12 @@ export function CircleVitalityGameAnalyticsDetail({
         </div>
 
         {hasChart ? (
-          <div className="h-48 w-full min-w-0">
-            <ResponsiveContainer width="100%" height={192} debounce={50}>
+          <div className="w-full min-w-0 overflow-visible">
+            <ResponsiveContainer width="100%" height={CIRCLE_ANALYTICS_CHART_HEIGHT} debounce={50}>
               {chartType === 'bar' ? (
-                <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <BarChart data={chartData} margin={chartMargin}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis
-                    dataKey="label"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 9, fill: '#94a3b8' }}
-                    interval="preserveStartEnd"
-                  />
+                  <CircleAnalyticsChartXAxis />
                   <YAxis
                     yAxisId="games"
                     allowDecimals={false}
@@ -216,6 +224,7 @@ export function CircleVitalityGameAnalyticsDetail({
                     width={28}
                   />
                   <Tooltip
+                    labelFormatter={circleAnalyticsTooltipLabelFormatter}
                     contentStyle={{
                       borderRadius: '12px',
                       border: 'none',
@@ -241,21 +250,11 @@ export function CircleVitalityGameAnalyticsDetail({
                     activeDot={{ r: 3 }}
                     connectNulls
                   />
-                  <Legend
-                    iconType="circle"
-                    wrapperStyle={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase' }}
-                  />
                 </BarChart>
               ) : (
-                <LineChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <LineChart data={chartData} margin={chartMargin}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis
-                    dataKey="label"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 9, fill: '#94a3b8' }}
-                    interval="preserveStartEnd"
-                  />
+                  <CircleAnalyticsChartXAxis />
                   <YAxis
                     yAxisId="games"
                     allowDecimals={false}
@@ -274,6 +273,7 @@ export function CircleVitalityGameAnalyticsDetail({
                     width={28}
                   />
                   <Tooltip
+                    labelFormatter={circleAnalyticsTooltipLabelFormatter}
                     contentStyle={{
                       borderRadius: '12px',
                       border: 'none',
@@ -302,13 +302,14 @@ export function CircleVitalityGameAnalyticsDetail({
                     activeDot={{ r: 3 }}
                     connectNulls
                   />
-                  <Legend
-                    iconType="circle"
-                    wrapperStyle={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase' }}
-                  />
                 </LineChart>
               )}
             </ResponsiveContainer>
+            <CircleAnalyticsChartFooter
+              legend={[...VITALITY_LEGEND]}
+              plotInsetLeft={circleAnalyticsPlotInsetLeft(chartMargin, 24)}
+              plotInsetRight={circleAnalyticsPlotInsetRight(chartMargin, 28)}
+            />
           </div>
         ) : (
           <p className="text-[11px] text-slate-400 text-center leading-relaxed py-2">
