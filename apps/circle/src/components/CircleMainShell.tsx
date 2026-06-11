@@ -18,9 +18,11 @@ import {
   CircleBottomNav,
   allNavItemsForPatient,
   moreNavItemsForPatient,
+  localizeNavItems,
   primaryNavItemsForPatient,
   type CircleMainTab,
 } from './CircleBottomNav';
+import { useCircleT } from '../lib/circleI18nContext';
 import { CircleCircleScreen } from './CircleCircleScreen';
 import { CircleDashboardScreen } from './CircleDashboardScreen';
 import { CircleDiaryScreen } from './CircleDiaryScreen';
@@ -79,6 +81,7 @@ export function CircleMainShell({
   const [activeTab, setActiveTab] = useState<CircleMainTab>('dashboard');
   const [initialAnalyticsMetricId, setInitialAnalyticsMetricId] =
     useState<AnalyticsMetricId | null>(null);
+  const t = useCircleT();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [visitCaptureOpen, setVisitCaptureOpen] = useState(false);
   const [dropInConfirmOpen, setDropInConfirmOpen] = useState(false);
@@ -150,7 +153,8 @@ export function CircleMainShell({
       canReceiveRemoteCommandResponses,
     );
 
-  const caregiverDisplayName = user.displayName?.trim() || user.email?.split('@')[0] || 'Care team';
+  const caregiverDisplayName =
+    user.displayName?.trim() || user.email?.split('@')[0] || t('common.careTeam');
 
   const patientPresence = usePatientOnlinePresence(db, selectedPatient?.patientId);
 
@@ -218,13 +222,13 @@ export function CircleMainShell({
 
   const primaryNavItems = useMemo(() => {
     if (!selectedPatient) return [];
-    return primaryNavItemsForPatient(selectedPatient.capabilities);
-  }, [selectedPatient]);
+    return localizeNavItems(primaryNavItemsForPatient(selectedPatient.capabilities), t);
+  }, [selectedPatient, t]);
 
   const moreNavItems = useMemo(() => {
     if (!selectedPatient) return [];
-    return moreNavItemsForPatient(selectedPatient.capabilities);
-  }, [selectedPatient]);
+    return localizeNavItems(moreNavItemsForPatient(selectedPatient.capabilities), t);
+  }, [selectedPatient, t]);
 
   const allNavItems = useMemo(() => {
     if (!selectedPatient) return [];

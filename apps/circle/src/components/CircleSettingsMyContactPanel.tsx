@@ -271,6 +271,7 @@ export function CircleSettingsMyContactPanel({
       await saveCircleUserProfile(db, user.uid, {
         displayName: trimmedName,
         language,
+        languageSource: 'circle',
         email: user.email || undefined,
       });
       await updateProfile(user, { displayName: trimmedName });

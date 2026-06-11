@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
-import { doc, onSnapshot, type Firestore } from 'firebase/firestore';
+import { collection, doc, onSnapshot, type Firestore } from 'firebase/firestore';
 import { History, Loader2, Pencil, Plus, RefreshCw, ShieldOff, Trash2, Users } from 'lucide-react';
 import {
   clampRelationship,
@@ -24,11 +24,15 @@ import {
   readPatientDocUpdatedAt,
   reconcileAcceptedMemberRolesForUser,
   revokeCircleInviteByEmail,
+  saveCircleUserProfile,
   upsertPatientManagedContact,
   type CircleContactKind,
   type CircleInviteListItem,
   type CircleInvitePreviewItem,
+  mergeContactWithMemberNotifyPreferences,
+  parseMemberNotifyPreferences,
   type CircleManagedContact,
+  type CircleMemberNotifyPreferences,
   type CirclePatientSummary,
 } from '@medxforce/shared';
 import { circleTabButtonClass, circleTabListClass } from '../lib/circleSectionStyles';
@@ -83,11 +87,26 @@ function contactToDraft(contact: CircleManagedContact): ContactEditorDraft {
     relationship: contact.relationship,
     kind: contact.kind,
     language: contact.language ?? 'English',
-    message: contact.message ?? true,
-    sms: contact.sms ?? false,
-    alert: contact.alert ?? true,
-    attention: contact.attention ?? true,
+    message: contact.message,
+    sms: contact.sms,
+    alert: contact.alert,
+    attention: contact.attention,
   };
+}
+
+function contactForEditorDisplay(
+  contact: CircleManagedContact,
+  members: CircleInviteListItem[],
+  memberNotifyByEmail: Map<string, CircleMemberNotifyPreferences>,
+): CircleManagedContact {
+  const email = normalizeInviteEmail(contact.email);
+  if (!email) return contact;
+  const invite = inviteForContactEmail(contact, members);
+  if (invite?.status !== 'accepted') return contact;
+  return mergeContactWithMemberNotifyPreferences(
+    contact,
+    memberNotifyByEmail.get(email) ?? null,
+  );
 }
 
 function draftFingerprint(draft: ContactEditorDraft): string {
@@ -308,6 +327,9 @@ export function CircleSettingsUserManagementPanel({
   const [editorAccess, setEditorAccess] = useState<{ label: string; badgeClass: string } | null>(
     null,
   );
+  const [memberNotifyByEmail, setMemberNotifyByEmail] = useState<
+    Map<string, CircleMemberNotifyPreferences>
+  >(() => new Map());
   const draftRef = useRef(draft);
   draftRef.current = draft;
 
@@ -347,6 +369,25 @@ export function CircleSettingsUserManagementPanel({
 
   useEffect(() => {
     if (!patient?.patientId) {
+      setMemberNotifyByEmail(new Map());
+      return;
+    }
+
+    return onSnapshot(collection(db, 'patients', patient.patientId, 'members'), (snap) => {
+      const next = new Map<string, CircleMemberNotifyPreferences>();
+      snap.forEach((memberDoc) => {
+        const data = memberDoc.data() as Record<string, unknown>;
+        const email = normalizeInviteEmail(String(data.invitedEmail ?? ''));
+        if (!email) return;
+        const prefs = parseMemberNotifyPreferences(data);
+        if (prefs) next.set(email, prefs);
+      });
+      setMemberNotifyByEmail(next);
+    });
+  }, [db, patient?.patientId]);
+
+  useEffect(() => {
+    if (!patient?.patientId) {
       setContacts([]);
       setPatientDocUpdatedAt(0);
       return;
@@ -383,7 +424,9 @@ export function CircleSettingsUserManagementPanel({
 
     const dirty = draftFingerprint(currentDraft) !== initialDraftFingerprint;
     if (!dirty) {
-      const refreshed = contactToDraft(remoteContact);
+      const refreshed = contactToDraft(
+        contactForEditorDisplay(remoteContact, members, memberNotifyByEmail),
+      );
       setDraft(refreshed);
       setInitialDraftFingerprint(draftFingerprint(refreshed));
       setEditorBaselineUpdatedAt(patientDocUpdatedAt);
@@ -398,6 +441,8 @@ export function CircleSettingsUserManagementPanel({
     editorMode,
     editorOpen,
     initialDraftFingerprint,
+    memberNotifyByEmail,
+    members,
     patientDocUpdatedAt,
   ]);
 
@@ -407,8 +452,10 @@ export function CircleSettingsUserManagementPanel({
     if (!currentDraft.id) return;
     const remoteContact = contacts.find((contact) => contact.id === currentDraft.id);
     if (!remoteContact) return;
-    setDraft(contactToDraft(remoteContact));
-  }, [contacts, editorMode, editorOpen]);
+    setDraft(
+      contactToDraft(contactForEditorDisplay(remoteContact, members, memberNotifyByEmail)),
+    );
+  }, [contacts, editorMode, editorOpen, memberNotifyByEmail, members]);
 
   const { activeMembers, pastMembers } = useMemo(() => {
     const active: CircleInviteListItem[] = [];
@@ -506,11 +553,19 @@ export function CircleSettingsUserManagementPanel({
   };
 
   const openView = (contact: CircleManagedContact) => {
-    openEditorWithDraft(contactToDraft(contact), 'view', contact);
+    openEditorWithDraft(
+      contactToDraft(contactForEditorDisplay(contact, members, memberNotifyByEmail)),
+      'view',
+      contact,
+    );
   };
 
   const openEdit = (contact: CircleManagedContact) => {
-    openEditorWithDraft(contactToDraft(contact), 'edit', contact);
+    openEditorWithDraft(
+      contactToDraft(contactForEditorDisplay(contact, members, memberNotifyByEmail)),
+      'edit',
+      contact,
+    );
   };
 
   const switchViewToEdit = () => {
@@ -535,7 +590,9 @@ export function CircleSettingsUserManagementPanel({
       ? contacts.find((contact) => contact.id === currentDraft.id)
       : undefined;
     if (!remoteContact) return;
-    const refreshed = contactToDraft(remoteContact);
+    const refreshed = contactToDraft(
+      contactForEditorDisplay(remoteContact, members, memberNotifyByEmail),
+    );
     setDraft(refreshed);
     setEditorAccess(resolvedContactAccess(remoteContact, members));
     setInitialDraftFingerprint(draftFingerprint(refreshed));
@@ -595,6 +652,15 @@ export function CircleSettingsUserManagementPanel({
       },
       { expectedPatientUpdatedAt: editorBaselineUpdatedAt },
     );
+
+    if (invite?.status === 'accepted' && invite.acceptedByUid) {
+      await saveCircleUserProfile(db, invite.acceptedByUid, {
+        language: currentDraft.language || 'English',
+        languageSource: 'circle',
+        managedPatientId: patient.patientId,
+      });
+    }
+
     closeEditor();
     await loadMembers();
   };

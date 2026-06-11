@@ -19,26 +19,7 @@ import {
 } from '../lib/circleMessagePreferences';
 import { useCircleReplySortOrder } from '../hooks/useCircleReplySortOrder';
 import { useCircleThreadSortOrder } from '../hooks/useCircleThreadSortOrder';
-
-const DELIVERY_OPTIONS: {
-  value: CircleMessageDeliveryPreference;
-  label: string;
-  description: string;
-  icon: typeof Smartphone;
-}[] = [
-  {
-    value: 'app',
-    label: 'Circle app',
-    description: 'Read and reply in MedXForce Circle. No email copy of each message.',
-    icon: Smartphone,
-  },
-  {
-    value: 'email',
-    label: 'Email',
-    description: 'Receive messages by email and reply from your inbox.',
-    icon: Mail,
-  },
-];
+import { useCircleT } from '../lib/circleI18nContext';
 
 interface CircleSettingsMessagingPanelProps {
   user: User;
@@ -52,12 +33,16 @@ function MessageSortOrderControl({
   ariaLabel,
   value,
   onChange,
+  oldestLabel,
+  newestLabel,
 }: {
   title: string;
   description: string;
   ariaLabel: string;
   value: CircleMessageSortOrder;
   onChange: (order: CircleMessageSortOrder) => void;
+  oldestLabel: string;
+  newestLabel: string;
 }) {
   return (
     <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
@@ -84,7 +69,7 @@ function MessageSortOrderControl({
                   : 'text-slate-500 hover:text-slate-700',
               )}
             >
-              {order === 'oldest' ? 'Oldest first' : 'Newest first'}
+                {order === 'oldest' ? oldestLabel : newestLabel}
             </button>
           );
         })}
@@ -98,8 +83,28 @@ export function CircleSettingsMessagingPanel({
   db,
   patient,
 }: CircleSettingsMessagingPanelProps) {
+  const t = useCircleT();
   const replySort = useCircleReplySortOrder();
   const threadSort = useCircleThreadSortOrder();
+  const deliveryOptions: {
+    value: CircleMessageDeliveryPreference;
+    label: string;
+    description: string;
+    icon: typeof Smartphone;
+  }[] = [
+    {
+      value: 'app',
+      label: t('settings.deliveryApp'),
+      description: t('settings.deliveryAppDesc'),
+      icon: Smartphone,
+    },
+    {
+      value: 'email',
+      label: t('settings.deliveryEmail'),
+      description: t('settings.deliveryEmailDesc'),
+      icon: Mail,
+    },
+  ];
   const [delivery, setDelivery] = useState<CircleMessageDeliveryPreference>(
     DEFAULT_CIRCLE_MESSAGE_DELIVERY,
   );
@@ -115,7 +120,7 @@ export function CircleSettingsMessagingPanel({
         if (active) setDelivery(pref);
       })
       .catch(() => {
-        if (active) setError('Could not load your messaging preference.');
+        if (active) setError(t('settings.loadPrefFailed'));
       })
       .finally(() => {
         if (active) setLoadingPref(false);
@@ -133,7 +138,7 @@ export function CircleSettingsMessagingPanel({
       try {
         await saveMemberMessageDeliveryPreference(db, patient.patientId, user.uid, next);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not save preference.');
+        setError(err instanceof Error ? err.message : t('settings.savePrefFailed'));
       } finally {
         setSavingPref(false);
       }
@@ -148,27 +153,25 @@ export function CircleSettingsMessagingPanel({
           <MessageSquare size={22} />
         </div>
         <div className="space-y-1 min-w-0">
-          <h3 className="font-bold text-slate-800">Messaging settings</h3>
+          <h3 className="font-bold text-slate-800">{t('settings.messagingTitle')}</h3>
           <p className="text-sm text-slate-500 leading-relaxed">
-            Configure how you receive and reply to messages from {patient.displayName}.
+            {t('settings.messagingSubtitle', { name: patient.displayName })}
           </p>
         </div>
       </div>
 
       <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
         <div className="space-y-1">
-          <p className="font-bold text-slate-800">How you receive messages</p>
-          <p className="text-sm text-slate-400">
-            Circle app is recommended. Email is optional for reply-by-mail.
-          </p>
+          <p className="font-bold text-slate-800">{t('settings.receiveTitle')}</p>
+          <p className="text-sm text-slate-400">{t('settings.receiveSubtitle')}</p>
         </div>
         {error && (
           <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
             {error}
           </p>
         )}
-        <div className="space-y-2" role="radiogroup" aria-label="Message delivery">
-          {DELIVERY_OPTIONS.map((option) => {
+        <div className="space-y-2" role="radiogroup" aria-label={t('settings.deliveryAria')}>
+          {deliveryOptions.map((option) => {
             const Icon = option.icon;
             const active = delivery === option.value;
             return (
@@ -207,19 +210,23 @@ export function CircleSettingsMessagingPanel({
       </div>
 
       <MessageSortOrderControl
-        title="Reply sort order"
-        description="Choose whether replies in a patient conversation appear oldest-first or newest-first."
-        ariaLabel="Reply sort order"
+        title={t('settings.replySortTitle')}
+        description={t('settings.replySortDesc')}
+        ariaLabel={t('settings.replySortTitle')}
         value={replySort}
         onChange={setCircleReplySortOrder}
+        oldestLabel={t('sort.oldestFirst')}
+        newestLabel={t('sort.newestFirst')}
       />
 
       <MessageSortOrderControl
-        title="Circle message sort order"
-        description="Choose whether posts in Circle conversation and care coordination appear oldest-first or newest-first."
-        ariaLabel="Circle message sort order"
+        title={t('settings.threadSortTitle')}
+        description={t('settings.threadSortDesc')}
+        ariaLabel={t('settings.threadSortTitle')}
         value={threadSort}
         onChange={setCircleThreadSortOrder}
+        oldestLabel={t('sort.oldestFirst')}
+        newestLabel={t('sort.newestFirst')}
       />
     </div>
   );

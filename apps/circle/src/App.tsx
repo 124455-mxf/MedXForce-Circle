@@ -27,6 +27,7 @@ import { useCircleStartupSequence } from './hooks/useCircleStartupSequence';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { consumeAuthRedirectOnce, firebase } from './lib/firebaseClient';
 import { useCircleI18n } from './hooks/useCircleI18n';
+import { CircleI18nProvider } from './lib/circleI18nContext';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -39,7 +40,7 @@ export default function App() {
   const [refreshingPatients, setRefreshingPatients] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
-  const { t } = useCircleI18n(firebase.db, user);
+  const { language, t } = useCircleI18n(firebase.db, user);
 
   const selectedPatientForSettings = useMemo(() => {
     if (patients.length === 0) return null;
@@ -332,7 +333,7 @@ export default function App() {
         </div>
         </>
       ) : (
-        <>
+        <CircleI18nProvider language={language} t={t}>
           <div className="flex flex-col flex-1 min-h-0">
             <CircleMainShell
               user={user}
@@ -361,7 +362,7 @@ export default function App() {
               await refreshPatients(user);
             }}
           />
-        </>
+        </CircleI18nProvider>
       )}
     </div>
   );

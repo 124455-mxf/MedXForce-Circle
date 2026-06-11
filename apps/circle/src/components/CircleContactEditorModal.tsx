@@ -1,5 +1,6 @@
 import { Loader2, Pencil, X } from 'lucide-react';
 import type { CircleContactKind } from '@medxforce/shared';
+import { CIRCLE_UI_LANGUAGES } from '../lib/circleLanguages';
 import { cn } from '../lib/utils';
 import {
   CircleContactNotifyGrid,
@@ -30,20 +31,8 @@ const KIND_OPTIONS: { id: CircleContactKind; label: string; hint: string }[] = [
   { id: 'contact', label: 'Contact', hint: 'Messaging only — no Circle sign-in' },
 ];
 
-export const CONTACT_LANGUAGE_OPTIONS = [
-  'English',
-  'Albanian',
-  'Arabic',
-  'Bulgarian',
-  'Chinese',
-  'French',
-  'Hindi',
-  'Italian',
-  'Japanese',
-  'Korean',
-  'Portuguese',
-  'Russian',
-];
+/** UI languages for Circle members — matches patient app primary languages (EN/DE/ES/PL). */
+export const CONTACT_LANGUAGE_OPTIONS = CIRCLE_UI_LANGUAGES.map((entry) => entry.value);
 
 const RELATIONSHIP_OPTIONS: Record<CircleContactKind, readonly string[]> = {
   caregiver: ['Spouse', 'Partner', 'Child', 'Other'],
@@ -114,16 +103,17 @@ function NotifyStatus({
   requirement?: string;
   tone?: 'blue' | 'red' | 'orange' | 'emerald';
 }) {
-  const toneClass =
+  const enabledToneClass =
     tone === 'red'
       ? 'bg-red-50 border-red-100 text-red-700'
       : tone === 'orange'
         ? 'bg-orange-50 border-orange-100 text-orange-700'
         : tone === 'emerald'
           ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
-          : enabled
-            ? 'bg-blue-50 border-blue-100 text-blue-700'
-            : 'bg-white border-slate-100 text-slate-500';
+          : 'bg-blue-50 border-blue-100 text-blue-700';
+  const toneClass = enabled
+    ? enabledToneClass
+    : 'bg-white border-slate-100 text-slate-500';
 
   return (
     <div className={cn('p-4 rounded-2xl border text-left', toneClass)}>

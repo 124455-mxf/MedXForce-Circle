@@ -39,6 +39,7 @@ import {
 import { cn } from '../lib/utils';
 import { usePatientOnlinePresence } from '../hooks/usePatientOnlinePresence';
 import { PatientOnlineIndicator } from './PatientOnlineIndicator';
+import { useCircleT } from '../lib/circleI18nContext';
 
 interface CircleProfileDrawerProps {
   user: User;
@@ -65,6 +66,7 @@ export function CircleProfileDrawer({
   onSignOut,
   onLeftCircle,
 }: CircleProfileDrawerProps) {
+  const t = useCircleT();
   const fileRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<CircleUserProfile | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -216,7 +218,7 @@ export function CircleProfileDrawer({
       <button
         type="button"
         className="flex-1 bg-slate-900/40"
-        aria-label="Close menu"
+        aria-label={t('common.closeMenu')}
         onClick={requestCloseDrawer}
       />
       <aside className="w-full max-w-sm bg-white shadow-2xl flex flex-col h-full">
@@ -226,7 +228,7 @@ export function CircleProfileDrawer({
               type="button"
               onClick={requestNavigateBack}
               className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 shrink-0"
-              aria-label="Back"
+              aria-label={t('common.back')}
             >
               <ChevronLeft size={20} />
             </button>
@@ -234,15 +236,15 @@ export function CircleProfileDrawer({
             <span className="w-9 shrink-0" aria-hidden />
           )}
           <h2 className="font-bold text-slate-800 flex-1 text-center truncate">
-            {drawerView === 'account' && 'Your Circle account'}
-            {drawerView === 'settings' && 'Settings'}
-            {drawerView === 'messaging' && 'Messaging'}
-            {drawerView === 'media' && 'Media'}
-            {drawerView === 'careRelationship' && 'Care relationship'}
-            {drawerView === 'userManagement' && 'User management'}
-            {drawerView === 'notifications' && 'Notifications'}
-            {drawerView === 'myContact' && 'My contact details'}
-            {drawerView === 'switchPatient' && 'Switch patient'}
+            {drawerView === 'account' && t('drawer.accountTitle')}
+            {drawerView === 'settings' && t('drawer.settings')}
+            {drawerView === 'messaging' && t('drawer.messaging')}
+            {drawerView === 'media' && t('drawer.media')}
+            {drawerView === 'careRelationship' && t('drawer.careRelationship')}
+            {drawerView === 'userManagement' && t('drawer.userManagement')}
+            {drawerView === 'notifications' && t('drawer.notifications')}
+            {drawerView === 'myContact' && t('drawer.myContact')}
+            {drawerView === 'switchPatient' && t('drawer.switchPatient')}
           </h2>
           <button
             type="button"
@@ -263,9 +265,9 @@ export function CircleProfileDrawer({
               >
                 <HeartHandshake size={20} className="text-blue-600" />
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-800 text-sm">Switch patient</p>
+                  <p className="font-semibold text-slate-800 text-sm">{t('drawer.switchPatient')}</p>
                   <p className="text-xs text-slate-400 truncate flex items-center gap-1.5">
-                    <span>{patient?.displayName ?? 'Choose patient'}</span>
+                    <span>{patient?.displayName ?? t('common.choosePatient')}</span>
                     <PatientOnlineIndicator online={patientOnline} />
                   </p>
                 </div>
@@ -279,11 +281,11 @@ export function CircleProfileDrawer({
             >
               <HeartHandshake size={20} className="text-blue-600" />
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-slate-800 text-sm">Care relationship</p>
+                <p className="font-semibold text-slate-800 text-sm">{t('drawer.careRelationship')}</p>
                 <p className="text-xs text-slate-400 truncate">
                   {patient
-                    ? `Your role for ${patient.displayName}`
-                    : 'Role and access for your loved one'}
+                    ? t('drawer.careRelationshipHintNamed', { name: patient.displayName })
+                    : t('drawer.careRelationshipHint')}
                 </p>
               </div>
               <ChevronRight size={16} className="text-slate-300 shrink-0" />
@@ -296,9 +298,11 @@ export function CircleProfileDrawer({
               >
                 <Users size={20} className="text-violet-600" />
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-800 text-sm">User management</p>
+                  <p className="font-semibold text-slate-800 text-sm">{t('drawer.userManagement')}</p>
                   <p className="text-xs text-slate-400 truncate">
-                    Circle access for {patient?.displayName ?? 'your loved one'}
+                    {t('drawer.userManagementHint', {
+                      name: patient?.displayName ?? t('common.patient'),
+                    })}
                   </p>
                 </div>
                 <ChevronRight size={16} className="text-slate-300 shrink-0" />
@@ -311,8 +315,8 @@ export function CircleProfileDrawer({
             >
               <MessageSquare size={20} className="text-blue-600" />
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-slate-800 text-sm">Messaging</p>
-                <p className="text-xs text-slate-400">Message sort order and more</p>
+                <p className="font-semibold text-slate-800 text-sm">{t('drawer.messaging')}</p>
+                <p className="text-xs text-slate-400">{t('drawer.messagingHint')}</p>
               </div>
               <ChevronRight size={16} className="text-slate-300 shrink-0" />
             </button>
@@ -323,8 +327,8 @@ export function CircleProfileDrawer({
             >
               <ImageIcon size={20} className="text-blue-600" />
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-slate-800 text-sm">Media</p>
-                <p className="text-xs text-slate-400">Thumbnail size in gallery</p>
+                <p className="font-semibold text-slate-800 text-sm">{t('drawer.media')}</p>
+                <p className="text-xs text-slate-400">{t('drawer.mediaHint')}</p>
               </div>
               <ChevronRight size={16} className="text-slate-300 shrink-0" />
             </button>
@@ -346,7 +350,7 @@ export function CircleProfileDrawer({
         {drawerView === 'switchPatient' && (
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             <p className="text-sm text-slate-500 px-2 pb-1 leading-relaxed">
-              Choose who you are supporting in MedXForce Circle.
+              {t('drawer.switchPatientHint')}
             </p>
             <ul className="space-y-1">
               {patients.map((row) => {
@@ -538,7 +542,7 @@ export function CircleProfileDrawer({
             className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-semibold text-slate-600 hover:bg-slate-100"
           >
             <LogOut size={18} />
-            Sign out
+            {t('drawer.signOut')}
           </button>
         </div>
         </>
@@ -555,7 +559,7 @@ export function CircleProfileDrawer({
 
       <CircleDiscardChangesModal
         open={discardPrompt !== null}
-        message="You edited your contact details but haven't saved yet. If you leave now, those changes will be lost."
+        message={t('drawer.discardMessage')}
         onDiscard={confirmDiscardChanges}
         onKeepEditing={() => setDiscardPrompt(null)}
       />

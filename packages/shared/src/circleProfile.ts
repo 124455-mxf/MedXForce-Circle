@@ -8,6 +8,10 @@ export interface CircleUserProfile {
   email?: string;
   /** Preferred language for Circle UI and patient-app contact labeling. */
   language?: string;
+  /** Who last set `language`: member in Circle app vs patient/proxy in patient app. */
+  languageSource?: 'circle' | 'patient';
+  /** Patient circle for proxy/patient-managed language writes (rules validation only). */
+  managedPatientId?: string;
   /** When true, patient-app Circle presence indicators omit this member. */
   hideOnlineStatusFromPatient?: boolean;
   updatedAt: number;
@@ -26,6 +30,10 @@ export async function getCircleUserProfile(
     photoUrl: data.photoUrl,
     email: data.email,
     language: typeof data.language === 'string' ? data.language : undefined,
+    languageSource:
+      data.languageSource === 'circle' || data.languageSource === 'patient'
+        ? data.languageSource
+        : undefined,
     hideOnlineStatusFromPatient: data.hideOnlineStatusFromPatient === true,
     updatedAt: data.updatedAt ?? 0,
   };
@@ -37,7 +45,13 @@ export async function saveCircleUserProfile(
   patch: Partial<
     Pick<
       CircleUserProfile,
-      'displayName' | 'photoUrl' | 'email' | 'language' | 'hideOnlineStatusFromPatient'
+      | 'displayName'
+      | 'photoUrl'
+      | 'email'
+      | 'language'
+      | 'languageSource'
+      | 'managedPatientId'
+      | 'hideOnlineStatusFromPatient'
     >
   >,
 ): Promise<void> {

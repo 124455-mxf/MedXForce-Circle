@@ -14,6 +14,8 @@ import {
 import { useState, type ReactNode } from 'react';
 import { canViewAnalyticsTab, canViewRemoteSettingsTab, type PatientCapabilities } from '@medxforce/shared';
 import { cn } from '../lib/utils';
+import { useCircleT } from '../lib/circleI18nContext';
+import type { CircleTranslator } from '../lib/circleI18nContext';
 
 export type CircleMainTab =
   | 'dashboard'
@@ -91,6 +93,7 @@ export function CircleBottomNav({
   pulseNavForUrgency = false,
   className,
 }: CircleBottomNavProps) {
+  const t = useCircleT();
   const [moreOpen, setMoreOpen] = useState(false);
   const barItems = [...primaryItems];
   const hasMore = moreItems.length > 0;
@@ -119,7 +122,7 @@ export function CircleBottomNav({
           navUrgencyClass,
           className,
         )}
-        aria-label="Bottom navigation"
+        aria-label={t('common.bottomNav')}
       >
         <div className="flex items-center justify-around px-0.5 py-0.5">
           {barItems.map((item) => {
@@ -183,7 +186,7 @@ export function CircleBottomNav({
                   moreActive ? 'text-white' : 'text-slate-400',
                 )}
               >
-                More
+                {t('nav.more')}
               </span>
             </button>
           )}
@@ -194,18 +197,18 @@ export function CircleBottomNav({
         <div className="fixed inset-0 z-[130] flex items-end justify-center">
           <button
             type="button"
-            aria-label="Close menu"
+            aria-label={t('common.closeMenu')}
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             onClick={() => setMoreOpen(false)}
           />
           <div
             role="dialog"
-            aria-label="More sections"
+            aria-label={t('common.moreSections')}
             className="relative w-full max-w-lg bg-white rounded-t-[28px] border border-slate-100 shadow-2xl px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-4"
           >
             <div className="w-10 h-1 rounded-full bg-slate-200 mx-auto" />
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-center">
-              More
+              {t('nav.more')}
             </p>
             <div className="grid grid-cols-2 gap-2">
               {moreItems.map((item) => {
@@ -324,4 +327,31 @@ export function allNavItemsForPatient(capabilities: PatientCapabilities): Circle
 /** @deprecated Use primaryNavItemsForPatient + moreNavItemsForPatient */
 export function navItemsForPatient(capabilities: PatientCapabilities): CircleNavItem[] {
   return allNavItemsForPatient(capabilities);
+}
+
+const NAV_LABEL_KEYS: Record<CircleMainTab, string> = {
+  dashboard: 'nav.home',
+  messages: 'nav.messages',
+  media: 'nav.media',
+  circle: 'nav.circle',
+  diary: 'nav.diary',
+  admin: 'nav.admin',
+  analytics: 'nav.analytics',
+  'remote-settings': 'nav.remoteSettings',
+  know: 'nav.know',
+};
+
+const NAV_DESC_KEYS: Partial<Record<CircleMainTab, string>> = {
+  admin: 'nav.adminDesc',
+  analytics: 'nav.analyticsDesc',
+  'remote-settings': 'nav.remoteSettingsDesc',
+  know: 'nav.knowDesc',
+};
+
+export function localizeNavItems(items: CircleNavItem[], t: CircleTranslator): CircleNavItem[] {
+  return items.map((item) => ({
+    ...item,
+    label: t(NAV_LABEL_KEYS[item.id]),
+    description: NAV_DESC_KEYS[item.id] ? t(NAV_DESC_KEYS[item.id]!) : item.description,
+  }));
 }

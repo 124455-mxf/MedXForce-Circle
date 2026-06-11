@@ -71,6 +71,7 @@ import {
   usePatientOnlinePresence,
 } from '../hooks/usePatientOnlinePresence';
 
+import { useCircleT } from '../lib/circleI18nContext';
 import {
   DASHBOARD_STATS_DAYS,
   getAlertAttentionRecencyUrgency,
@@ -334,8 +335,8 @@ function DashboardSection({
   );
 }
 
-function loadingRows(): Pick<DashboardWidgetSpec, 'row1' | 'row2'> {
-  return { row1: 'Loading…', row2: '' };
+function loadingRows(label: string): Pick<DashboardWidgetSpec, 'row1' | 'row2'> {
+  return { row1: label, row2: '' };
 }
 
 export function CircleDashboardScreen({
@@ -356,6 +357,7 @@ export function CircleDashboardScreen({
   dropInActive,
   dropInChatOpen,
 }: CircleDashboardScreenProps) {
+  const t = useCircleT();
   const caps = patient.capabilities;
   const memberRole = normalizeMemberRole(patient.role);
   const showEngagementStats = caps.viewEngagementTrends !== false;
@@ -467,10 +469,10 @@ export function CircleDashboardScreen({
   if (showEngagementStats) {
     lastSevenDayWidgets.push({
       key: 'alert-attention',
-      title: 'Alerts & attention',
+      title: t('dashboard.alertsAttention'),
       icon: Bell,
       ...(analyticsLoading
-        ? loadingRows()
+        ? loadingRows(t('common.loading'))
         : {
             row1: `${alertStats.alerts} alert${alertStats.alerts === 1 ? '' : 's'}`,
             row2: `${alertStats.attentions} attention`,
@@ -485,10 +487,10 @@ export function CircleDashboardScreen({
 
     lastSevenDayWidgets.push({
       key: 'daily-check-in',
-      title: 'Daily check-in',
+      title: t('dashboard.dailyCheckIn'),
       icon: Calendar,
       ...(analyticsLoading
-        ? loadingRows()
+        ? loadingRows(t('common.loading'))
         : {
             ...(dailyDetail
               ? checkInStats.total > 0
@@ -519,10 +521,10 @@ export function CircleDashboardScreen({
 
     lastSevenDayWidgets.push({
       key: 'messages',
-      title: 'Messages',
+      title: t('dashboard.messages'),
       icon: MessageSquare,
       ...(analyticsLoading
-        ? loadingRows()
+        ? loadingRows(t('common.loading'))
         : {
             row1: `${communicationStats.messaging} messaging`,
             row2:
@@ -536,10 +538,10 @@ export function CircleDashboardScreen({
 
     lastSevenDayWidgets.push({
       key: 'communication',
-      title: 'Communication',
+      title: t('dashboard.communication'),
       icon: MessageSquare,
       ...(analyticsLoading
-        ? loadingRows()
+        ? loadingRows(t('common.loading'))
         : {
             row1: `${communicationStats.communication} communication`,
             row2: formatLastCommunicationInputMethod(
@@ -552,10 +554,10 @@ export function CircleDashboardScreen({
 
     lastSevenDayWidgets.push({
       key: 'vitality',
-      title: 'Vitality',
+      title: t('dashboard.vitality'),
       icon: Sparkles,
       ...(analyticsLoading
-        ? loadingRows()
+        ? loadingRows(t('common.loading'))
         : (() => {
             const pictureCount =
               soulDetail?.totalPhotoCount ?? soulDetail?.photoCount ?? 0;
@@ -572,10 +574,10 @@ export function CircleDashboardScreen({
 
     lastSevenDayWidgets.push({
       key: 'assessments',
-      title: 'Assessments',
+      title: t('dashboard.assessments'),
       icon: ClipboardList,
       ...(analyticsLoading
-        ? loadingRows()
+        ? loadingRows(t('common.loading'))
         : {
             row1: `${assessmentsLast7} finished`,
             row2: latestAssessment.title
@@ -590,10 +592,10 @@ export function CircleDashboardScreen({
   if (showEngagementStats) {
     youWidgets.push({
       key: 'diary',
-      title: 'Diary',
+      title: t('dashboard.diary'),
       icon: BookOpen,
       ...(diaryPreview.loading || analyticsLoading
-        ? loadingRows()
+        ? loadingRows(t('common.loading'))
         : diaryPreview.sharedCount === 0
           ? {
               row1: 'No shared entries yet',
@@ -633,7 +635,7 @@ export function CircleDashboardScreen({
 
   youWidgets.push({
     key: 'circle',
-    title: 'Circle messages',
+    title: t('dashboard.circleMessages'),
     icon: Users,
     row1: `${circlePostCount} post${circlePostCount === 1 ? '' : 's'}`,
     row2:
@@ -655,10 +657,10 @@ export function CircleDashboardScreen({
 
     youWidgets.push({
       key: 'gallery-engagement',
-      title: 'Your photos',
+      title: t('dashboard.yourPhotos'),
       icon: ImageIcon,
       ...(galleryDashboard.loading
-        ? loadingRows()
+        ? loadingRows(t('common.loading'))
         : galleryDashboard.myUploadCount === 0
           ? {
               row1: 'Share a moment',
@@ -710,10 +712,10 @@ export function CircleDashboardScreen({
   const familyGalleryWidget: DashboardWidgetSpec | null = canSeeGallery
     ? {
         key: 'family-gallery',
-        title: 'Media gallery',
+        title: t('dashboard.mediaGallery'),
         icon: Heart,
         ...(galleryDashboard.loading
-          ? loadingRows()
+          ? loadingRows(t('common.loading'))
           : galleryDashboard.reactionsLast7 > 0
             ? {
                 row1: `${galleryDashboard.reactionsLast7} reaction${
@@ -769,7 +771,7 @@ export function CircleDashboardScreen({
 
     patientAppWidgets.push({
       key: 'remote-settings',
-      title: 'Remote settings',
+      title: t('dashboard.remoteSettings'),
       icon: SlidersHorizontal,
       row1: formatDashboardApplicationModeLine(remoteSettings, remoteSettingsLoading),
       row2: remoteSettingsLoading ? '' : checkInLabel,
@@ -779,10 +781,10 @@ export function CircleDashboardScreen({
 
   patientAppWidgets.push({
     key: 'user-profile',
-    title: 'User Profile',
+    title: t('dashboard.userProfile'),
     icon: UserRound,
     ...(profileLoading
-      ? loadingRows()
+      ? loadingRows(t('common.loading'))
       : {
           row1: getCircleProfileCompletenessLabel(profileSnapshot, false),
           row2: `Phase: ${formatTreatmentPhaseLabel(profileSnapshot?.clinical.treatmentPhase)}`,
@@ -905,15 +907,15 @@ export function CircleDashboardScreen({
         ) : null}
 
         {lastSevenDayWidgets.length > 0 ? (
-          <DashboardSection title="Last 7 days" widgets={lastSevenDayWidgets} />
+          <DashboardSection title={t('dashboard.sectionLast7Days')} widgets={lastSevenDayWidgets} />
         ) : null}
 
         {youWidgets.length > 0 ? (
-          <DashboardSection title="You" widgets={youWidgets} />
+          <DashboardSection title={t('dashboard.sectionYou')} widgets={youWidgets} />
         ) : null}
 
         {patientAppWidgets.length > 0 ? (
-          <DashboardSection title="Patient App" widgets={patientAppWidgets} />
+          <DashboardSection title={t('dashboard.sectionPatientApp')} widgets={patientAppWidgets} />
         ) : null}
       </div>
     </div>

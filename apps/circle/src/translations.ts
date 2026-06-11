@@ -1,4 +1,10 @@
 import type { CircleUiLanguage } from './lib/circleLanguages';
+import {
+  appShellEnglish,
+  appShellGerman,
+  appShellPolish,
+  appShellSpanish,
+} from './translations/appShell';
 
 type TranslationTree = Record<string, string | TranslationTree>;
 
@@ -32,6 +38,12 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
         'Firestore daily write limit reached for this project. Try again after midnight Pacific, or upgrade the Firebase database plan.',
       refreshFailed: 'Could not refresh invites.',
     },
+    patients: {
+      yourPatients: 'Your patients',
+      noInvitesYet:
+        'No active invites yet. In the patient app, open Settings → Friends & Family, confirm your email is saved, click Done, then tap Refresh here.',
+    },
+    ...appShellEnglish,
     common: {
       refresh: 'Refresh',
       refreshing: 'Refreshing…',
@@ -39,11 +51,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       saving: 'Saving…',
       saved: 'Saved',
       friendsFamily: 'Friends & family',
-    },
-    patients: {
-      yourPatients: 'Your patients',
-      noInvitesYet:
-        'No active invites yet. In the patient app, open Settings → Friends & Family, confirm your email is saved, click Done, then tap Refresh here.',
+      ...appShellEnglish.common,
     },
   },
   German: {
@@ -75,6 +83,12 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
         'Tägliches Firestore-Schreiblimit erreicht. Versuchen Sie es nach Mitternacht (Pacific) erneut oder upgraden Sie den Firebase-Plan.',
       refreshFailed: 'Einladungen konnten nicht aktualisiert werden.',
     },
+    patients: {
+      yourPatients: 'Ihre Patienten',
+      noInvitesYet:
+        'Noch keine aktiven Einladungen. Öffnen Sie in der Patienten-App Einstellungen → Freunde & Familie, speichern Sie Ihre E-Mail, tippen Sie auf Fertig und dann hier auf Aktualisieren.',
+    },
+    ...appShellGerman,
     common: {
       refresh: 'Aktualisieren',
       refreshing: 'Aktualisiere…',
@@ -82,11 +96,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       saving: 'Speichern…',
       saved: 'Gespeichert',
       friendsFamily: 'Freunde & Familie',
-    },
-    patients: {
-      yourPatients: 'Ihre Patienten',
-      noInvitesYet:
-        'Noch keine aktiven Einladungen. Öffnen Sie in der Patienten-App Einstellungen → Freunde & Familie, speichern Sie Ihre E-Mail, tippen Sie auf Fertig und dann hier auf Aktualisieren.',
+      ...appShellGerman.common,
     },
   },
   Spanish: {
@@ -118,6 +128,12 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
         'Límite diario de escritura de Firestore alcanzado. Inténtelo después de medianoche (Pacífico) o actualice el plan de Firebase.',
       refreshFailed: 'No se pudieron actualizar las invitaciones.',
     },
+    patients: {
+      yourPatients: 'Sus pacientes',
+      noInvitesYet:
+        'Aún no hay invitaciones activas. En la app del paciente, abra Ajustes → Amigos y familia, confirme su correo, pulse Hecho y luego Actualizar aquí.',
+    },
+    ...appShellSpanish,
     common: {
       refresh: 'Actualizar',
       refreshing: 'Actualizando…',
@@ -125,11 +141,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       saving: 'Guardando…',
       saved: 'Guardado',
       friendsFamily: 'Amigos y familia',
-    },
-    patients: {
-      yourPatients: 'Sus pacientes',
-      noInvitesYet:
-        'Aún no hay invitaciones activas. En la app del paciente, abra Ajustes → Amigos y familia, confirme su correo, pulse Hecho y luego Actualizar aquí.',
+      ...appShellSpanish.common,
     },
   },
   Polish: {
@@ -161,6 +173,12 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
         'Osiągnięto dzienny limit zapisu Firestore. Spróbuj po północy (czas pacyficzny) lub ulepsz plan Firebase.',
       refreshFailed: 'Nie udało się odświeżyć zaproszeń.',
     },
+    patients: {
+      yourPatients: 'Twoi pacjenci',
+      noInvitesYet:
+        'Brak aktywnych zaproszeń. W aplikacji pacjenta otwórz Ustawienia → Przyjaciele i rodzina, zapisz e-mail, naciśnij Gotowe, a potem Odśwież tutaj.',
+    },
+    ...appShellPolish,
     common: {
       refresh: 'Odśwież',
       refreshing: 'Odświeżanie…',
@@ -168,11 +186,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       saving: 'Zapisywanie…',
       saved: 'Zapisano',
       friendsFamily: 'Przyjaciele i rodzina',
-    },
-    patients: {
-      yourPatients: 'Twoi pacjenci',
-      noInvitesYet:
-        'Brak aktywnych zaproszeń. W aplikacji pacjenta otwórz Ustawienia → Przyjaciele i rodzina, zapisz e-mail, naciśnij Gotowe, a potem Odśwież tutaj.',
+      ...appShellPolish.common,
     },
   },
 };

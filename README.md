@@ -58,11 +58,14 @@ If you use a named Firestore database locally, set `VITE_FIREBASE_FIRESTORE_DATA
 
 Circle UI languages match the patient app: **English, German, Spanish, Polish**.
 
-- `apps/circle/src/translations.ts` — translation catalog (auth + empty-state wired first)
+- `apps/circle/src/translations.ts` + `translations/appShell.ts` — catalog (auth, nav, drawer, messaging settings, dashboard tiles)
+- `apps/circle/src/lib/circleI18nContext.tsx` — `CircleI18nProvider` + `useCircleT()` for signed-in UI
 - `apps/circle/src/hooks/useCircleI18n.tsx` — reads `circle_profiles/{uid}.language` when signed in
 - Set language in **Settings → My contact details**; the sign-in screen uses localStorage until profile loads
 
-Most in-app strings are still English-only; migrate screens incrementally to `t('…')`.
+**Translated after sign-in:** bottom nav, profile drawer, messaging settings (incl. sort order), dashboard section titles and widget labels.
+
+**Still English-only:** message threads, Circle conversation, gallery, analytics, admin, remote settings, and most modals — migrate incrementally to `t('…')`.
 
 ## Phase 0 — Invites
 
