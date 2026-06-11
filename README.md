@@ -54,6 +54,16 @@ This runs a production build (`apps/circle/.env.production`) and publishes `apps
 
 If you use a named Firestore database locally, set `VITE_FIREBASE_FIRESTORE_DATABASE_ID` in `apps/circle/.env.production` before deploying.
 
+## Internationalization (in progress)
+
+Circle UI languages match the patient app: **English, German, Spanish, Polish**.
+
+- `apps/circle/src/translations.ts` — translation catalog (auth + empty-state wired first)
+- `apps/circle/src/hooks/useCircleI18n.tsx` — reads `circle_profiles/{uid}.language` when signed in
+- Set language in **Settings → My contact details**; the sign-in screen uses localStorage until profile loads
+
+Most in-app strings are still English-only; migrate screens incrementally to `t('…')`.
+
 ## Phase 0 — Invites
 
 When a patient adds contacts in Settings, the patient app writes `circle_invites` documents. After sign-in, the circle app runs `acceptPendingCircleInvites()` to create `patients/{patientId}/members/{firebaseUid}` so Storage/Firestore upload rules work.

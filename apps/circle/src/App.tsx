@@ -26,6 +26,7 @@ import { CircleStartupSequence } from './components/CircleStartupSequence';
 import { useCircleStartupSequence } from './hooks/useCircleStartupSequence';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { consumeAuthRedirectOnce, firebase } from './lib/firebaseClient';
+import { useCircleI18n } from './hooks/useCircleI18n';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -38,6 +39,7 @@ export default function App() {
   const [refreshingPatients, setRefreshingPatients] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const { t } = useCircleI18n(firebase.db, user);
 
   const selectedPatientForSettings = useMemo(() => {
     if (patients.length === 0) return null;
@@ -87,20 +89,16 @@ export default function App() {
           ),
         );
         if (pendingSnap.empty) {
-          setAuthError(
-            `No invite found for ${email}. In the patient app, save Friends & Family contact with this exact email, click Done, then Refresh.`,
-          );
+          setAuthError(t('auth.noInviteForEmail', { email }));
         } else {
-          setAuthError('Invite found but could not link your account. Check the browser console for details.');
+          setAuthError(t('auth.inviteLinkFailed'));
         }
       }
     } catch (err) {
       if (isFirestoreQuotaError(err)) {
-        setAuthError(
-          'Firestore daily write limit reached for this project. Try again after midnight Pacific, or upgrade the Firebase database plan.',
-        );
+        setAuthError(t('auth.firestoreQuota'));
       } else {
-        setAuthError(err instanceof Error ? err.message : 'Could not refresh invites.');
+        setAuthError(err instanceof Error ? err.message : t('auth.refreshFailed'));
       }
     } finally {
       setRefreshingPatients(false);
@@ -119,7 +117,7 @@ export default function App() {
       })
       .catch((err) => {
         console.error('getRedirectResult:', err);
-        if (active) setAuthError(friendlyAuthError(err));
+        if (active) setAuthError(friendlyAuthError(err, t));
       });
 
     const unsubscribe = onAuthStateChanged(firebase.auth, async (nextUser) => {
@@ -175,11 +173,11 @@ export default function App() {
         try {
           await createUserWithEmailAndPassword(firebase.auth, email.trim(), password);
         } catch (createErr) {
-          setAuthError(friendlyAuthError(createErr));
+          setAuthError(friendlyAuthError(createErr, t));
         }
         return;
       }
-      setAuthError(friendlyAuthError(err));
+      setAuthError(friendlyAuthError(err, t));
     }
   };
 
@@ -188,7 +186,7 @@ export default function App() {
     try {
       await createUserWithEmailAndPassword(firebase.auth, email.trim(), password);
     } catch (err) {
-      setAuthError(friendlyAuthError(err));
+      setAuthError(friendlyAuthError(err, t));
     }
   };
 
@@ -212,12 +210,12 @@ export default function App() {
           return;
         } catch (redirectErr) {
           setGoogleSigningIn(false);
-          setAuthError(friendlyAuthError(redirectErr));
+          setAuthError(friendlyAuthError(redirectErr, t));
         }
         return;
       }
       setGoogleSigningIn(false);
-      setAuthError(friendlyAuthError(err));
+      setAuthError(friendlyAuthError(err, t));
     }
   };
 
@@ -236,8 +234,8 @@ export default function App() {
               <MedXForceBrandLogo />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-800">MedXForce Circle</h1>
-              <p className="text-sm text-slate-500">Friends & family — share moments with your loved one</p>
+              <h1 className="text-2xl font-bold text-slate-800">{t('auth.title')}</h1>
+              <p className="text-sm text-slate-500">{t('auth.subtitle')}</p>
             </div>
           </div>
           <div className="space-y-3">
@@ -245,14 +243,14 @@ export default function App() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email (must match patient invite)"
+              placeholder={t('auth.emailPlaceholder')}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl"
             />
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
+              placeholder={t('auth.passwordPlaceholder')}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl"
             />
             {authError && <p className="text-sm text-red-600">{authError}</p>}
@@ -263,11 +261,11 @@ export default function App() {
               className="w-full py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-semibold hover:bg-slate-50 flex items-center justify-center gap-2 disabled:opacity-60"
             >
               <span className="text-lg leading-none">G</span>
-              {googleSigningIn ? 'Signing in…' : 'Continue with Google'}
+              {googleSigningIn ? t('auth.signingIn') : t('auth.continueGoogle')}
             </button>
             <div className="flex items-center gap-3 text-xs text-slate-400">
               <div className="h-px flex-1 bg-slate-200" />
-              or email & password
+              {t('auth.orEmailPassword')}
               <div className="h-px flex-1 bg-slate-200" />
             </div>
             <button
@@ -275,19 +273,16 @@ export default function App() {
               onClick={handleSignIn}
               className="w-full py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700"
             >
-              Sign in
+              {t('auth.signIn')}
             </button>
             <button
               type="button"
               onClick={handleCreateAccount}
               className="w-full py-3 bg-slate-100 text-slate-700 rounded-2xl font-semibold hover:bg-slate-200"
             >
-              Create account
+              {t('auth.createAccount')}
             </button>
-            <p className="text-xs text-slate-500 text-center">
-              MedXForce patient app uses Google — use Continue with Google if you already sign in there.
-              The Google email must match the Friends &amp; Family invite exactly.
-            </p>
+            <p className="text-xs text-slate-500 text-center">{t('auth.googleHint')}</p>
           </div>
         </div>
       </div>
@@ -305,15 +300,15 @@ export default function App() {
               <MedXForceBrandLogo />
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-bold text-slate-800">MedXForce Circle</h1>
-              <p className="text-xs text-slate-500 truncate">Friends &amp; family</p>
+              <h1 className="text-xl font-bold text-slate-800">{t('auth.title')}</h1>
+              <p className="text-xs text-slate-500 truncate">{t('common.friendsFamily')}</p>
             </div>
           </div>
           <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-4">
           <div className="flex items-center justify-between gap-2 text-slate-700">
             <div className="flex items-center gap-2">
               <Users size={18} />
-              <h2 className="font-bold">Your patients</h2>
+              <h2 className="font-bold">{t('patients.yourPatients')}</h2>
             </div>
             <button
               type="button"
@@ -321,20 +316,18 @@ export default function App() {
               disabled={refreshingPatients}
               className="text-sm font-semibold text-blue-600 disabled:opacity-50"
             >
-              {refreshingPatients ? 'Refreshing…' : 'Refresh'}
+              {refreshingPatients ? t('common.refreshing') : t('common.refresh')}
             </button>
           </div>
           {authError && <p className="text-sm text-red-600">{authError}</p>}
-          <p className="text-sm text-slate-500 leading-relaxed">
-            No active invites yet. In the patient app, open Settings → Friends &amp; Family, confirm your email is saved, click Done, then tap Refresh here.
-          </p>
+          <p className="text-sm text-slate-500 leading-relaxed">{t('patients.noInvitesYet')}</p>
           <button
             type="button"
             onClick={() => signOut(firebase.auth)}
             className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-blue-600"
           >
             <LogOut size={16} />
-            Sign out
+            {t('common.signOut')}
           </button>
         </div>
         </>
@@ -374,21 +367,24 @@ export default function App() {
   );
 }
 
-function friendlyAuthError(err: unknown): string {
+function friendlyAuthError(
+  err: unknown,
+  t: ReturnType<typeof import('./translations').createCircleTranslator>,
+): string {
   const code = err && typeof err === 'object' && 'code' in err ? String(err.code) : '';
   switch (code) {
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
-      return 'Wrong password — or this account uses Google sign-in. Try Continue with Google instead.';
+      return t('auth.wrongPassword');
     case 'auth/email-already-in-use':
-      return 'This email already has an account (often via Google). Use Continue with Google, or reset password in Firebase Authentication.';
+      return t('auth.emailInUse');
     case 'auth/weak-password':
-      return 'Password must be at least 6 characters.';
+      return t('auth.weakPassword');
     case 'auth/invalid-email':
-      return 'Enter a valid email address.';
+      return t('auth.invalidEmail');
     case 'auth/user-not-found':
-      return 'No account for this email yet. Use Create account instead.';
+      return t('auth.userNotFound');
     default:
-      return err instanceof Error ? err.message : 'Authentication failed';
+      return err instanceof Error ? err.message : t('auth.authFailed');
   }
 }
