@@ -78,8 +78,9 @@ import {
   messagesPatientStatusHint,
   messagesPatientStatusLabel,
   messagesThreadHeaderTitle,
+  messagesThreadBodyText,
 } from '../lib/messagesScreenI18n';
-import { useCircleT } from '../lib/circleI18nContext';
+import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import {
   countUnreadAlertsInInbox,
   countUnreadAttentionsInInbox,
@@ -299,6 +300,7 @@ export function PatientMessagesScreen({
   draftGuardRef?: MutableRefObject<UnsavedReplyDraftGuard | null>;
 }) {
   const t = useCircleT();
+  const { language } = useCircleI18nContext();
   const normalizedEmail = useMemo(
     () => (user.email ? normalizeInviteEmail(user.email) : ''),
     [user.email],
@@ -816,8 +818,10 @@ export function PatientMessagesScreen({
       .find((reply) => reply.isPatient);
     const title = summaryRow
       ? summaryDateLabel(msg)
-      : (msg.subject && msg.subject.trim()) || msg.text?.slice(0, 80) || t('messages.fallbackMessageTitle');
+      : messagesThreadHeaderTitle(t, msg, language, 'inbox');
     const alertKind = summaryRow ? null : circleMessageAlertAttentionKind(msg);
+    const hasDistinctSubjectLine =
+      !!alertKind || !!(msg.subject && msg.subject.trim());
     const urgentAlertAttention =
       alertKind &&
       isUrgentUnreadAlertAttentionMessage(
@@ -828,7 +832,9 @@ export function PatientMessagesScreen({
       );
     let snippet = summaryRow
       ? messagesCountLabel(t, summaryUtteranceCount(msg), 'messages.utterance_one', 'messages.utterance_other')
-      : msg.text?.slice(0, 80) || '';
+      : hasDistinctSubjectLine
+        ? messagesThreadBodyText(msg, language).slice(0, 80) || ''
+        : '';
     if (!summaryRow && resurrected && latestVisiblePatientReply?.text) {
       snippet = latestVisiblePatientReply.text.slice(0, 80);
     }
@@ -929,12 +935,14 @@ export function PatientMessagesScreen({
                   </span>
                 )}
               </div>
-              <p className={cn('font-bold truncate leading-snug', summaryRow ? 'text-indigo-950' : 'text-slate-800')}>
+              <p className={cn('text-sm font-bold truncate leading-snug', summaryRow ? 'text-indigo-950' : 'text-slate-800')}>
                 {title}
               </p>
-              <p className={cn('text-[11px] mt-0.5 line-clamp-2 leading-relaxed', summaryRow ? 'text-indigo-700/80' : 'text-slate-500')}>
-                {snippet}
-              </p>
+              {snippet ? (
+                <p className={cn('text-[11px] mt-0.5 line-clamp-2 leading-relaxed', summaryRow ? 'text-indigo-700/80' : 'text-slate-500')}>
+                  {snippet}
+                </p>
+              ) : null}
             </div>
             <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap text-right leading-snug pt-0.5">
               {summaryRow
@@ -1217,7 +1225,7 @@ export function PatientMessagesScreen({
             </button>
             <div className="min-w-0 flex-1">
               <p className="font-bold text-slate-800 line-clamp-2 leading-snug">
-                {messagesThreadHeaderTitle(t, selectedMessage)}
+                {messagesThreadHeaderTitle(t, selectedMessage, language)}
               </p>
               <p className="text-[11px] text-slate-500 mt-0.5">
                 {messagesCountLabel(
@@ -1270,7 +1278,7 @@ export function PatientMessagesScreen({
           </button>
           <div className="min-w-0 flex-1 pb-1">
             <p className="font-bold text-slate-800 line-clamp-2 leading-snug">
-              {messagesThreadHeaderTitle(t, selectedMessage)}
+              {messagesThreadHeaderTitle(t, selectedMessage, language)}
             </p>
             <p className="text-[11px] text-slate-500 mt-0.5">
               {isIcuDailySummary(selectedMessage)
@@ -1306,7 +1314,7 @@ export function PatientMessagesScreen({
         ) : null}
         {showSelectedInitialMessage ? (
           <div className="px-4 pb-4 pt-1 pl-14">
-            <CircleMessageBodyPreview text={selectedMessage.text} />
+            <CircleMessageBodyPreview text={messagesThreadBodyText(selectedMessage, language)} />
           </div>
         ) : selectedThreadResurrected ? (
           <p className="px-4 pb-4 pt-1 pl-14 text-[11px] text-slate-400 leading-relaxed">

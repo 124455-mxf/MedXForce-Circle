@@ -2,6 +2,8 @@ import type { CircleTranslator } from './circleI18nContext';
 import type { CircleAlertAttentionKind } from './circleAlertAttentionUrgency';
 import type { CircleThreadMessage } from '../hooks/useCirclePatientThreads';
 import { isIcuDailySummary, summaryDateLabel, summaryDeliveredAt, isSummaryDeliveredOnDifferentDay } from './circleCommunicationLog';
+import { resolveAlertAttentionMessageDisplay } from './alertAttentionNotificationCopy';
+import type { CircleUiLanguage } from './circleLanguages';
 
 export function formatMessagesThreadTime(t: CircleTranslator, ts: number): string {
   const d = new Date(ts);
@@ -13,13 +15,40 @@ export function formatMessagesThreadTime(t: CircleTranslator, ts: number): strin
   return t('messages.threadTimeDate', { date: d.toLocaleDateString(), time });
 }
 
-export function messagesThreadHeaderTitle(t: CircleTranslator, msg: CircleThreadMessage): string {
+export function messagesThreadHeaderTitle(
+  t: CircleTranslator,
+  msg: CircleThreadMessage,
+  viewerLanguage?: CircleUiLanguage,
+  context: 'inbox' | 'thread' = 'thread',
+): string {
   if (isIcuDailySummary(msg)) {
     return t('messages.communicationLogTitle', { date: summaryDateLabel(msg) });
   }
+  const localized = viewerLanguage
+    ? resolveAlertAttentionMessageDisplay(msg, viewerLanguage)
+    : null;
+  if (localized?.subject) return localized.subject;
   const subject = msg.subject?.trim();
   if (subject) return subject;
+  if (context === 'inbox') {
+    const body = msg.text?.trim();
+    if (body) {
+      return body.length > 80 ? `${body.slice(0, 80).trimEnd()}…` : body;
+    }
+    return t('messages.fallbackMessageTitle');
+  }
   return t('messages.patientMessage');
+}
+
+export function messagesThreadBodyText(
+  msg: CircleThreadMessage,
+  viewerLanguage?: CircleUiLanguage,
+): string {
+  const localized = viewerLanguage
+    ? resolveAlertAttentionMessageDisplay(msg, viewerLanguage)
+    : null;
+  if (localized?.text) return localized.text;
+  return msg.text?.trim() || '';
 }
 
 export function messagesCommunicationLogInboxTime(

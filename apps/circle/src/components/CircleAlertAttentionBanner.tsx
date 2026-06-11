@@ -3,7 +3,7 @@ import { cn } from '../lib/utils';
 import type { CircleAlertAttentionItem } from '../hooks/useCircleAlertAttentionState';
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import { formatDashboardTimestamp } from '../lib/dashboardI18n';
-import { alertAttentionMessagePreview } from '../lib/circleAlertAttentionUrgency';
+import { resolveAlertAttentionMessageDisplay } from '../lib/alertAttentionNotificationCopy';
 import {
   circleUrgencyBannerIconClass,
   circleUrgencyBannerTitleClass,
@@ -69,7 +69,20 @@ function BannerRow({
           )}
         </div>
         <p className="text-sm text-slate-600 mt-1 leading-relaxed">
-          {alertAttentionMessagePreview(item) || t('alertAttention.openMessages')}
+          {(() => {
+            const localized = resolveAlertAttentionMessageDisplay(
+              {
+                type: item.type,
+                subject: item.subject,
+                text: item.text,
+                translations: item.translations,
+              },
+              language,
+            );
+            const preview = localized?.text || item.text || '';
+            const trimmed = preview.length > 120 ? `${preview.slice(0, 120).trimEnd()}…` : preview;
+            return trimmed || t('alertAttention.openMessages');
+          })()}
         </p>
       </div>
       <ChevronRight size={16} className="text-slate-300 shrink-0 mt-1" aria-hidden />

@@ -15,6 +15,8 @@ import { CIRCLE_MSG_READ_CHANGED, markThreadRead } from '../lib/circleMessageRea
 export type CircleAlertAttentionItem = {
   id: string;
   kind: CircleAlertAttentionKind;
+  type?: string;
+  translations?: { language: string; text: string; subject?: string }[];
   createdAt: number;
   subject?: string;
   text: string;
@@ -57,6 +59,8 @@ export function useCircleAlertAttentionState(
       items.push({
         id: msg.id,
         kind,
+        type: msg.type,
+        translations: msg.translations,
         createdAt: msg.createdAt || 0,
         subject: msg.subject,
         text: msg.text || '',

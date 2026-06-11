@@ -37,6 +37,7 @@ export type CircleThreadMessage = {
   type?: string;
   circleMemberUids?: string[];
   recipientEmails?: string[];
+  translations?: { language: string; text: string; subject?: string }[];
   createdAt: number;
   updatedAt: number;
   summaryEntries?: IcuSummaryEntry[];

@@ -260,12 +260,12 @@ export function CircleMainShell({
       toastedUrgentIdsRef.current.add(item.id);
       showToast(
         item.kind === 'alert'
-          ? 'Alert — your loved one needs you'
-          : 'Attention request from your loved one',
+          ? t('alertAttention.alertFromLovedOne')
+          : t('alertAttention.needsAttention'),
         item.kind === 'alert' ? 'error' : 'info',
       );
     }
-  }, [alertAttention.urgentItems, showToast]);
+  }, [alertAttention.urgentItems, showToast, t]);
 
   const circleThreadUnread = useCircleMemberThreadUnread(
     db,
