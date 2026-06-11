@@ -312,7 +312,7 @@ export function CircleProfileDrawer({
               <MessageSquare size={20} className="text-blue-600" />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-slate-800 text-sm">Messaging</p>
-                <p className="text-xs text-slate-400">Reply sort order and more</p>
+                <p className="text-xs text-slate-400">Message sort order and more</p>
               </div>
               <ChevronRight size={16} className="text-slate-300 shrink-0" />
             </button>

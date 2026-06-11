@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Activity,
   BarChart3,
@@ -103,6 +103,27 @@ function isTodayAlertAttention(summary: PatientAnalyticsSummary): boolean {
   );
 }
 
+function resolveAnalyticsSummary(
+  metricId: AnalyticsMetricId,
+  byMetricId: Map<string, PatientAnalyticsSummary>,
+  patient: CirclePatientSummary,
+): PatientAnalyticsSummary | null {
+  const synced = byMetricId.get(metricId);
+  if (synced) return synced;
+  if (!ANALYTICS_METRIC_DEFINITIONS[metricId]) return null;
+  if (
+    !patient.capabilities ||
+    !canReadAnalyticsAudience(
+      ANALYTICS_METRIC_DEFINITIONS[metricId].audience,
+      patient.role,
+      patient.capabilities,
+    )
+  ) {
+    return null;
+  }
+  return buildPlaceholderAnalyticsSummary(metricId, patient.patientId);
+}
+
 function AnalyticsMetricRow({
   summary,
   onOpen,
@@ -166,13 +187,30 @@ function AnalyticsMetricRow({
   );
 }
 
-export function CircleAnalyticsScreen({ patient }: { patient: CirclePatientSummary }) {
+export function CircleAnalyticsScreen({
+  patient,
+  initialMetricId = null,
+  onInitialMetricConsumed,
+}: {
+  patient: CirclePatientSummary;
+  initialMetricId?: AnalyticsMetricId | null;
+  onInitialMetricConsumed?: () => void;
+}) {
   const [detailSummary, setDetailSummary] = useState<PatientAnalyticsSummary | null>(null);
   const compactChrome = useCircleCompactChrome();
   const { byMetricId, totalFromServer, loading, error } = useCircleAnalyticsSummaries(
     firebase.db,
     patient,
   );
+
+  useEffect(() => {
+    if (!initialMetricId || loading) return;
+    const summary = resolveAnalyticsSummary(initialMetricId, byMetricId, patient);
+    if (summary?.isReleased && summary.status !== 'coming_soon') {
+      setDetailSummary(summary);
+    }
+    onInitialMetricConsumed?.();
+  }, [initialMetricId, loading, byMetricId, patient, onInitialMetricConsumed]);
 
   return (
     <>

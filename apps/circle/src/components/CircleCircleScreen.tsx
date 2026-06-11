@@ -37,6 +37,7 @@ import {
   circleWorkTabPanelClass,
 } from '../lib/circleSectionStyles';
 import { useCircleMemberThread } from '../hooks/useCircleMemberThread';
+import { useCircleThreadSortOrder } from '../hooks/useCircleThreadSortOrder';
 import {
   getCircleThreadLastReadAt,
   markCircleThreadRead,
@@ -279,6 +280,7 @@ export function CircleCircleScreen({
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollToLatestPostPendingRef = useRef(false);
   const compactChrome = useCircleCompactChrome();
+  const threadSort = useCircleThreadSortOrder();
 
   const activeThreadLastRead = useCircleThreadLastRead(
     patient.patientId,
@@ -314,6 +316,11 @@ export function CircleCircleScreen({
     [user.displayName, user.email],
   );
 
+  const orderedPosts = useMemo(() => {
+    if (threadSort === 'newest') return [...posts].reverse();
+    return posts;
+  }, [posts, threadSort]);
+
   const recentContext = useMemo(
     () =>
       posts
@@ -323,15 +330,17 @@ export function CircleCircleScreen({
     [posts],
   );
 
-  const firstUnreadPost = useMemo(
-    () =>
-      posts.find(
-        (post) => post.authorUid !== user.uid && post.createdAt > activeThreadLastRead,
-      ),
-    [activeThreadLastRead, posts, user.uid],
-  );
+  const newestPostId = posts.at(-1)?.id;
 
-  const lastPostId = posts.at(-1)?.id;
+  const scrollTargetPostId = useMemo(() => {
+    const unreadFromOthers = posts.filter(
+      (post) => post.authorUid !== user.uid && post.createdAt > activeThreadLastRead,
+    );
+    if (threadSort === 'newest') {
+      return unreadFromOthers.at(-1)?.id ?? newestPostId;
+    }
+    return unreadFromOthers[0]?.id ?? newestPostId;
+  }, [activeThreadLastRead, newestPostId, posts, threadSort, user.uid]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -347,16 +356,22 @@ export function CircleCircleScreen({
     requestAnimationFrame(() => {
       if (scrollToLatestPostPendingRef.current) {
         scrollToLatestPostPendingRef.current = false;
-        if (lastPostId) scrollPostToStart(lastPostId);
+        if (newestPostId) scrollPostToStart(newestPostId);
         return;
       }
 
-      const targetPostId = firstUnreadPost?.id ?? lastPostId;
-      if (targetPostId) {
-        scrollPostToStart(targetPostId);
+      if (scrollTargetPostId) {
+        scrollPostToStart(scrollTargetPostId);
       }
     });
-  }, [activeThread, firstUnreadPost?.id, lastPostId, loading, posts.length]);
+  }, [
+    activeThread,
+    loading,
+    newestPostId,
+    posts.length,
+    scrollTargetPostId,
+    threadSort,
+  ]);
 
   useEffect(() => {
     if (!patient.patientId || !user.uid) return;
@@ -541,7 +556,7 @@ export function CircleCircleScreen({
               </p>
             </div>
           ) : (
-            posts.map((post) => {
+            orderedPosts.map((post) => {
               const isOwn = post.authorUid === user.uid;
               const highlightAsUnread =
                 !isOwn && post.createdAt > activeThreadLastRead;

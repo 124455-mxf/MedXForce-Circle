@@ -14,9 +14,11 @@ import {
 } from '../lib/circleMessageDelivery';
 import {
   setCircleReplySortOrder,
-  type CircleReplySortOrder,
+  setCircleThreadSortOrder,
+  type CircleMessageSortOrder,
 } from '../lib/circleMessagePreferences';
 import { useCircleReplySortOrder } from '../hooks/useCircleReplySortOrder';
+import { useCircleThreadSortOrder } from '../hooks/useCircleThreadSortOrder';
 
 const DELIVERY_OPTIONS: {
   value: CircleMessageDeliveryPreference;
@@ -44,12 +46,60 @@ interface CircleSettingsMessagingPanelProps {
   patient: CirclePatientSummary;
 }
 
+function MessageSortOrderControl({
+  title,
+  description,
+  ariaLabel,
+  value,
+  onChange,
+}: {
+  title: string;
+  description: string;
+  ariaLabel: string;
+  value: CircleMessageSortOrder;
+  onChange: (order: CircleMessageSortOrder) => void;
+}) {
+  return (
+    <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
+      <div className="space-y-1">
+        <p className="font-bold text-slate-800">{title}</p>
+        <p className="text-sm text-slate-400">{description}</p>
+      </div>
+      <div
+        className="inline-flex rounded-xl bg-slate-200/80 p-1 gap-0.5"
+        role="group"
+        aria-label={ariaLabel}
+      >
+        {(['oldest', 'newest'] as CircleMessageSortOrder[]).map((order) => {
+          const active = value === order;
+          return (
+            <button
+              key={order}
+              type="button"
+              onClick={() => onChange(order)}
+              className={cn(
+                'px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all',
+                active
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700',
+              )}
+            >
+              {order === 'oldest' ? 'Oldest first' : 'Newest first'}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function CircleSettingsMessagingPanel({
   user,
   db,
   patient,
 }: CircleSettingsMessagingPanelProps) {
   const replySort = useCircleReplySortOrder();
+  const threadSort = useCircleThreadSortOrder();
   const [delivery, setDelivery] = useState<CircleMessageDeliveryPreference>(
     DEFAULT_CIRCLE_MESSAGE_DELIVERY,
   );
@@ -156,38 +206,21 @@ export function CircleSettingsMessagingPanel({
         </div>
       </div>
 
-      <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
-        <div className="space-y-1">
-          <p className="font-bold text-slate-800">Reply sort order</p>
-          <p className="text-sm text-slate-400">
-            Choose whether replies in a conversation appear oldest-first or newest-first.
-          </p>
-        </div>
-        <div
-          className="inline-flex rounded-xl bg-slate-200/80 p-1 gap-0.5"
-          role="group"
-          aria-label="Reply sort order"
-        >
-          {(['oldest', 'newest'] as CircleReplySortOrder[]).map((order) => {
-            const active = replySort === order;
-            return (
-              <button
-                key={order}
-                type="button"
-                onClick={() => setCircleReplySortOrder(order)}
-                className={cn(
-                  'px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all',
-                  active
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700',
-                )}
-              >
-                {order === 'oldest' ? 'Oldest first' : 'Newest first'}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <MessageSortOrderControl
+        title="Reply sort order"
+        description="Choose whether replies in a patient conversation appear oldest-first or newest-first."
+        ariaLabel="Reply sort order"
+        value={replySort}
+        onChange={setCircleReplySortOrder}
+      />
+
+      <MessageSortOrderControl
+        title="Circle message sort order"
+        description="Choose whether posts in Circle conversation and care coordination appear oldest-first or newest-first."
+        ariaLabel="Circle message sort order"
+        value={threadSort}
+        onChange={setCircleThreadSortOrder}
+      />
     </div>
   );
 }

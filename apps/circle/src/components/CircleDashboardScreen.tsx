@@ -27,6 +27,7 @@ import {
   diaryMoodLabel,
   formatDashboardApplicationModeLine,
   normalizeMemberRole,
+  type AnalyticsMetricId,
   type CirclePatientSummary,
   type PatientRemoteCommandType,
 } from '@medxforce/shared';
@@ -101,6 +102,7 @@ interface CircleDashboardScreenProps {
   urgentAlertAttention: CircleAlertAttentionItem[];
   subduedAlertAttention: CircleAlertAttentionItem[];
   onGoToTab: (tab: CircleMainTab) => void;
+  onOpenAnalyticsDetail: (metricId: AnalyticsMetricId) => void;
   onOpenVisitCapture?: () => void;
   onRequestDropIn?: () => void;
   onResumeDropIn?: () => void;
@@ -347,6 +349,7 @@ export function CircleDashboardScreen({
   urgentAlertAttention,
   subduedAlertAttention,
   onGoToTab,
+  onOpenAnalyticsDetail,
   onOpenVisitCapture,
   onRequestDropIn,
   onResumeDropIn,
@@ -474,7 +477,7 @@ export function CircleDashboardScreen({
             row3: formatLastLine(alertAttentionSummary?.latestAt),
             recencyTint: getAlertAttentionRecencyUrgency(alertAttentionSummary?.latestAt),
           }),
-      onClick: () => onGoToTab('analytics'),
+      onClick: () => onOpenAnalyticsDetail('alert-attention'),
     });
 
     const dailyCheckInLatestAt =
@@ -511,7 +514,7 @@ export function CircleDashboardScreen({
               hasHistory: !!(dailyDetail || dailyCheckIn?.latestAt),
             }),
           }),
-      onClick: () => onGoToTab('analytics'),
+      onClick: () => onOpenAnalyticsDetail('daily-check-in'),
     });
 
     lastSevenDayWidgets.push({

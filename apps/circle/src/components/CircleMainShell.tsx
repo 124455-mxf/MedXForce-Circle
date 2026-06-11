@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
-import type { CirclePatientSummary } from '@medxforce/shared';
+import type { AnalyticsMetricId, CirclePatientSummary } from '@medxforce/shared';
 import {
   canSendPatientRemoteCommands,
   canStartVisitCapture,
@@ -77,6 +77,8 @@ export function CircleMainShell({
   onSelectPatient,
 }: CircleMainShellProps) {
   const [activeTab, setActiveTab] = useState<CircleMainTab>('dashboard');
+  const [initialAnalyticsMetricId, setInitialAnalyticsMetricId] =
+    useState<AnalyticsMetricId | null>(null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [visitCaptureOpen, setVisitCaptureOpen] = useState(false);
   const [dropInConfirmOpen, setDropInConfirmOpen] = useState(false);
@@ -113,6 +115,18 @@ export function CircleMainShell({
   const handleBackToDashboard = useCallback(() => {
     guardedNavigate(() => setActiveTab('dashboard'));
   }, [guardedNavigate]);
+
+  const handleOpenAnalyticsDetail = useCallback(
+    (metricId: AnalyticsMetricId) => {
+      setInitialAnalyticsMetricId(metricId);
+      guardedNavigate(() => setActiveTab('analytics'));
+    },
+    [guardedNavigate],
+  );
+
+  const handleAnalyticsInitialMetricConsumed = useCallback(() => {
+    setInitialAnalyticsMetricId(null);
+  }, []);
 
   const selectedPatient = useMemo((): CirclePatientSummary | null => {
     if (patients.length === 0) return null;
@@ -386,6 +400,7 @@ export function CircleMainShell({
               urgentAlertAttention={alertAttention.urgentItems}
               subduedAlertAttention={alertAttention.subduedItems}
               onGoToTab={handleTabChange}
+              onOpenAnalyticsDetail={handleOpenAnalyticsDetail}
               onOpenVisitCapture={
                 showVisitCapture ? () => setVisitCaptureOpen(true) : undefined
               }
@@ -444,7 +459,11 @@ export function CircleMainShell({
           )}
           {activeTab === 'analytics' && (
             <div className="flex flex-col flex-1 min-h-0">
-              <CircleAnalyticsScreen patient={selectedPatient} />
+              <CircleAnalyticsScreen
+                patient={selectedPatient}
+                initialMetricId={initialAnalyticsMetricId}
+                onInitialMetricConsumed={handleAnalyticsInitialMetricConsumed}
+              />
             </div>
           )}
           {activeTab === 'diary' && (
