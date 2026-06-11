@@ -2,6 +2,8 @@ import { Loader2, Pencil, X } from 'lucide-react';
 import type { CircleContactKind } from '@medxforce/shared';
 import { CIRCLE_UI_LANGUAGES } from '../lib/circleLanguages';
 import { cn } from '../lib/utils';
+import { useCircleT, type CircleTranslator } from '../lib/circleI18nContext';
+import { contactKindLabelI18n, relationshipLabelI18n } from '../lib/adminScreenI18n';
 import {
   CircleContactNotifyGrid,
   notifyKeysForContactKind,
@@ -24,12 +26,14 @@ export type ContactEditorDraft = {
 
 export type ContactEditorMode = 'view' | 'edit' | 'create';
 
-const KIND_OPTIONS: { id: CircleContactKind; label: string; hint: string }[] = [
-  { id: 'caregiver', label: 'Caregiver', hint: 'Trusted helper in daily care' },
-  { id: 'family', label: 'Family', hint: 'Close family in the support circle' },
-  { id: 'friend', label: 'Friend', hint: 'Friend with Circle messaging access' },
-  { id: 'contact', label: 'Contact', hint: 'Messaging only — no Circle sign-in' },
-];
+function kindOptions(t: CircleTranslator): { id: CircleContactKind; label: string; hint: string }[] {
+  return [
+    { id: 'caregiver', label: t('admin.contact.kindCaregiver'), hint: t('admin.contact.kindCaregiverHint') },
+    { id: 'family', label: t('admin.contact.kindFamily'), hint: t('admin.contact.kindFamilyHint') },
+    { id: 'friend', label: t('admin.contact.kindFriend'), hint: t('admin.contact.kindFriendHint') },
+    { id: 'contact', label: t('admin.contact.kindContact'), hint: t('admin.contact.kindContactHint') },
+  ];
+}
 
 /** UI languages for Circle members — matches patient app primary languages (EN/DE/ES/PL). */
 export const CONTACT_LANGUAGE_OPTIONS = CIRCLE_UI_LANGUAGES.map((entry) => entry.value);
@@ -81,13 +85,13 @@ const fieldClass =
 const readOnlyValueClass =
   'w-full px-4 py-3 bg-white border border-slate-100 rounded-xl text-sm font-medium text-slate-800';
 
-function ReadOnlyField({ label, value }: { label: string; value: string }) {
+function ReadOnlyField({ label, value, empty }: { label: string; value: string; empty: string }) {
   return (
     <div className="space-y-2">
       <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
         {label}
       </label>
-      <p className={readOnlyValueClass}>{value || '—'}</p>
+      <p className={readOnlyValueClass}>{value || empty}</p>
     </div>
   );
 }
@@ -96,11 +100,15 @@ function NotifyStatus({
   label,
   enabled,
   requirement,
+  enabledText,
+  offText,
   tone = 'blue',
 }: {
   label: string;
   enabled: boolean;
   requirement?: string;
+  enabledText: string;
+  offText: string;
   tone?: 'blue' | 'red' | 'orange' | 'emerald';
 }) {
   const enabledToneClass =
@@ -119,7 +127,7 @@ function NotifyStatus({
     <div className={cn('p-4 rounded-2xl border text-left', toneClass)}>
       <p className="font-bold text-sm">{label}</p>
       <p className="text-xs mt-1 opacity-80">
-        {requirement ?? (enabled ? 'Enabled' : 'Off')}
+        {requirement ?? (enabled ? enabledText : offText)}
       </p>
     </div>
   );
@@ -163,7 +171,11 @@ export function CircleContactEditorModal({
   circleAccessLabel,
   circleAccessBadgeClass,
 }: CircleContactEditorModalProps) {
+  const t = useCircleT();
   if (!open) return null;
+
+  const kinds = kindOptions(t);
+  const empty = t('admin.profile.emptyValue');
 
   const isView = mode === 'view';
   const isCreate = mode === 'create';
@@ -177,12 +189,16 @@ export function CircleContactEditorModal({
     onChange({ [key]: !draft[key] });
   };
 
-  const title = isView ? 'View person' : isCreate ? 'Add person' : 'Edit person';
-  const subtitle = isView
-    ? 'Contact details (read only)'
+  const title = isView
+    ? t('admin.contact.viewTitle')
     : isCreate
-      ? 'Choose a type, then fill in their details'
-      : 'Update details for this contact';
+      ? t('admin.contact.addTitle')
+      : t('admin.contact.editTitle');
+  const subtitle = isView
+    ? t('admin.contact.viewSubtitle')
+    : isCreate
+      ? t('admin.contact.addSubtitle')
+      : t('admin.contact.editSubtitle');
 
   return (
     <div className="fixed inset-0 z-[130] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-sm">
@@ -197,7 +213,7 @@ export function CircleContactEditorModal({
             onClick={onClose}
             disabled={saving}
             className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 shrink-0"
-            aria-label="Close"
+            aria-label={t('admin.contact.closeAria')}
           >
             <X size={20} />
           </button>
@@ -206,10 +222,7 @@ export function CircleContactEditorModal({
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
           {!isView && remoteStale && (
             <div className="text-sm bg-amber-50 border border-amber-100 rounded-xl px-3 py-3 space-y-2">
-              <p className="text-amber-900 font-medium">
-                This person was updated in the Patient app. Refresh before saving so you do not
-                overwrite their changes.
-              </p>
+              <p className="text-amber-900 font-medium">{t('admin.contact.staleMessage')}</p>
               {onRefreshFromRemote && (
                 <button
                   type="button"
@@ -217,7 +230,7 @@ export function CircleContactEditorModal({
                   disabled={saving}
                   className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 disabled:opacity-50"
                 >
-                  Load latest
+                  {t('admin.contact.loadLatest')}
                 </button>
               )}
             </div>
@@ -231,15 +244,15 @@ export function CircleContactEditorModal({
 
           <section className="space-y-3">
             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Person type
+              {t('admin.contact.personType')}
             </h4>
             {isView || mode === 'edit' ? (
               <span className="inline-flex px-3 py-1.5 rounded-xl bg-violet-50 text-violet-700 text-xs font-bold uppercase tracking-wide">
-                {KIND_OPTIONS.find((k) => k.id === draft.kind)?.label ?? draft.kind}
+                {contactKindLabelI18n(t, draft.kind)}
               </span>
             ) : (
               <div className="grid grid-cols-2 gap-2">
-                {KIND_OPTIONS.map((option) => {
+                {kinds.map((option) => {
                   const active = draft.kind === option.id;
                   return (
                     <button
@@ -278,7 +291,7 @@ export function CircleContactEditorModal({
           {circleAccessLabel && (isView || mode === 'edit') && (
             <section className="space-y-3">
               <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Circle access
+                {t('admin.contact.circleAccess')}
               </h4>
               <span
                 className={cn(
@@ -288,46 +301,44 @@ export function CircleContactEditorModal({
               >
                 {circleAccessLabel}
               </span>
-              <p className="text-[11px] text-slate-400 leading-snug">
-                Sign-in role for the Circle app. Person type above is how they are grouped in the
-                care list.
-              </p>
+              <p className="text-[11px] text-slate-400 leading-snug">{t('admin.contact.circleAccessHint')}</p>
             </section>
           )}
 
           <section className="space-y-4 p-5 bg-slate-50 rounded-2xl border border-slate-100">
             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              User information
+              {t('admin.contact.userInfo')}
             </h4>
             {isView ? (
               <>
-                <ReadOnlyField label="Name" value={draft.name} />
+                <ReadOnlyField label={t('admin.contact.fieldName')} value={draft.name} empty={empty} />
                 {(draft.kind === 'caregiver' || draft.kind === 'family') && (
                   <ReadOnlyField
-                    label="Relationship"
-                    value={clampRelationship(draft.kind, draft.relationship)}
+                    label={t('admin.contact.fieldRelationship')}
+                    value={relationshipLabelI18n(t, clampRelationship(draft.kind, draft.relationship))}
+                    empty={empty}
                   />
                 )}
-                <ReadOnlyField label="Language" value={draft.language || 'English'} />
+                <ReadOnlyField label={t('admin.contact.fieldLanguage')} value={draft.language || 'English'} empty={empty} />
               </>
             ) : (
               <>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-                    Name
+                    {t('admin.contact.fieldName')}
                   </label>
                   <input
                     value={draft.name}
                     onChange={(e) => onChange({ name: e.target.value })}
                     className={fieldClass}
-                    placeholder="Full name"
+                    placeholder={t('admin.contact.placeholderFullName')}
                     autoFocus
                   />
                 </div>
                 {(draft.kind === 'caregiver' || draft.kind === 'family') && (
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-                      Relationship
+                      {t('admin.contact.fieldRelationship')}
                     </label>
                     <select
                       value={clampRelationship(draft.kind, draft.relationship)}
@@ -336,7 +347,7 @@ export function CircleContactEditorModal({
                     >
                       {RELATIONSHIP_OPTIONS[draft.kind].map((option) => (
                         <option key={option} value={option}>
-                          {option}
+                          {relationshipLabelI18n(t, option)}
                         </option>
                       ))}
                     </select>
@@ -344,7 +355,7 @@ export function CircleContactEditorModal({
                 )}
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-                    Language
+                    {t('admin.contact.fieldLanguage')}
                   </label>
                   <select
                     value={draft.language || 'English'}
@@ -364,55 +375,59 @@ export function CircleContactEditorModal({
 
           <section className="space-y-4 p-5 bg-slate-50 rounded-2xl border border-slate-100">
             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Contact details
+              {t('admin.contact.contactDetails')}
             </h4>
             {isView ? (
               <>
-                <ReadOnlyField label="Email" value={draft.email || '—'} />
-                <ReadOnlyField label="Mobile number" value={draft.mobile || '—'} />
+                <ReadOnlyField label={t('admin.contact.fieldEmail')} value={draft.email} empty={empty} />
+                <ReadOnlyField label={t('admin.contact.fieldMobile')} value={draft.mobile} empty={empty} />
               </>
             ) : (
               <>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-                    Email
+                    {t('admin.contact.fieldEmail')}
                   </label>
                   {lockEmailAndMobile ? (
-                    <p className={readOnlyValueClass}>{draft.email || '—'}</p>
+                    <p className={readOnlyValueClass}>{draft.email || empty}</p>
                   ) : (
                     <input
                       type="email"
                       value={draft.email}
                       onChange={(e) => onChange({ email: e.target.value })}
                       className={fieldClass}
-                      placeholder={needsEmail ? 'Required for Circle invite' : 'Optional'}
+                      placeholder={
+                        needsEmail
+                          ? t('admin.contact.placeholderEmailRequired')
+                          : t('admin.contact.placeholderEmailOptional')
+                      }
                     />
                   )}
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
-                    Mobile number
+                    {t('admin.contact.fieldMobile')}
                   </label>
                   {lockEmailAndMobile ? (
-                    <p className={readOnlyValueClass}>{draft.mobile || '—'}</p>
+                    <p className={readOnlyValueClass}>{draft.mobile || empty}</p>
                   ) : (
                     <input
                       type="tel"
                       value={draft.mobile}
                       onChange={(e) => onChange({ mobile: e.target.value })}
                       className={fieldClass}
-                      placeholder="Optional"
+                      placeholder={t('admin.contact.placeholderMobileOptional')}
                     />
                   )}
                 </div>
                 {lockEmailAndMobile && (
                   <p className="text-xs text-amber-700 font-medium bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
-                    Email and mobile can only be changed by a proxy in User management.
+                    {t('admin.contact.lockEmailHint')}
                   </p>
                 )}
                 {!lockEmailAndMobile && needsEmail && !draft.email.trim() && (
                   <p className="text-xs text-amber-700 font-medium bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
-                    Add an email so this person can sign in to MedXForce Circle.
+                    {t('admin.contact.needsEmailHint')}
                   </p>
                 )}
               </>
@@ -421,36 +436,44 @@ export function CircleContactEditorModal({
 
           <section className="space-y-4 p-5 bg-slate-50 rounded-2xl border border-slate-100">
             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Notify me
+              {t('admin.contact.notifyMe')}
             </h4>
             {isView ? (
               <div className="grid grid-cols-2 gap-3">
                 {notifyKeys.includes('alert') && (
                   <NotifyStatus
-                    label="Alert"
+                    label={t('admin.contact.notifyAlert')}
                     enabled={draft.alert && hasEmail}
                     tone="red"
-                    requirement={hasEmail ? undefined : 'Email required'}
+                    enabledText={t('admin.contact.notifyEnabled')}
+                    offText={t('admin.contact.notifyOff')}
+                    requirement={hasEmail ? undefined : t('admin.contact.notifyEmailRequired')}
                   />
                 )}
                 {notifyKeys.includes('attention') && (
                   <NotifyStatus
-                    label="Attention"
+                    label={t('admin.contact.notifyAttention')}
                     enabled={draft.attention && hasEmail}
                     tone="orange"
-                    requirement={hasEmail ? undefined : 'Email required'}
+                    enabledText={t('admin.contact.notifyEnabled')}
+                    offText={t('admin.contact.notifyOff')}
+                    requirement={hasEmail ? undefined : t('admin.contact.notifyEmailRequired')}
                   />
                 )}
                 <NotifyStatus
-                  label="Message"
+                  label={t('admin.contact.notifyMessage')}
                   enabled={draft.message && hasEmail}
-                  requirement={hasEmail ? undefined : 'Email required'}
+                  enabledText={t('admin.contact.notifyEnabled')}
+                  offText={t('admin.contact.notifyOff')}
+                  requirement={hasEmail ? undefined : t('admin.contact.notifyEmailRequired')}
                 />
                 <NotifyStatus
-                  label="SMS"
+                  label={t('admin.contact.notifySms')}
                   enabled={draft.sms && hasMobile}
                   tone="emerald"
-                  requirement={hasMobile ? undefined : 'Mobile required'}
+                  enabledText={t('admin.contact.notifyEnabled')}
+                  offText={t('admin.contact.notifyOff')}
+                  requirement={hasMobile ? undefined : t('admin.contact.notifyMobileRequired')}
                 />
               </div>
             ) : (
@@ -479,7 +502,7 @@ export function CircleContactEditorModal({
                 onClick={onClose}
                 className="flex-1 py-3.5 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all"
               >
-                Close
+                {t('admin.contact.close')}
               </button>
               {onSwitchToEdit && (
                 <button
@@ -488,7 +511,7 @@ export function CircleContactEditorModal({
                   className="flex-1 py-3.5 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
                 >
                   <Pencil size={16} />
-                  Edit
+                  {t('common.edit')}
                 </button>
               )}
             </>
@@ -500,7 +523,7 @@ export function CircleContactEditorModal({
                 disabled={saving}
                 className="flex-1 py-3.5 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50"
               >
-                Cancel
+                {t('admin.contact.cancel')}
               </button>
               <button
                 type="button"
@@ -509,7 +532,11 @@ export function CircleContactEditorModal({
                 className="flex-1 py-3.5 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {saving && <Loader2 size={16} className="animate-spin" />}
-                {saving ? 'Saving…' : isCreate ? 'Add person' : 'Save'}
+                {saving
+                  ? t('admin.contact.saving')
+                  : isCreate
+                    ? t('admin.contact.addPerson')
+                    : t('admin.contact.save')}
               </button>
             </>
           )}

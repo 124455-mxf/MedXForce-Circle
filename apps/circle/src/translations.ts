@@ -5,6 +5,36 @@ import {
   appShellPolish,
   appShellSpanish,
 } from './translations/appShell';
+import {
+  messagesScreenEnglish,
+  messagesScreenGerman,
+  messagesScreenPolish,
+  messagesScreenSpanish,
+} from './translations/messagesScreen';
+import {
+  circleScreenEnglish,
+  circleScreenGerman,
+  circleScreenPolish,
+  circleScreenSpanish,
+} from './translations/circleScreen';
+import {
+  diaryScreenEnglish,
+  diaryScreenGerman,
+  diaryScreenPolish,
+  diaryScreenSpanish,
+} from './translations/diaryScreen';
+import {
+  galleryScreenEnglish,
+  galleryScreenGerman,
+  galleryScreenPolish,
+  galleryScreenSpanish,
+} from './translations/galleryScreen';
+import {
+  adminScreenEnglish,
+  adminScreenGerman,
+  adminScreenPolish,
+  adminScreenSpanish,
+} from './translations/adminScreen';
 
 type TranslationTree = Record<string, string | TranslationTree>;
 
@@ -47,6 +77,11 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       startupTagline: 'MedXForce Circle — Family & Friends',
     },
     ...appShellEnglish,
+    messages: messagesScreenEnglish,
+    circle: circleScreenEnglish,
+    diary: diaryScreenEnglish,
+    gallery: galleryScreenEnglish,
+    admin: adminScreenEnglish,
     common: {
       refresh: 'Refresh',
       refreshing: 'Refreshing…',
@@ -95,6 +130,11 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       startupTagline: 'MedXForce Circle — Familie & Freunde',
     },
     ...appShellGerman,
+    messages: messagesScreenGerman,
+    circle: circleScreenGerman,
+    diary: diaryScreenGerman,
+    gallery: galleryScreenGerman,
+    admin: adminScreenGerman,
     common: {
       refresh: 'Aktualisieren',
       refreshing: 'Aktualisiere…',
@@ -143,6 +183,11 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       startupTagline: 'MedXForce Circle — Familia y amigos',
     },
     ...appShellSpanish,
+    messages: messagesScreenSpanish,
+    circle: circleScreenSpanish,
+    diary: diaryScreenSpanish,
+    gallery: galleryScreenSpanish,
+    admin: adminScreenSpanish,
     common: {
       refresh: 'Actualizar',
       refreshing: 'Actualizando…',
@@ -191,6 +236,11 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       startupTagline: 'MedXForce Circle — Rodzina i przyjaciele',
     },
     ...appShellPolish,
+    messages: messagesScreenPolish,
+    circle: circleScreenPolish,
+    diary: diaryScreenPolish,
+    gallery: galleryScreenPolish,
+    admin: adminScreenPolish,
     common: {
       refresh: 'Odśwież',
       refreshing: 'Odświeżanie…',

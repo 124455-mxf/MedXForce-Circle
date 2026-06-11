@@ -12,6 +12,8 @@ import {
   resolveIdentityPrimaryLanguage,
 } from '../lib/circleLanguages';
 import { CirclePatientLanguageConfirmModal } from './CirclePatientLanguageConfirmModal';
+import { useCircleT } from '../lib/circleI18nContext';
+import { profileEditorSectionTitleI18n } from '../lib/adminScreenI18n';
 
 type EditableSection = 'identity' | 'extended' | 'engagement' | 'lifestyle' | 'clinical';
 
@@ -203,6 +205,7 @@ export function CirclePatientProfileEditorModal({
   onClose,
   onSave,
 }: CirclePatientProfileEditorModalProps) {
+  const t = useCircleT();
   const [draft, setDraft] = useState(snapshot);
   const [pendingLanguage, setPendingLanguage] = useState<RemotePrimaryLanguage | null>(null);
 
@@ -215,23 +218,19 @@ export function CirclePatientProfileEditorModal({
 
   if (!open) return null;
 
-  const title =
-    section === 'identity'
-      ? 'Edit identity'
-      : section === 'extended'
-        ? 'Edit extended'
-        : section === 'engagement'
-          ? 'Edit engagement'
-          : section === 'clinical'
-            ? 'Edit clinical'
-            : 'Edit lifestyle';
+  const title = profileEditorSectionTitleI18n(t, section);
 
   return (
     <div className="fixed inset-0 z-[140] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm">
       <div className="bg-white w-full sm:max-w-lg rounded-t-[28px] sm:rounded-[28px] border border-slate-100 shadow-2xl max-h-[85vh] flex flex-col">
         <div className="flex items-center justify-between p-5 border-b border-slate-100">
           <h3 className="font-bold text-slate-800">{title}</h3>
-          <button type="button" onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100">
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"
+            aria-label={t('admin.contact.closeAria')}
+          >
             <X size={18} />
           </button>
         </div>
@@ -848,7 +847,7 @@ export function CirclePatientProfileEditorModal({
             disabled={saving}
             className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-bold disabled:opacity-50"
           >
-            Cancel
+            {t('admin.contact.cancel')}
           </button>
           <button
             type="button"
@@ -857,7 +856,7 @@ export function CirclePatientProfileEditorModal({
             className="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-bold disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : null}
-            Save
+            {saving ? t('admin.contact.saving') : t('admin.contact.save')}
           </button>
         </div>
       </div>

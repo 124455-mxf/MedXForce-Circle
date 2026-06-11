@@ -1,5 +1,6 @@
 import { Mail, Shield, UserMinus, Users } from 'lucide-react';
 import type { CircleInvitePreviewItem } from '@medxforce/shared';
+import { useCircleT } from '../lib/circleI18nContext';
 
 type CircleInviteConfirmModalProps = {
   open: boolean;
@@ -26,6 +27,7 @@ export function CircleInviteConfirmModal({
   isSubmitting = false,
   confirmLabel,
 }: CircleInviteConfirmModalProps) {
+  const t = useCircleT();
   if (!open) return null;
 
   const invites = inviteItems(items);
@@ -34,12 +36,14 @@ export function CircleInviteConfirmModal({
   const singleRevoke = revokes.length === 1 && invites.length === 0;
 
   const title = singleInvite
-    ? `Invite ${invites[0].name}?`
+    ? t('admin.users.inviteConfirmInviteTitle', { name: invites[0].name })
     : singleRevoke
-      ? `Remove Circle access for ${revokes[0].name}?`
-      : 'Update Circle access?';
+      ? t('admin.users.inviteConfirmRevokeTitle', { name: revokes[0].name })
+      : t('admin.users.inviteConfirmUpdateTitle');
 
-  const defaultConfirm = singleRevoke ? 'Remove access' : 'Confirm';
+  const defaultConfirm = singleRevoke
+    ? t('admin.users.removeAccess')
+    : t('admin.users.inviteConfirmConfirm');
 
   return (
     <div className="fixed inset-0 z-[140] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
@@ -57,29 +61,29 @@ export function CircleInviteConfirmModal({
           {singleInvite ? (
             <>
               <p className="text-slate-600 leading-relaxed text-sm">
-                After you confirm, this person can sign in to MedXForce Circle with the email
-                below. Share the Circle app link with them. Check the address carefully.
+                {t('admin.users.inviteConfirmInviteDescription')}
               </p>
               <p className="text-lg font-bold text-red-600 break-all px-1">{invites[0].email}</p>
             </>
           ) : singleRevoke ? (
             <>
               <p className="text-slate-600 leading-relaxed text-sm">
-                This will revoke Circle sign-in for the email below. They will no longer access this
-                circle. Check the address carefully before continuing.
+                {t('admin.users.inviteConfirmRevokeDescription')}
               </p>
               <p className="text-lg font-bold text-red-600 break-all px-1">{revokes[0].email}</p>
             </>
           ) : (
             <p className="text-slate-500 leading-relaxed text-sm">
-              Review grant and remove access changes below before continuing.
+              {t('admin.users.inviteConfirmMixedDescription')}
             </p>
           )}
         </div>
 
         {invites.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Grant access</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+              {t('admin.users.inviteConfirmGrantAccess')}
+            </p>
             <ul className="space-y-2 max-h-40 overflow-y-auto">
               {invites.map((item) => (
                 <li
@@ -99,7 +103,9 @@ export function CircleInviteConfirmModal({
 
         {revokes.length > 0 && !singleRevoke && (
           <div className="space-y-2">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Remove access</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+              {t('admin.users.inviteConfirmRemoveAccess')}
+            </p>
             <ul className="space-y-2 max-h-32 overflow-y-auto">
               {revokes.map((item) => (
                 <li
@@ -124,7 +130,7 @@ export function CircleInviteConfirmModal({
             disabled={isSubmitting}
             className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -136,7 +142,7 @@ export function CircleInviteConfirmModal({
                 : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
             }`}
           >
-            {isSubmitting ? 'Saving…' : confirmLabel ?? defaultConfirm}
+            {isSubmitting ? t('admin.contact.saving') : confirmLabel ?? defaultConfirm}
           </button>
         </div>
       </div>

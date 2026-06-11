@@ -15,7 +15,6 @@ import {
 import {
   createDiaryEntry,
   deleteDiaryEntry,
-  diaryMoodLabel,
   isDiaryEntrySharedWithCircle,
   updateDiaryEntry,
   type CircleDiaryEntry,
@@ -23,6 +22,8 @@ import {
   type CirclePatientSummary,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
+import { useCircleT } from '../lib/circleI18nContext';
+import { diaryMoodLabelI18n } from '../lib/diaryScreenI18n';
 import {
   circleHeaderActionButtonClass,
   circleSectionBodyClass,
@@ -77,9 +78,10 @@ function DiaryTimelineEntry({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const t = useCircleT();
   const isPatientAuthor = entry.authorUid === entry.patientId;
   const isCareTeamEntry = !isPatientAuthor;
-  const mood = diaryMoodLabel(entry.mood);
+  const mood = diaryMoodLabelI18n(t, entry.mood);
   const shared = isDiaryEntrySharedWithCircle(entry);
   const authorLabel = isPatientAuthor ? patientDisplayName : entry.authorName;
 
@@ -111,12 +113,12 @@ function DiaryTimelineEntry({
             <p className="text-sm font-semibold text-slate-800 mt-0.5">{authorLabel}</p>
             {isCareTeamEntry && (
               <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mt-0.5">
-                Circle member
+                {t('diary.badgeCircleMember')}
               </p>
             )}
             {isPatientAuthor && (
               <p className="text-[10px] font-bold uppercase tracking-wide text-violet-500 mt-0.5">
-                Patient
+                {t('diary.badgePatient')}
               </p>
             )}
           </div>
@@ -129,7 +131,7 @@ function DiaryTimelineEntry({
             {entry.isMilestone && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 text-[10px] font-bold uppercase">
                 <Star size={10} />
-                Milestone
+                {t('diary.badgeMilestone')}
               </span>
             )}
             <span
@@ -147,7 +149,11 @@ function DiaryTimelineEntry({
               ) : (
                 <Lock size={12} />
               )}
-              {shared ? (isPatientAuthor ? 'Patient story' : 'Shared') : 'Private'}
+              {shared
+                ? isPatientAuthor
+                  ? t('diary.badgePatientStory')
+                  : t('diary.badgeShared')
+                : t('diary.badgePrivate')}
             </span>
             {isOwn && (
               <div className="flex items-center gap-0.5">
@@ -155,7 +161,7 @@ function DiaryTimelineEntry({
                   type="button"
                   onClick={onEdit}
                   className="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50"
-                  aria-label="Edit entry"
+                  aria-label={t('diary.editEntryAria')}
                 >
                   <Pencil size={15} />
                 </button>
@@ -163,7 +169,7 @@ function DiaryTimelineEntry({
                   type="button"
                   onClick={onDelete}
                   className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50"
-                  aria-label="Delete entry"
+                  aria-label={t('diary.deleteEntryAria')}
                 >
                   <Trash2 size={15} />
                 </button>
@@ -182,6 +188,7 @@ function DiaryTimelineEntry({
 }
 
 export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps) {
+  const t = useCircleT();
   const [filter, setFilter] = useState<DiaryListFilter>('circle');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<CircleDiaryEntry | null>(null);
@@ -200,8 +207,8 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
   );
 
   const authorName = useMemo(() => {
-    return user.displayName?.trim() || user.email?.split('@')[0] || 'Circle member';
-  }, [user.displayName, user.email]);
+    return user.displayName?.trim() || user.email?.split('@')[0] || t('circle.circleMemberFallback');
+  }, [t, user.displayName, user.email]);
 
   const sharedCount = useMemo(
     () => allEntries.filter((e) => isDiaryEntrySharedWithCircle(e)).length,
@@ -235,7 +242,7 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
             entryId: editingEntry.id,
             draft,
           });
-          showToast('Entry updated.');
+          showToast(t('diary.toastUpdated'));
         } else {
           await createDiaryEntry(db, {
             patientId: patient.patientId,
@@ -243,17 +250,17 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
             authorName,
             draft,
           });
-          showToast('Entry saved.');
+          showToast(t('diary.toastSaved'));
         }
         setModalOpen(false);
         setEditingEntry(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not save entry.');
+        setError(err instanceof Error ? err.message : t('diary.saveFailed'));
       } finally {
         setSaving(false);
       }
     },
-    [authorName, db, editingEntry, patient.patientId, showToast, user.uid],
+    [authorName, db, editingEntry, patient.patientId, showToast, t, user.uid],
   );
 
   const confirmDeleteEntry = useCallback(async () => {
@@ -262,14 +269,14 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
     setError(null);
     try {
       await deleteDiaryEntry(db, patient.patientId, deleteTarget.id);
-      showToast('Entry deleted.');
+      showToast(t('diary.toastDeleted'));
       setDeleteTarget(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not delete entry.');
+      setError(err instanceof Error ? err.message : t('diary.deleteFailed'));
     } finally {
       setDeletingEntry(false);
     }
-  }, [db, deleteTarget, patient.patientId, showToast]);
+  }, [db, deleteTarget, patient.patientId, showToast, t]);
 
   return (
     <>
@@ -279,22 +286,22 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
             <CircleWorkTabSectionIntro
               icon={ScrollText}
               iconClassName="text-amber-600"
-              title="Diary"
-              subtitle="Record visits, mood, and moments. Shared entries build your circle's story."
+              title={t('diary.title')}
+              subtitle={t('diary.subtitle')}
               trailing={
                 <button
                   type="button"
                   onClick={openCreate}
                   className={circleHeaderActionButtonClass}
-                  aria-label="New diary entry"
-                  title="New entry"
+                  aria-label={t('diary.newEntryAria')}
+                  title={t('diary.newEntryTitle')}
                 >
                   <Plus size={18} className="[@media(max-height:740px)]:size-4" />
                 </button>
               }
             />
 
-            <div className={circleTabListClass} role="tablist" aria-label="Diary views">
+            <div className={circleTabListClass} role="tablist" aria-label={t('diary.viewsAria')}>
               <button
                 type="button"
                 role="tab"
@@ -302,20 +309,25 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
                 onClick={() => setFilter('mine')}
                 className={circleTabButtonClass(filter === 'mine')}
               >
-                My journal
+                {t('diary.tabMyJournal')}
               </button>
               <button
                 type="button"
                 role="tab"
                 aria-selected={filter === 'circle'}
                 aria-label={
-                  sharedCount > 0 ? `Circle story, ${sharedCount} shared entries` : 'Circle story'
+                  sharedCount > 0
+                    ? t('diary.tabCircleStoryAriaWithCount', { count: sharedCount })
+                    : t('diary.tabCircleStoryAria')
                 }
                 onClick={() => setFilter('circle')}
                 className={circleTabButtonClass(filter === 'circle')}
               >
                 <span className="inline-flex items-center justify-center gap-1.5">
-                  <ResponsiveTabLabel long="Circle story" compact="Shared" />
+                  <ResponsiveTabLabel
+                    long={t('diary.tabCircleStoryLong')}
+                    compact={t('diary.tabCircleStoryCompact')}
+                  />
                   <CircleFolderCountBadge unread={0} total={sharedCount} />
                 </span>
               </button>
@@ -324,9 +336,7 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
 
           <div className={cn(circleSectionBodyClass, circleSectionBodyPaddingClass, 'overflow-y-auto')}>
             <p className={circleSectionContextHintClass}>
-              {filter === 'mine'
-                ? 'Your personal entries — change sharing when you edit an entry.'
-                : 'Entries shared by circle members and the patient, woven into one timeline.'}
+              {filter === 'mine' ? t('diary.hintMine') : t('diary.hintCircle')}
             </p>
 
             {(error || loadError) && (
@@ -342,9 +352,7 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
             ) : entries.length === 0 ? (
               <div className={circleSectionEmptyStateClass}>
                 <p className="text-sm text-slate-500 leading-relaxed [@media(max-height:740px)]:text-xs">
-                  {filter === 'mine'
-                    ? 'No entries yet. Tap + to capture your first moment.'
-                    : 'No shared entries yet. New entries are shared with the circle by default.'}
+                  {filter === 'mine' ? t('diary.emptyMine') : t('diary.emptyCircle')}
                 </p>
               </div>
             ) : (

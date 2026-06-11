@@ -54,18 +54,18 @@ This runs a production build (`apps/circle/.env.production`) and publishes `apps
 
 If you use a named Firestore database locally, set `VITE_FIREBASE_FIRESTORE_DATABASE_ID` in `apps/circle/.env.production` before deploying.
 
-## Internationalization (in progress)
+## Internationalization
 
 Circle UI languages match the patient app: **English, German, Spanish, Polish**.
 
-- `apps/circle/src/translations.ts` + `translations/appShell.ts` — catalog (auth, nav, drawer, messaging settings, dashboard tiles)
+- `apps/circle/src/translations.ts` — merges `appShell`, `messagesScreen`, `circleScreen`, `diaryScreen`, `galleryScreen`, and `adminScreen` catalogs
 - `apps/circle/src/lib/circleI18nContext.tsx` — `CircleI18nProvider` + `useCircleT()` for signed-in UI
 - `apps/circle/src/hooks/useCircleI18n.tsx` — reads `circle_profiles/{uid}.language` when signed in
 - Set language in **Settings → My contact details**; the sign-in screen uses localStorage until profile loads
 
-**Translated after sign-in:** bottom nav, profile drawer, messaging settings (incl. sort order), dashboard section titles and widget labels.
+**Translated after sign-in:** bottom nav, profile drawer, messaging settings (incl. sort order), dashboard section titles and widget labels, **Messages** (inbox, threads, communication log, alert/attention tabs, reply composer), **Circle conversation** (open/restricted threads, composer, hide/delete modals), **Diary** (timeline, entry modal, mood labels, delete confirm), **Gallery** (browse, albums, upload progress, toasts), and **Admin** (patient profile review/editor, user management, contact editor, invite confirm modals).
 
-**Still English-only:** message threads, Circle conversation, gallery, analytics, admin, remote settings, and most modals — migrate incrementally to `t('…')`.
+**Still English-only:** analytics, remote settings, and other secondary modals — migrate incrementally to `t('…')`.
 
 ## Phase 0 — Invites
 

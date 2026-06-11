@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom';
 import { Loader2, Trash2, X } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useCircleT } from '../lib/circleI18nContext';
 
 type CircleMessageDeleteConfirmModalProps = {
   open: boolean;
@@ -19,10 +20,15 @@ export function CircleMessageDeleteConfirmModal({
   onClose,
   isDeleting = false,
   errorMessage = null,
-  title = 'Remove from your inbox?',
-  description = 'This removes the conversation from your Circle inbox only. Your loved one and other circle members still have it. If they send a new reply later, it will appear here again as a fresh message.',
-  confirmLabel = 'Remove',
+  title,
+  description,
+  confirmLabel,
 }: CircleMessageDeleteConfirmModalProps) {
+  const t = useCircleT();
+  const resolvedTitle = title ?? t('messages.removeFromInboxTitle');
+  const resolvedDescription = description ?? t('messages.removeFromInboxDescription');
+  const resolvedConfirmLabel = confirmLabel ?? t('messages.removeConfirm');
+
   if (!open || typeof document === 'undefined') return null;
 
   return createPortal(
@@ -46,17 +52,17 @@ export function CircleMessageDeleteConfirmModal({
             onClick={onClose}
             disabled={isDeleting}
             className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 disabled:opacity-50"
-            aria-label="Cancel"
+            aria-label={t('common.cancel')}
           >
             <X size={20} />
           </button>
         </div>
         <div className="space-y-2">
           <h3 id="circle-message-delete-title" className="text-xl font-bold text-slate-900">
-            {title}
+            {resolvedTitle}
           </h3>
           <p className="text-sm text-slate-500 leading-relaxed">
-            {description}
+            {resolvedDescription}
           </p>
           {errorMessage ? (
             <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2 leading-relaxed">
@@ -71,7 +77,7 @@ export function CircleMessageDeleteConfirmModal({
             disabled={isDeleting}
             className="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 disabled:opacity-50"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -82,7 +88,7 @@ export function CircleMessageDeleteConfirmModal({
             )}
           >
             {isDeleting && <Loader2 size={18} className="animate-spin" />}
-            {confirmLabel}
+            {resolvedConfirmLabel}
           </button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { cn } from '../lib/utils';
+import { useCircleT } from '../lib/circleI18nContext';
 
 const MESSAGE_BODY_PREVIEW_CHARS = 200;
 
@@ -9,6 +10,7 @@ type CircleMessageBodyPreviewProps = {
 };
 
 export function CircleMessageBodyPreview({ text, className }: CircleMessageBodyPreviewProps) {
+  const t = useCircleT();
   const [expanded, setExpanded] = useState(false);
   const body = text.trim();
   if (!body) return null;
@@ -28,7 +30,7 @@ export function CircleMessageBodyPreview({ text, className }: CircleMessageBodyP
           onClick={() => setExpanded((value) => !value)}
           className="text-blue-600 font-bold ml-1 whitespace-nowrap hover:underline"
         >
-          {expanded ? 'Show less' : 'Show more'}
+          {expanded ? t('messages.bodyShowLess') : t('messages.bodyShowMore')}
         </button>
       ) : null}
     </p>

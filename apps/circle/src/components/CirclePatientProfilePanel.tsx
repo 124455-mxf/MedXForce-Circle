@@ -18,6 +18,7 @@ import { CirclePatientProfileReview } from './CirclePatientProfileReview';
 import { CircleProfilePhotoCropModal } from './CircleProfilePhotoCropModal';
 import { dataUrlToBlob } from '../lib/imageCrop';
 import { isFirestoreQuotaError, pauseFirestoreBackgroundWrites } from '../lib/firestoreQuota';
+import { useCircleT } from '../lib/circleI18nContext';
 
 type EditableSection = 'identity' | 'extended' | 'engagement' | 'lifestyle' | 'clinical';
 
@@ -37,6 +38,7 @@ export function CirclePatientProfilePanel({
   patient,
   compact = false,
 }: CirclePatientProfilePanelProps) {
+  const t = useCircleT();
   const fileRef = useRef<HTMLInputElement>(null);
   const [snapshot, setSnapshot] = useState<CirclePatientProfileSnapshot | null>(null);
   const [metaSummary, setMetaSummary] = useState<string | null>(null);
@@ -68,11 +70,11 @@ export function CirclePatientProfilePanel({
       },
       (err) => {
         console.warn('[CirclePatientProfilePanel]', err);
-        setError('Could not load patient profile.');
+        setError(t('admin.profile.loadError'));
         setLoading(false);
       },
     );
-  }, [db, patient.patientId]);
+  }, [db, patient.patientId, t]);
 
   const handleSaveSection = useCallback(
     async (next: CirclePatientProfileSnapshot) => {
@@ -91,15 +93,15 @@ export function CirclePatientProfilePanel({
         console.warn('[CirclePatientProfilePanel] save', err);
         if (isFirestoreQuotaError(err)) {
           pauseFirestoreBackgroundWrites(String(err));
-          setError('Firestore daily write limit reached. Try again after midnight Pacific.');
+          setError(t('admin.profile.quotaError'));
         } else {
-          setError('Could not save profile changes.');
+          setError(t('admin.profile.saveError'));
         }
       } finally {
         setSaving(false);
       }
     },
-    [db, patient.displayName, patient.patientId, user.uid],
+    [db, patient.displayName, patient.patientId, t, user.uid],
   );
 
   const handleEditSection = (sectionId: string) => {
@@ -119,11 +121,11 @@ export function CirclePatientProfilePanel({
   const handlePhotoChange = (file: File) => {
     if (!canEdit || !snapshot) return;
     if (!file.type.startsWith('image/')) {
-      setError('Please choose an image file.');
+      setError(t('admin.profile.imageTypeError'));
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      setError('Image must be smaller than 10 MB.');
+      setError(t('admin.profile.imageSizeError'));
       return;
     }
     setError(null);
@@ -132,7 +134,7 @@ export function CirclePatientProfilePanel({
 
   const uploadCroppedPhoto = async (croppedDataUrl: string) => {
     if (!snapshot) {
-      throw new Error('Profile not loaded. Close this dialog and try again.');
+      throw new Error(t('admin.profile.profileNotLoaded'));
     }
     setUploadingPhoto(true);
     setError(null);
@@ -160,12 +162,12 @@ export function CirclePatientProfilePanel({
       const code = typeof err === 'object' && err && 'code' in err ? String((err as { code?: string }).code) : '';
       const message =
         code === 'storage/unauthorized'
-          ? 'Storage permission denied. Ask the patient to deploy updated Firebase Storage rules, or try again later.'
+          ? t('admin.profile.storageUnauthorized')
           : code === 'permission-denied'
-            ? 'Firestore permission denied. Deploy updated Firestore rules so proxies can update profile photos.'
+            ? t('admin.profile.firestoreUnauthorized')
             : err instanceof Error && err.message
               ? err.message
-              : 'Could not upload profile photo.';
+              : t('admin.profile.photoUploadError');
       setError(message);
       throw new Error(message);
     } finally {
@@ -184,18 +186,14 @@ export function CirclePatientProfilePanel({
             <UserRound size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="font-bold text-slate-800">Patient profile</h3>
-            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-              Read-only for circle members. Proxies with remote settings can edit selected sections.
-            </p>
+            <h3 className="font-bold text-slate-800">{t('admin.profile.title')}</h3>
+            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{t('admin.profile.hint')}</p>
           </div>
         </div>
       )}
 
       {compact && (
-        <p className="text-xs text-slate-500 leading-relaxed">
-          Read-only for circle members. Proxies with remote settings can edit selected sections.
-        </p>
+        <p className="text-xs text-slate-500 leading-relaxed">{t('admin.profile.hint')}</p>
       )}
 
       {loading ? (
@@ -204,9 +202,7 @@ export function CirclePatientProfilePanel({
         </div>
       ) : !snapshot ? (
         <div className="p-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500 leading-relaxed">
-          No profile synced yet. In the Patient app, open profile, change something, and tap{' '}
-          <span className="font-semibold text-slate-700">Save</span> — you should see a green
-          &quot;Circle will show the update&quot; toast. Then refresh this page.
+          {t('admin.profile.noProfileSynced', { save: t('admin.profile.saveWord') })}
         </div>
       ) : (
         <>
@@ -230,7 +226,7 @@ export function CirclePatientProfilePanel({
                     onClick={() => fileRef.current?.click()}
                     disabled={uploadingPhoto || saving}
                     className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-md disabled:opacity-50"
-                    aria-label="Change profile photo"
+                    aria-label={t('admin.profile.changePhotoAria')}
                   >
                     {uploadingPhoto ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
                   </button>
@@ -268,17 +264,17 @@ export function CirclePatientProfilePanel({
 
           {canEdit && (
             <p className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 leading-relaxed">
-              <span className="font-semibold text-slate-700">Editable:</span> profile photo (camera on avatar), and
-              sections with a pencil — Identity, Extended, Engagement, Lifestyle
-              {showClinical ? ', Clinical' : ''}.{' '}
-              <span className="font-semibold text-slate-700">Read-only here:</span> Functional (change in the Patient app).
+              {t('admin.profile.editableNote', {
+                clinical: showClinical ? t('admin.profile.editableClinicalSuffix') : '',
+              })}{' '}
+              {t('admin.profile.readOnlyFunctional')}
             </p>
           )}
 
           {!canEdit && (
             <p className="text-xs text-slate-400 flex items-center gap-2 px-1">
               <ClipboardList size={14} />
-              Profile editing is limited to proxies with remote settings access.
+              {t('admin.profile.readOnlyLimited')}
             </p>
           )}
         </>

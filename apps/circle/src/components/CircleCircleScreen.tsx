@@ -6,10 +6,6 @@ import {
   canDeleteCircleThreadPostForEveryone,
   canParticipateInCircleOpenThread,
   canSeeCircleRestrictedThread,
-  circleMemberRoleLabel,
-  circleMemberAccessLabel,
-  circleMemberThreadDescription,
-  circleMemberThreadLabel,
   createCircleMemberThreadPost,
   deleteCircleThreadPostForEveryone,
   hideCircleThreadPostForUser,
@@ -20,6 +16,14 @@ import {
   type CirclePatientSummary,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
+import { useCircleT } from '../lib/circleI18nContext';
+import {
+  circleThreadDescriptionI18n,
+  circleThreadLabelI18n,
+  formatCirclePostTime,
+  formatCircleThreadActionError,
+  translateCircleMemberRole,
+} from '../lib/circleScreenI18n';
 import {
   circleCompactCardClass,
   circleSectionBodyClass,
@@ -71,19 +75,17 @@ function useCircleThreadLastRead(
   );
 }
 
-function formatPostTime(ts: number): string {
-  const d = new Date(ts);
-  const today = new Date();
-  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  if (d.toDateString() === today.toDateString()) return `Today, ${time}`;
-  return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}`;
-}
-
 import { CircleTabCountBadge, formatCircleBadgeCount } from './CircleCountBadge';
 
 const CIRCLE_THREAD_POST_PREVIEW_LENGTH = 200;
 
-function CircleThreadPostText({ text }: { text: string }) {
+function CircleThreadPostText({
+  text,
+  t,
+}: {
+  text: string;
+  t: ReturnType<typeof useCircleT>;
+}) {
   const [expanded, setExpanded] = useState(false);
   const shouldCollapse = text.length > CIRCLE_THREAD_POST_PREVIEW_LENGTH;
 
@@ -105,7 +107,7 @@ function CircleThreadPostText({ text }: { text: string }) {
           onClick={() => setExpanded((value) => !value)}
           className="mt-1.5 text-xs font-bold text-blue-600 hover:text-blue-800"
         >
-          {expanded ? 'Less' : 'More'}
+          {expanded ? t('circle.showLess') : t('circle.showMore')}
         </button>
       ) : null}
     </div>
@@ -120,6 +122,7 @@ function ThreadPostCard({
   canDeleteForEveryone = false,
   onHide,
   onDeleteForEveryone,
+  t,
 }: {
   post: CircleMemberThreadPost;
   isOwn: boolean;
@@ -128,6 +131,7 @@ function ThreadPostCard({
   canDeleteForEveryone?: boolean;
   onHide: () => void;
   onDeleteForEveryone?: () => void;
+  t: ReturnType<typeof useCircleT>;
 }) {
   const [copied, setCopied] = useState(false);
   const isVisitCapture = isVisitCaptureThreadPost(post);
@@ -167,20 +171,20 @@ function ThreadPostCard({
           <div className="flex flex-wrap items-center gap-2">
             {highlightAsUnread && (
               <span className="bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
-                New
+                {t('circle.badgeNew')}
               </span>
             )}
             <p className={cn('text-xs font-bold', isOwn ? 'text-blue-700' : 'text-slate-800')}>
-              {isOwn ? 'You' : post.authorName}
+              {isOwn ? t('circle.you') : post.authorName}
             </p>
           </div>
           <p className="text-[10px] text-slate-500 uppercase tracking-wide mt-0.5">
-            {isOwn ? ownRoleLabel : circleMemberRoleLabel(post.authorRole)}
+            {isOwn ? ownRoleLabel : translateCircleMemberRole(t, post.authorRole)}
           </p>
         </div>
         <div className="flex items-start gap-1 shrink-0">
           <span className="text-[10px] text-slate-400 tabular-nums pt-0.5">
-            {formatPostTime(post.createdAt)}
+            {formatCirclePostTime(t, post.createdAt)}
           </span>
           <button
             type="button"
@@ -188,17 +192,17 @@ function ThreadPostCard({
             className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50/80 transition-opacity"
             aria-label={
               copied
-                ? 'Message copied'
+                ? t('circle.messageCopied')
                 : isVisitCapture
-                  ? 'Copy visit capture'
-                  : 'Copy message'
+                  ? t('circle.copyVisitCapture')
+                  : t('circle.copyMessage')
             }
             title={
               copied
-                ? 'Copied!'
+                ? t('circle.copied')
                 : isVisitCapture
-                  ? 'Copy summary and transcript'
-                  : 'Copy message'
+                  ? t('circle.copySummaryTranscript')
+                  : t('circle.copyMessage')
             }
           >
             {copied ? (
@@ -211,7 +215,7 @@ function ThreadPostCard({
             type="button"
             onClick={onHide}
             className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50/80 opacity-100 sm:opacity-0 sm:group-hover/post:opacity-100 transition-opacity"
-            aria-label="Remove from your view"
+            aria-label={t('circle.removeFromView')}
           >
             <Trash2 size={14} />
           </button>
@@ -220,31 +224,25 @@ function ThreadPostCard({
               type="button"
               onClick={onDeleteForEveryone}
               className="p-1.5 rounded-lg text-red-500 hover:bg-red-100 opacity-100 sm:opacity-0 sm:group-hover/post:opacity-100 transition-opacity"
-              aria-label="Delete for everyone"
-              title="Delete for everyone"
+              aria-label={t('circle.deleteForEveryone')}
+              title={t('circle.deleteForEveryone')}
             >
               <Trash2 size={14} className="fill-current" />
             </button>
           )}
         </div>
       </div>
-      <CircleThreadPostText text={post.text} />
+      <CircleThreadPostText text={post.text} t={t} />
     </div>
   );
 }
 
-function formatCircleThreadActionError(err: unknown, fallback: string): string {
-  const code =
-    err && typeof err === 'object' && 'code' in err
-      ? String((err as { code?: string }).code || '')
-      : '';
-  if (code === 'permission-denied') {
-    return 'Could not delete — the 30-minute window may have passed, or someone replied after this message.';
-  }
-  if (err instanceof Error && err.message.trim()) {
-    return err.message;
-  }
-  return fallback;
+function formatCircleThreadActionErrorLocalized(
+  t: ReturnType<typeof useCircleT>,
+  err: unknown,
+  fallbackKey: 'circle.hideFailed' | 'circle.deleteFailed',
+): string {
+  return formatCircleThreadActionError(t, err, fallbackKey);
 }
 
 export function CircleCircleScreen({
@@ -255,8 +253,9 @@ export function CircleCircleScreen({
   openUnreadCount,
   restrictedUnreadCount,
 }: CircleCircleScreenProps) {
+  const t = useCircleT();
   const memberRole = patient.role as CircleMemberRole;
-  const ownRoleLabel = circleMemberAccessLabel(patient.role, patient.proxyTier);
+  const ownRoleLabel = translateCircleMemberRole(t, memberRole);
   const isProxy = patient.role === 'proxy' && !!patient.capabilities.inviteMembers;
   const canOpen = canParticipateInCircleOpenThread(memberRole);
   const canRestricted = canSeeCircleRestrictedThread(memberRole);
@@ -304,8 +303,8 @@ export function CircleCircleScreen({
   );
 
   const authorName = useMemo(
-    () => user.displayName?.trim() || user.email?.split('@')[0] || 'Circle member',
-    [user.displayName, user.email],
+    () => user.displayName?.trim() || user.email?.split('@')[0] || t('circle.circleMemberFallback'),
+    [t, user.displayName, user.email],
   );
 
   const orderedPosts = useMemo(() => {
@@ -395,7 +394,7 @@ export function CircleCircleScreen({
       scrollToLatestPostPendingRef.current = true;
       setDraft('');
     } catch (err) {
-      setSendError(err instanceof Error ? err.message : 'Could not send message.');
+      setSendError(err instanceof Error ? err.message : t('circle.sendFailed'));
     } finally {
       setSending(false);
     }
@@ -425,7 +424,7 @@ export function CircleCircleScreen({
       );
       setHideTarget(null);
     } catch (err) {
-      setActionError(formatCircleThreadActionError(err, 'Could not hide message.'));
+      setActionError(formatCircleThreadActionErrorLocalized(t, err, 'circle.hideFailed'));
     } finally {
       setActionPending(false);
     }
@@ -444,7 +443,7 @@ export function CircleCircleScreen({
       );
       setDeleteTarget(null);
     } catch (err) {
-      setActionError(formatCircleThreadActionError(err, 'Could not delete message.'));
+      setActionError(formatCircleThreadActionErrorLocalized(t, err, 'circle.deleteFailed'));
     } finally {
       setActionPending(false);
     }
@@ -453,9 +452,7 @@ export function CircleCircleScreen({
   if (!canOpen) {
     return (
       <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6">
-        <p className="text-sm text-slate-500 leading-relaxed">
-          Circle conversations are available to active circle members.
-        </p>
+        <p className="text-sm text-slate-500 leading-relaxed">{t('circle.unavailable')}</p>
       </div>
     );
   }
@@ -468,19 +465,19 @@ export function CircleCircleScreen({
             <CircleWorkTabSectionIntro
               icon={Users}
               iconClassName="text-indigo-600"
-              title="Circle"
-              subtitle="Stay connected with everyone in the circle."
+              title={t('circle.title')}
+              subtitle={t('circle.subtitle')}
               titleExtra={
                 unreadCount > 0 ? (
                   <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold inline-flex items-center justify-center tabular-nums">
-                    {formatCircleBadgeCount(unreadCount)} unread
+                    {t('circle.unreadBadge', { count: formatCircleBadgeCount(unreadCount) })}
                   </span>
                 ) : undefined
               }
             />
           </div>
 
-          <div className={circleTabListClass} role="tablist" aria-label="Circle threads">
+          <div className={circleTabListClass} role="tablist" aria-label={t('circle.threadsAria')}>
             <button
               type="button"
               role="tab"
@@ -490,7 +487,7 @@ export function CircleCircleScreen({
             >
               <span className="inline-flex items-center justify-center gap-1.5">
                 <Users size={14} className="shrink-0 [@media(max-height:740px)]:hidden" />
-                <ResponsiveTabLabel long="Circle conversation" compact="Circle" />
+                <ResponsiveTabLabel long={t('circle.tabCircleLong')} compact={t('circle.tabCircleCompact')} />
                 <CircleTabCountBadge count={openUnreadCount} />
               </span>
             </button>
@@ -504,7 +501,10 @@ export function CircleCircleScreen({
               >
                 <span className="inline-flex items-center justify-center gap-1.5">
                   <Shield size={14} className="shrink-0 [@media(max-height:740px)]:hidden" />
-                  <ResponsiveTabLabel long="Care coordination" compact="Care team" />
+                  <ResponsiveTabLabel
+                    long={t('circle.tabCareCoordinationLong')}
+                    compact={t('circle.tabCareCoordinationCompact')}
+                  />
                   <CircleTabCountBadge count={restrictedUnreadCount} />
                 </span>
               </button>
@@ -513,7 +513,7 @@ export function CircleCircleScreen({
 
           <div className="flex items-start justify-between gap-2">
             <p className={cn(circleSectionContextHintClass, 'flex-1 min-w-0')}>
-              {circleMemberThreadDescription(activeThread)}
+              {circleThreadDescriptionI18n(t, activeThread)}
             </p>
             {activeUnreadCount > 0 && (
               <button
@@ -521,7 +521,7 @@ export function CircleCircleScreen({
                 onClick={handleMarkAllRead}
                 className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-red-700 hover:text-red-900 px-2 py-1 rounded-lg hover:bg-red-100/80"
               >
-                Mark all read
+                {t('circle.markAllRead')}
               </button>
             )}
           </div>
@@ -541,10 +541,10 @@ export function CircleCircleScreen({
           ) : posts.length === 0 ? (
             <div className={circleSectionEmptyStateClass}>
               <p className="text-sm font-bold text-slate-700">
-                {circleMemberThreadLabel(activeThread)}
+                {circleThreadLabelI18n(t, activeThread)}
               </p>
               <p className="text-sm text-slate-500 mt-2 leading-relaxed max-w-sm mx-auto [@media(max-height:740px)]:mt-1 [@media(max-height:740px)]:text-xs">
-                No messages yet. Say hello — everyone in this thread will see your note.
+                {t('circle.emptyHint')}
               </p>
             </div>
           ) : (
@@ -576,6 +576,7 @@ export function CircleCircleScreen({
                         }
                       : undefined
                   }
+                  t={t}
                 />
               );
             })
@@ -586,18 +587,26 @@ export function CircleCircleScreen({
           <CircleExpandableMessageComposer
             value={draft}
             onChange={setDraft}
-            placeholder={`Message the ${activeThread === 'open' ? 'circle' : 'care team'}…`}
+            placeholder={
+              activeThread === 'open'
+                ? t('circle.composerPlaceholderCircle')
+                : t('circle.composerPlaceholderCareTeam')
+            }
             disabled={sending}
             sending={sending}
             onClear={() => setDraft('')}
             onSend={handleSend}
-            clearLabel="Clear"
-            sendLabel="Send to everyone"
-            sendingLabel="Sending…"
+            clearLabel={t('circle.clear')}
+            sendLabel={t('circle.sendToEveryone')}
+            sendingLabel={t('circle.sending')}
             maxLength={5000}
-            expandTitle={`Message the ${activeThread === 'open' ? 'circle' : 'care team'}`}
+            expandTitle={
+              activeThread === 'open'
+                ? t('circle.expandTitleCircle')
+                : t('circle.expandTitleCareTeam')
+            }
             aiGuidance={{
-              threadLabel: circleMemberThreadLabel(activeThread),
+              threadLabel: circleThreadLabelI18n(t, activeThread),
               memberRole,
               recentContext: recentContext || undefined,
             }}
@@ -615,9 +624,9 @@ export function CircleCircleScreen({
         onConfirm={() => void confirmHide()}
         isDeleting={actionPending}
         errorMessage={actionError}
-        title="Remove from your view?"
-        description="This hides the message from your Circle feed only. Everyone else in this thread still sees it."
-        confirmLabel="Remove"
+        title={t('circle.hideTitle')}
+        description={t('circle.hideDescription')}
+        confirmLabel={t('circle.hideConfirm')}
       />
 
       <CircleMessageDeleteConfirmModal
@@ -630,13 +639,13 @@ export function CircleCircleScreen({
         onConfirm={() => void confirmDeleteForEveryone()}
         isDeleting={actionPending}
         errorMessage={actionError}
-        title="Delete for everyone?"
+        title={t('circle.deleteTitle')}
         description={
-          isProxy && deleteTarget?.authorUid !== user.uid
-            ? 'This permanently removes the message for everyone in this thread. You can do this within 30 minutes of posting, unless someone has already posted after it.'
-            : 'This permanently removes your message for everyone in this thread. You can do this within 30 minutes of posting, unless someone has already posted after it.'
+          deleteTarget && deleteTarget.authorUid === user.uid
+            ? t('circle.deleteDescriptionOwn')
+            : t('circle.deleteDescriptionProxy')
         }
-        confirmLabel="Delete"
+        confirmLabel={t('circle.deleteConfirm')}
       />
     </div>
   );

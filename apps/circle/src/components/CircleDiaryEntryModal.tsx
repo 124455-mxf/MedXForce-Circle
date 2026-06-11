@@ -9,6 +9,8 @@ import {
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 import { useDictation } from '../hooks/useDictation';
+import { useCircleT } from '../lib/circleI18nContext';
+import { diaryMoodLabelI18n } from '../lib/diaryScreenI18n';
 
 type CircleDiaryEntryModalProps = {
   open: boolean;
@@ -39,6 +41,7 @@ export function CircleDiaryEntryModal({
   onClose,
   onSave,
 }: CircleDiaryEntryModalProps) {
+  const t = useCircleT();
   const [draft, setDraft] = useState<CircleDiaryEntryDraft>(() => emptyDiaryDraft());
   const { isRecording, micError, setMicError, toggleRecording, stopRecording } = useDictation();
 
@@ -82,11 +85,9 @@ export function CircleDiaryEntryModal({
         <div className="flex items-center justify-between p-5 border-b border-slate-100">
           <div>
             <h3 className="font-bold text-slate-800">
-              {mode === 'create' ? 'New diary entry' : 'Edit entry'}
+              {mode === 'create' ? t('diary.modalCreateTitle') : t('diary.modalEditTitle')}
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-              Your experience on this journey — only you see private entries until you share them.
-            </p>
+            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{t('diary.modalSubtitle')}</p>
           </div>
           <button type="button" onClick={handleClose} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100">
             <X size={18} />
@@ -95,10 +96,10 @@ export function CircleDiaryEntryModal({
 
         <div className="p-5 space-y-4 overflow-y-auto">
           <label className="block space-y-1">
-            <span className="text-xs font-bold text-slate-500 uppercase">Title (optional)</span>
+            <span className="text-xs font-bold text-slate-500 uppercase">{t('diary.labelTitleOptional')}</span>
             <input
               className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm"
-              placeholder="A visit, a moment, a milestone…"
+              placeholder={t('diary.placeholderTitle')}
               value={draft.title}
               maxLength={200}
               onChange={(e) => setDraft({ ...draft, title: e.target.value })}
@@ -107,7 +108,7 @@ export function CircleDiaryEntryModal({
 
           <label className="block space-y-1">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold text-slate-500 uppercase">Your experience</span>
+              <span className="text-xs font-bold text-slate-500 uppercase">{t('diary.labelExperience')}</span>
               <button
                 type="button"
                 onClick={handleExperienceDictation}
@@ -118,11 +119,11 @@ export function CircleDiaryEntryModal({
                     ? 'bg-red-50 text-red-600 ring-2 ring-red-200 animate-pulse'
                     : 'text-slate-500 hover:bg-slate-100 hover:text-blue-600',
                 )}
-                aria-label={isRecording ? 'Stop dictation' : 'Dictate with microphone'}
+                aria-label={isRecording ? t('diary.dictateStopAria') : t('diary.dictateStartAria')}
                 aria-pressed={isRecording}
               >
                 {isRecording ? <MicOff size={14} /> : <Mic size={14} />}
-                {isRecording ? 'Stop' : 'Dictate'}
+                {isRecording ? t('diary.dictateStop') : t('diary.dictateStart')}
               </button>
             </div>
             <textarea
@@ -130,13 +131,13 @@ export function CircleDiaryEntryModal({
                 'w-full px-4 py-3 rounded-xl border text-sm min-h-[140px] resize-y',
                 isRecording ? 'border-red-200 ring-2 ring-red-100' : 'border-slate-200',
               )}
-              placeholder="What happened? How did you experience it? What feelings came up for you?"
+              placeholder={t('diary.placeholderBody')}
               value={draft.body}
               maxLength={10000}
               onChange={(e) => setBody(e.target.value)}
             />
             {isRecording && (
-              <p className="text-xs text-red-600 font-medium">Listening… speak naturally, then tap Stop.</p>
+              <p className="text-xs text-red-600 font-medium">{t('diary.dictationListening')}</p>
             )}
             {micError && (
               <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
@@ -146,7 +147,7 @@ export function CircleDiaryEntryModal({
           </label>
 
           <label className="block space-y-1">
-            <span className="text-xs font-bold text-slate-500 uppercase">How you felt</span>
+            <span className="text-xs font-bold text-slate-500 uppercase">{t('diary.labelMood')}</span>
             <select
               className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-white"
               value={draft.mood}
@@ -157,17 +158,17 @@ export function CircleDiaryEntryModal({
                 })
               }
             >
-              <option value="">Choose a mood (optional)</option>
+              <option value="">{t('diary.moodPlaceholder')}</option>
               {DIARY_MOOD_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {diaryMoodLabelI18n(t, option.value) ?? option.label}
                 </option>
               ))}
             </select>
           </label>
 
           <label className="block space-y-1">
-            <span className="text-xs font-bold text-slate-500 uppercase">When</span>
+            <span className="text-xs font-bold text-slate-500 uppercase">{t('diary.labelWhen')}</span>
             <input
               type="date"
               className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm"
@@ -179,7 +180,7 @@ export function CircleDiaryEntryModal({
           </label>
 
           <div className="space-y-2">
-            <p className="text-xs font-bold text-slate-500 uppercase">Mark as milestone?</p>
+            <p className="text-xs font-bold text-slate-500 uppercase">{t('diary.labelMilestone')}</p>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -191,7 +192,7 @@ export function CircleDiaryEntryModal({
                     : 'border-slate-200 bg-white text-slate-600',
                 )}
               >
-                No
+                {t('diary.milestoneNo')}
               </button>
               <button
                 type="button"
@@ -204,13 +205,13 @@ export function CircleDiaryEntryModal({
                 )}
               >
                 <Star size={14} />
-                Yes
+                {t('diary.milestoneYes')}
               </button>
             </div>
           </div>
 
           <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-3">
-            <p className="text-xs font-bold text-slate-500 uppercase">Sharing</p>
+            <p className="text-xs font-bold text-slate-500 uppercase">{t('diary.labelSharing')}</p>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -223,7 +224,7 @@ export function CircleDiaryEntryModal({
                 )}
               >
                 <Lock size={18} />
-                <span className="text-xs font-bold">Just for me</span>
+                <span className="text-xs font-bold">{t('diary.sharingPrivate')}</span>
               </button>
               <button
                 type="button"
@@ -236,13 +237,10 @@ export function CircleDiaryEntryModal({
                 )}
               >
                 <Users size={18} />
-                <span className="text-xs font-bold">Share with circle</span>
+                <span className="text-xs font-bold">{t('diary.sharingCircle')}</span>
               </button>
             </div>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Shared entries become part of the circle&apos;s combined story — each member&apos;s
-              perspective woven together over time.
-            </p>
+            <p className="text-xs text-slate-500 leading-relaxed">{t('diary.sharingHint')}</p>
           </div>
         </div>
 
@@ -253,7 +251,7 @@ export function CircleDiaryEntryModal({
             disabled={saving}
             className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 disabled:opacity-50"
           >
-            Cancel
+            {t('diary.cancel')}
           </button>
           <button
             type="button"
@@ -262,7 +260,7 @@ export function CircleDiaryEntryModal({
             className="flex-1 py-3 rounded-2xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : null}
-            {mode === 'create' ? 'Save entry' : 'Update entry'}
+            {mode === 'create' ? t('diary.saveEntry') : t('diary.updateEntry')}
           </button>
         </div>
       </div>

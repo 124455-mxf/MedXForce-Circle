@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom';
 import { Loader2, Trash2, X } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useCircleT } from '../lib/circleI18nContext';
 
 type DiaryEntryDeleteConfirmModalProps = {
   open: boolean;
@@ -15,6 +16,8 @@ export function DiaryEntryDeleteConfirmModal({
   onClose,
   isDeleting = false,
 }: DiaryEntryDeleteConfirmModalProps) {
+  const t = useCircleT();
+
   if (!open || typeof document === 'undefined') return null;
 
   return createPortal(
@@ -38,19 +41,16 @@ export function DiaryEntryDeleteConfirmModal({
             onClick={onClose}
             disabled={isDeleting}
             className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 disabled:opacity-50"
-            aria-label="Cancel"
+            aria-label={t('diary.cancel')}
           >
             <X size={20} />
           </button>
         </div>
         <div className="space-y-2">
           <h3 id="circle-diary-delete-title" className="text-xl font-bold text-slate-900">
-            Delete this entry?
+            {t('diary.deleteModalTitle')}
           </h3>
-          <p className="text-sm text-slate-500 leading-relaxed">
-            This cannot be undone. The entry will be removed from your journal and the circle
-            story.
-          </p>
+          <p className="text-sm text-slate-500 leading-relaxed">{t('diary.deleteModalDescription')}</p>
         </div>
         <div className="flex gap-3">
           <button
@@ -59,7 +59,7 @@ export function DiaryEntryDeleteConfirmModal({
             disabled={isDeleting}
             className="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 disabled:opacity-50"
           >
-            Cancel
+            {t('diary.cancel')}
           </button>
           <button
             type="button"
@@ -70,7 +70,7 @@ export function DiaryEntryDeleteConfirmModal({
             )}
           >
             {isDeleting && <Loader2 size={18} className="animate-spin" />}
-            Delete entry
+            {t('diary.deleteEntryConfirm')}
           </button>
         </div>
       </div>

@@ -3,6 +3,11 @@ import { Pencil } from 'lucide-react';
 import type { CirclePatientProfileSnapshot, CircleProfileMedItem } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 import { CircleProfileAiBadge, isAiDiscoveredField } from '../lib/circleProfileAiDiscovery';
+import { useCircleT, type CircleTranslator } from '../lib/circleI18nContext';
+import {
+  fitnessLevelLabelI18n,
+  yesNoLabelI18n,
+} from '../lib/adminScreenI18n';
 
 type ProfileSection = {
   id: string;
@@ -12,28 +17,16 @@ type ProfileSection = {
 
 const EDITABLE_SECTION_IDS = new Set(['identity', 'extended', 'engagement', 'lifestyle', 'clinical']);
 
-function listValue(items: string[], empty = '—') {
+function listValue(items: string[], empty: string) {
   if (!items.length) return empty;
   return items.join(', ');
 }
 
-function textValue(value: string, empty = '—') {
+function textValue(value: string, empty: string) {
   return value.trim() || empty;
 }
 
-const FITNESS_LEVEL_LABELS: Record<string, string> = {
-  sedentary: 'Sedentary',
-  lightly_active: 'Lightly active',
-  moderately_active: 'Moderately active',
-  very_active: 'Very active',
-  extra_active: 'Extra active',
-};
-
-function fitnessLevelValue(value: string) {
-  return FITNESS_LEVEL_LABELS[value.trim()] || textValue(value);
-}
-
-function medListValue(items: CircleProfileMedItem[], empty = '—') {
+function medListValue(items: CircleProfileMedItem[], empty: string) {
   if (!items.length) return empty;
   return (
     <ul className="space-y-1">
@@ -52,23 +45,24 @@ function medListValue(items: CircleProfileMedItem[], empty = '—') {
   );
 }
 
-function yesNoLabel(value: string) {
-  if (value === 'yes') return 'Yes';
-  if (value === 'no') return 'No';
-  return '—';
-}
-
-function substanceUseSummary(snapshot: CirclePatientProfileSnapshot) {
+function substanceUseSummary(t: CircleTranslator, snapshot: CirclePatientProfileSnapshot) {
+  const empty = t('admin.profile.emptyValue');
   const su = snapshot.lifestyle.substanceUse;
   const lines: string[] = [];
-  if (su.smoking) lines.push(`Smoking: ${yesNoLabel(su.smoking)}`);
-  if (su.smoking === 'yes' && su.cigarettesPerDay) {
-    lines.push(`Cigarettes/day: ${su.cigarettesPerDay}`);
+  if (su.smoking) {
+    lines.push(t('admin.profile.substanceSmoking', { value: yesNoLabelI18n(t, su.smoking) }));
   }
-  if (su.vaping) lines.push(`Vaping: ${yesNoLabel(su.vaping)}`);
-  if (su.alcoholFreq) lines.push(`Alcohol: ${su.alcoholFreq}`);
-  if (su.recreationalDrugs) lines.push(`Recreational drugs: ${su.recreationalDrugs}`);
-  if (!lines.length) return '—';
+  if (su.smoking === 'yes' && su.cigarettesPerDay) {
+    lines.push(t('admin.profile.substanceCigarettesPerDay', { value: su.cigarettesPerDay }));
+  }
+  if (su.vaping) {
+    lines.push(t('admin.profile.substanceVaping', { value: yesNoLabelI18n(t, su.vaping) }));
+  }
+  if (su.alcoholFreq) lines.push(t('admin.profile.substanceAlcohol', { value: su.alcoholFreq }));
+  if (su.recreationalDrugs) {
+    lines.push(t('admin.profile.substanceRecreationalDrugs', { value: su.recreationalDrugs }));
+  }
+  if (!lines.length) return empty;
   return (
     <div className="space-y-0.5">
       {lines.map((line) => (
@@ -80,6 +74,220 @@ function substanceUseSummary(snapshot: CirclePatientProfileSnapshot) {
 
 function isAiField(snapshot: CirclePatientProfileSnapshot, key: string, values?: string[]) {
   return isAiDiscoveredField(snapshot, key, values);
+}
+
+function buildSections(
+  t: CircleTranslator,
+  snapshot: CirclePatientProfileSnapshot,
+  showClinical: boolean,
+): ProfileSection[] {
+  const empty = t('admin.profile.emptyValue');
+
+  const sections: ProfileSection[] = [
+    {
+      id: 'identity',
+      title: t('admin.profile.sectionIdentity'),
+      items: [
+        {
+          label: t('admin.profile.fieldName'),
+          value: textValue(`${snapshot.identity.firstName} ${snapshot.identity.lastName}`.trim(), empty),
+        },
+        {
+          label: t('admin.profile.fieldNickname'),
+          value: textValue(snapshot.identity.nickName, empty),
+          aiDiscovered: isAiField(snapshot, 'nick_name'),
+        },
+        { label: t('admin.profile.fieldEmail'), value: textValue(snapshot.identity.email, empty) },
+        { label: t('admin.profile.fieldDob'), value: textValue(snapshot.identity.dob, empty) },
+        { label: t('admin.profile.fieldLanguage'), value: textValue(snapshot.identity.language, empty) },
+        {
+          label: t('admin.profile.fieldLocation'),
+          value: textValue(
+            [snapshot.identity.city, snapshot.identity.country].filter(Boolean).join(', '),
+            empty,
+          ),
+        },
+      ],
+    },
+    {
+      id: 'extended',
+      title: t('admin.profile.sectionExtended'),
+      items: [
+        { label: t('admin.profile.fieldSex'), value: textValue(snapshot.extended.sex, empty) },
+        { label: t('admin.profile.fieldHandedness'), value: textValue(snapshot.extended.handedness, empty) },
+        {
+          label: t('admin.profile.fieldHeight'),
+          value: textValue(`${snapshot.extended.height} ${snapshot.extended.heightUnit}`.trim(), empty),
+        },
+        {
+          label: t('admin.profile.fieldWeight'),
+          value: textValue(`${snapshot.extended.weight} ${snapshot.extended.weightUnit}`.trim(), empty),
+        },
+        { label: t('admin.profile.fieldRace'), value: textValue(snapshot.extended.race, empty) },
+        {
+          label: t('admin.profile.fieldLanguagesSpoken'),
+          value: listValue(snapshot.extended.languagesSpoken, empty),
+          aiDiscovered: isAiField(snapshot, 'language', snapshot.extended.languagesSpoken),
+        },
+      ],
+    },
+    {
+      id: 'engagement',
+      title: t('admin.profile.sectionEngagement'),
+      items: [
+        {
+          label: t('admin.profile.fieldActiveHobbies'),
+          value: listValue(snapshot.engagement.activeHobbies, empty),
+          aiDiscovered: isAiField(snapshot, 'hobby_active', snapshot.engagement.activeHobbies),
+        },
+        {
+          label: t('admin.profile.fieldPassiveHobbies'),
+          value: listValue(snapshot.engagement.passiveHobbies, empty),
+          aiDiscovered: isAiField(snapshot, 'hobby_passive', snapshot.engagement.passiveHobbies),
+        },
+        {
+          label: t('admin.profile.fieldSocialAnchors'),
+          value: listValue(snapshot.engagement.socialAnchors, empty),
+          aiDiscovered: isAiField(snapshot, 'social_anchors', snapshot.engagement.socialAnchors),
+        },
+        {
+          label: t('admin.profile.fieldTopicTriggers'),
+          value: listValue(snapshot.engagement.topicTriggers, empty),
+          aiDiscovered: isAiField(snapshot, 'topic_triggers', snapshot.engagement.topicTriggers),
+        },
+        {
+          label: t('admin.profile.fieldPersonalGoals'),
+          value: listValue(snapshot.engagement.personalGoals, empty),
+          aiDiscovered: isAiField(snapshot, 'personal_goals', snapshot.engagement.personalGoals),
+        },
+        {
+          label: t('admin.profile.fieldDailyRituals'),
+          value: listValue(snapshot.engagement.dailyRituals, empty),
+          aiDiscovered: isAiField(snapshot, 'daily_rituals', snapshot.engagement.dailyRituals),
+        },
+        {
+          label: t('admin.profile.fieldFitnessLevel'),
+          value: fitnessLevelLabelI18n(t, snapshot.engagement.fitnessLevel),
+          aiDiscovered: isAiField(
+            snapshot,
+            'fitness_level',
+            snapshot.engagement.fitnessLevel ? [snapshot.engagement.fitnessLevel] : [],
+          ),
+        },
+      ],
+    },
+    {
+      id: 'lifestyle',
+      title: t('admin.profile.sectionLifestyle'),
+      items: [
+        {
+          label: t('admin.profile.fieldOccupation'),
+          value: textValue(snapshot.lifestyle.occupation, empty),
+          aiDiscovered: isAiField(
+            snapshot,
+            'occupation',
+            snapshot.lifestyle.occupation ? [snapshot.lifestyle.occupation] : [],
+          ),
+        },
+        {
+          label: t('admin.profile.fieldLivingSituation'),
+          value: textValue(snapshot.lifestyle.livingSituation, empty),
+          aiDiscovered: isAiField(
+            snapshot,
+            'living_situation',
+            snapshot.lifestyle.livingSituation ? [snapshot.lifestyle.livingSituation] : [],
+          ),
+        },
+        {
+          label: t('admin.profile.fieldSleepProfile'),
+          value: textValue(snapshot.lifestyle.sleepProfile, empty),
+          aiDiscovered: isAiField(
+            snapshot,
+            'sleep_profile',
+            snapshot.lifestyle.sleepProfile ? [snapshot.lifestyle.sleepProfile] : [],
+          ),
+        },
+        {
+          label: t('admin.profile.fieldAssistiveDevices'),
+          value: listValue(snapshot.lifestyle.assistiveDevices, empty),
+          aiDiscovered: isAiField(snapshot, 'assistive_devices', snapshot.lifestyle.assistiveDevices),
+        },
+        {
+          label: t('admin.profile.fieldSubstanceUse'),
+          value: substanceUseSummary(t, snapshot),
+          fullWidth: true,
+        },
+      ],
+    },
+    {
+      id: 'functional',
+      title: t('admin.profile.sectionFunctional'),
+      items: [
+        { label: t('admin.profile.fieldVisualStatus'), value: textValue(snapshot.functional.visualStatus, empty) },
+        { label: t('admin.profile.fieldHearingProfile'), value: textValue(snapshot.functional.hearingProfile, empty) },
+        {
+          label: t('admin.profile.fieldCognitiveBaseline'),
+          value: textValue(snapshot.functional.cognitiveBaseline, empty),
+        },
+        {
+          label: t('admin.profile.fieldFineMotorBaseline'),
+          value: textValue(snapshot.functional.fineMotorBaseline, empty),
+        },
+      ],
+    },
+  ];
+
+  if (showClinical) {
+    sections.push({
+      id: 'clinical',
+      title: t('admin.profile.sectionClinical'),
+      items: [
+        {
+          label: t('admin.profile.fieldPrimaryDiagnosis'),
+          value: textValue(snapshot.clinical.primaryDiagnosis, empty),
+          aiDiscovered: isAiField(
+            snapshot,
+            'primary_diagnosis',
+            snapshot.clinical.primaryDiagnosis ? [snapshot.clinical.primaryDiagnosis] : [],
+          ),
+        },
+        { label: t('admin.profile.fieldDateOfOnset'), value: textValue(snapshot.clinical.dateOfOnset, empty) },
+        { label: t('admin.profile.fieldTreatmentPhase'), value: textValue(snapshot.clinical.treatmentPhase, empty) },
+        {
+          label: t('admin.profile.fieldSurgicalHistory'),
+          value: textValue(snapshot.clinical.surgicalHistory, empty),
+          fullWidth: true,
+        },
+        {
+          label: t('admin.profile.fieldComorbidities'),
+          value: textValue(snapshot.clinical.comorbidities, empty),
+          fullWidth: true,
+        },
+        {
+          label: t('admin.profile.fieldMedications'),
+          value: medListValue(snapshot.clinical.medications, empty),
+          fullWidth: true,
+        },
+        {
+          label: t('admin.profile.fieldSupplements'),
+          value: medListValue(snapshot.clinical.supplements, empty),
+          fullWidth: true,
+        },
+        {
+          label: t('admin.profile.fieldAllergies'),
+          value: textValue(snapshot.clinical.allergies, empty),
+          fullWidth: true,
+          aiDiscovered: isAiField(
+            snapshot,
+            'allergies',
+            snapshot.clinical.allergies ? [snapshot.clinical.allergies] : [],
+          ),
+        },
+      ],
+    });
+  }
+
+  return sections;
 }
 
 interface CirclePatientProfileReviewProps {
@@ -95,83 +303,8 @@ export function CirclePatientProfileReview({
   canEdit = false,
   onEditSection,
 }: CirclePatientProfileReviewProps) {
-  const sections: ProfileSection[] = [
-    {
-      id: 'identity',
-      title: 'Identity',
-      items: [
-        { label: 'Name', value: textValue(`${snapshot.identity.firstName} ${snapshot.identity.lastName}`.trim()) },
-        { label: 'Nickname', value: textValue(snapshot.identity.nickName), aiDiscovered: isAiField(snapshot, 'nick_name') },
-        { label: 'Email', value: textValue(snapshot.identity.email) },
-        { label: 'Date of birth', value: textValue(snapshot.identity.dob) },
-        { label: 'Language', value: textValue(snapshot.identity.language) },
-        { label: 'Location', value: textValue([snapshot.identity.city, snapshot.identity.country].filter(Boolean).join(', ')) },
-      ],
-    },
-    {
-      id: 'extended',
-      title: 'Extended',
-      items: [
-        { label: 'Sex', value: textValue(snapshot.extended.sex) },
-        { label: 'Handedness', value: textValue(snapshot.extended.handedness) },
-        { label: 'Height', value: textValue(`${snapshot.extended.height} ${snapshot.extended.heightUnit}`.trim()) },
-        { label: 'Weight', value: textValue(`${snapshot.extended.weight} ${snapshot.extended.weightUnit}`.trim()) },
-        { label: 'Race / ethnicity', value: textValue(snapshot.extended.race) },
-        { label: 'Languages spoken', value: listValue(snapshot.extended.languagesSpoken), aiDiscovered: isAiField(snapshot, 'language', snapshot.extended.languagesSpoken) },
-      ],
-    },
-    {
-      id: 'engagement',
-      title: 'Engagement',
-      items: [
-        { label: 'Active hobbies', value: listValue(snapshot.engagement.activeHobbies), aiDiscovered: isAiField(snapshot, 'hobby_active', snapshot.engagement.activeHobbies) },
-        { label: 'Passive hobbies', value: listValue(snapshot.engagement.passiveHobbies), aiDiscovered: isAiField(snapshot, 'hobby_passive', snapshot.engagement.passiveHobbies) },
-        { label: 'Social anchors', value: listValue(snapshot.engagement.socialAnchors), aiDiscovered: isAiField(snapshot, 'social_anchors', snapshot.engagement.socialAnchors) },
-        { label: 'Topic triggers', value: listValue(snapshot.engagement.topicTriggers), aiDiscovered: isAiField(snapshot, 'topic_triggers', snapshot.engagement.topicTriggers) },
-        { label: 'Personal goals', value: listValue(snapshot.engagement.personalGoals), aiDiscovered: isAiField(snapshot, 'personal_goals', snapshot.engagement.personalGoals) },
-        { label: 'Daily rituals', value: listValue(snapshot.engagement.dailyRituals), aiDiscovered: isAiField(snapshot, 'daily_rituals', snapshot.engagement.dailyRituals) },
-        { label: 'Fitness level', value: fitnessLevelValue(snapshot.engagement.fitnessLevel), aiDiscovered: isAiField(snapshot, 'fitness_level', snapshot.engagement.fitnessLevel ? [snapshot.engagement.fitnessLevel] : []) },
-      ],
-    },
-    {
-      id: 'lifestyle',
-      title: 'Lifestyle',
-      items: [
-        { label: 'Occupation', value: textValue(snapshot.lifestyle.occupation), aiDiscovered: isAiField(snapshot, 'occupation', snapshot.lifestyle.occupation ? [snapshot.lifestyle.occupation] : []) },
-        { label: 'Living situation', value: textValue(snapshot.lifestyle.livingSituation), aiDiscovered: isAiField(snapshot, 'living_situation', snapshot.lifestyle.livingSituation ? [snapshot.lifestyle.livingSituation] : []) },
-        { label: 'Sleep profile', value: textValue(snapshot.lifestyle.sleepProfile), aiDiscovered: isAiField(snapshot, 'sleep_profile', snapshot.lifestyle.sleepProfile ? [snapshot.lifestyle.sleepProfile] : []) },
-        { label: 'Assistive devices', value: listValue(snapshot.lifestyle.assistiveDevices), aiDiscovered: isAiField(snapshot, 'assistive_devices', snapshot.lifestyle.assistiveDevices) },
-        { label: 'Substance use', value: substanceUseSummary(snapshot), fullWidth: true },
-      ],
-    },
-    {
-      id: 'functional',
-      title: 'Functional',
-      items: [
-        { label: 'Visual status', value: textValue(snapshot.functional.visualStatus) },
-        { label: 'Hearing profile', value: textValue(snapshot.functional.hearingProfile) },
-        { label: 'Cognitive baseline', value: textValue(snapshot.functional.cognitiveBaseline) },
-        { label: 'Fine motor baseline', value: textValue(snapshot.functional.fineMotorBaseline) },
-      ],
-    },
-  ];
-
-  if (showClinical) {
-    sections.push({
-      id: 'clinical',
-      title: 'Clinical',
-      items: [
-        { label: 'Primary diagnosis', value: textValue(snapshot.clinical.primaryDiagnosis), aiDiscovered: isAiField(snapshot, 'primary_diagnosis', snapshot.clinical.primaryDiagnosis ? [snapshot.clinical.primaryDiagnosis] : []) },
-        { label: 'Date of onset', value: textValue(snapshot.clinical.dateOfOnset) },
-        { label: 'Treatment phase', value: textValue(snapshot.clinical.treatmentPhase) },
-        { label: 'Surgical history', value: textValue(snapshot.clinical.surgicalHistory), fullWidth: true },
-        { label: 'Comorbidities', value: textValue(snapshot.clinical.comorbidities), fullWidth: true },
-        { label: 'Medications', value: medListValue(snapshot.clinical.medications), fullWidth: true },
-        { label: 'Supplements', value: medListValue(snapshot.clinical.supplements), fullWidth: true },
-        { label: 'Allergies', value: textValue(snapshot.clinical.allergies), fullWidth: true, aiDiscovered: isAiField(snapshot, 'allergies', snapshot.clinical.allergies ? [snapshot.clinical.allergies] : []) },
-      ],
-    });
-  }
+  const t = useCircleT();
+  const sections = buildSections(t, snapshot, showClinical);
 
   const editableIds = new Set(EDITABLE_SECTION_IDS);
   if (!showClinical) editableIds.delete('clinical');
@@ -190,7 +323,7 @@ export function CirclePatientProfileReview({
                 type="button"
                 onClick={() => onEditSection(section.id)}
                 className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-blue-600"
-                aria-label={`Edit ${section.title}`}
+                aria-label={t('admin.profile.editSectionAria', { section: section.title })}
               >
                 <Pencil size={14} />
               </button>

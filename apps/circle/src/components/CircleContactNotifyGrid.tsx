@@ -1,42 +1,43 @@
 import { AlertCircle, Bell, MessageSquare, Smartphone } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useCircleT } from '../lib/circleI18nContext';
 
-const NOTIFY_OPTIONS = [
+const NOTIFY_META = [
   {
     key: 'alert' as const,
-    label: 'Alert',
-    desc: 'Urgent notifications',
+    labelKey: 'admin.contact.notifyAlert',
+    descKey: 'admin.contact.notifyAlertDesc',
     icon: Bell,
     activeClass: 'bg-red-50 border-red-200 text-red-600',
     iconClass: 'bg-red-600 text-white',
   },
   {
     key: 'attention' as const,
-    label: 'Attention',
-    desc: 'Needs attention',
+    labelKey: 'admin.contact.notifyAttention',
+    descKey: 'admin.contact.notifyAttentionDesc',
     icon: AlertCircle,
     activeClass: 'bg-orange-50 border-orange-200 text-orange-600',
     iconClass: 'bg-orange-600 text-white',
   },
   {
     key: 'message' as const,
-    label: 'Message',
-    desc: 'Email messages',
+    labelKey: 'admin.contact.notifyMessage',
+    descKey: 'admin.contact.notifyMessageDesc',
     icon: MessageSquare,
     activeClass: 'bg-blue-50 border-blue-200 text-blue-600',
     iconClass: 'bg-blue-600 text-white',
   },
   {
     key: 'sms' as const,
-    label: 'SMS',
-    desc: 'Text messages',
+    labelKey: 'admin.contact.notifySms',
+    descKey: 'admin.contact.notifySmsDesc',
     icon: Smartphone,
     activeClass: 'bg-emerald-50 border-emerald-200 text-emerald-600',
     iconClass: 'bg-emerald-600 text-white',
   },
 ];
 
-export type CircleNotifyKey = (typeof NOTIFY_OPTIONS)[number]['key'];
+export type CircleNotifyKey = (typeof NOTIFY_META)[number]['key'];
 
 type CircleContactNotifyGridProps = {
   values: Record<CircleNotifyKey, boolean>;
@@ -56,9 +57,10 @@ export function CircleContactNotifyGrid({
   lockSms = false,
   onToggle,
 }: CircleContactNotifyGridProps) {
+  const t = useCircleT();
   const options = keys
-    ? NOTIFY_OPTIONS.filter((option) => keys.includes(option.key))
-    : NOTIFY_OPTIONS;
+    ? NOTIFY_META.filter((option) => keys.includes(option.key))
+    : NOTIFY_META;
 
   return (
     <div
@@ -102,17 +104,17 @@ export function CircleContactNotifyGrid({
                 <option.icon size={16} strokeWidth={2.5} />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-bold uppercase tracking-wide">{option.label}</p>
-                <p className="text-[10px] font-medium opacity-70">{option.desc}</p>
+                <p className="text-xs font-bold uppercase tracking-wide">{t(option.labelKey)}</p>
+                <p className="text-[10px] font-medium opacity-70">{t(option.descKey)}</p>
               </div>
             </div>
             {!reachable && (
               <p className="text-[10px] font-bold text-slate-400 uppercase mt-2">
                 {locked
-                  ? 'Managed by proxy'
+                  ? t('admin.contact.notifyManagedByProxy')
                   : needsMobile
-                    ? 'Mobile required'
-                    : 'Email required'}
+                    ? t('admin.contact.notifyMobileRequired')
+                    : t('admin.contact.notifyEmailRequired')}
               </p>
             )}
           </button>

@@ -45,6 +45,7 @@ import { CircleDeleteAlbumConfirmModal } from './CircleDeleteAlbumConfirmModal';
 import { CircleDeleteMediaConfirmModal } from './CircleDeleteMediaConfirmModal';
 import { CircleFolderCountBadge, formatCircleBadgeCount } from './CircleCountBadge';
 import { cn } from '../lib/utils';
+import { useCircleT, type CircleTranslator } from '../lib/circleI18nContext';
 import {
   circleInsetCardClass,
   circleSectionBodyClass,
@@ -76,13 +77,27 @@ function galleryUploadOverallPercent(progress: GalleryUploadFileProgress): numbe
   return Math.min(99, Math.round(done + fileSpan * (0.12 + (pct / 100) * 0.88)));
 }
 
-function galleryUploadStatusLabel(progress: GalleryUploadFileProgress): string {
-  const itemLabel = progress.total > 1 ? ` ${progress.index} of ${progress.total}` : '';
-  if (progress.phase === 'preparing') {
-    return `Preparing${itemLabel}…`;
+function galleryUploadStatusLabel(
+  progress: GalleryUploadFileProgress,
+  t: CircleTranslator,
+): string {
+  const { index, total, phase, percent } = progress;
+  const pct = percent ?? 0;
+  if (phase === 'preparing') {
+    return total > 1
+      ? t('gallery.uploadPreparingMulti', { index, total })
+      : t('gallery.uploadPreparing');
   }
-  const base = `Uploading${itemLabel}`;
-  return progress.percent != null && progress.percent > 0 ? `${base} (${progress.percent}%)` : `${base}…`;
+  if (total > 1) {
+    return pct > 0
+      ? t('gallery.uploadingMultiPercent', { index, total, percent: pct })
+      : t('gallery.uploadingMulti', { index, total });
+  }
+  return pct > 0 ? t('gallery.uploadingPercent', { percent: pct }) : t('gallery.uploading');
+}
+
+function galleryItemCountLabel(t: CircleTranslator, count: number): string {
+  return t(count === 1 ? 'gallery.item_one' : 'gallery.item_other', { count });
 }
 
 function mediaInAlbum(item: GalleryAlbumMedia, album: GalleryAlbum): boolean {
@@ -119,6 +134,7 @@ function AlbumThumbnailOverlay({
   lastModified: number;
   compact: boolean;
 }) {
+  const t = useCircleT();
   return (
     <>
       <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
@@ -138,7 +154,7 @@ function AlbumThumbnailOverlay({
         </p>
         {!compact && (
           <p className="text-white/80 text-[10px] mt-0.5 line-clamp-1">
-            {count} item{count === 1 ? '' : 's'}
+            {galleryItemCountLabel(t, count)}
             {lastModified ? ` · ${formatShortDate(lastModified)}` : ''}
           </p>
         )}
@@ -160,6 +176,7 @@ export function PatientGalleryScreen({
   db,
   storage,
 }: PatientGalleryScreenProps) {
+  const t = useCircleT();
   const compactChrome = useCircleCompactChrome();
   const caps = patient.capabilities;
   const showPatientTab = canViewPatientUploads(caps);
@@ -210,7 +227,7 @@ export function PatientGalleryScreen({
   );
 
   const role = patient.role as CircleMemberRole;
-  const senderName = user.displayName || user.email || 'Family Member';
+  const senderName = user.displayName || user.email || t('gallery.familyMemberFallback');
 
   const circleMedia = useMemo(
     () => allMedia.filter((m) => m.source !== 'patient'),
@@ -270,11 +287,11 @@ export function PatientGalleryScreen({
       setAllMedia(media);
       refreshViewed();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load gallery.');
+      setError(err instanceof Error ? err.message : t('gallery.errorLoadGallery'));
     } finally {
       setLoading(false);
     }
-  }, [db, patient.patientId, refreshViewed]);
+  }, [db, patient.patientId, refreshViewed, t]);
 
   const exitManageToBrowse = useCallback(() => {
     setMainMode('browse');
@@ -320,12 +337,12 @@ export function PatientGalleryScreen({
         setAlbumMedia(items);
         setUnassigned(loose);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not load album.');
+        setError(err instanceof Error ? err.message : t('gallery.errorLoadAlbum'));
       } finally {
         setLoading(false);
       }
     },
-    [canUpload, db, patient.patientId, user.uid],
+    [canUpload, db, patient.patientId, user.uid, t],
   );
 
   useEffect(() => {
@@ -372,22 +389,24 @@ export function PatientGalleryScreen({
   ]);
 
   const gridTitle = useMemo(() => {
-    if (browseTab === 'patient') return `From ${patient.displayName}`;
-    return albums.find((a) => a.id === gridScope)?.title ?? 'Album';
-  }, [albums, browseTab, gridScope, patient.displayName]);
+    if (browseTab === 'patient') {
+      return t('gallery.fromPatientGridTitle', { name: patient.displayName });
+    }
+    return albums.find((a) => a.id === gridScope)?.title ?? t('gallery.albumFallback');
+  }, [albums, browseTab, gridScope, patient.displayName, t]);
 
   const inlineBrowseTitle = useMemo(() => {
     switch (sharedBrowseMode) {
       case 'photos':
-        return 'All pictures';
+        return t('gallery.allPictures');
       case 'videos':
-        return 'All videos';
+        return t('gallery.allVideos');
       case 'newest':
-        return 'Newest';
+        return t('gallery.newest');
       default:
         return '';
     }
-  }, [sharedBrowseMode]);
+  }, [sharedBrowseMode, t]);
 
   const openLightbox = (
     items: GalleryAlbumMedia[],
@@ -465,18 +484,18 @@ export function PatientGalleryScreen({
   );
 
   const sharedBrowsePills: { id: SharedBrowseMode; label: string }[] = [
-    { id: 'photos', label: 'All pictures' },
-    { id: 'videos', label: 'All videos' },
-    { id: 'album', label: 'By album' },
-    ...(canUpload ? [{ id: 'my-albums' as const, label: 'My albums' }] : []),
-    { id: 'newest', label: 'Newest' },
+    { id: 'photos', label: t('gallery.allPictures') },
+    { id: 'videos', label: t('gallery.allVideos') },
+    { id: 'album', label: t('gallery.byAlbum') },
+    ...(canUpload ? [{ id: 'my-albums' as const, label: t('gallery.myAlbums') }] : []),
+    { id: 'newest', label: t('gallery.newest') },
   ];
 
   const renderBrowsePills = () => (
     <div
       className={circleBrowsePillListClass}
       role="tablist"
-      aria-label="Browse shared media"
+      aria-label={t('gallery.browseSharedMediaAria')}
     >
       <div className={circleBrowsePillRowClass}>
         {sharedBrowsePills.map((pill) => {
@@ -539,9 +558,9 @@ export function PatientGalleryScreen({
       if (created) {
         openManageAlbum(created, 'upload-flow');
       }
-      setMessage('Album created.');
+      setMessage(t('gallery.toastAlbumCreated'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create album.');
+      setError(err instanceof Error ? err.message : t('gallery.errorCreateAlbum'));
     } finally {
       setBusy(false);
     }
@@ -572,11 +591,11 @@ export function PatientGalleryScreen({
       await loadAlbumDetail(selectedAlbum);
       setMessage(
         fileList.length === 1
-          ? 'Photo uploaded.'
-          : `${fileList.length} items uploaded.`,
+          ? t('gallery.toastPhotoUploaded')
+          : t('gallery.toastItemsUploaded', { count: fileList.length }),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed.');
+      setError(err instanceof Error ? err.message : t('gallery.errorUploadFailed'));
     } finally {
       setBusy(false);
       setUploadProgress(null);
@@ -595,9 +614,9 @@ export function PatientGalleryScreen({
       setEditingMedia(null);
       await loadAll();
       if (selectedAlbum) await loadAlbumDetail(selectedAlbum);
-      setMessage('Description saved.');
+      setMessage(t('gallery.toastDescriptionSaved'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save description.');
+      setError(err instanceof Error ? err.message : t('gallery.errorSaveDescription'));
     } finally {
       setBusy(false);
     }
@@ -611,9 +630,9 @@ export function PatientGalleryScreen({
       setMediaPendingDelete(null);
       await loadAll();
       if (selectedAlbum) await loadAlbumDetail(selectedAlbum);
-      setMessage('Deleted.');
+      setMessage(t('gallery.toastDeleted'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not delete.');
+      setError(err instanceof Error ? err.message : t('gallery.errorDelete'));
     } finally {
       setBusy(false);
     }
@@ -644,9 +663,9 @@ export function PatientGalleryScreen({
         setManageScreen('albums');
         await loadAll();
       }
-      setMessage('Album deleted.');
+      setMessage(t('gallery.toastAlbumDeleted'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not delete album.');
+      setError(err instanceof Error ? err.message : t('gallery.errorDeleteAlbum'));
     } finally {
       setBusy(false);
     }
@@ -664,10 +683,10 @@ export function PatientGalleryScreen({
       });
       await loadAll();
       await loadAlbumDetail(selectedAlbum);
-      setMessage('Added to album.');
+      setMessage(t('gallery.toastAddedToAlbum'));
       setShowAddExisting(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not add to album.');
+      setError(err instanceof Error ? err.message : t('gallery.errorAddToAlbum'));
     } finally {
       setBusy(false);
     }
@@ -707,9 +726,9 @@ export function PatientGalleryScreen({
       setSelectedAlbum({ ...selectedAlbum, title });
       setRenamingAlbum(false);
       await loadAll();
-      setMessage('Album renamed.');
+      setMessage(t('gallery.toastAlbumRenamed'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not rename album.');
+      setError(err instanceof Error ? err.message : t('gallery.errorRenameAlbum'));
     } finally {
       setBusy(false);
     }
@@ -725,8 +744,8 @@ export function PatientGalleryScreen({
                 className="w-full"
                 icon={ImageIcon}
                 iconClassName="text-blue-600"
-                title="Media gallery"
-                subtitle="Photos and videos shared with your loved one."
+                title={t('gallery.title')}
+                subtitle={t('gallery.subtitle')}
                 trailing={
                   canUpload ? (
                     <button
@@ -737,8 +756,8 @@ export function PatientGalleryScreen({
                         setMessage(null);
                       }}
                       className="shrink-0 w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm hover:bg-blue-700 transition-colors"
-                      aria-label="Upload photos or videos"
-                      title="Upload"
+                      aria-label={t('gallery.uploadAriaLabel')}
+                      title={t('gallery.uploadTitle')}
                     >
                       <Upload size={18} />
                     </button>
@@ -753,13 +772,13 @@ export function PatientGalleryScreen({
                     type="button"
                     onClick={exitManageToBrowse}
                     className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 shrink-0"
-                    aria-label="Back to media gallery"
+                    aria-label={t('gallery.backToMediaGallery')}
                   >
                     <ChevronLeft size={20} />
                   </button>
                   <div className="min-w-0">
-                    <h3 className={circleSectionTitleClass}>Your albums</h3>
-                    <p className={circleSectionSubtitleClass}>Add and organize what you share.</p>
+                    <h3 className={circleSectionTitleClass}>{t('gallery.yourAlbums')}</h3>
+                    <p className={circleSectionSubtitleClass}>{t('gallery.yourAlbumsSubtitle')}</p>
                   </div>
                 </div>
                 {canUpload && (
@@ -769,7 +788,7 @@ export function PatientGalleryScreen({
                     className="shrink-0 flex items-center gap-1 text-sm font-semibold text-blue-600 px-2 py-1"
                   >
                     <FolderPlus size={16} />
-                    New
+                    {t('gallery.newAlbum')}
                   </button>
                 )}
               </>
@@ -782,15 +801,17 @@ export function PatientGalleryScreen({
                   className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 shrink-0"
                   aria-label={
                     manageEntryPoint === 'shared-browse'
-                      ? 'Back to shared albums'
-                      : 'Back to your albums'
+                      ? t('gallery.backToSharedAlbums')
+                      : t('gallery.backToYourAlbums')
                   }
                 >
                   <ChevronLeft size={20} />
                 </button>
                 <div className="min-w-0">
                   <h3 className={cn(circleSectionTitleClass, 'truncate')}>
-                    {manageEntryPoint === 'shared-browse' ? 'Shared albums' : 'Your albums'}
+                    {manageEntryPoint === 'shared-browse'
+                      ? t('gallery.sharedAlbums')
+                      : t('gallery.yourAlbums')}
                   </h3>
                   <p className={cn(circleSectionSubtitleClass, 'truncate')}>{selectedAlbum.title}</p>
                 </div>
@@ -802,7 +823,7 @@ export function PatientGalleryScreen({
           {message && <p className="text-sm text-emerald-700">{message}</p>}
 
           {mainMode === 'browse' && (
-            <div className={circleTabListClass} role="tablist" aria-label="Gallery sections">
+            <div className={circleTabListClass} role="tablist" aria-label={t('gallery.gallerySectionsAria')}>
               <button
                 type="button"
                 role="tab"
@@ -813,7 +834,7 @@ export function PatientGalleryScreen({
                 }}
                 className={circleTabButtonClass(browseTab === 'shared')}
               >
-                Shared
+                {t('gallery.tabShared')}
               </button>
               {showPatientTab && (
                 <button
@@ -827,7 +848,9 @@ export function PatientGalleryScreen({
                   }}
                   className={circleTabButtonClass(browseTab === 'patient', 'truncate')}
                 >
-                  From {patient.displayName.split(' ')[0]}
+                  {t('gallery.tabFromPatient', {
+                    firstName: patient.displayName.split(' ')[0],
+                  })}
                 </button>
               )}
             </div>
@@ -836,7 +859,7 @@ export function PatientGalleryScreen({
 
         <div className={cn(circleSectionBodyClass, 'p-4')}>
         {loading && mainMode === 'browse' && !showGrid && (
-          <p className="text-sm text-slate-500">Loading gallery…</p>
+          <p className="text-sm text-slate-500">{t('gallery.loadingGallery')}</p>
         )}
 
         {mainMode === 'browse' && browseTab === 'shared' && !showGrid && !loading && (
@@ -846,7 +869,7 @@ export function PatientGalleryScreen({
             {sharedBrowseMode === 'album' && albumCards.length > 0 && (
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 px-1">
-                  Browse by album
+                  {t('gallery.sectionBrowseByAlbum')}
                 </p>
                 <div className={photoGridClass}>
                   {albumCards.map(({ album, cover, count, lastModified, unseen }) => (
@@ -866,7 +889,7 @@ export function PatientGalleryScreen({
                         )}
                         {unseen > 0 && (
                           <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[9px] font-bold uppercase">
-                            {formatCircleBadgeCount(unseen)} new
+                            {t('gallery.newBadge', { count: unseen })}
                           </span>
                         )}
                         <AlbumThumbnailOverlay
@@ -885,7 +908,7 @@ export function PatientGalleryScreen({
             {sharedBrowseMode === 'my-albums' && canUpload && myAlbumCards.length > 0 && (
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 px-1">
-                  Your albums
+                  {t('gallery.yourAlbums')}
                 </p>
                 <div className={photoGridClass}>
                   {myAlbumCards.map(({ album, cover, count, lastModified, unseen }) => (
@@ -905,7 +928,7 @@ export function PatientGalleryScreen({
                         )}
                         {unseen > 0 && (
                           <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[9px] font-bold uppercase">
-                            {formatCircleBadgeCount(unseen)} new
+                            {t('gallery.newBadge', { count: unseen })}
                           </span>
                         )}
                         <AlbumThumbnailOverlay
@@ -924,7 +947,7 @@ export function PatientGalleryScreen({
             {sharedBrowseMode === 'my-albums' && canUpload && myAlbumCards.length === 0 && (
               <div className="p-8 text-center rounded-2xl border border-dashed border-slate-200 bg-white">
                 <p className="text-sm text-slate-500 leading-relaxed">
-                  Create an album to start sharing photos and videos.
+                  {t('gallery.emptyCreateAlbum')}
                 </p>
               </div>
             )}
@@ -935,8 +958,7 @@ export function PatientGalleryScreen({
                   <div className="min-w-0">
                     <h3 className={circleSectionTitleClass}>{inlineBrowseTitle}</h3>
                     <p className={circleSectionSubtitleClass}>
-                      {inlineBrowseItems.length} item
-                      {inlineBrowseItems.length === 1 ? '' : 's'}
+                      {galleryItemCountLabel(t, inlineBrowseItems.length)}
                     </p>
                   </div>
                   <button
@@ -947,7 +969,7 @@ export function PatientGalleryScreen({
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold shrink-0"
                   >
                     <Play size={14} fill="currentColor" />
-                    Play all
+                    {t('gallery.playAll')}
                   </button>
                 </div>
                 {renderMediaGrid(inlineBrowseItems)}
@@ -958,21 +980,23 @@ export function PatientGalleryScreen({
               sharedBrowseMode !== 'my-albums' &&
               inlineBrowseItems.length === 0 && (
               <p className="text-sm text-slate-500 px-1">
-                {sharedBrowseMode === 'videos' ? 'No videos shared yet.' : 'Nothing here yet.'}
+                {sharedBrowseMode === 'videos'
+                  ? t('gallery.emptyNoVideos')
+                  : t('gallery.emptyNothingHere')}
               </p>
             )}
 
             {sharedBrowseMode === 'album' && circleMedia.length === 0 && (
               <div className="p-8 text-center rounded-2xl border border-dashed border-slate-200 bg-white">
                 <p className="text-sm text-slate-500 leading-relaxed">
-                  No shared photos yet.
-                  {canUpload ? ' Tap the upload button to add the first album.' : ''}
+                  {t('gallery.emptyNoSharedPhotos')}
+                  {canUpload ? t('gallery.emptyNoSharedPhotosUploadHint') : ''}
                 </p>
               </div>
             )}
 
             {sharedBrowseMode === 'album' && circleMedia.length > 0 && albumCards.length === 0 && (
-              <p className="text-sm text-slate-500 px-1">No albums yet.</p>
+              <p className="text-sm text-slate-500 px-1">{t('gallery.emptyNoAlbums')}</p>
             )}
           </div>
         )}
@@ -985,7 +1009,7 @@ export function PatientGalleryScreen({
                   type="button"
                   onClick={backFromSharedGrid}
                   className="p-2 rounded-xl text-slate-500 hover:bg-slate-100"
-                  aria-label="Back"
+                  aria-label={t('gallery.back')}
                 >
                   <ChevronLeft size={20} />
                 </button>
@@ -993,7 +1017,7 @@ export function PatientGalleryScreen({
               <div className="min-w-0 flex-1">
                 <h3 className={cn(circleSectionTitleClass, 'truncate')}>{gridTitle}</h3>
                 <p className={circleSectionSubtitleClass}>
-                  {gridItems.length} item{gridItems.length === 1 ? '' : 's'}
+                  {galleryItemCountLabel(t, gridItems.length)}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -1004,7 +1028,7 @@ export function PatientGalleryScreen({
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50"
                   >
                     <Pencil size={14} />
-                    Manage
+                    {t('gallery.manage')}
                   </button>
                 )}
                 {gridItems.length > 0 && (
@@ -1014,7 +1038,7 @@ export function PatientGalleryScreen({
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold"
                   >
                     <Play size={14} fill="currentColor" />
-                    Play all
+                    {t('gallery.playAll')}
                   </button>
                 )}
               </div>
@@ -1022,15 +1046,15 @@ export function PatientGalleryScreen({
 
             {browseTab === 'patient' && (
               <p className="text-xs text-slate-500 px-1 leading-relaxed">
-                Photos and videos your loved one chose to share with their circle.
+                {t('gallery.patientGridHint')}
               </p>
             )}
 
             {gridItems.length === 0 ? (
               <p className="text-sm text-slate-500 px-1">
                 {browseTab === 'patient'
-                  ? 'No uploads from your loved one yet.'
-                  : 'Nothing here yet.'}
+                  ? t('gallery.emptyNoPatientUploads')
+                  : t('gallery.emptyNothingHere')}
               </p>
             ) : (
               renderMediaGrid(gridItems)
@@ -1047,7 +1071,7 @@ export function PatientGalleryScreen({
                     type="text"
                     value={newAlbumTitle}
                     onChange={(e) => setNewAlbumTitle(e.target.value)}
-                    placeholder="Album name"
+                    placeholder={t('gallery.albumNamePlaceholder')}
                     className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm"
                   />
                   <button
@@ -1056,7 +1080,7 @@ export function PatientGalleryScreen({
                     onClick={() => void handleCreateAlbum()}
                     className="px-4 py-2.5 bg-blue-600 text-white rounded-2xl text-sm font-bold disabled:opacity-50"
                   >
-                    Create
+                    {t('gallery.create')}
                   </button>
                 </div>
               </div>
@@ -1064,7 +1088,7 @@ export function PatientGalleryScreen({
             {myAlbumCards.length === 0 ? (
               <div className="p-8 text-center rounded-2xl border border-dashed border-slate-200 bg-white">
                 <p className="text-sm text-slate-500 leading-relaxed">
-                  Create an album to start sharing photos and videos.
+                  {t('gallery.emptyCreateAlbum')}
                 </p>
               </div>
             ) : (
@@ -1117,19 +1141,21 @@ export function PatientGalleryScreen({
                       onClick={() => void handleRenameAlbum()}
                       className="px-4 py-2 bg-blue-600 text-white rounded-2xl text-sm font-bold disabled:opacity-50"
                     >
-                      Save
+                      {t('gallery.save')}
                     </button>
                     <button
                       type="button"
                       onClick={() => setRenamingAlbum(false)}
                       className="px-3 py-2 text-sm font-semibold text-slate-500"
                     >
-                      Cancel
+                      {t('gallery.cancel')}
                     </button>
                   </div>
                 ) : (
                   <>
-                    <h3 className="font-bold text-slate-800">Add to {selectedAlbum.title}</h3>
+                    <h3 className="font-bold text-slate-800">
+                      {t('gallery.addToAlbum', { albumTitle: selectedAlbum.title })}
+                    </h3>
                     {canManageAlbum(selectedAlbum) && (
                       <button
                         type="button"
@@ -1137,7 +1163,7 @@ export function PatientGalleryScreen({
                         className="flex items-center gap-1 text-sm font-semibold text-blue-600 shrink-0"
                       >
                         <Pencil size={14} />
-                        Rename
+                        {t('gallery.rename')}
                       </button>
                     )}
                   </>
@@ -1146,7 +1172,7 @@ export function PatientGalleryScreen({
               <textarea
                 value={uploadCaption}
                 onChange={(e) => setUploadCaption(e.target.value)}
-                placeholder="Description (optional)"
+                placeholder={t('gallery.descriptionOptionalPlaceholder')}
                 rows={2}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl resize-none text-sm"
               />
@@ -1164,7 +1190,7 @@ export function PatientGalleryScreen({
                     <div className="flex items-center justify-center gap-2">
                       <Loader2 size={20} className="text-blue-600 animate-spin shrink-0" />
                       <span className="font-semibold text-slate-700 text-sm text-center">
-                        {galleryUploadStatusLabel(uploadProgress)}
+                        {galleryUploadStatusLabel(uploadProgress, t)}
                       </span>
                     </div>
                     <div className="h-2.5 w-full bg-white rounded-full overflow-hidden border border-blue-100">
@@ -1174,14 +1200,14 @@ export function PatientGalleryScreen({
                       />
                     </div>
                     <p className="text-[11px] text-slate-500 text-center">
-                      Large photos are resized for faster sharing — this may take a moment.
+                      {t('gallery.uploadResizeHint')}
                     </p>
                   </div>
                 ) : (
                   <>
                     <Upload size={24} className="text-blue-600" />
                     <span className="font-semibold text-slate-700 text-sm text-center px-4">
-                      Choose photos or videos
+                      {t('gallery.choosePhotosOrVideos')}
                     </span>
                   </>
                 )}
@@ -1205,7 +1231,7 @@ export function PatientGalleryScreen({
                     className="flex items-center gap-1.5 text-sm font-semibold text-blue-600"
                   >
                     <Plus size={16} />
-                    Add existing ({unassigned.length})
+                    {t('gallery.addExisting', { count: unassigned.length })}
                   </button>
                   {showAddExisting && (
                     <ul className="mt-3 space-y-2 max-h-40 overflow-y-auto">
@@ -1221,7 +1247,8 @@ export function PatientGalleryScreen({
                               <GalleryThumb item={item} />
                             </div>
                             <span className="text-xs text-slate-600 truncate flex-1">
-                              {item.caption || (item.isVideo ? 'Video' : 'Photo')}
+                              {item.caption ||
+                                (item.isVideo ? t('gallery.mediaVideo') : t('gallery.mediaPhoto'))}
                             </span>
                           </button>
                         </li>
@@ -1235,7 +1262,7 @@ export function PatientGalleryScreen({
             <div className={cn(circleInsetCardClass, 'p-5 space-y-4')}>
               <div className="flex items-center justify-between gap-2">
                 <h3 className="font-bold text-slate-800">
-                  {albumMedia.length} item{albumMedia.length === 1 ? '' : 's'}
+                  {galleryItemCountLabel(t, albumMedia.length)}
                 </h3>
                 {canManageAlbum(selectedAlbum) && (
                   <button
@@ -1245,7 +1272,7 @@ export function PatientGalleryScreen({
                     className="flex items-center gap-1 text-sm font-semibold text-red-600 disabled:opacity-50"
                   >
                     <Trash2 size={14} />
-                    Delete
+                    {t('gallery.delete')}
                   </button>
                 )}
               </div>
@@ -1260,7 +1287,7 @@ export function PatientGalleryScreen({
                       <div className="absolute top-1 right-1 flex gap-1">
                         <button
                           type="button"
-                          aria-label="Edit"
+                          aria-label={t('gallery.editAria')}
                           disabled={busy}
                           onClick={() => {
                             setEditingMedia(item);
@@ -1272,7 +1299,7 @@ export function PatientGalleryScreen({
                         </button>
                         <button
                           type="button"
-                          aria-label="Delete"
+                          aria-label={t('gallery.deleteAria')}
                           disabled={busy}
                           onClick={() => requestDeleteMedia(item)}
                           className="w-8 h-8 rounded-full bg-white/95 text-red-600 flex items-center justify-center shadow"
@@ -1332,7 +1359,7 @@ export function PatientGalleryScreen({
       {editingMedia && (
         <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/40">
           <div className="w-full max-w-md bg-white rounded-[32px] p-6 space-y-4 shadow-xl">
-            <h3 className="font-bold text-slate-800">Edit description</h3>
+            <h3 className="font-bold text-slate-800">{t('gallery.editDescription')}</h3>
             <textarea
               value={editCaption}
               onChange={(e) => setEditCaption(e.target.value)}
@@ -1345,7 +1372,7 @@ export function PatientGalleryScreen({
                 onClick={() => setEditingMedia(null)}
                 className="px-4 py-2 text-sm font-semibold text-slate-500"
               >
-                Cancel
+                {t('gallery.cancel')}
               </button>
               <button
                 type="button"
@@ -1353,7 +1380,7 @@ export function PatientGalleryScreen({
                 onClick={() => void handleSaveCaption()}
                 className="px-5 py-2 bg-blue-600 text-white rounded-2xl text-sm font-bold disabled:opacity-50"
               >
-                Save
+                {t('gallery.save')}
               </button>
             </div>
           </div>

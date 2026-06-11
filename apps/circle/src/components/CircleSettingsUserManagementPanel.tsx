@@ -11,7 +11,6 @@ import {
 } from './CircleContactEditorModal';
 import { CircleInviteConfirmModal } from './CircleInviteConfirmModal';
 import {
-  circleMemberAccessLabel,
   ContactConflictError,
   deletePatientManagedContact,
   listPatientManagedContacts,
@@ -38,6 +37,14 @@ import {
 import { circleTabButtonClass, circleTabListClass } from '../lib/circleSectionStyles';
 import { isFirestoreQuotaError, pauseFirestoreBackgroundWrites } from '../lib/firestoreQuota';
 import { cn } from '../lib/utils';
+import { useCircleT, type CircleTranslator } from '../lib/circleI18nContext';
+import {
+  contactKindLabelI18n,
+  formatContactSaveErrorI18n,
+  inviteStatusLabelI18n,
+  relationshipLabelI18n,
+  translateCircleMemberAccessLabel,
+} from '../lib/adminScreenI18n';
 
 type PanelTab = 'people' | 'access';
 
@@ -52,25 +59,12 @@ function isValidInviteEmail(raw: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 }
 
-const KIND_LABEL: Record<CircleContactKind, string> = {
-  caregiver: 'Caregiver',
-  family: 'Family',
-  friend: 'Friend',
-  contact: 'Contact',
-};
-
 const KIND_BADGE: Record<CircleContactKind, string> = {
   caregiver: 'bg-violet-50 text-violet-700 border-violet-100',
   family: 'bg-blue-50 text-blue-700 border-blue-100',
   friend: 'bg-cyan-50 text-cyan-700 border-cyan-100',
   contact: 'bg-slate-100 text-slate-600 border-slate-200',
 };
-
-function statusLabel(status: CircleInviteListItem['status']) {
-  if (status === 'accepted') return 'Active';
-  if (status === 'revoked') return 'Revoked';
-  return 'Pending';
-}
 
 function statusClass(status: CircleInviteListItem['status']) {
   if (status === 'accepted') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
@@ -166,6 +160,7 @@ function inviteForContactEmail(
 }
 
 function resolvedContactAccess(
+  t: CircleTranslator,
   contact: CircleManagedContact,
   members: CircleInviteListItem[],
 ): { label: string; badgeClass: string } {
@@ -183,7 +178,7 @@ function resolvedContactAccess(
       : contact.proxyTier ?? invite?.proxyTier;
 
   if (role && contact.kind !== 'contact') {
-    const label = circleMemberAccessLabel(role, proxyTier);
+    const label = translateCircleMemberAccessLabel(t, role, proxyTier);
     const badgeClass =
       role === 'proxy'
         ? proxyTier === 'backup'
@@ -193,38 +188,20 @@ function resolvedContactAccess(
     return { label, badgeClass };
   }
 
-  return { label: KIND_LABEL[contact.kind], badgeClass: KIND_BADGE[contact.kind] };
+  return { label: contactKindLabelI18n(t, contact.kind), badgeClass: KIND_BADGE[contact.kind] };
 }
 
 function resolvedInviteAccessLabel(
+  t: CircleTranslator,
   item: CircleInviteListItem,
   contacts: CircleManagedContact[],
 ): string {
   const email = normalizeInviteEmail(item.invitedEmail);
   const linked = contacts.find((contact) => normalizeInviteEmail(contact.email) === email);
   if (linked?.circleRole) {
-    return circleMemberAccessLabel(linked.circleRole, linked.proxyTier);
+    return translateCircleMemberAccessLabel(t, linked.circleRole, linked.proxyTier);
   }
-  return circleMemberAccessLabel(item.role, item.proxyTier);
-}
-
-function formatContactSaveError(err: unknown): string {
-  if (err instanceof ContactConflictError) return err.message;
-  const code =
-    err && typeof err === 'object' && 'code' in err
-      ? String((err as { code: string }).code)
-      : '';
-  const message = err instanceof Error ? err.message : String(err);
-  if (
-    code === 'permission-denied' ||
-    /permission-denied|insufficient permissions/i.test(message)
-  ) {
-    return 'You do not have permission to save contacts. Refresh and try again.';
-  }
-  if (code === 'internal') {
-    return 'Save failed on the server. Wait a moment, refresh, and try again.';
-  }
-  return err instanceof Error ? err.message : 'Could not save.';
+  return translateCircleMemberAccessLabel(t, item.role, item.proxyTier);
 }
 
 function PersonRow({
@@ -240,7 +217,8 @@ function PersonRow({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const access = resolvedContactAccess(contact, members);
+  const t = useCircleT();
+  const access = resolvedContactAccess(t, contact, members);
   return (
     <div
       role="button"
@@ -256,7 +234,7 @@ function PersonRow({
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
-          <p className="font-bold text-slate-800 truncate">{contact.name || 'Unnamed'}</p>
+          <p className="font-bold text-slate-800 truncate">{contact.name || t('admin.users.unnamed')}</p>
           <span
             className={cn(
               'shrink-0 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border',
@@ -267,8 +245,10 @@ function PersonRow({
           </span>
         </div>
         <p className="text-sm text-slate-500 truncate mt-0.5">
-          {contact.relationship || '—'}
-          {contact.email ? ` · ${contact.email}` : ' · No email'}
+          {contact.relationship
+            ? relationshipLabelI18n(t, contact.relationship)
+            : t('admin.profile.emptyValue')}
+          {contact.email ? ` · ${contact.email}` : ` · ${t('admin.users.noEmail')}`}
         </p>
       </div>
       <button
@@ -278,7 +258,7 @@ function PersonRow({
           onEdit();
         }}
         className="p-2.5 rounded-xl text-slate-500 hover:bg-slate-100"
-        aria-label="Edit"
+        aria-label={t('admin.users.editAria')}
       >
         <Pencil size={16} />
       </button>
@@ -289,7 +269,7 @@ function PersonRow({
           onDelete();
         }}
         className="p-2.5 rounded-xl text-red-500 hover:bg-red-50"
-        aria-label="Delete"
+        aria-label={t('admin.users.deleteAria')}
       >
         <Trash2 size={16} />
       </button>
@@ -303,6 +283,7 @@ export function CircleSettingsUserManagementPanel({
   patient,
   compact = false,
 }: CircleSettingsUserManagementPanelProps) {
+  const t = useCircleT();
   const [tab, setTab] = useState<PanelTab>('people');
   const [members, setMembers] = useState<CircleInviteListItem[]>([]);
   const [contacts, setContacts] = useState<CircleManagedContact[]>([]);
@@ -350,11 +331,11 @@ export function CircleSettingsUserManagementPanel({
       setContacts(listedContacts);
     } catch (err) {
       console.warn('[CircleSettingsUserManagementPanel]', err);
-      setError('Could not load. Try refresh.');
+      setError(t('admin.users.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [db, patient?.patientId]);
+  }, [db, patient?.patientId, t]);
 
   useEffect(() => {
     if (!patient?.patientId || !patient.capabilities.inviteMembers) return;
@@ -485,7 +466,7 @@ export function CircleSettingsUserManagementPanel({
         actorUid: user.uid,
       });
       if (!ok) {
-        setError('Could not revoke access.');
+        setError(t('admin.users.revokeFailed'));
         return;
       }
       setConfirmRevoke(null);
@@ -494,9 +475,9 @@ export function CircleSettingsUserManagementPanel({
       console.warn('[CircleSettingsUserManagementPanel] revoke', err);
       if (isFirestoreQuotaError(err)) {
         pauseFirestoreBackgroundWrites(String(err));
-        setError('Firestore daily write limit reached. Try again after midnight Pacific.');
+        setError(t('admin.profile.quotaError'));
       } else {
-        setError('Could not revoke access.');
+        setError(t('admin.users.revokeFailed'));
       }
     } finally {
       setRevokingEmail(null);
@@ -535,7 +516,7 @@ export function CircleSettingsUserManagementPanel({
   ) => {
     setDraft(nextDraft);
     setEditorMode(mode);
-    setEditorAccess(contact ? resolvedContactAccess(contact, members) : null);
+    setEditorAccess(contact ? resolvedContactAccess(t, contact, members) : null);
     if (mode !== 'view') {
       setInitialDraftFingerprint(draftFingerprint(nextDraft));
       setEditorBaselineUpdatedAt(patientDocUpdatedAt);
@@ -594,7 +575,7 @@ export function CircleSettingsUserManagementPanel({
       contactForEditorDisplay(remoteContact, members, memberNotifyByEmail),
     );
     setDraft(refreshed);
-    setEditorAccess(resolvedContactAccess(remoteContact, members));
+    setEditorAccess(resolvedContactAccess(t, remoteContact, members));
     setInitialDraftFingerprint(draftFingerprint(refreshed));
     setEditorBaselineUpdatedAt(patientDocUpdatedAt);
     setRemoteStale(false);
@@ -668,20 +649,20 @@ export function CircleSettingsUserManagementPanel({
   const handleSaveContact = async () => {
     if (!patient?.patientId) return;
     if (!draft.name.trim()) {
-      setEditorError('Name is required.');
+      setEditorError(t('admin.users.nameRequired'));
       return;
     }
     if (draft.kind !== 'contact' && !draft.email.trim()) {
-      setEditorError('Email is required for caregivers, family, and friends.');
+      setEditorError(t('admin.users.emailRequired'));
       return;
     }
     if (draft.email.trim() && !isValidInviteEmail(draft.email)) {
-      setEditorError('Enter a valid email address (e.g. name@example.com).');
+      setEditorError(t('admin.users.invalidEmail'));
       return;
     }
 
     if (remoteStale) {
-      setEditorError('Load the latest version before saving.');
+      setEditorError(t('admin.users.staleBeforeSave'));
       return;
     }
 
@@ -711,7 +692,7 @@ export function CircleSettingsUserManagementPanel({
       if (err instanceof ContactConflictError) {
         setRemoteStale(true);
       }
-      setEditorError(formatContactSaveError(err));
+      setEditorError(formatContactSaveErrorI18n(t, err));
     } finally {
       setSaving(false);
     }
@@ -736,11 +717,11 @@ export function CircleSettingsUserManagementPanel({
           setRemoteStale(true);
           setEditorError(err.message);
         } else {
-          setEditorError(err instanceof Error ? err.message : 'Could not save.');
+          setEditorError(err instanceof Error ? err.message : t('admin.users.saveFailed'));
         }
       } else if (isFirestoreQuotaError(err)) {
         pauseFirestoreBackgroundWrites(String(err));
-        setError('Firestore daily write limit reached. Try again after midnight Pacific.');
+        setError(t('admin.profile.quotaError'));
       }
       setInvitePreviewItems(null);
       setInviteConfirmAction(null);
@@ -760,9 +741,9 @@ export function CircleSettingsUserManagementPanel({
       console.warn('[CircleSettingsUserManagementPanel] delete', err);
       if (isFirestoreQuotaError(err)) {
         pauseFirestoreBackgroundWrites(String(err));
-        setError('Firestore daily write limit reached. Try again after midnight Pacific.');
+        setError(t('admin.profile.quotaError'));
       } else {
-        setError('Could not delete contact.');
+        setError(t('admin.users.deleteFailed'));
       }
       throw err;
     }
@@ -785,9 +766,9 @@ export function CircleSettingsUserManagementPanel({
       console.warn('[CircleSettingsUserManagementPanel] delete preview', err);
       if (isFirestoreQuotaError(err)) {
         pauseFirestoreBackgroundWrites(String(err));
-        setError('Firestore daily write limit reached. Try again after midnight Pacific.');
+        setError(t('admin.profile.quotaError'));
       } else {
-        setError('Could not delete contact.');
+        setError(t('admin.users.deleteFailed'));
       }
     } finally {
       setSaving(false);
@@ -797,9 +778,7 @@ export function CircleSettingsUserManagementPanel({
   if (!patient) {
     return (
       <div className="p-5">
-        <p className="text-sm text-slate-500 leading-relaxed">
-          Open Settings → Switch patient to choose who you are supporting first.
-        </p>
+        <p className="text-sm text-slate-500 leading-relaxed">{t('admin.users.noPatient')}</p>
       </div>
     );
   }
@@ -807,9 +786,7 @@ export function CircleSettingsUserManagementPanel({
   if (!patient.capabilities.inviteMembers) {
     return (
       <div className="p-5">
-        <p className="text-sm text-slate-500 leading-relaxed">
-          User management is only available to proxies for this circle.
-        </p>
+        <p className="text-sm text-slate-500 leading-relaxed">{t('admin.users.proxyOnly')}</p>
       </div>
     );
   }
@@ -823,9 +800,9 @@ export function CircleSettingsUserManagementPanel({
               <Users size={20} />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="font-bold text-slate-800">User management</h3>
+              <h3 className="font-bold text-slate-800">{t('admin.users.title')}</h3>
               <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                People and Circle access for {patient.displayName}
+                {t('admin.users.subtitleNamed', { name: patient.displayName })}
               </p>
             </div>
             <button
@@ -833,7 +810,7 @@ export function CircleSettingsUserManagementPanel({
               onClick={() => void loadMembers()}
               disabled={loading}
               className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 shrink-0 disabled:opacity-50"
-              aria-label="Refresh"
+              aria-label={t('admin.users.refreshAria')}
             >
               {loading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
             </button>
@@ -849,7 +826,7 @@ export function CircleSettingsUserManagementPanel({
               onClick={() => setTab('people')}
               className={circleTabButtonClass(tab === 'people')}
             >
-              People
+              {t('admin.users.tabPeople')}
             </button>
             <button
               type="button"
@@ -858,7 +835,7 @@ export function CircleSettingsUserManagementPanel({
               onClick={() => setTab('access')}
               className={circleTabButtonClass(tab === 'access')}
             >
-              Circle access
+              {t('admin.users.tabAccess')}
             </button>
           </div>
           {compact && (
@@ -867,7 +844,7 @@ export function CircleSettingsUserManagementPanel({
               onClick={() => void loadMembers()}
               disabled={loading}
               className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 shrink-0 disabled:opacity-50"
-              aria-label="Refresh"
+              aria-label={t('admin.users.refreshAria')}
             >
               {loading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
             </button>
@@ -888,14 +865,14 @@ export function CircleSettingsUserManagementPanel({
               className="w-full flex items-center justify-center gap-2 py-3.5 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100"
             >
               <Plus size={18} />
-              Add person
+              {t('admin.users.addPerson')}
             </button>
 
             {loading && contacts.length === 0 ? (
-              <div className="py-10 text-center text-slate-400 text-sm">Loading…</div>
+              <div className="py-10 text-center text-slate-400 text-sm">{t('admin.users.loading')}</div>
             ) : sortedContacts.length === 0 ? (
               <div className="py-10 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                <p className="text-sm text-slate-400">No people added yet.</p>
+                <p className="text-sm text-slate-400">{t('admin.users.noPeople')}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -916,15 +893,13 @@ export function CircleSettingsUserManagementPanel({
 
         {tab === 'access' && (
           <div className="space-y-4">
-            <p className="text-xs text-slate-500 leading-relaxed px-1">
-              Caregivers, family, and friends with an email are invited to sign in here automatically.
-            </p>
+            <p className="text-xs text-slate-500 leading-relaxed px-1">{t('admin.users.accessHint')}</p>
 
             {loading && members.length === 0 ? (
-              <div className="py-10 text-center text-slate-400 text-sm">Loading…</div>
+              <div className="py-10 text-center text-slate-400 text-sm">{t('admin.users.loading')}</div>
             ) : activeMembers.length === 0 && pastMembers.length === 0 ? (
               <div className="py-10 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                <p className="text-sm text-slate-400">No Circle invites yet.</p>
+                <p className="text-sm text-slate-400">{t('admin.users.noInvites')}</p>
               </div>
             ) : (
               <>
@@ -944,13 +919,13 @@ export function CircleSettingsUserManagementPanel({
                               </p>
                               {isSelf && (
                                 <span className="shrink-0 px-2 py-0.5 rounded-md bg-violet-100 text-violet-700 text-[10px] font-bold uppercase">
-                                  You
+                                  {t('admin.users.you')}
                                 </span>
                               )}
                             </div>
                             <p className="text-sm text-slate-500 truncate">{item.invitedEmail}</p>
                             <p className="text-xs text-slate-400 mt-1">
-                              {resolvedInviteAccessLabel(item, contacts)}
+                              {resolvedInviteAccessLabel(t, item, contacts)}
                             </p>
                           </div>
                           <div className="flex items-center justify-between gap-2">
@@ -960,7 +935,7 @@ export function CircleSettingsUserManagementPanel({
                                 statusClass(item.status),
                               )}
                             >
-                              {statusLabel(item.status)}
+                              {inviteStatusLabelI18n(t, item.status)}
                             </span>
                             {(item.status === 'pending' || item.status === 'accepted') &&
                               !isSelf && (
@@ -975,7 +950,7 @@ export function CircleSettingsUserManagementPanel({
                                   ) : (
                                     <ShieldOff size={14} />
                                   )}
-                                  Revoke
+                                  {t('admin.users.revoke')}
                                 </button>
                               )}
                           </div>
@@ -989,7 +964,7 @@ export function CircleSettingsUserManagementPanel({
                   <details className="rounded-2xl border border-slate-100 bg-slate-50/80 open:bg-slate-50">
                     <summary className="flex items-center gap-3 px-4 py-3 cursor-pointer list-none select-none">
                       <History size={16} className="text-slate-400 shrink-0" />
-                      <span className="text-sm font-bold text-slate-600 flex-1">Past access</span>
+                      <span className="text-sm font-bold text-slate-600 flex-1">{t('admin.users.pastAccess')}</span>
                       <span className="px-2 py-0.5 rounded-full bg-slate-200 text-slate-600 text-xs font-bold">
                         {pastMembers.length}
                       </span>
@@ -1038,10 +1013,11 @@ export function CircleSettingsUserManagementPanel({
               <ShieldOff size={28} />
             </div>
             <div className="text-center space-y-2">
-              <h3 className="text-lg font-bold text-slate-900">Revoke access?</h3>
+              <h3 className="text-lg font-bold text-slate-900">{t('admin.users.revokeModalTitle')}</h3>
               <p className="text-slate-500 text-sm leading-relaxed">
-                {confirmRevoke.displayName || confirmRevoke.invitedEmail} will no longer sign in for
-                this circle.
+                {t('admin.users.revokeModalDescription', {
+                  name: confirmRevoke.displayName || confirmRevoke.invitedEmail,
+                })}
               </p>
               {isValidInviteEmail(confirmRevoke.invitedEmail) && (
                 <p className="text-base font-bold text-red-600 break-all px-1">
@@ -1055,7 +1031,7 @@ export function CircleSettingsUserManagementPanel({
                 onClick={() => setConfirmRevoke(null)}
                 className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-bold"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -1063,7 +1039,7 @@ export function CircleSettingsUserManagementPanel({
                 disabled={revokingEmail === confirmRevoke.invitedEmail}
                 className="flex-1 py-3 bg-red-600 text-white rounded-2xl font-bold disabled:opacity-50"
               >
-                Revoke
+                {t('admin.users.revoke')}
               </button>
             </div>
           </div>
@@ -1077,10 +1053,15 @@ export function CircleSettingsUserManagementPanel({
               <Trash2 size={24} />
             </div>
             <div className="text-center space-y-2">
-              <h3 className="text-lg font-bold text-slate-900">Remove person?</h3>
+              <h3 className="text-lg font-bold text-slate-900">{t('admin.users.deleteModalTitle')}</h3>
               <p className="text-slate-500 text-sm leading-relaxed">
-                Remove {confirmDelete.name || confirmDelete.email || 'this person'} from{' '}
-                {patient.displayName}&apos;s lists?
+                {t('admin.users.deleteModalDescription', {
+                  name:
+                    confirmDelete.name ||
+                    confirmDelete.email ||
+                    t('admin.users.thisPerson'),
+                  patient: patient.displayName,
+                })}
               </p>
               {confirmDelete.email && isValidInviteEmail(confirmDelete.email) && (
                 <p className="text-base font-bold text-red-600 break-all px-1">{confirmDelete.email}</p>
@@ -1092,7 +1073,7 @@ export function CircleSettingsUserManagementPanel({
                 onClick={() => setConfirmDelete(null)}
                 className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-bold"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -1100,7 +1081,7 @@ export function CircleSettingsUserManagementPanel({
                 disabled={saving}
                 className="flex-1 py-3 bg-red-600 text-white rounded-2xl font-bold disabled:opacity-50"
               >
-                Delete
+                {t('admin.users.deleteAria')}
               </button>
             </div>
           </div>
@@ -1118,9 +1099,9 @@ export function CircleSettingsUserManagementPanel({
         isSubmitting={saving || revokingEmail !== null}
         confirmLabel={
           inviteConfirmAction?.type === 'delete'
-            ? 'Delete person'
+            ? t('admin.users.deletePerson')
             : inviteConfirmAction?.type === 'revoke'
-              ? 'Remove access'
+              ? t('admin.users.removeAccess')
               : undefined
         }
       />

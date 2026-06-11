@@ -1,4 +1,5 @@
 import { MessageSquare } from 'lucide-react';
+import { useCircleT } from '../lib/circleI18nContext';
 
 type CircleDiscardDraftModalProps = {
   open: boolean;
@@ -11,6 +12,7 @@ export function CircleDiscardDraftModal({
   onDiscard,
   onContinueEditing,
 }: CircleDiscardDraftModalProps) {
+  const t = useCircleT();
   if (!open) return null;
 
   return (
@@ -26,11 +28,10 @@ export function CircleDiscardDraftModal({
         </div>
         <div className="space-y-2">
           <h3 id="discard-draft-title" className="text-xl font-bold text-slate-900">
-            Discard unsent reply?
+            {t('messages.discardTitle')}
           </h3>
           <p className="text-slate-500 text-sm leading-relaxed">
-            You have typed a reply that has not been sent yet. Leave anyway and discard it, or
-            stay and keep editing.
+            {t('messages.discardMessage')}
           </p>
         </div>
         <div className="flex flex-col gap-3">
@@ -39,14 +40,14 @@ export function CircleDiscardDraftModal({
             onClick={onDiscard}
             className="w-full py-4 bg-red-600 text-white rounded-2xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
           >
-            Discard reply
+            {t('messages.discardConfirm')}
           </button>
           <button
             type="button"
             onClick={onContinueEditing}
             className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all"
           >
-            Keep editing
+            {t('messages.keepEditing')}
           </button>
         </div>
       </div>
