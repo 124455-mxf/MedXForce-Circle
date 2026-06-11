@@ -1,7 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, X } from 'lucide-react';
-import type { CirclePatientProfileSnapshot, CircleProfileMedItem } from '@medxforce/shared';
+import {
+  REMOTE_PRIMARY_LANGUAGE_OPTIONS,
+  type CirclePatientProfileSnapshot,
+  type CircleProfileMedItem,
+  type RemotePrimaryLanguage,
+} from '@medxforce/shared';
 import { CircleProfileFieldLabel } from '../lib/circleProfileAiDiscovery';
+import {
+  identityLanguageLabel,
+  resolveIdentityPrimaryLanguage,
+} from '../lib/circleLanguages';
+import { CirclePatientLanguageConfirmModal } from './CirclePatientLanguageConfirmModal';
 
 type EditableSection = 'identity' | 'extended' | 'engagement' | 'lifestyle' | 'clinical';
 
@@ -9,6 +19,7 @@ interface CirclePatientProfileEditorModalProps {
   open: boolean;
   section: EditableSection;
   snapshot: CirclePatientProfileSnapshot;
+  patientDisplayName?: string;
   saving?: boolean;
   onClose: () => void;
   onSave: (next: CirclePatientProfileSnapshot) => void;
@@ -187,14 +198,19 @@ export function CirclePatientProfileEditorModal({
   open,
   section,
   snapshot,
+  patientDisplayName,
   saving = false,
   onClose,
   onSave,
 }: CirclePatientProfileEditorModalProps) {
   const [draft, setDraft] = useState(snapshot);
+  const [pendingLanguage, setPendingLanguage] = useState<RemotePrimaryLanguage | null>(null);
 
   useEffect(() => {
-    if (open) setDraft(snapshot);
+    if (open) {
+      setDraft(snapshot);
+      setPendingLanguage(null);
+    }
   }, [open, snapshot]);
 
   if (!open) return null;
@@ -296,16 +312,22 @@ export function CirclePatientProfileEditorModal({
               </label>
               <label className="block space-y-1">
                 <span className="text-xs font-bold text-slate-500 uppercase">Language</span>
-                <input
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200"
-                  value={draft.identity.language}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      identity: { ...draft.identity, language: e.target.value },
-                    })
-                  }
-                />
+                <select
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
+                  value={resolveIdentityPrimaryLanguage(draft.identity.language)}
+                  onChange={(e) => {
+                    const next = e.target.value as RemotePrimaryLanguage;
+                    const current = resolveIdentityPrimaryLanguage(draft.identity.language);
+                    if (next === current) return;
+                    setPendingLanguage(next);
+                  }}
+                >
+                  {REMOTE_PRIMARY_LANGUAGE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="block space-y-1">
@@ -839,6 +861,28 @@ export function CirclePatientProfileEditorModal({
           </button>
         </div>
       </div>
+
+      <CirclePatientLanguageConfirmModal
+        open={pendingLanguage !== null}
+        patientName={
+          patientDisplayName?.trim() ||
+          `${draft.identity.firstName || ''} ${draft.identity.lastName || ''}`.trim() ||
+          'the patient'
+        }
+        languageLabel={pendingLanguage ? identityLanguageLabel(pendingLanguage) : ''}
+        onCancel={() => setPendingLanguage(null)}
+        onConfirm={() => {
+          if (!pendingLanguage) return;
+          setDraft({
+            ...draft,
+            identity: {
+              ...draft.identity,
+              language: identityLanguageLabel(pendingLanguage),
+            },
+          });
+          setPendingLanguage(null);
+        }}
+      />
     </div>
   );
 }

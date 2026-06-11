@@ -58,20 +58,26 @@ import {
 import { useCirclePatientRemoteCommandAwaiting } from '../hooks/useCirclePatientRemoteCommandAwaiting';
 
 import {
-  formatAssistiveDeviceLabel,
-  formatTreatmentPhaseLabel,
-  getCircleProfileCompletenessLabel,
+  isCircleProfileDataComplete,
   getUserProfileRecencyUrgency,
 } from '../lib/circleProfileDashboard';
 
 import {
-  formatPatientActiveSection,
   isPatientDoNotDisturbSection,
   formatPatientOnlineDurationLabel,
   usePatientOnlinePresence,
 } from '../hooks/usePatientOnlinePresence';
 
-import { useCircleT } from '../lib/circleI18nContext';
+import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
+import {
+  assistiveDevicesLabelT,
+  dashboardPlural,
+  formatDashboardLastLine,
+  formatDashboardTimestamp,
+  formatPatientActiveSectionT,
+  profileCompletenessLabelT,
+  treatmentPhaseLabelT,
+} from '../lib/dashboardI18n';
 import {
   DASHBOARD_STATS_DAYS,
   getAlertAttentionRecencyUrgency,
@@ -139,34 +145,6 @@ type DashboardWidgetSpec = {
   recencyTint?: AlertAttentionRecencyUrgency;
 };
 
-function formatTimestamp(ts: number | null | undefined): string {
-  if (!ts) return 'Not recorded yet';
-
-  const d = new Date(ts);
-  const today = new Date();
-  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-  if (d.toDateString() === today.toDateString()) return `Today, ${time}`;
-
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  if (d.toDateString() === yesterday.toDateString()) return `Yesterday, ${time}`;
-
-  return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}`;
-}
-
-function formatLastLine(ts: number | null | undefined): string {
-  return `Last: ${formatTimestamp(ts)}`;
-}
-
-function formatLastCommunicationInputMethod(
-  method: 'keyboard' | 'touch' | null | undefined,
-): string {
-  if (method === 'keyboard') return 'Last: Keyboard';
-  if (method === 'touch') return 'Last: Touch';
-  return 'Last: Not recorded yet';
-}
-
 function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
   const Icon = spec.icon;
   const rows = [spec.row1, spec.row2, spec.row3].filter(
@@ -205,6 +183,7 @@ function LivePatientWidget({
   onResumeDropIn,
   dropInActive = false,
   dropInChatOpen = false,
+  t,
 }: {
   onlineDurationLabel: string;
   activeSectionLabel: string;
@@ -215,6 +194,7 @@ function LivePatientWidget({
   onResumeDropIn?: () => void;
   dropInActive?: boolean;
   dropInChatOpen?: boolean;
+  t: ReturnType<typeof useCircleT>;
 }) {
   const showResumeDropIn = dropInActive && !dropInChatOpen && !!onResumeDropIn;
 
@@ -229,17 +209,17 @@ function LivePatientWidget({
       >
         <div className="flex-1 min-w-0 flex flex-col">
           <Radio size={20} className="mb-2 shrink-0 text-emerald-600" />
-          <p className="font-bold text-slate-800 text-sm sm:text-base">Live</p>
+          <p className="font-bold text-slate-800 text-sm sm:text-base">{t('dashboard.live')}</p>
           <div className="text-xs text-slate-600 mt-1 leading-snug flex-1 flex flex-col justify-end gap-0.5">
-            <p>Online for {onlineDurationLabel}</p>
-            <p className="line-clamp-2">Currently: {activeSectionLabel}</p>
+            <p>{t('dashboard.onlineFor', { duration: onlineDurationLabel })}</p>
+            <p className="line-clamp-2">{t('dashboard.currently', { section: activeSectionLabel })}</p>
           </div>
         </div>
 
         {showRemotePrompts ? (
           <div className="w-[11.5rem] sm:w-[13rem] shrink-0 flex flex-col border-l border-slate-200/90 pl-4 sm:pl-5 pb-1">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Remote prompts
+              {t('dashboard.remotePrompts')}
             </p>
             <div className="mt-3.5 flex flex-col gap-2 flex-1 justify-center min-h-0 pb-1.5">
               <button
@@ -248,7 +228,7 @@ function LivePatientWidget({
                 className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-blue-200 text-blue-800 text-xs font-bold hover:bg-blue-50"
               >
                 <Calendar size={14} className="shrink-0" aria-hidden />
-                Check-in
+                {t('dashboard.checkIn')}
               </button>
               <button
                 type="button"
@@ -256,7 +236,7 @@ function LivePatientWidget({
                 className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-blue-200 text-blue-800 text-xs font-bold hover:bg-blue-50"
               >
                 <Stethoscope size={14} className="shrink-0" aria-hidden />
-                Doctor visit
+                {t('dashboard.doctorVisit')}
               </button>
               {onDropIn ? (
                 <button
@@ -265,7 +245,7 @@ function LivePatientWidget({
                   className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-indigo-200 text-indigo-800 text-xs font-bold hover:bg-indigo-50"
                 >
                   <MessageCircle size={14} className="shrink-0" aria-hidden />
-                  Drop in
+                  {t('dashboard.dropIn')}
                 </button>
               ) : null}
             </div>
@@ -280,14 +260,20 @@ function LivePatientWidget({
           className="absolute left-1/2 bottom-0 z-10 -translate-x-1/2 translate-y-1/2 inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold shadow-md hover:bg-indigo-700 whitespace-nowrap"
         >
           <MessageCircle size={14} className="shrink-0" aria-hidden />
-          Resume drop-in
+          {t('dashboard.resumeDropIn')}
         </button>
       ) : null}
     </div>
   );
 }
 
-function RecordVisitCaptureWidget({ onRecordVisitCapture }: { onRecordVisitCapture: () => void }) {
+function RecordVisitCaptureWidget({
+  onRecordVisitCapture,
+  t,
+}: {
+  onRecordVisitCapture: () => void;
+  t: ReturnType<typeof useCircleT>;
+}) {
   return (
     <button
       type="button"
@@ -300,9 +286,11 @@ function RecordVisitCaptureWidget({ onRecordVisitCapture }: { onRecordVisitCaptu
     >
       <Stethoscope size={20} className="text-blue-600 shrink-0" aria-hidden />
       <div className="min-w-0 flex-1">
-        <p className="font-bold text-slate-800 text-sm sm:text-base leading-tight">Record visit</p>
+        <p className="font-bold text-slate-800 text-sm sm:text-base leading-tight">
+          {t('dashboard.recordVisit')}
+        </p>
         <p className="text-xs text-slate-500 mt-0.5 leading-snug line-clamp-2 sm:line-clamp-1">
-          Capture audio and notes from a doctor visit on your device
+          {t('dashboard.recordVisitDesc')}
         </p>
       </div>
     </button>
@@ -358,6 +346,7 @@ export function CircleDashboardScreen({
   dropInChatOpen,
 }: CircleDashboardScreenProps) {
   const t = useCircleT();
+  const { language } = useCircleI18nContext();
   const caps = patient.capabilities;
   const memberRole = normalizeMemberRole(patient.role);
   const showEngagementStats = caps.viewEngagementTrends !== false;
@@ -466,6 +455,17 @@ export function CircleDashboardScreen({
       )
     : '';
 
+  const lastLine = (ts: number | null | undefined) =>
+    formatDashboardLastLine(t, language, ts);
+
+  const formatCommunicationInputMethod = (
+    method: 'keyboard' | 'touch' | null | undefined,
+  ): string => {
+    if (method === 'keyboard') return t('dashboard.lastKeyboard');
+    if (method === 'touch') return t('dashboard.lastTouch');
+    return lastLine(null);
+  };
+
   if (showEngagementStats) {
     lastSevenDayWidgets.push({
       key: 'alert-attention',
@@ -474,9 +474,9 @@ export function CircleDashboardScreen({
       ...(analyticsLoading
         ? loadingRows(t('common.loading'))
         : {
-            row1: `${alertStats.alerts} alert${alertStats.alerts === 1 ? '' : 's'}`,
-            row2: `${alertStats.attentions} attention`,
-            row3: formatLastLine(alertAttentionSummary?.latestAt),
+            row1: dashboardPlural(t, 'alert', alertStats.alerts),
+            row2: dashboardPlural(t, 'attention', alertStats.attentions),
+            row3: lastLine(alertAttentionSummary?.latestAt),
             recencyTint: getAlertAttentionRecencyUrgency(alertAttentionSummary?.latestAt),
           }),
       onClick: () => onOpenAnalyticsDetail('alert-attention'),
@@ -495,19 +495,21 @@ export function CircleDashboardScreen({
             ...(dailyDetail
               ? checkInStats.total > 0
                 ? {
-                    row1: `${checkInStats.completed} completed`,
-                    row2: `${checkInStats.skipped} skipped`,
-                    row3: formatLastLine(dailyCheckInLatestAt),
+                    row1: dashboardPlural(t, 'completed', checkInStats.completed),
+                    row2: dashboardPlural(t, 'skipped', checkInStats.skipped),
+                    row3: lastLine(dailyCheckInLatestAt),
                   }
                 : {
-                    row1: `Skip rate: ${dailyDetail.skipRate}%`,
-                    row2: `Last filled: ${formatTimestamp(dailyCheckIn?.latestAt)}`,
-                    row3: formatLastLine(dailyCheckInLatestAt),
+                    row1: t('dashboard.skipRate', { rate: dailyDetail.skipRate }),
+                    row2: t('dashboard.lastFilled', {
+                      when: formatDashboardTimestamp(t, language, dailyCheckIn?.latestAt),
+                    }),
+                    row3: lastLine(dailyCheckInLatestAt),
                   }
               : {
-                  row1: dailyCheckIn?.summaryText || 'No check-ins yet',
-                  row2: `Last ${DASHBOARD_STATS_DAYS} days`,
-                  row3: formatLastLine(dailyCheckIn?.latestAt),
+                  row1: dailyCheckIn?.summaryText || t('dashboard.noCheckInsYet'),
+                  row2: t('common.last7Days'),
+                  row3: lastLine(dailyCheckIn?.latestAt),
                 }),
             recencyTint: getDailyCheckInRecencyUrgency({
               completedInWindow: checkInStats.completed,
@@ -526,12 +528,12 @@ export function CircleDashboardScreen({
       ...(analyticsLoading
         ? loadingRows(t('common.loading'))
         : {
-            row1: `${communicationStats.messaging} messaging`,
+            row1: dashboardPlural(t, 'messaging', communicationStats.messaging),
             row2:
               caps.messaging && messageCount > 0
-                ? `${messageCount} thread${messageCount === 1 ? '' : 's'}`
-                : `Last ${DASHBOARD_STATS_DAYS} days`,
-            row3: caps.messaging ? `${unreadCount} unread` : undefined,
+                ? dashboardPlural(t, 'thread', messageCount)
+                : t('common.last7Days'),
+            row3: caps.messaging ? t('common.unread', { count: unreadCount }) : undefined,
           }),
       onClick: () => onGoToTab(caps.messaging ? 'messages' : 'analytics'),
     });
@@ -543,11 +545,9 @@ export function CircleDashboardScreen({
       ...(analyticsLoading
         ? loadingRows(t('common.loading'))
         : {
-            row1: `${communicationStats.communication} communication`,
-            row2: formatLastCommunicationInputMethod(
-              speechDetail?.lastCommunicationInputMethod,
-            ),
-            row3: `${companionLast7} companion`,
+            row1: dashboardPlural(t, 'communicationStat', communicationStats.communication),
+            row2: formatCommunicationInputMethod(speechDetail?.lastCommunicationInputMethod),
+            row3: dashboardPlural(t, 'companion', companionLast7),
           }),
       onClick: () => onGoToTab('analytics'),
     });
@@ -564,9 +564,9 @@ export function CircleDashboardScreen({
             const unseenCount =
               soulDetail?.unseenMediaCount ?? soulDetail?.unseenPhotoCount ?? 0;
             return {
-              row1: `${vitalityGamesLast7} game${vitalityGamesLast7 === 1 ? '' : 's'} played`,
-              row2: `${pictureCount} picture${pictureCount === 1 ? '' : 's'}`,
-              row3: `${unseenCount} unseen`,
+              row1: dashboardPlural(t, 'gamesPlayed', vitalityGamesLast7),
+              row2: dashboardPlural(t, 'picture', pictureCount),
+              row3: dashboardPlural(t, 'unseen', unseenCount),
             };
           })()),
       onClick: () => onGoToTab('analytics'),
@@ -579,11 +579,11 @@ export function CircleDashboardScreen({
       ...(analyticsLoading
         ? loadingRows(t('common.loading'))
         : {
-            row1: `${assessmentsLast7} finished`,
+            row1: t('dashboard.finished', { count: assessmentsLast7 }),
             row2: latestAssessment.title
-              ? `Last: ${latestAssessment.title}`
-              : 'No assessments yet',
-            row3: formatLastLine(latestAssessment.latestAt),
+              ? t('dashboard.lastAssessment', { title: latestAssessment.title })
+              : t('dashboard.noAssessmentsYet'),
+            row3: lastLine(latestAssessment.latestAt),
           }),
       onClick: () => onGoToTab('analytics'),
     });
@@ -598,8 +598,8 @@ export function CircleDashboardScreen({
         ? loadingRows(t('common.loading'))
         : diaryPreview.sharedCount === 0
           ? {
-              row1: 'No shared entries yet',
-              row2: 'Add a recovery note for the circle',
+              row1: t('dashboard.noSharedEntries'),
+              row2: t('dashboard.addRecoveryNote'),
             }
           : (() => {
               const latest = diaryPreview.latest;
@@ -607,25 +607,21 @@ export function CircleDashboardScreen({
               const mood = latest?.mood ? diaryMoodLabel(latest.mood) : undefined;
               const authorLine = latest
                 ? latest.authorUid === user.uid
-                  ? 'Your latest entry'
-                  : `From ${latest.authorName}`
+                  ? t('dashboard.yourLatestEntry')
+                  : t('dashboard.fromSender', { name: latest.authorName })
                 : undefined;
 
               return {
                 row1:
                   diaryPreview.entriesLast7 > 0
-                    ? `${diaryPreview.entriesLast7} entr${
-                        diaryPreview.entriesLast7 === 1 ? 'y' : 'ies'
-                      } this week`
-                    : `${diaryPreview.sharedCount} entr${
-                        diaryPreview.sharedCount === 1 ? 'y' : 'ies'
-                      }`,
-                row2: latest ? diaryEntryPreviewLine(latest) : 'Tap to read the journal',
+                    ? dashboardPlural(t, 'entriesThisWeek', diaryPreview.entriesLast7)
+                    : dashboardPlural(t, 'entry', diaryPreview.sharedCount),
+                row2: latest ? diaryEntryPreviewLine(latest) : t('dashboard.tapToReadJournal'),
                 row3: latest?.isMilestone
-                  ? `Milestone · ${formatLastLine(latestAt)}`
+                  ? `${t('dashboard.milestone')} · ${lastLine(latestAt)}`
                   : mood
-                    ? `${mood} · ${authorLine ?? formatLastLine(latestAt)}`
-                    : authorLine ?? formatLastLine(latestAt),
+                    ? `${mood} · ${authorLine ?? lastLine(latestAt)}`
+                    : authorLine ?? lastLine(latestAt),
                 recencyTint: getDiaryRecencyUrgency(latestAt),
               };
             })()),
@@ -637,13 +633,13 @@ export function CircleDashboardScreen({
     key: 'circle',
     title: t('dashboard.circleMessages'),
     icon: Users,
-    row1: `${circlePostCount} post${circlePostCount === 1 ? '' : 's'}`,
+    row1: dashboardPlural(t, 'post', circlePostCount),
     row2:
       circleUnreadCount > 0
-        ? `${circleUnreadCount} unread`
+        ? t('common.unread', { count: circleUnreadCount })
         : circlePostCount === 0
-          ? 'No family posts yet'
-          : 'All caught up',
+          ? t('dashboard.noFamilyPostsYet')
+          : t('dashboard.allCaughtUp'),
     onClick: () => onGoToTab('circle'),
   });
 
@@ -663,44 +659,38 @@ export function CircleDashboardScreen({
         ? loadingRows(t('common.loading'))
         : galleryDashboard.myUploadCount === 0
           ? {
-              row1: 'Share a moment',
-              row2: 'Upload a photo for the family',
+              row1: t('dashboard.shareMoment'),
+              row2: t('dashboard.uploadPhotoForFamily'),
             }
           : galleryDashboard.reactionsOnMyUploadsLast7 > 0
             ? {
-                row1: `${galleryDashboard.reactionsOnMyUploadsLast7} reaction${
-                  galleryDashboard.reactionsOnMyUploadsLast7 === 1 ? '' : 's'
-                } this week`,
+                row1: dashboardPlural(
+                  t,
+                  'reactionsThisWeek',
+                  galleryDashboard.reactionsOnMyUploadsLast7,
+                ),
                 row2:
                   galleryDashboard.patientReactionsOnMyUploads > 0
-                    ? `${patientFirstName}: ${galleryDashboard.patientReactionsOnMyUploads} reaction${
-                        galleryDashboard.patientReactionsOnMyUploads === 1 ? '' : 's'
-                      }`
-                    : `${galleryDashboard.myUploadCount} photo${
-                        galleryDashboard.myUploadCount === 1 ? '' : 's'
-                      } shared`,
+                    ? dashboardPlural(t, 'patientReactions', galleryDashboard.patientReactionsOnMyUploads, {
+                        name: patientFirstName,
+                      })
+                    : dashboardPlural(t, 'sharedPhotos', galleryDashboard.myUploadCount),
                 row3:
                   galleryDashboard.reactionsOnMyUploads >
                   galleryDashboard.reactionsOnMyUploadsLast7
-                    ? `${galleryDashboard.reactionsOnMyUploads} total reactions`
+                    ? dashboardPlural(t, 'totalReactions', galleryDashboard.reactionsOnMyUploads)
                     : undefined,
                 recencyTint: 'green' as const,
               }
             : galleryDashboard.reactionsOnMyUploads > 0
               ? {
-                  row1: `${galleryDashboard.reactionsOnMyUploads} reaction${
-                    galleryDashboard.reactionsOnMyUploads === 1 ? '' : 's'
-                  } on your photos`,
-                  row2: 'None in the last 7 days',
-                  row3: `${galleryDashboard.myUploadCount} photo${
-                    galleryDashboard.myUploadCount === 1 ? '' : 's'
-                  } shared`,
+                  row1: dashboardPlural(t, 'reactionsOnYourPhotos', galleryDashboard.reactionsOnMyUploads),
+                  row2: t('dashboard.noneLast7Days'),
+                  row3: dashboardPlural(t, 'sharedPhotos', galleryDashboard.myUploadCount),
                 }
               : {
-                  row1: `${galleryDashboard.myUploadCount} photo${
-                    galleryDashboard.myUploadCount === 1 ? '' : 's'
-                  } shared`,
-                  row2: 'No reactions yet — tap to view',
+                  row1: dashboardPlural(t, 'sharedPhotos', galleryDashboard.myUploadCount),
+                  row2: t('dashboard.noReactionsYetTap'),
                 }),
       onClick: () => onGoToTab('media'),
     });
@@ -718,46 +708,36 @@ export function CircleDashboardScreen({
           ? loadingRows(t('common.loading'))
           : galleryDashboard.reactionsLast7 > 0
             ? {
-                row1: `${galleryDashboard.reactionsLast7} reaction${
-                  galleryDashboard.reactionsLast7 === 1 ? '' : 's'
-                } this week`,
-                row2: `${galleryDashboard.photoCount} photo${
-                  galleryDashboard.photoCount === 1 ? '' : 's'
-                } in the gallery`,
+                row1: dashboardPlural(t, 'reactionsThisWeek', galleryDashboard.reactionsLast7),
+                row2: dashboardPlural(t, 'photosInGallery', galleryDashboard.photoCount),
                 row3:
                   unseenGalleryCount > 0
-                    ? `${unseenGalleryCount} unseen by patient`
+                    ? dashboardPlural(t, 'unseenByPatient', unseenGalleryCount)
                     : galleryDashboard.totalReactions > galleryDashboard.reactionsLast7
-                      ? `${galleryDashboard.totalReactions} total reactions`
+                      ? dashboardPlural(t, 'totalReactions', galleryDashboard.totalReactions)
                       : undefined,
                 recencyTint: 'green' as const,
               }
             : galleryDashboard.totalReactions > 0
               ? {
-                  row1: `${galleryDashboard.totalReactions} reaction${
-                    galleryDashboard.totalReactions === 1 ? '' : 's'
-                  } on family photos`,
-                  row2: `${galleryDashboard.photoCount} photo${
-                    galleryDashboard.photoCount === 1 ? '' : 's'
-                  } shared`,
+                  row1: dashboardPlural(t, 'reactionsOnFamilyPhotos', galleryDashboard.totalReactions),
+                  row2: dashboardPlural(t, 'sharedPhotos', galleryDashboard.photoCount),
                   row3:
                     unseenGalleryCount > 0
-                      ? `${unseenGalleryCount} unseen by patient`
+                      ? dashboardPlural(t, 'unseenByPatient', unseenGalleryCount)
                       : undefined,
                 }
               : galleryDashboard.photoCount > 0
                 ? {
-                    row1: `${galleryDashboard.photoCount} photo${
-                      galleryDashboard.photoCount === 1 ? '' : 's'
-                    } shared`,
+                    row1: dashboardPlural(t, 'sharedPhotos', galleryDashboard.photoCount),
                     row2:
                       unseenGalleryCount > 0
-                        ? `${unseenGalleryCount} unseen by patient`
-                        : 'Be the first to react',
+                        ? dashboardPlural(t, 'unseenByPatient', unseenGalleryCount)
+                        : t('dashboard.beFirstToReact'),
                   }
                 : {
-                    row1: 'No photos yet',
-                    row2: 'Upload a memory for the family',
+                    row1: t('dashboard.noPhotosYet'),
+                    row2: t('dashboard.uploadMemory'),
                   }),
         onClick: () => onGoToTab('media'),
       }
@@ -766,8 +746,8 @@ export function CircleDashboardScreen({
   if (showRemoteSettings) {
     const checkInLabel =
       remoteSettings?.dailyCheckIn?.enabled !== false
-        ? 'Daily check-in on'
-        : 'Daily check-in off';
+        ? t('dashboard.dailyCheckInOn')
+        : t('dashboard.dailyCheckInOff');
 
     patientAppWidgets.push({
       key: 'remote-settings',
@@ -786,11 +766,18 @@ export function CircleDashboardScreen({
     ...(profileLoading
       ? loadingRows(t('common.loading'))
       : {
-          row1: getCircleProfileCompletenessLabel(profileSnapshot, false),
-          row2: `Phase: ${formatTreatmentPhaseLabel(profileSnapshot?.clinical.treatmentPhase)}`,
-          row3: `Device: ${formatAssistiveDeviceLabel(
-            profileSnapshot?.lifestyle.assistiveDevices,
-          )}`,
+          row1: profileCompletenessLabelT(
+            t,
+            profileSnapshot,
+            false,
+            profileSnapshot ? isCircleProfileDataComplete(profileSnapshot) : false,
+          ),
+          row2: t('dashboard.phase', {
+            phase: treatmentPhaseLabelT(t, profileSnapshot?.clinical.treatmentPhase),
+          }),
+          row3: t('dashboard.device', {
+            device: assistiveDevicesLabelT(t, profileSnapshot?.lifestyle.assistiveDevices),
+          }),
           recencyTint: getUserProfileRecencyUrgency(profileSnapshot),
         }),
     onClick: () => onGoToTab('admin'),
@@ -848,7 +835,7 @@ export function CircleDashboardScreen({
       <div className="space-y-5">
         {onOpenVisitCapture ? (
           <div className="grid grid-cols-2 gap-3">
-            <RecordVisitCaptureWidget onRecordVisitCapture={onOpenVisitCapture} />
+            <RecordVisitCaptureWidget onRecordVisitCapture={onOpenVisitCapture} t={t} />
           </div>
         ) : null}
 
@@ -862,8 +849,9 @@ export function CircleDashboardScreen({
             >
               <LivePatientWidget
                 onlineDurationLabel={liveOnlineDurationLabel}
-                activeSectionLabel={formatPatientActiveSection(patientPresence.activeSection)}
+                activeSectionLabel={formatPatientActiveSectionT(t, patientPresence.activeSection)}
                 showRemotePrompts={showRemotePrompts}
+                t={t}
                 onPromptCheckIn={() => {
                   setSentCommandThisOpen(false);
                   setConfirmCommandType('open_daily_check_in');
@@ -890,7 +878,7 @@ export function CircleDashboardScreen({
 
         {familyGalleryWidget ? (
           <section className="space-y-2">
-            <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>Stay connected</h3>
+            <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionStayConnected')}</h3>
             <div className="grid grid-cols-2 gap-3">
               <div className={DASHBOARD_WIDGET_CELL_CLASS}>
                 <DashboardWidget spec={familyGalleryWidget} />

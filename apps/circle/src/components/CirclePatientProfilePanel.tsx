@@ -295,6 +295,7 @@ export function CirclePatientProfilePanel({
           open
           section={editSection}
           snapshot={snapshot}
+          patientDisplayName={displayProfileName(snapshot, patient.displayName)}
           saving={saving}
           onClose={() => setEditSection(null)}
           onSave={handleSaveSection}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ImageIcon } from 'lucide-react';
 import type { FamilyGalleryPreviewPhoto } from '../hooks/useFamilyGalleryDashboard';
 import { useGalleryImageSrc } from '../lib/galleryHeicDisplay';
+import { useCircleT } from '../lib/circleI18nContext';
 import { cn } from '../lib/utils';
 
 const ROTATE_MS = 4500;
@@ -34,6 +35,7 @@ export function CircleGalleryRotatingPreviewWidget({
   loading = false,
   onOpenGallery,
 }: CircleGalleryRotatingPreviewWidgetProps) {
+  const t = useCircleT();
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -51,7 +53,9 @@ export function CircleGalleryRotatingPreviewWidget({
   const current = photos[index];
   const subtitle =
     current?.caption?.trim() ||
-    (current?.senderName ? `From ${current.senderName}` : 'Tap to open gallery');
+    (current?.senderName
+      ? t('dashboard.fromSender', { name: current.senderName })
+      : t('dashboard.tapToOpenGallery'));
 
   return (
     <button
@@ -61,7 +65,7 @@ export function CircleGalleryRotatingPreviewWidget({
         'relative h-full w-full overflow-hidden rounded-2xl border text-left transition-colors',
         'border-slate-100 bg-slate-900 hover:border-blue-200',
       )}
-      aria-label="Open media gallery"
+      aria-label={t('dashboard.openMediaGallery')}
     >
       <style>{`@keyframes galleryFadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
       {loading ? (
@@ -71,8 +75,8 @@ export function CircleGalleryRotatingPreviewWidget({
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm">
             <ImageIcon size={20} className="text-blue-600" aria-hidden />
           </div>
-          <p className="text-sm font-bold text-slate-800">Media gallery</p>
-          <p className="text-xs text-slate-500 leading-snug">Share a photo to get started</p>
+          <p className="text-sm font-bold text-slate-800">{t('dashboard.mediaGallery')}</p>
+          <p className="text-xs text-slate-500 leading-snug">{t('dashboard.sharePhotoToStart')}</p>
         </div>
       ) : (
         <>
@@ -81,7 +85,9 @@ export function CircleGalleryRotatingPreviewWidget({
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
           <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-white/80">Gallery</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-white/80">
+              {t('dashboard.gallery')}
+            </p>
             <p className="mt-0.5 text-xs font-semibold text-white leading-snug line-clamp-2">
               {subtitle}
             </p>

@@ -29,6 +29,8 @@ import {
 } from '@medxforce/shared';
 import type { CirclePatientProfileSnapshot } from '@medxforce/shared';
 import type { CirclePatientSummary } from '@medxforce/shared';
+import { useCircleT } from '../lib/circleI18nContext';
+import { insightLabelT } from '../lib/dashboardI18n';
 import { cn } from '../lib/utils';
 
 function patientFirstName(
@@ -68,6 +70,7 @@ function CelebrationCard({
   body,
   onOpenProfile,
   isPreview = false,
+  t,
 }: {
   tone: 'birthday' | 'milestone';
   icon: LucideIcon;
@@ -75,6 +78,7 @@ function CelebrationCard({
   body: string;
   onOpenProfile?: () => void;
   isPreview?: boolean;
+  t: ReturnType<typeof useCircleT>;
 }) {
   const Wrapper = onOpenProfile && !isPreview ? 'button' : 'div';
 
@@ -92,7 +96,7 @@ function CelebrationCard({
     >
       {isPreview ? (
         <span className="absolute top-3 right-3 inline-flex rounded-full bg-slate-900/75 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-          Preview
+          {t('dashboard.preview')}
         </span>
       ) : null}
       <div className="flex h-full flex-col gap-2.5">
@@ -125,9 +129,11 @@ function CelebrationCard({
 function InsightCard({
   item,
   onOpenProfile,
+  t,
 }: {
   item: CirclePatientInsightItem;
   onOpenProfile?: () => void;
+  t: ReturnType<typeof useCircleT>;
 }) {
   const Icon = INSIGHT_ICONS[item.key];
   const Wrapper = onOpenProfile ? 'button' : 'div';
@@ -146,7 +152,7 @@ function InsightCard({
     >
       {item.overflowCount && item.overflowCount > 0 ? (
         <span className="absolute top-3 right-3 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold tabular-nums text-slate-500">
-          {item.totalCount} total
+          {t('dashboard.totalCount', { count: item.totalCount })}
         </span>
       ) : null}
       <div className="flex items-start gap-2.5">
@@ -156,7 +162,7 @@ function InsightCard({
         />
         <div className="min-w-0 flex-1 pr-1">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            {item.label}
+            {insightLabelT(t, item.key)}
           </p>
           <p
             className={cn(
@@ -165,7 +171,7 @@ function InsightCard({
             )}
             title={item.filled ? item.value : undefined}
           >
-            {item.filled ? item.value : 'Not added yet'}
+            {item.filled ? item.value : t('dashboard.notAddedYet')}
           </p>
           {!item.filled && item.hint ? (
             <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed line-clamp-2">
@@ -173,7 +179,9 @@ function InsightCard({
             </p>
           ) : null}
           {item.filled && item.overflowCount && item.overflowCount > 0 && onOpenProfile ? (
-            <p className="text-[11px] font-semibold text-blue-600 mt-1.5">View all in profile</p>
+            <p className="text-[11px] font-semibold text-blue-600 mt-1.5">
+              {t('dashboard.viewAllInProfile')}
+            </p>
           ) : null}
         </div>
       </div>
@@ -187,6 +195,7 @@ export function CirclePatientInsightsSection({
   loading = false,
   onOpenProfile,
 }: CirclePatientInsightsSectionProps) {
+  const t = useCircleT();
   const previewReminders = useMemo(() => isPatientInsightsPreviewRemindersEnabled(), []);
   const [expanded, setExpanded] = useState(false);
 
@@ -194,10 +203,10 @@ export function CirclePatientInsightsSection({
     return (
       <section className="space-y-2">
         <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5">
-          Get to know…
+          {t('dashboard.getToKnowEllipsis')}
         </h3>
         <div className="p-5 rounded-2xl border border-slate-100 bg-white text-sm text-slate-400">
-          Loading patient insights…
+          {t('dashboard.loadingInsights')}
         </div>
       </section>
     );
@@ -210,7 +219,7 @@ export function CirclePatientInsightsSection({
   const onsetMilestone = resolveOnsetMilestone(snapshot);
   const counts = countFilledPatientInsights(items);
   const firstName = patientFirstName(snapshot, patient.displayName);
-  const sectionTitle = `Get to know ${firstName}`;
+  const sectionTitle = t('dashboard.getToKnow', { name: firstName });
 
   const previewBirthday = previewReminders ? buildPreviewBirthdayReminder(firstName) : null;
   const previewOnsetFiveYear = previewReminders ? buildPreviewOnsetMilestoneFiveYear() : null;
@@ -223,8 +232,8 @@ export function CirclePatientInsightsSection({
     : onsetMilestone
       ? onsetMilestone.headline
       : previewReminders
-        ? previewBirthday?.headline ?? 'Preview: birthday & onset reminders'
-        : `${counts.filled}/${counts.total} insights available`;
+        ? previewBirthday?.headline ?? t('dashboard.previewRemindersCollapsed')
+        : t('dashboard.insightsAvailable', { count: counts.filled, total: counts.total });
 
   return (
     <section className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
@@ -239,14 +248,14 @@ export function CirclePatientInsightsSection({
           <p className="text-xs font-medium text-slate-500 mt-1 leading-snug">{collapsedHint}</p>
           {!expanded ? (
             <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
-              Tap to view hobbies, goals, diagnosis, and more
+              {t('dashboard.insightsTap')}
             </p>
           ) : null}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {hasReminder && !expanded ? (
             <span className="inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">
-              Reminder
+              {t('dashboard.reminder')}
             </span>
           ) : null}
           <ChevronDown
@@ -263,14 +272,13 @@ export function CirclePatientInsightsSection({
         <div className="border-t border-slate-100 px-4 pb-4 pt-3 space-y-3">
           {previewReminders ? (
             <p className="text-[11px] text-violet-700 bg-violet-50 border border-violet-100 rounded-xl px-3 py-2 leading-relaxed">
-              Preview mode — sample birthday and onset tiles. Remove{' '}
-              <span className="font-semibold">?previewReminders=1</span> from the URL when done.
+              {t('dashboard.previewRemindersHint')}
             </p>
           ) : null}
 
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-slate-500 leading-relaxed">
-              {counts.filled}/{counts.total} insights available
+              {t('dashboard.insightsAvailable', { count: counts.filled, total: counts.total })}
             </p>
             {onOpenProfile ? (
               <button
@@ -278,7 +286,7 @@ export function CirclePatientInsightsSection({
                 onClick={onOpenProfile}
                 className="text-xs font-bold text-blue-600 hover:text-blue-700 shrink-0"
               >
-                Full profile
+                {t('dashboard.fullProfile')}
               </button>
             ) : null}
           </div>
@@ -297,6 +305,7 @@ export function CirclePatientInsightsSection({
                     headline={birthday.headline}
                     body={birthday.body}
                     onOpenProfile={onOpenProfile}
+                    t={t}
                   />
                 </div>
               ) : null}
@@ -309,6 +318,7 @@ export function CirclePatientInsightsSection({
                     headline={previewBirthday.headline}
                     body={previewBirthday.body}
                     isPreview
+                    t={t}
                   />
                 </div>
               ) : null}
@@ -321,6 +331,7 @@ export function CirclePatientInsightsSection({
                     headline={onsetMilestone.headline}
                     body={onsetMilestone.body}
                     onOpenProfile={onOpenProfile}
+                    t={t}
                   />
                 </div>
               ) : null}
@@ -333,6 +344,7 @@ export function CirclePatientInsightsSection({
                     headline={previewOnsetFiveYear.headline}
                     body={previewOnsetFiveYear.body}
                     isPreview
+                    t={t}
                   />
                 </div>
               ) : null}
@@ -345,6 +357,7 @@ export function CirclePatientInsightsSection({
                     headline={previewOnsetOneYear.headline}
                     body={previewOnsetOneYear.body}
                     isPreview
+                    t={t}
                   />
                 </div>
               ) : null}
@@ -353,7 +366,7 @@ export function CirclePatientInsightsSection({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {items.map((item) => (
-              <InsightCard key={item.key} item={item} onOpenProfile={onOpenProfile} />
+              <InsightCard key={item.key} item={item} onOpenProfile={onOpenProfile} t={t} />
             ))}
           </div>
         </div>
