@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import { ClipboardList, Loader2, UserRound } from 'lucide-react';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import type { FirebaseStorage } from 'firebase/storage';
+import { Camera, ClipboardList, Loader2, UserRound } from 'lucide-react';
 import {
   displayProfileName,
   parseCircleProfileMeta,
@@ -13,13 +15,16 @@ import {
 } from '@medxforce/shared';
 import { CirclePatientProfileEditorModal } from './CirclePatientProfileEditorModal';
 import { CirclePatientProfileReview } from './CirclePatientProfileReview';
+import { CircleProfilePhotoCropModal } from './CircleProfilePhotoCropModal';
+import { dataUrlToBlob } from '../lib/imageCrop';
 import { isFirestoreQuotaError, pauseFirestoreBackgroundWrites } from '../lib/firestoreQuota';
 
-type EditableSection = 'identity' | 'engagement' | 'lifestyle';
+type EditableSection = 'identity' | 'extended' | 'engagement' | 'lifestyle' | 'clinical';
 
 interface CirclePatientProfilePanelProps {
   user: User;
   db: Firestore;
+  storage: FirebaseStorage;
   patient: CirclePatientSummary;
   /** Admin embed: hide section icon/title (shown on collapsible summary instead). */
   compact?: boolean;
@@ -28,15 +33,19 @@ interface CirclePatientProfilePanelProps {
 export function CirclePatientProfilePanel({
   user,
   db,
+  storage,
   patient,
   compact = false,
 }: CirclePatientProfilePanelProps) {
+  const fileRef = useRef<HTMLInputElement>(null);
   const [snapshot, setSnapshot] = useState<CirclePatientProfileSnapshot | null>(null);
   const [metaSummary, setMetaSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editSection, setEditSection] = useState<EditableSection | null>(null);
+  const [fileToCrop, setFileToCrop] = useState<File | null>(null);
 
   const canEdit = !!patient.capabilities.remoteSettings;
   const showClinical = !!patient.capabilities.viewClinicalData;
@@ -95,10 +104,77 @@ export function CirclePatientProfilePanel({
 
   const handleEditSection = (sectionId: string) => {
     if (!canEdit || !snapshot) return;
-    if (sectionId === 'identity' || sectionId === 'engagement' || sectionId === 'lifestyle') {
+    if (sectionId === 'clinical' && !showClinical) return;
+    if (
+      sectionId === 'identity' ||
+      sectionId === 'extended' ||
+      sectionId === 'engagement' ||
+      sectionId === 'lifestyle' ||
+      sectionId === 'clinical'
+    ) {
       setEditSection(sectionId);
     }
   };
+
+  const handlePhotoChange = (file: File) => {
+    if (!canEdit || !snapshot) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose an image file.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Image must be smaller than 10 MB.');
+      return;
+    }
+    setError(null);
+    setFileToCrop(file);
+  };
+
+  const uploadCroppedPhoto = async (croppedDataUrl: string) => {
+    if (!snapshot) {
+      throw new Error('Profile not loaded. Close this dialog and try again.');
+    }
+    setUploadingPhoto(true);
+    setError(null);
+    try {
+      const blob = await dataUrlToBlob(croppedDataUrl);
+      // Proxy uploads use circle_profiles/{uid}/… — already allowed by Storage rules.
+      const path = `circle_profiles/${user.uid}/patient_${patient.patientId}_avatar.jpg`;
+      const storageRef = ref(storage, path);
+      await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
+      const url = await getDownloadURL(storageRef);
+      const next: CirclePatientProfileSnapshot = {
+        ...snapshot,
+        identity: { ...snapshot.identity, profilePicture: url },
+      };
+      await updateCirclePatientProfileFromProxy(
+        db,
+        patient.patientId,
+        next,
+        user.uid,
+        patient.displayName,
+      );
+      setFileToCrop(null);
+    } catch (err) {
+      console.warn('[CirclePatientProfilePanel] photo', err);
+      const code = typeof err === 'object' && err && 'code' in err ? String((err as { code?: string }).code) : '';
+      const message =
+        code === 'storage/unauthorized'
+          ? 'Storage permission denied. Ask the patient to deploy updated Firebase Storage rules, or try again later.'
+          : code === 'permission-denied'
+            ? 'Firestore permission denied. Deploy updated Firestore rules so proxies can update profile photos.'
+            : err instanceof Error && err.message
+              ? err.message
+              : 'Could not upload profile photo.';
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const photoUrl =
+    snapshot?.identity.profilePicture?.trim() || patient.photoUrl?.trim() || '';
 
   return (
     <div className={compact ? 'p-4 space-y-4' : 'space-y-4'}>
@@ -134,13 +210,53 @@ export function CirclePatientProfilePanel({
         </div>
       ) : (
         <>
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
-            <p className="text-lg font-bold text-slate-800">
-              {displayProfileName(snapshot, patient.displayName)}
-            </p>
-            {metaSummary && (
-              <p className="text-xs text-slate-500">{metaSummary}</p>
-            )}
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center gap-4">
+            <div className="relative shrink-0">
+              {photoUrl ? (
+                <img
+                  src={photoUrl}
+                  alt=""
+                  className="w-16 h-16 rounded-2xl object-cover border border-slate-200 bg-white"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-300">
+                  <UserRound size={28} />
+                </div>
+              )}
+              {canEdit && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={uploadingPhoto || saving}
+                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-md disabled:opacity-50"
+                    aria-label="Change profile photo"
+                  >
+                    {uploadingPhoto ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+                  </button>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void handlePhotoChange(file);
+                      e.target.value = '';
+                    }}
+                  />
+                </>
+              )}
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="text-lg font-bold text-slate-800">
+                {displayProfileName(snapshot, patient.displayName)}
+              </p>
+              {snapshot.identity.email && (
+                <p className="text-sm text-slate-500 truncate">{snapshot.identity.email}</p>
+              )}
+              {metaSummary && <p className="text-xs text-slate-500">{metaSummary}</p>}
+            </div>
           </div>
 
           <CirclePatientProfileReview
@@ -149,6 +265,15 @@ export function CirclePatientProfilePanel({
             canEdit={canEdit}
             onEditSection={handleEditSection}
           />
+
+          {canEdit && (
+            <p className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 leading-relaxed">
+              <span className="font-semibold text-slate-700">Editable:</span> profile photo (camera on avatar), and
+              sections with a pencil — Identity, Extended, Engagement, Lifestyle
+              {showClinical ? ', Clinical' : ''}.{' '}
+              <span className="font-semibold text-slate-700">Read-only here:</span> Functional (change in the Patient app).
+            </p>
+          )}
 
           {!canEdit && (
             <p className="text-xs text-slate-400 flex items-center gap-2 px-1">
@@ -173,6 +298,14 @@ export function CirclePatientProfilePanel({
           saving={saving}
           onClose={() => setEditSection(null)}
           onSave={handleSaveSection}
+        />
+      )}
+
+      {fileToCrop && (
+        <CircleProfilePhotoCropModal
+          file={fileToCrop}
+          onCancel={() => setFileToCrop(null)}
+          onApply={(croppedDataUrl) => uploadCroppedPhoto(croppedDataUrl)}
         />
       )}
     </div>

@@ -19,6 +19,7 @@ export function CircleProfilePhotoCropModal({
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Build a fresh object URL from the File on each mount (StrictMode-safe).
   useEffect(() => {
@@ -31,13 +32,19 @@ export function CircleProfilePhotoCropModal({
   }, [file]);
 
   const handleApply = async () => {
-    if (!croppedAreaPixels || !imageSrc) return;
+    if (!croppedAreaPixels || !imageSrc) {
+      setError('Move or zoom the image so the crop area is ready, then try again.');
+      return;
+    }
     setProcessing(true);
+    setError(null);
     try {
       const cropped = await getCroppedImg(imageSrc, croppedAreaPixels);
-      if (!cropped) throw new Error('Could not crop image');
+      if (!cropped) throw new Error('Could not crop image.');
       await onApply(cropped);
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not apply crop.';
+      setError(message);
       console.warn('[CircleProfilePhotoCropModal]', err);
     } finally {
       setProcessing(false);
@@ -70,6 +77,7 @@ export function CircleProfilePhotoCropModal({
               cropShape="round"
               showGrid={false}
               onCropChange={setCrop}
+              onCropAreaChange={(_area, pixels) => setCroppedAreaPixels(pixels)}
               onCropComplete={(_area, pixels) => setCroppedAreaPixels(pixels)}
               onZoomChange={setZoom}
             />
@@ -98,6 +106,12 @@ export function CircleProfilePhotoCropModal({
             />
           </div>
 
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+              {error}
+            </p>
+          )}
+
           <div className="flex gap-4">
             <button
               type="button"
@@ -110,7 +124,7 @@ export function CircleProfilePhotoCropModal({
             <button
               type="button"
               onClick={() => void handleApply()}
-              disabled={processing || !croppedAreaPixels}
+              disabled={processing}
               className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {processing ? (

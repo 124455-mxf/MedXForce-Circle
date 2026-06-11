@@ -11,6 +11,18 @@ export const REMOTE_SETTINGS_DOC_ID = 'live';
 
 export type RemoteAppMode = 'intensive_care' | 'hospital' | 'user';
 
+export type RemotePrimaryLanguage = 'English' | 'German' | 'Spanish' | 'Polish';
+
+export const REMOTE_PRIMARY_LANGUAGE_OPTIONS: {
+  value: RemotePrimaryLanguage;
+  label: string;
+}[] = [
+  { value: 'English', label: 'English (EN)' },
+  { value: 'German', label: 'German (DE)' },
+  { value: 'Spanish', label: 'Spanish (ES)' },
+  { value: 'Polish', label: 'Polish (PL)' },
+];
+
 export type RemoteDailyCheckInSettings = {
   enabled: boolean;
   quietHours: {
@@ -41,6 +53,14 @@ export type RemoteVisibleAreas = {
 /** Whitelisted keys Circle may read/write in Phase 1. */
 export type RemoteSettingsPayload = {
   appMode?: RemoteAppMode;
+  primaryLanguage?: RemotePrimaryLanguage;
+  showAlertButton?: boolean;
+  showAttentionButton?: boolean;
+  detectEngagementNeed?: boolean;
+  showSaveButton?: boolean;
+  useAiAssistant?: boolean;
+  aiConversation?: boolean;
+  allowSendMessages?: boolean;
   showUserInSidebar?: boolean;
   showQuickSettings?: boolean;
   showSettingsInSidebar?: boolean;
@@ -123,6 +143,71 @@ export const REMOTE_VISIBLE_AREA_TOGGLES: { key: keyof RemoteVisibleAreas; label
   { key: 'unicode', label: 'Unicode' },
 ];
 
+/** High-priority proxy toggles grouped like patient settings tabs. */
+export const REMOTE_PROXY_SECTIONS: {
+  id: string;
+  title: string;
+  toggles: RemoteFeatureToggleDef[];
+}[] = [
+  {
+    id: 'alerts',
+    title: 'Alerts & Attention',
+    toggles: [
+      {
+        path: 'showAlertButton',
+        label: 'Emergency alert button',
+        description: 'Show the emergency alert button on the tablet.',
+      },
+      {
+        path: 'showAttentionButton',
+        label: 'Attention request button',
+        description: 'Show the non-emergency attention request button.',
+      },
+    ],
+  },
+  {
+    id: 'communication',
+    title: 'Communication',
+    toggles: [
+      {
+        path: 'detectEngagementNeed',
+        label: 'Detect engagement need',
+        description: 'Automatically detect when the patient may need engagement support.',
+      },
+      {
+        path: 'showSaveButton',
+        label: 'Show save button',
+        description: 'Show the save button in the communication interface.',
+      },
+    ],
+  },
+  {
+    id: 'messaging',
+    title: 'Messaging',
+    toggles: [
+      {
+        path: 'useAiAssistant',
+        label: 'AI Assistant in messaging',
+        description: 'AI writing help when composing messages.',
+      },
+      {
+        path: 'aiConversation',
+        label: 'MedIsOn Companion',
+        description: 'Enable the MedIsOn companion conversation feature.',
+      },
+      {
+        path: 'allowSendMessages',
+        label: 'Allow sending messages',
+        description: 'Let the patient send outgoing messages.',
+      },
+    ],
+  },
+];
+
+export const REMOTE_PROXY_TOGGLE_PATHS: string[] = REMOTE_PROXY_SECTIONS.flatMap((section) =>
+  section.toggles.map((toggle) => toggle.path),
+);
+
 export function remoteSettingsDocRef(db: Firestore, patientId: string) {
   return doc(db, 'patients', patientId, 'remote_settings', REMOTE_SETTINGS_DOC_ID);
 }
@@ -133,6 +218,15 @@ function asBool(value: unknown): boolean | undefined {
 
 function asString(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
+}
+
+function parsePrimaryLanguage(value: unknown): RemotePrimaryLanguage | undefined {
+  return value === 'English' ||
+    value === 'German' ||
+    value === 'Spanish' ||
+    value === 'Polish'
+    ? value
+    : undefined;
 }
 
 function parseDailyCheckIn(raw: unknown): RemoteDailyCheckInSettings | undefined {
@@ -197,6 +291,14 @@ export function parsePatientRemoteSettings(
   return {
     patientId,
     appMode: mode,
+    primaryLanguage: parsePrimaryLanguage(data.primaryLanguage),
+    showAlertButton: asBool(data.showAlertButton),
+    showAttentionButton: asBool(data.showAttentionButton),
+    detectEngagementNeed: asBool(data.detectEngagementNeed),
+    showSaveButton: asBool(data.showSaveButton),
+    useAiAssistant: asBool(data.useAiAssistant),
+    aiConversation: asBool(data.aiConversation),
+    allowSendMessages: asBool(data.allowSendMessages),
     showUserInSidebar: asBool(data.showUserInSidebar),
     showQuickSettings: asBool(data.showQuickSettings),
     showSettingsInSidebar: asBool(data.showSettingsInSidebar),
@@ -257,6 +359,14 @@ export function extractRemoteSettingsFromPreferences(
   return {
     patientId,
     appMode: preferences.appMode as RemoteAppMode | undefined,
+    primaryLanguage: parsePrimaryLanguage(preferences.primaryLanguage) ?? 'English',
+    showAlertButton: preferences.showAlertButton !== false,
+    showAttentionButton: preferences.showAttentionButton !== false,
+    detectEngagementNeed: !!preferences.detectEngagementNeed,
+    showSaveButton: preferences.showSaveButton !== false,
+    useAiAssistant: preferences.useAiAssistant !== false,
+    aiConversation: !!preferences.aiConversation,
+    allowSendMessages: preferences.allowSendMessages !== false,
     showUserInSidebar: !!preferences.showUserInSidebar,
     showQuickSettings: preferences.showQuickSettings !== false,
     showSettingsInSidebar: preferences.showSettingsInSidebar !== false,
@@ -310,6 +420,13 @@ export function getRemoteSettingValue(
   if (path === 'showUserInSidebar') return doc.showUserInSidebar;
   if (path === 'showQuickSettings') return doc.showQuickSettings;
   if (path === 'showSettingsInSidebar') return doc.showSettingsInSidebar;
+  if (path === 'showAlertButton') return doc.showAlertButton;
+  if (path === 'showAttentionButton') return doc.showAttentionButton;
+  if (path === 'detectEngagementNeed') return doc.detectEngagementNeed;
+  if (path === 'showSaveButton') return doc.showSaveButton;
+  if (path === 'useAiAssistant') return doc.useAiAssistant;
+  if (path === 'aiConversation') return doc.aiConversation;
+  if (path === 'allowSendMessages') return doc.allowSendMessages;
   if (path === 'betterVisibleCursor') return doc.betterVisibleCursor;
   if (path === 'showAiSuggestions') return doc.showAiSuggestions;
   if (path === 'speakOnSelection') return doc.speakOnSelection;
@@ -341,6 +458,13 @@ export function setRemoteSettingValue(
   if (path === 'showUserInSidebar') next.showUserInSidebar = value;
   else if (path === 'showQuickSettings') next.showQuickSettings = value;
   else if (path === 'showSettingsInSidebar') next.showSettingsInSidebar = value;
+  else if (path === 'showAlertButton') next.showAlertButton = value;
+  else if (path === 'showAttentionButton') next.showAttentionButton = value;
+  else if (path === 'detectEngagementNeed') next.detectEngagementNeed = value;
+  else if (path === 'showSaveButton') next.showSaveButton = value;
+  else if (path === 'useAiAssistant') next.useAiAssistant = value;
+  else if (path === 'aiConversation') next.aiConversation = value;
+  else if (path === 'allowSendMessages') next.allowSendMessages = value;
   else if (path === 'betterVisibleCursor') next.betterVisibleCursor = value;
   else if (path === 'showAiSuggestions') next.showAiSuggestions = value;
   else if (path === 'speakOnSelection') next.speakOnSelection = value;
@@ -400,13 +524,57 @@ const REMOTE_DAILY_CHECKIN_QUIET_HOURS = {
   end: '06:00',
 } as const;
 
+const REMOTE_PROXY_PRESET_BY_MODE: Record<
+  RemoteAppMode,
+  Pick<
+    RemoteSettingsPayload,
+    | 'showAlertButton'
+    | 'showAttentionButton'
+    | 'detectEngagementNeed'
+    | 'showSaveButton'
+    | 'useAiAssistant'
+    | 'aiConversation'
+    | 'allowSendMessages'
+  >
+> = {
+  intensive_care: {
+    showAlertButton: true,
+    showAttentionButton: true,
+    detectEngagementNeed: false,
+    showSaveButton: false,
+    useAiAssistant: true,
+    aiConversation: false,
+    allowSendMessages: true,
+  },
+  hospital: {
+    showAlertButton: true,
+    showAttentionButton: true,
+    detectEngagementNeed: false,
+    showSaveButton: true,
+    useAiAssistant: true,
+    aiConversation: false,
+    allowSendMessages: true,
+  },
+  user: {
+    showAlertButton: true,
+    showAttentionButton: true,
+    detectEngagementNeed: false,
+    showSaveButton: true,
+    useAiAssistant: true,
+    aiConversation: false,
+    allowSendMessages: true,
+  },
+};
+
 /** Remote-settings fields that match each application mode preset (subset of patient app modes). */
 function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload {
   const visibleAll = { phrases: true, categories: true, emojis: true, unicode: true };
+  const proxyPreset = REMOTE_PROXY_PRESET_BY_MODE[mode];
 
   if (mode === 'intensive_care') {
     return {
       appMode: 'intensive_care',
+      ...proxyPreset,
       showUserInSidebar: false,
       showQuickSettings: false,
       showSettingsInSidebar: false,
@@ -435,6 +603,7 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
   if (mode === 'user') {
     return {
       appMode: 'user',
+      ...proxyPreset,
       showUserInSidebar: true,
       showQuickSettings: true,
       showSettingsInSidebar: true,
@@ -465,6 +634,7 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
 
   return {
     appMode: 'hospital',
+    ...proxyPreset,
     showUserInSidebar: false,
     showQuickSettings: false,
     showSettingsInSidebar: false,
@@ -524,6 +694,12 @@ export function isRemoteSettingsCustomized(doc: PatientRemoteSettingsDoc): boole
     }
   }
 
+  for (const path of REMOTE_PROXY_TOGGLE_PATHS) {
+    if (!remoteBoolMatches(getRemoteSettingValue(doc, path), getRemoteSettingValue(preset, path))) {
+      return true;
+    }
+  }
+
   for (const item of REMOTE_VISIBLE_AREA_TOGGLES) {
     if (!remoteBoolMatches(doc.visibleAreas?.[item.key], preset.visibleAreas?.[item.key])) {
       return true;
@@ -553,38 +729,8 @@ export function formatDashboardApplicationModeLine(
 export function createDefaultRemoteSettings(patientId: string): PatientRemoteSettingsDoc {
   return {
     patientId,
-    appMode: 'hospital',
-    showUserInSidebar: true,
-    showQuickSettings: true,
-    showSettingsInSidebar: true,
-    featuresVisibility: {
-      dashboard: true,
-      communication: true,
-      messaging: true,
-      aiCompanion: true,
-      healthAssessments: true,
-      analytics: true,
-      journeyDiary: false,
-      activity: { enabled: true },
-    },
-    journeyDiary: { allowViewSharedEntries: false },
-    dailyCheckIn: {
-      enabled: true,
-      quietHours: { enabled: true, start: '22:00', end: '06:00' },
-    },
-    betterVisibleCursor: true,
-    showAiSuggestions: true,
-    speakOnSelection: true,
-    showFrequentlyUsed: true,
-    hideRightSidebar: false,
-    contentFontSize: 'medium',
-    visibleAreas: {
-      phrases: true,
-      categories: true,
-      emojis: true,
-      unicode: true,
-    },
-    quickAreasOrder: ['phrases', 'categories', 'emojis', 'unicode'],
+    primaryLanguage: 'English',
+    ...remotePresetPayloadForMode('hospital'),
     updatedAt: 0,
     updatedByUid: '',
     updatedByName: '',
@@ -626,7 +772,22 @@ export function setRemoteAppMode(
   doc: PatientRemoteSettingsDoc,
   appMode: RemoteAppMode,
 ): PatientRemoteSettingsDoc {
-  return { ...doc, appMode };
+  const preset = remotePresetPayloadForMode(appMode);
+  return {
+    ...doc,
+    ...preset,
+    appMode,
+    patientId: doc.patientId,
+    primaryLanguage: doc.primaryLanguage,
+    quickAreasOrder: preset.quickAreasOrder ?? doc.quickAreasOrder,
+  };
+}
+
+export function setRemotePrimaryLanguage(
+  doc: PatientRemoteSettingsDoc,
+  primaryLanguage: RemotePrimaryLanguage,
+): PatientRemoteSettingsDoc {
+  return { ...doc, primaryLanguage };
 }
 
 export function setRemoteContentFontSize(

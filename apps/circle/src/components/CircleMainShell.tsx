@@ -440,7 +440,7 @@ export function CircleMainShell({
             </div>
           )}
           {activeTab === 'admin' && (
-            <CircleAdminScreen user={user} db={db} patient={selectedPatient} />
+            <CircleAdminScreen user={user} db={db} storage={storage} patient={selectedPatient} />
           )}
           {activeTab === 'analytics' && (
             <div className="flex flex-col flex-1 min-h-0">

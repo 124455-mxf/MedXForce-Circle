@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -61,12 +62,14 @@ export async function updateCirclePatientProfileFromProxy(
     changedLabels,
   };
 
+  const profilePicture = String(snapshot.identity.profilePicture || '').trim();
   await setDoc(
     patientRef,
     {
       profileSnapshot: snapshot,
       profileMeta: meta,
       updatedAt: meta.updatedAt,
+      photoUrl: profilePicture ? profilePicture : deleteField(),
     },
     { merge: true },
   );
@@ -74,13 +77,17 @@ export async function updateCirclePatientProfileFromProxy(
   const meaningfulChanges = meaningfulProfileChangedLabels(changedLabels);
   if (meaningfulChanges.length > 0) {
     const notificationId = `proxy_edit_${meta.updatedAt}`;
-    await setDoc(doc(db, 'patients', patientId, 'profile_notifications', notificationId), {
-      type: 'patient_edit',
-      timestamp: meta.updatedAt,
-      summary: meta.summary || buildProfileChangeSummary('proxy', patientDisplayName, changedLabels),
-      changedLabels,
-      readBy: { [actorUid]: meta.updatedAt },
-    });
+    try {
+      await setDoc(doc(db, 'patients', patientId, 'profile_notifications', notificationId), {
+        type: 'patient_edit',
+        timestamp: meta.updatedAt,
+        summary: meta.summary || buildProfileChangeSummary('proxy', patientDisplayName, changedLabels),
+        changedLabels,
+        readBy: { [actorUid]: meta.updatedAt },
+      });
+    } catch (err) {
+      console.warn('[updateCirclePatientProfileFromProxy] profile notification', err);
+    }
   }
 }
 

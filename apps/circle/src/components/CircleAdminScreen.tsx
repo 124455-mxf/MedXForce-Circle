@@ -1,5 +1,6 @@
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
+import type { FirebaseStorage } from 'firebase/storage';
 import type { CirclePatientSummary } from '@medxforce/shared';
 import { CircleCollapsibleSection } from './CircleCollapsibleSection';
 import { CirclePatientProfilePanel } from './CirclePatientProfilePanel';
@@ -9,10 +10,11 @@ import { CircleWorkTabDashboardBackButton } from './CircleWorkTabSectionIntro';
 interface CircleAdminScreenProps {
   user: User;
   db: Firestore;
+  storage: FirebaseStorage;
   patient: CirclePatientSummary;
 }
 
-export function CircleAdminScreen({ user, db, patient }: CircleAdminScreenProps) {
+export function CircleAdminScreen({ user, db, storage, patient }: CircleAdminScreenProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-2 px-1">
@@ -26,7 +28,7 @@ export function CircleAdminScreen({ user, db, patient }: CircleAdminScreenProps)
       </div>
 
       <CircleCollapsibleSection title="Patient profile">
-        <CirclePatientProfilePanel user={user} db={db} patient={patient} compact />
+        <CirclePatientProfilePanel user={user} db={db} storage={storage} patient={patient} compact />
       </CircleCollapsibleSection>
 
       <CircleCollapsibleSection title="User management">
