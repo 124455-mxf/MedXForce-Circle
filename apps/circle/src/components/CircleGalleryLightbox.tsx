@@ -17,6 +17,7 @@ import {
 } from '../lib/galleryLightboxLayout';
 import { resolveGalleryUploaderDisplayName } from '../lib/galleryUploaderDisplay';
 import { CircleGalleryCaptionView } from './CircleGalleryCaptionView';
+import { useCircleT } from '../lib/circleI18nContext';
 
 const DEFAULT_SLIDESHOW_SECONDS = 5;
 
@@ -91,6 +92,7 @@ export function CircleGalleryLightbox({
   onClose,
   autoPlaySlideshow = false,
 }: CircleGalleryLightboxProps) {
+  const t = useCircleT();
   const item = items[index];
   const hasPrev = index > 0;
   const hasNext = index < items.length - 1;
@@ -227,7 +229,7 @@ export function CircleGalleryLightbox({
             type="button"
             onClick={goPrev}
             className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 z-10 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/90 hover:bg-white text-slate-400 hover:text-slate-600 border border-slate-200 shadow-lg flex items-center justify-center"
-            aria-label="Previous"
+            aria-label={t('common.aria.previous')}
           >
             <ChevronLeft size={28} />
           </button>
@@ -255,7 +257,7 @@ export function CircleGalleryLightbox({
             type="button"
             onClick={goNext}
             className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 z-10 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/90 hover:bg-white text-slate-400 hover:text-slate-600 border border-slate-200 shadow-lg flex items-center justify-center"
-            aria-label="Next"
+            aria-label={t('common.aria.next')}
           >
             <ChevronRight size={28} />
           </button>
@@ -283,7 +285,7 @@ export function CircleGalleryLightbox({
           type="button"
           onClick={onClose}
           className="pointer-events-auto w-9 h-9 rounded-full bg-white/95 text-slate-500 border border-slate-200 shadow-md flex items-center justify-center hover:text-slate-700"
-          aria-label="Close"
+          aria-label={t('common.close')}
         >
           <X size={18} />
         </button>
@@ -294,7 +296,9 @@ export function CircleGalleryLightbox({
           type="button"
           onClick={() => setIsSlideshowActive((v) => !v)}
           className="pointer-events-auto w-9 h-9 rounded-full bg-blue-600 text-white shadow-xl flex items-center justify-center hover:bg-blue-700"
-          aria-label={isSlideshowActive ? 'Pause slideshow' : 'Play slideshow'}
+          aria-label={
+            isSlideshowActive ? t('common.aria.pauseSlideshow') : t('common.aria.playSlideshow')
+          }
         >
           {isSlideshowActive ? <Pause size={18} fill="white" /> : <Play size={18} fill="white" />}
         </button>

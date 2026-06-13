@@ -11,24 +11,13 @@ import {
   type CircleMemberThreadKind,
   type CircleMemberThreadPost,
 } from '@medxforce/shared';
+import { countUnreadPostsForInboxView, countUnreadPostsForThread } from '../lib/circlePostInboxViews';
 import {
-  countUnreadCircleThreadPosts,
-  getCircleThreadLastReadAt,
-  subscribeCircleThreadRead,
-} from '../lib/circleMemberThreadRead';
+  getCirclePostThreadLastReadAt,
+  getCirclePostThreadReadSnapshot,
+  subscribeCirclePostThreadRead,
+} from '../lib/circlePostThreadRead';
 import { useHiddenCircleThreadPosts } from './useHiddenCircleThreadPosts';
-
-function useCircleThreadLastRead(
-  patientId: string,
-  userId: string,
-  threadKind: CircleMemberThreadKind,
-): number {
-  return useSyncExternalStore(
-    subscribeCircleThreadRead,
-    () => getCircleThreadLastReadAt(patientId, userId, threadKind),
-    () => 0,
-  );
-}
 
 export function useCircleMemberThreadUnread(
   db: Firestore,
@@ -40,9 +29,11 @@ export function useCircleMemberThreadUnread(
   const canOpen = canParticipateInCircleOpenThread(memberRole);
   const canRestricted = canSeeCircleRestrictedThread(memberRole);
   const { hiddenByPostId } = useHiddenCircleThreadPosts(db, patientId, userId);
-
-  const openLastRead = useCircleThreadLastRead(patientId, userId, 'open');
-  const restrictedLastRead = useCircleThreadLastRead(patientId, userId, 'restricted');
+  const postReadTick = useSyncExternalStore(
+    subscribeCirclePostThreadRead,
+    getCirclePostThreadReadSnapshot,
+    () => 0,
+  );
 
   const [openPosts, setOpenPosts] = useState<CircleMemberThreadPost[]>([]);
   const [restrictedPosts, setRestrictedPosts] = useState<CircleMemberThreadPost[]>([]);
@@ -99,18 +90,173 @@ export function useCircleMemberThreadUnread(
     [hiddenByPostId, restrictedPosts],
   );
 
+  const getOpenPostLastRead = useMemo(
+    () => (postId: string) => getCirclePostThreadLastReadAt(patientId, userId, 'open', postId),
+    [patientId, userId],
+  );
+
+  const getRestrictedPostLastRead = useMemo(
+    () => (postId: string) => getCirclePostThreadLastReadAt(patientId, userId, 'restricted', postId),
+    [patientId, userId],
+  );
+
+  const announcementsUnreadCount = useMemo(() => {
+    let total = 0;
+    if (canOpen) {
+      total += countUnreadPostsForInboxView(
+        openPosts,
+        'announcements',
+        hiddenByPostId,
+        'open',
+        userId,
+        getOpenPostLastRead,
+      );
+    }
+    if (canRestricted) {
+      total += countUnreadPostsForInboxView(
+        restrictedPosts,
+        'announcements',
+        hiddenByPostId,
+        'restricted',
+        userId,
+        getRestrictedPostLastRead,
+      );
+    }
+    return total;
+  }, [
+    canOpen,
+    canRestricted,
+    getOpenPostLastRead,
+    getRestrictedPostLastRead,
+    hiddenByPostId,
+    openPosts,
+    postReadTick,
+    restrictedPosts,
+    userId,
+  ]);
+
+  const dropInsUnreadCount = useMemo(
+    () =>
+      canRestricted
+        ? countUnreadPostsForInboxView(
+            restrictedPosts,
+            'drop_ins',
+            hiddenByPostId,
+            'restricted',
+            userId,
+            getRestrictedPostLastRead,
+          )
+        : 0,
+    [
+      canRestricted,
+      getRestrictedPostLastRead,
+      hiddenByPostId,
+      postReadTick,
+      restrictedPosts,
+      userId,
+    ],
+  );
+
+  const visitCapturesUnreadCount = useMemo(() => {
+    let total = 0;
+    if (canOpen) {
+      total += countUnreadPostsForInboxView(
+        openPosts,
+        'visit_captures',
+        hiddenByPostId,
+        'open',
+        userId,
+        getOpenPostLastRead,
+      );
+    }
+    if (canRestricted) {
+      total += countUnreadPostsForInboxView(
+        restrictedPosts,
+        'visit_captures',
+        hiddenByPostId,
+        'restricted',
+        userId,
+        getRestrictedPostLastRead,
+      );
+    }
+    return total;
+  }, [
+    canOpen,
+    canRestricted,
+    getOpenPostLastRead,
+    getRestrictedPostLastRead,
+    hiddenByPostId,
+    openPosts,
+    postReadTick,
+    restrictedPosts,
+    userId,
+  ]);
+
+  const visitCapturesOpenUnreadCount = useMemo(
+    () =>
+      canOpen
+        ? countUnreadPostsForInboxView(
+            openPosts,
+            'visit_captures',
+            hiddenByPostId,
+            'open',
+            userId,
+            getOpenPostLastRead,
+          )
+        : 0,
+    [canOpen, getOpenPostLastRead, hiddenByPostId, openPosts, postReadTick, userId],
+  );
+
+  const visitCapturesRestrictedUnreadCount = useMemo(
+    () =>
+      canRestricted
+        ? countUnreadPostsForInboxView(
+            restrictedPosts,
+            'visit_captures',
+            hiddenByPostId,
+            'restricted',
+            userId,
+            getRestrictedPostLastRead,
+          )
+        : 0,
+    [
+      canRestricted,
+      getRestrictedPostLastRead,
+      hiddenByPostId,
+      postReadTick,
+      restrictedPosts,
+      userId,
+    ],
+  );
+
   const openUnreadCount = useMemo(
     () =>
-      canOpen ? countUnreadCircleThreadPosts(visibleOpenPosts, userId, openLastRead) : 0,
-    [canOpen, openLastRead, userId, visibleOpenPosts],
+      canOpen
+        ? countUnreadPostsForThread(
+            openPosts,
+            hiddenByPostId,
+            'open',
+            memberRole,
+            userId,
+            (postId) => getCirclePostThreadLastReadAt(patientId, userId, 'open', postId),
+          )
+        : 0,
+    [canOpen, hiddenByPostId, memberRole, openPosts, patientId, postReadTick, userId],
   );
 
   const restrictedUnreadCount = useMemo(
     () =>
       canRestricted
-        ? countUnreadCircleThreadPosts(visibleRestrictedPosts, userId, restrictedLastRead)
+        ? countUnreadPostsForThread(
+            restrictedPosts,
+            hiddenByPostId,
+            'restricted',
+            memberRole,
+            userId,
+            (postId) => getCirclePostThreadLastReadAt(patientId, userId, 'restricted', postId),
+          )
         : 0,
-    [canRestricted, restrictedLastRead, userId, visibleRestrictedPosts],
+    [canRestricted, hiddenByPostId, memberRole, patientId, postReadTick, restrictedPosts, userId],
   );
 
   const unreadCount = openUnreadCount + restrictedUnreadCount;
@@ -120,6 +266,11 @@ export function useCircleMemberThreadUnread(
     unreadCount,
     openUnreadCount,
     restrictedUnreadCount,
+    announcementsUnreadCount,
+    dropInsUnreadCount,
+    visitCapturesUnreadCount,
+    visitCapturesOpenUnreadCount,
+    visitCapturesRestrictedUnreadCount,
     circlePostCount,
   };
 }

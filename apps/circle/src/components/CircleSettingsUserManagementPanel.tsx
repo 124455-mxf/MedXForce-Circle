@@ -15,12 +15,12 @@ import {
   deletePatientManagedContact,
   listPatientManagedContacts,
   listCircleInvitesForPatient,
+  managedContactRecordFingerprint,
   normalizeInviteEmail,
   parsePatientManagedContacts,
   previewCircleAccessRevoke,
   previewManagedContactDeleteInviteChange,
   previewManagedContactInviteChange,
-  readPatientDocUpdatedAt,
   reconcileAcceptedMemberRolesForUser,
   revokeCircleInviteByEmail,
   saveCircleUserProfile,
@@ -45,6 +45,8 @@ import {
   relationshipLabelI18n,
   translateCircleMemberAccessLabel,
 } from '../lib/adminScreenI18n';
+import { inviteForContactEmail, resolvedContactAccess } from '../lib/circleContactDisplay';
+import { CircleContactMemberOverviewStrip } from './CircleContactMemberOverviewStrip';
 
 type PanelTab = 'people' | 'access';
 
@@ -58,13 +60,6 @@ function isValidInviteEmail(raw: string): boolean {
   if (!email) return false;
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 }
-
-const KIND_BADGE: Record<CircleContactKind, string> = {
-  caregiver: 'bg-violet-50 text-violet-700 border-violet-100',
-  family: 'bg-blue-50 text-blue-700 border-blue-100',
-  friend: 'bg-cyan-50 text-cyan-700 border-cyan-100',
-  contact: 'bg-slate-100 text-slate-600 border-slate-200',
-};
 
 function statusClass(status: CircleInviteListItem['status']) {
   if (status === 'accepted') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
@@ -147,50 +142,6 @@ function isCurrentUserInvite(item: CircleInviteListItem, user: User): boolean {
   return false;
 }
 
-function inviteForContactEmail(
-  contact: CircleManagedContact,
-  members: CircleInviteListItem[],
-): CircleInviteListItem | undefined {
-  const email = normalizeInviteEmail(contact.email);
-  if (!email) return undefined;
-  return members.find(
-    (item) =>
-      item.status !== 'revoked' && normalizeInviteEmail(item.invitedEmail) === email,
-  );
-}
-
-function resolvedContactAccess(
-  t: CircleTranslator,
-  contact: CircleManagedContact,
-  members: CircleInviteListItem[],
-): { label: string; badgeClass: string } {
-  const invite = inviteForContactEmail(contact, members);
-  const role =
-    contact.circleRole === 'proxy'
-      ? 'proxy'
-      : invite?.role === 'proxy'
-        ? 'proxy'
-        : contact.circleRole ?? invite?.role;
-  const proxyTier =
-    role === 'proxy'
-      ? contact.proxyTier ??
-        (invite?.proxyTier as CircleManagedContact['proxyTier'] | undefined)
-      : contact.proxyTier ?? invite?.proxyTier;
-
-  if (role && contact.kind !== 'contact') {
-    const label = translateCircleMemberAccessLabel(t, role, proxyTier);
-    const badgeClass =
-      role === 'proxy'
-        ? proxyTier === 'backup'
-          ? 'bg-indigo-50 text-indigo-700 border-indigo-100'
-          : 'bg-violet-50 text-violet-700 border-violet-100'
-        : KIND_BADGE[contact.kind];
-    return { label, badgeClass };
-  }
-
-  return { label: contactKindLabelI18n(t, contact.kind), badgeClass: KIND_BADGE[contact.kind] };
-}
-
 function resolvedInviteAccessLabel(
   t: CircleTranslator,
   item: CircleInviteListItem,
@@ -250,6 +201,12 @@ function PersonRow({
             : t('admin.profile.emptyValue')}
           {contact.email ? ` · ${contact.email}` : ` · ${t('admin.users.noEmail')}`}
         </p>
+        <CircleContactMemberOverviewStrip
+          contact={contact}
+          members={members}
+          showRoleBadge={false}
+          className="mt-2"
+        />
       </div>
       <button
         type="button"
@@ -301,8 +258,7 @@ export function CircleSettingsUserManagementPanel({
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorMode, setEditorMode] = useState<ContactEditorMode>('edit');
   const [draft, setDraft] = useState<ContactEditorDraft>(EMPTY_DRAFT);
-  const [patientDocUpdatedAt, setPatientDocUpdatedAt] = useState(0);
-  const [editorBaselineUpdatedAt, setEditorBaselineUpdatedAt] = useState(0);
+  const [editorBaselineContactFingerprint, setEditorBaselineContactFingerprint] = useState('');
   const [initialDraftFingerprint, setInitialDraftFingerprint] = useState('');
   const [remoteStale, setRemoteStale] = useState(false);
   const [editorAccess, setEditorAccess] = useState<{ label: string; badgeClass: string } | null>(
@@ -370,7 +326,6 @@ export function CircleSettingsUserManagementPanel({
   useEffect(() => {
     if (!patient?.patientId) {
       setContacts([]);
-      setPatientDocUpdatedAt(0);
       return;
     }
 
@@ -379,10 +334,8 @@ export function CircleSettingsUserManagementPanel({
       (snap) => {
         if (!snap.exists()) return;
         const data = snap.data();
-        const updatedAt = readPatientDocUpdatedAt(data);
         const listed = parsePatientManagedContacts(data);
         setContacts(listed);
-        setPatientDocUpdatedAt(updatedAt);
       },
       (err) => {
         console.warn('[CircleSettingsUserManagementPanel] live contacts', err);
@@ -395,13 +348,16 @@ export function CircleSettingsUserManagementPanel({
       if (!editorOpen) setRemoteStale(false);
       return;
     }
-    if (patientDocUpdatedAt <= editorBaselineUpdatedAt) return;
+    if (!editorBaselineContactFingerprint) return;
 
     const currentDraft = draftRef.current;
     const remoteContact = currentDraft.id
       ? contacts.find((contact) => contact.id === currentDraft.id)
       : undefined;
     if (!remoteContact) return;
+
+    const remoteFingerprint = managedContactRecordFingerprint(remoteContact);
+    if (remoteFingerprint === editorBaselineContactFingerprint) return;
 
     const dirty = draftFingerprint(currentDraft) !== initialDraftFingerprint;
     if (!dirty) {
@@ -410,7 +366,7 @@ export function CircleSettingsUserManagementPanel({
       );
       setDraft(refreshed);
       setInitialDraftFingerprint(draftFingerprint(refreshed));
-      setEditorBaselineUpdatedAt(patientDocUpdatedAt);
+      setEditorBaselineContactFingerprint(remoteFingerprint);
       setRemoteStale(false);
       return;
     }
@@ -418,13 +374,12 @@ export function CircleSettingsUserManagementPanel({
     setRemoteStale(true);
   }, [
     contacts,
-    editorBaselineUpdatedAt,
+    editorBaselineContactFingerprint,
     editorMode,
     editorOpen,
     initialDraftFingerprint,
     memberNotifyByEmail,
     members,
-    patientDocUpdatedAt,
   ]);
 
   useEffect(() => {
@@ -519,7 +474,7 @@ export function CircleSettingsUserManagementPanel({
     setEditorAccess(contact ? resolvedContactAccess(t, contact, members) : null);
     if (mode !== 'view') {
       setInitialDraftFingerprint(draftFingerprint(nextDraft));
-      setEditorBaselineUpdatedAt(patientDocUpdatedAt);
+      setEditorBaselineContactFingerprint(contact ? managedContactRecordFingerprint(contact) : '');
     }
     setRemoteStale(false);
     setEditorError(null);
@@ -560,7 +515,7 @@ export function CircleSettingsUserManagementPanel({
     }
     setEditorMode('edit');
     setInitialDraftFingerprint(draftFingerprint(currentDraft));
-    setEditorBaselineUpdatedAt(patientDocUpdatedAt);
+    setEditorBaselineContactFingerprint('');
     setRemoteStale(false);
     setEditorError(null);
   };
@@ -577,7 +532,7 @@ export function CircleSettingsUserManagementPanel({
     setDraft(refreshed);
     setEditorAccess(resolvedContactAccess(t, remoteContact, members));
     setInitialDraftFingerprint(draftFingerprint(refreshed));
-    setEditorBaselineUpdatedAt(patientDocUpdatedAt);
+    setEditorBaselineContactFingerprint(managedContactRecordFingerprint(remoteContact));
     setRemoteStale(false);
     setEditorError(null);
   };
@@ -590,7 +545,7 @@ export function CircleSettingsUserManagementPanel({
     setDraft(EMPTY_DRAFT);
     setRemoteStale(false);
     setInitialDraftFingerprint('');
-    setEditorBaselineUpdatedAt(0);
+    setEditorBaselineContactFingerprint('');
   };
 
   const persistContact = async () => {
@@ -631,7 +586,7 @@ export function CircleSettingsUserManagementPanel({
         ...(circleRole ? { circleRole } : {}),
         ...(proxyTier ? { proxyTier } : {}),
       },
-      { expectedPatientUpdatedAt: editorBaselineUpdatedAt },
+      { expectedContactFingerprint: editorBaselineContactFingerprint || undefined },
     );
 
     if (invite?.status === 'accepted' && invite.acceptedByUid) {
@@ -879,7 +834,7 @@ export function CircleSettingsUserManagementPanel({
                 {sortedContacts.map((contact) => (
                   <PersonRow
                     key={contact.id}
-                    contact={contact}
+                    contact={contactForEditorDisplay(contact, members, memberNotifyByEmail)}
                     members={members}
                     onView={() => openView(contact)}
                     onEdit={() => openEdit(contact)}

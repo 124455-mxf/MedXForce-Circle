@@ -5,7 +5,6 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import { Loader2, Lock, PencilLine, UserRound } from 'lucide-react';
 import {
-  circleMemberAccessLabel,
   findManagedContactByEmail,
   listManagedProxyContacts,
   listPatientManagedContacts,
@@ -25,6 +24,12 @@ import {
   CONTACT_LANGUAGE_OPTIONS,
   defaultRelationshipForKind,
 } from './CircleContactEditorModal';
+import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
+import { normalizeCircleUiLanguage } from '../lib/circleLanguages';
+import {
+  relationshipLabelI18n,
+  translateCircleMemberAccessLabel,
+} from '../lib/adminScreenI18n';
 
 type CircleSettingsMyContactPanelProps = {
   user: User;
@@ -47,21 +52,19 @@ function LockedContactFieldsNote({
   proxies,
   viewerEmail,
   viewerIsProxy,
+  t,
 }: {
   proxies: ManagedProxyContact[];
   viewerEmail: string;
   viewerIsProxy: boolean;
+  t: ReturnType<typeof useCircleT>;
 }) {
-  const security = (
-    <>
-      Email and mobile stay locked here so Circle sign-in stays secure.
-    </>
-  );
+  const security = t('admin.myContactPanel.lockedSecurity');
 
   if (viewerIsProxy) {
     return (
       <p className="text-[11px] text-slate-500 leading-relaxed">
-        {security} You can update these for circle members in User Management.
+        {security} {t('admin.myContactPanel.lockedProxyUserMgmt')}
       </p>
     );
   }
@@ -74,19 +77,23 @@ function LockedContactFieldsNote({
   if (others.length === 0) {
     return (
       <p className="text-[11px] text-slate-500 leading-relaxed">
-        {security} To update yours, reach out to your proxy.
+        {security} {t('admin.myContactPanel.lockedReachOutNone')}
       </p>
     );
   }
 
   return (
     <p className="text-[11px] text-slate-500 leading-relaxed">
-      {security} To update yours, reach out to{' '}
+      {security} {t('admin.myContactPanel.lockedReachOutPrefix')}{' '}
       {others.map((proxy, index) => {
-        const roleLabel = circleMemberAccessLabel('proxy', proxy.tier);
+        const roleLabel = translateCircleMemberAccessLabel(t, 'proxy', proxy.tier);
         const displayName = proxy.name.trim() || proxy.email;
         const separator =
-          index === 0 ? '' : index === others.length - 1 ? ' or ' : ', ';
+          index === 0
+            ? ''
+            : index === others.length - 1
+              ? ` ${t('admin.myContactPanel.or')} `
+              : ', ';
         return (
           <span key={`${proxy.email}-${proxy.tier}`}>
             {separator}
@@ -119,6 +126,8 @@ export function CircleSettingsMyContactPanel({
   onProfileSaved,
   onDirtyChange,
 }: CircleSettingsMyContactPanelProps) {
+  const t = useCircleT();
+  const { setLanguage: setUiLanguage } = useCircleI18nContext();
   const [contact, setContact] = useState<CircleManagedContact | null>(null);
   const [name, setName] = useState('');
   const [language, setLanguage] = useState('English');
@@ -162,11 +171,11 @@ export function CircleSettingsMyContactPanel({
       syncFormFromMerged(mergeContactWithMemberContactProfile(base, memberProfile), false);
     } catch (err) {
       console.warn('[CircleSettingsMyContactPanel]', err);
-      setError('Could not load your contact details.');
+      setError(t('admin.myContactPanel.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [db, patient?.patientId, syncFormFromMerged, user.email, user.uid]);
+  }, [db, patient?.patientId, syncFormFromMerged, t, user.email, user.uid]);
 
   useEffect(() => {
     void loadOwnContact();
@@ -244,7 +253,7 @@ export function CircleSettingsMyContactPanel({
     if (!patient?.patientId || !user.email || !user.uid || !contact) return;
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setError('Name is required.');
+      setError(t('admin.users.nameRequired'));
       return;
     }
 
@@ -277,12 +286,15 @@ export function CircleSettingsMyContactPanel({
       await updateProfile(user, { displayName: trimmedName });
 
       applyMergedContactToForm(updated, setContact, setName, setLanguage, setRelationship);
+      setUiLanguage(normalizeCircleUiLanguage(language));
       setIsDirty(false);
       setSaved(true);
       onProfileSaved?.(trimmedName);
     } catch (err) {
       console.warn('[CircleSettingsMyContactPanel] save', err);
-      setError(err instanceof Error ? err.message : 'Could not save your contact details.');
+      setError(
+        err instanceof Error ? err.message : t('admin.myContactPanel.saveFailed'),
+      );
     } finally {
       setSaving(false);
     }
@@ -292,7 +304,7 @@ export function CircleSettingsMyContactPanel({
     return (
       <div className="p-5">
         <p className="text-sm text-slate-500 leading-relaxed">
-          Open Settings → Switch patient to choose who you are supporting first.
+          {t('admin.myContactPanel.noPatient')}
         </p>
       </div>
     );
@@ -305,10 +317,9 @@ export function CircleSettingsMyContactPanel({
           <UserRound size={20} />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-bold text-slate-800">My contact details</h3>
+          <h3 className="font-bold text-slate-800">{t('drawer.myContact')}</h3>
           <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-            How you appear to <span className="font-bold text-slate-700">{patient.displayName}</span>{' '}
-            in messages and the care list
+            {t('admin.myContactPanel.subtitle', { name: patient.displayName })}
           </p>
         </div>
       </div>
@@ -319,21 +330,20 @@ export function CircleSettingsMyContactPanel({
         </div>
       ) : !contact ? (
         <p className="text-sm text-slate-500 leading-relaxed bg-slate-50 border border-slate-100 rounded-2xl p-4">
-          We could not find your contact record for this circle. Ask the patient or proxy to add{' '}
-          <span className="font-semibold text-slate-700">{user.email}</span> in the Patient app.
+          {t('admin.myContactPanel.notFound', { email: user.email ?? '' })}
         </p>
       ) : (
         <>
           {patient.role && (
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                Circle access
+                {t('admin.myContactPanel.circleAccess')}
               </p>
               <p className="text-sm font-semibold text-slate-700">
-                {circleMemberAccessLabel(patient.role, patient.proxyTier)}
+                {translateCircleMemberAccessLabel(t, patient.role, patient.proxyTier)}
               </p>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Your access level is managed by the patient or proxy.
+                {t('admin.myContactPanel.circleAccessManaged')}
               </p>
             </div>
           )}
@@ -341,16 +351,16 @@ export function CircleSettingsMyContactPanel({
           <section className="space-y-4 p-4 bg-gradient-to-b from-blue-50 to-white rounded-2xl border-2 border-blue-200 shadow-sm">
             <div className="flex items-center justify-between gap-2">
               <h4 className="text-xs font-bold text-blue-700 uppercase tracking-wider">
-                You can edit
+                {t('admin.myContactPanel.youCanEdit')}
               </h4>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold uppercase tracking-wide">
                 <PencilLine size={12} />
-                Editable
+                {t('admin.myContactPanel.editable')}
               </span>
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-blue-800 uppercase tracking-wider block">
-                Name
+                {t('admin.contact.fieldName')}
               </label>
               <input
                 type="text"
@@ -366,7 +376,7 @@ export function CircleSettingsMyContactPanel({
             {showRelationship ? (
               <div className="space-y-2">
                 <label className="text-xs font-bold text-blue-800 uppercase tracking-wider block">
-                  Relationship
+                  {t('admin.contact.fieldRelationship')}
                 </label>
                 <select
                   value={relationship}
@@ -378,7 +388,7 @@ export function CircleSettingsMyContactPanel({
                 >
                   {relationshipOptions.map((option) => (
                     <option key={option} value={option}>
-                      {option}
+                      {relationshipLabelI18n(t, option)}
                     </option>
                   ))}
                 </select>
@@ -386,7 +396,7 @@ export function CircleSettingsMyContactPanel({
             ) : null}
             <div className="space-y-2">
               <label className="text-xs font-bold text-blue-800 uppercase tracking-wider block">
-                Language
+                {t('admin.contact.fieldLanguage')}
               </label>
               <select
                 value={language}
@@ -412,7 +422,7 @@ export function CircleSettingsMyContactPanel({
           ) : null}
           {saved ? (
             <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
-              Saved. Your name and language are updated for this circle.
+              {t('admin.myContactPanel.saved')}
             </p>
           ) : null}
 
@@ -422,31 +432,36 @@ export function CircleSettingsMyContactPanel({
             disabled={saving || !name.trim()}
             className="w-full py-3.5 rounded-2xl bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-md shadow-blue-200"
           >
-            {saving ? 'Saving…' : 'Save changes'}
+            {saving ? t('common.saving') : t('admin.myContactPanel.saveChanges')}
           </button>
 
           <section className="space-y-3 p-4 bg-slate-50/80 rounded-2xl border border-slate-200">
             <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider min-w-0">
-                Managed by patient or proxy
+                {t('admin.myContactPanel.managedByPatient')}
               </h4>
               <span className={readOnlyBadgeClass}>
                 <Lock size={12} className="shrink-0" aria-hidden />
-                Read-only
+                {t('admin.myContactPanel.readOnly')}
               </span>
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Email</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                {t('admin.contact.fieldEmail')}
+              </p>
               <p className={readOnlyValueClass}>{contact.email}</p>
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mobile</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                {t('admin.contact.fieldMobile')}
+              </p>
               <p className={readOnlyValueClass}>{contact.mobile || '—'}</p>
             </div>
             <LockedContactFieldsNote
               proxies={proxyContacts}
               viewerEmail={user.email ?? ''}
               viewerIsProxy={viewerIsProxy}
+              t={t}
             />
           </section>
         </>

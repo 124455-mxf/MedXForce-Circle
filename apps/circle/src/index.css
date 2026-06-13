@@ -107,6 +107,7 @@ body {
   bottom: 0.625rem;
   width: 3px;
   border-radius: 0 3px 3px 0;
+  pointer-events: none;
 }
 
 .circle-urgency-accent-alert {

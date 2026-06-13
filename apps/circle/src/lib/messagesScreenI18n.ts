@@ -1,9 +1,38 @@
 import type { CircleTranslator } from './circleI18nContext';
 import type { CircleAlertAttentionKind } from './circleAlertAttentionUrgency';
-import type { CircleThreadMessage } from '../hooks/useCirclePatientThreads';
+import type { CircleThreadMessage, CircleThreadReply } from '../hooks/useCirclePatientThreads';
 import { isIcuDailySummary, summaryDateLabel, summaryDeliveredAt, isSummaryDeliveredOnDifferentDay } from './circleCommunicationLog';
 import { resolveAlertAttentionMessageDisplay } from './alertAttentionNotificationCopy';
+import { resolveStoredMessageText } from './messageTranslationDisplay';
 import type { CircleUiLanguage } from './circleLanguages';
+import type { CircleReplySortOrder } from './circleMessagePreferences';
+
+const INBOX_TITLE_MAX = 80;
+const INBOX_SNIPPET_MAX = 120;
+
+function trimInboxPreview(text: string, max: number): string {
+  const trimmed = text.trim();
+  if (!trimmed) return '';
+  if (trimmed.length <= max) return trimmed;
+  return `${trimmed.slice(0, max).trimEnd()}…`;
+}
+
+function latestReplyForInboxSnippet(replies: CircleThreadReply[]): CircleThreadReply | undefined {
+  if (replies.length === 0) return undefined;
+  return replies.reduce((best, reply) =>
+    (reply.timestamp || 0) >= (best.timestamp || 0) ? reply : best,
+  );
+}
+
+function resolveReplyInboxText(
+  reply: CircleThreadReply,
+  viewerLanguage?: CircleUiLanguage,
+): string {
+  if (viewerLanguage) {
+    return resolveStoredMessageText(reply, viewerLanguage).displayText;
+  }
+  return reply.text?.trim() || '';
+}
 
 export function formatMessagesThreadTime(t: CircleTranslator, ts: number): string {
   const d = new Date(ts);
@@ -31,13 +60,52 @@ export function messagesThreadHeaderTitle(
   const subject = msg.subject?.trim();
   if (subject) return subject;
   if (context === 'inbox') {
-    const body = msg.text?.trim();
+    const body = viewerLanguage
+      ? resolveStoredMessageText(msg, viewerLanguage).displayText
+      : msg.text?.trim() || '';
     if (body) {
-      return body.length > 80 ? `${body.slice(0, 80).trimEnd()}…` : body;
+      return trimInboxPreview(body, INBOX_TITLE_MAX);
     }
     return t('messages.fallbackMessageTitle');
   }
+  const body = viewerLanguage
+    ? resolveStoredMessageText(msg, viewerLanguage).displayText
+    : msg.text?.trim() || '';
+  if (body) {
+    return trimInboxPreview(body, INBOX_TITLE_MAX);
+  }
   return t('messages.patientMessage');
+}
+
+/** Second line in the Circle inbox — mirrors patient app threadRowSnippet. */
+export function messagesThreadInboxSnippet(
+  msg: CircleThreadMessage,
+  replies: CircleThreadReply[],
+  viewerLanguage: CircleUiLanguage | undefined,
+  _replySort: CircleReplySortOrder,
+  options?: {
+    resurrected?: boolean;
+    latestVisiblePatientReply?: CircleThreadReply | null;
+  },
+): string {
+  if (isIcuDailySummary(msg)) return '';
+
+  if (options?.resurrected && options.latestVisiblePatientReply?.text) {
+    return trimInboxPreview(
+      resolveReplyInboxText(options.latestVisiblePatientReply, viewerLanguage),
+      INBOX_SNIPPET_MAX,
+    );
+  }
+
+  if (replies.length > 0) {
+    const latest = latestReplyForInboxSnippet(replies);
+    const latestText = latest ? resolveReplyInboxText(latest, viewerLanguage) : '';
+    if (latestText) {
+      return trimInboxPreview(latestText, INBOX_SNIPPET_MAX);
+    }
+  }
+
+  return trimInboxPreview(messagesThreadBodyText(msg, viewerLanguage), INBOX_SNIPPET_MAX);
 }
 
 export function messagesThreadBodyText(
@@ -48,6 +116,9 @@ export function messagesThreadBodyText(
     ? resolveAlertAttentionMessageDisplay(msg, viewerLanguage)
     : null;
   if (localized?.text) return localized.text;
+  if (viewerLanguage) {
+    return resolveStoredMessageText(msg, viewerLanguage).displayText;
+  }
   return msg.text?.trim() || '';
 }
 

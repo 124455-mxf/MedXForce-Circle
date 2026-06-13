@@ -7,6 +7,7 @@ export type CircleTranslator = ReturnType<typeof createCircleTranslator>;
 type CircleI18nContextValue = {
   language: CircleUiLanguage;
   t: CircleTranslator;
+  setLanguage: (language: CircleUiLanguage) => void;
 };
 
 const CircleI18nContext = createContext<CircleI18nContextValue | null>(null);
@@ -14,14 +15,18 @@ const CircleI18nContext = createContext<CircleI18nContextValue | null>(null);
 export function CircleI18nProvider({
   language,
   t,
+  setLanguage,
   children,
 }: {
   language: CircleUiLanguage;
   t: CircleTranslator;
+  setLanguage: (language: CircleUiLanguage) => void;
   children: ReactNode;
 }) {
   return (
-    <CircleI18nContext.Provider value={{ language, t }}>{children}</CircleI18nContext.Provider>
+    <CircleI18nContext.Provider value={{ language, t, setLanguage }}>
+      {children}
+    </CircleI18nContext.Provider>
   );
 }
 

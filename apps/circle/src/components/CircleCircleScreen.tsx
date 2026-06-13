@@ -1,22 +1,31 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
-import { Check, Copy, Loader2, Shield, Trash2, Users } from 'lucide-react';
+import { Loader2, Shield, Trash2, Undo2, Users } from 'lucide-react';
 import {
   canDeleteCircleThreadPostForEveryone,
   canParticipateInCircleOpenThread,
+  canPostCircleAnnouncement,
+  canRecordVisitCaptureInCircleFolder,
+  canReplyToCircleMemberThreadPost,
   canSeeCircleRestrictedThread,
   createCircleMemberThreadPost,
+  createCircleMemberThreadPostReply,
   deleteCircleThreadPostForEveryone,
   hideCircleThreadPostForUser,
-  isVisitCaptureThreadPost,
+  isAnnouncementThreadPost,
+  isDiscussionThreadPost,
+  unhideCircleThreadPostForUser,
   type CircleMemberRole,
   type CircleMemberThreadKind,
   type CircleMemberThreadPost,
   type CirclePatientSummary,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
-import { useCircleT } from '../lib/circleI18nContext';
+import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
+import type { CircleUiLanguage } from '../lib/circleLanguages';
+import { useCirclePatientMemberLanguages } from '../hooks/useCirclePatientMemberLanguages';
+import { buildCircleThreadPostTranslations } from '../lib/circleThreadPostTranslate';
 import {
   circleThreadDescriptionI18n,
   circleThreadLabelI18n,
@@ -25,34 +34,59 @@ import {
   translateCircleMemberRole,
 } from '../lib/circleScreenI18n';
 import {
-  circleCompactCardClass,
-  circleSectionBodyClass,
-  circleSectionBodyPaddingClass,
   circleSectionComposerClass,
   circleSectionContextHintClass,
   circleSectionEmptyStateClass,
   circleSectionHeaderClass,
   circleSectionHeaderStackClass,
   circleSectionPanelClass,
-  circleSectionSubtitleClass,
-  circleSectionTitleClass,
   circleTabButtonClass,
   circleTabListClass,
+  circleWorkTabHeaderClass,
   circleWorkTabPanelClass,
 } from '../lib/circleSectionStyles';
 import { useCircleMemberThread } from '../hooks/useCircleMemberThread';
-import { useCircleThreadSortOrder } from '../hooks/useCircleThreadSortOrder';
+import { useCircleMemberThreadPostReplies } from '../hooks/useCircleMemberThreadPostReplies';
 import {
-  getCircleThreadLastReadAt,
-  markCircleThreadRead,
-  subscribeCircleThreadRead,
-} from '../lib/circleMemberThreadRead';
-import { writeCircleThreadPostToClipboard } from '../lib/circleThreadClipboard';
+  circlePostInboxTitle,
+  circlePostInboxSnippet,
+  circlePostInboxRowAuthorLine,
+} from '../lib/circlePostInboxI18n';
+import {
+  countPostsForInboxView,
+  countUnreadPostsForInboxView,
+  filterPostsForInboxView,
+  getCirclePostLatestActivityAt,
+  isCirclePostUnread,
+  circlePostInboxViewsForThread,
+  type CirclePostInboxView,
+} from '../lib/circlePostInboxViews';
+import {
+  getCirclePostThreadLastReadAt,
+  getCirclePostThreadReadSnapshot,
+  markCirclePostThreadReadThroughActivity,
+  markCirclePostsRead,
+  subscribeCirclePostThreadRead,
+} from '../lib/circlePostThreadRead';
 import { CircleExpandableMessageComposer } from './CircleExpandableMessageComposer';
 import { CircleMessageDeleteConfirmModal } from './CircleMessageDeleteConfirmModal';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
+import { CirclePostDetailView } from './CirclePostDetailView';
+import { useCircleRemoteSettings } from '../hooks/useCircleRemoteSettings';
+import { normalizeCircleUiLanguage } from '../lib/circleLanguages';
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
 import { ResponsiveTabLabel } from './ResponsiveTabLabel';
+import { CircleTabCountBadge, CircleFolderCountBadge, formatCircleBadgeCount } from './CircleCountBadge';
+import { CircleHorizontalScrollStrip } from './CircleHorizontalScrollStrip';
+import {
+  CirclePostFolderActionCard,
+  type CirclePostFolderActionVariant,
+} from './CirclePostFolderActionCard';
+import {
+  circleUrgencyInboxRowClass,
+  circleUrgencyLeftAccentClass,
+  circleUrgencyStatusBadgeClass,
+} from '../lib/circleUrgencyStyles';
 
 interface CircleCircleScreenProps {
   user: User;
@@ -61,180 +95,67 @@ interface CircleCircleScreenProps {
   unreadCount: number;
   openUnreadCount: number;
   restrictedUnreadCount: number;
+  canInitiateDropIn?: boolean;
+  patientOnline?: boolean;
+  patientDoNotDisturb?: boolean;
+  onStartDropIn?: () => void;
+  onResumeDropIn?: () => void;
+  dropInActive?: boolean;
+  dropInChatOpen?: boolean;
+  onRecordVisit?: () => void;
+  circleInboxIntent?: { thread: CircleMemberThreadKind; view: CirclePostInboxView } | null;
+  onCircleInboxIntentConsumed?: () => void;
 }
 
-function useCircleThreadLastRead(
-  patientId: string,
-  userId: string,
-  threadKind: CircleMemberThreadKind,
-): number {
-  return useSyncExternalStore(
-    subscribeCircleThreadRead,
-    () => getCircleThreadLastReadAt(patientId, userId, threadKind),
-    () => 0,
-  );
+function circlePostInboxSubtitle(t: ReturnType<typeof useCircleT>, view: CirclePostInboxView): string {
+  switch (view) {
+    case 'announcements':
+      return t('circle.inboxSubtitleAnnouncement');
+    case 'drop_ins':
+      return t('circle.inboxSubtitleDropIns');
+    case 'visit_captures':
+      return t('circle.inboxSubtitleVisitCaptures');
+    case 'hidden':
+      return t('circle.inboxSubtitleHidden');
+    default:
+      return t('circle.inboxSubtitleDiscussion');
+  }
 }
 
-import { CircleTabCountBadge, formatCircleBadgeCount } from './CircleCountBadge';
-
-const CIRCLE_THREAD_POST_PREVIEW_LENGTH = 200;
-
-function CircleThreadPostText({
-  text,
-  t,
-}: {
-  text: string;
-  t: ReturnType<typeof useCircleT>;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const shouldCollapse = text.length > CIRCLE_THREAD_POST_PREVIEW_LENGTH;
-
-  useEffect(() => {
-    setExpanded(false);
-  }, [text]);
-
-  const displayText =
-    !shouldCollapse || expanded
-      ? text
-      : `${text.slice(0, CIRCLE_THREAD_POST_PREVIEW_LENGTH).trimEnd()}…`;
-
-  return (
-    <div className="pl-1">
-      <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{displayText}</p>
-      {shouldCollapse ? (
-        <button
-          type="button"
-          onClick={() => setExpanded((value) => !value)}
-          className="mt-1.5 text-xs font-bold text-blue-600 hover:text-blue-800"
-        >
-          {expanded ? t('circle.showLess') : t('circle.showMore')}
-        </button>
-      ) : null}
-    </div>
-  );
+function circlePostInboxEmptyMessage(
+  t: ReturnType<typeof useCircleT>,
+  view: CirclePostInboxView,
+  canPostAnnouncement: boolean,
+): string {
+  switch (view) {
+    case 'announcements':
+      return canPostAnnouncement
+        ? t('circle.inboxEmptyAnnouncement')
+        : t('circle.inboxEmptyAnnouncementReadOnly');
+    case 'drop_ins':
+      return t('circle.inboxEmptyDropIns');
+    case 'visit_captures':
+      return t('circle.inboxEmptyVisitCaptures');
+    case 'hidden':
+      return t('circle.inboxEmptyHidden');
+    default:
+      return t('circle.inboxEmptyDiscussion');
+  }
 }
 
-function ThreadPostCard({
-  post,
-  isOwn,
-  ownRoleLabel,
-  highlightAsUnread = false,
-  canDeleteForEveryone = false,
-  onHide,
-  onDeleteForEveryone,
-  t,
-}: {
-  post: CircleMemberThreadPost;
-  isOwn: boolean;
-  ownRoleLabel: string;
-  highlightAsUnread?: boolean;
-  canDeleteForEveryone?: boolean;
-  onHide: () => void;
-  onDeleteForEveryone?: () => void;
-  t: ReturnType<typeof useCircleT>;
-}) {
-  const [copied, setCopied] = useState(false);
-  const isVisitCapture = isVisitCaptureThreadPost(post);
-
-  const handleCopyPost = useCallback(async () => {
-    try {
-      await writeCircleThreadPostToClipboard(post);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* clipboard unavailable */
-    }
-  }, [post]);
-
-  return (
-    <div
-      data-post-id={post.id}
-      className={cn(
-        circleCompactCardClass,
-        'relative overflow-hidden group/post',
-        highlightAsUnread
-          ? 'bg-red-50/40 border-red-200'
-          : isOwn
-            ? 'bg-blue-50/50 border-blue-100'
-            : 'bg-white border-slate-100',
-      )}
-    >
-      <div
-        className={cn(
-          'absolute top-0 left-0 w-1 h-full',
-          highlightAsUnread ? 'bg-red-500' : isOwn ? 'bg-blue-400' : 'bg-indigo-300',
-        )}
-        aria-hidden
-      />
-      <div className="flex items-start justify-between gap-2 mb-2 pl-1">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            {highlightAsUnread && (
-              <span className="bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
-                {t('circle.badgeNew')}
-              </span>
-            )}
-            <p className={cn('text-xs font-bold', isOwn ? 'text-blue-700' : 'text-slate-800')}>
-              {isOwn ? t('circle.you') : post.authorName}
-            </p>
-          </div>
-          <p className="text-[10px] text-slate-500 uppercase tracking-wide mt-0.5">
-            {isOwn ? ownRoleLabel : translateCircleMemberRole(t, post.authorRole)}
-          </p>
-        </div>
-        <div className="flex items-start gap-1 shrink-0">
-          <span className="text-[10px] text-slate-400 tabular-nums pt-0.5">
-            {formatCirclePostTime(t, post.createdAt)}
-          </span>
-          <button
-            type="button"
-            onClick={() => void handleCopyPost()}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50/80 transition-opacity"
-            aria-label={
-              copied
-                ? t('circle.messageCopied')
-                : isVisitCapture
-                  ? t('circle.copyVisitCapture')
-                  : t('circle.copyMessage')
-            }
-            title={
-              copied
-                ? t('circle.copied')
-                : isVisitCapture
-                  ? t('circle.copySummaryTranscript')
-                  : t('circle.copyMessage')
-            }
-          >
-            {copied ? (
-              <Check size={14} className="text-emerald-600" aria-hidden />
-            ) : (
-              <Copy size={14} aria-hidden />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={onHide}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50/80 opacity-100 sm:opacity-0 sm:group-hover/post:opacity-100 transition-opacity"
-            aria-label={t('circle.removeFromView')}
-          >
-            <Trash2 size={14} />
-          </button>
-          {canDeleteForEveryone && onDeleteForEveryone && (
-            <button
-              type="button"
-              onClick={onDeleteForEveryone}
-              className="p-1.5 rounded-lg text-red-500 hover:bg-red-100 opacity-100 sm:opacity-0 sm:group-hover/post:opacity-100 transition-opacity"
-              aria-label={t('circle.deleteForEveryone')}
-              title={t('circle.deleteForEveryone')}
-            >
-              <Trash2 size={14} className="fill-current" />
-            </button>
-          )}
-        </div>
-      </div>
-      <CircleThreadPostText text={post.text} t={t} />
-    </div>
-  );
+function circlePostInboxTabLabel(t: ReturnType<typeof useCircleT>, view: CirclePostInboxView): string {
+  switch (view) {
+    case 'announcements':
+      return t('circle.tabAnnouncement');
+    case 'drop_ins':
+      return t('circle.tabDropIns');
+    case 'visit_captures':
+      return t('circle.tabVisitCaptures');
+    case 'hidden':
+      return t('circle.tabHidden');
+    default:
+      return t('circle.tabDiscussion');
+  }
 }
 
 function formatCircleThreadActionErrorLocalized(
@@ -252,39 +173,63 @@ export function CircleCircleScreen({
   unreadCount,
   openUnreadCount,
   restrictedUnreadCount,
+  canInitiateDropIn = false,
+  patientOnline = false,
+  patientDoNotDisturb = false,
+  onStartDropIn,
+  onResumeDropIn,
+  dropInActive = false,
+  dropInChatOpen = false,
+  onRecordVisit,
+  circleInboxIntent = null,
+  onCircleInboxIntentConsumed,
 }: CircleCircleScreenProps) {
   const t = useCircleT();
+  const { language: viewerLanguage } = useCircleI18nContext();
+  const { settings: remoteSettings } = useCircleRemoteSettings(db, patient, user);
+  const patientLanguage = normalizeCircleUiLanguage(remoteSettings?.primaryLanguage);
+  const memberLanguages = useCirclePatientMemberLanguages(db, patient.patientId);
   const memberRole = patient.role as CircleMemberRole;
   const ownRoleLabel = translateCircleMemberRole(t, memberRole);
   const isProxy = patient.role === 'proxy' && !!patient.capabilities.inviteMembers;
   const canOpen = canParticipateInCircleOpenThread(memberRole);
   const canRestricted = canSeeCircleRestrictedThread(memberRole);
+  const canPostAnnouncement = canPostCircleAnnouncement(memberRole);
+  const compactChrome = useCircleCompactChrome();
 
   const [activeThread, setActiveThread] = useState<CircleMemberThreadKind>('open');
+  const [inboxView, setInboxView] = useState<CirclePostInboxView>('discussion');
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const [replyDraft, setReplyDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [replySending, setReplySending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [replySendError, setReplySendError] = useState<string | null>(null);
   const [hideTarget, setHideTarget] = useState<CircleMemberThreadPost | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CircleMemberThreadPost | null>(null);
   const [actionPending, setActionPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const scrollToLatestPostPendingRef = useRef(false);
-  const compactChrome = useCircleCompactChrome();
-  const threadSort = useCircleThreadSortOrder();
 
-  const activeThreadLastRead = useCircleThreadLastRead(
-    patient.patientId,
-    user.uid,
-    activeThread,
+  const postReadTick = useSyncExternalStore(
+    subscribeCirclePostThreadRead,
+    getCirclePostThreadReadSnapshot,
+    () => 0,
   );
 
-  const activeUnreadCount =
-    activeThread === 'open' ? openUnreadCount : restrictedUnreadCount;
+  const getPostLastRead = useCallback(
+    (postId: string) =>
+      getCirclePostThreadLastReadAt(patient.patientId, user.uid, activeThread, postId),
+    [activeThread, patient.patientId, user.uid],
+  );
 
-  const handleMarkAllRead = useCallback(() => {
-    markCircleThreadRead(patient.patientId, user.uid, activeThread);
-  }, [activeThread, patient.patientId, user.uid]);
+  useEffect(() => {
+    if (!circleInboxIntent) return;
+    setActiveThread(circleInboxIntent.thread);
+    setInboxView(circleInboxIntent.view);
+    setSelectedPostId(null);
+    onCircleInboxIntentConsumed?.();
+  }, [circleInboxIntent, onCircleInboxIntentConsumed]);
 
   useEffect(() => {
     if (!canRestricted && activeThread === 'restricted') {
@@ -292,9 +237,18 @@ export function CircleCircleScreen({
     }
   }, [activeThread, canRestricted]);
 
+  useEffect(() => {
+    setInboxView('discussion');
+    setSelectedPostId(null);
+  }, [activeThread]);
+
+  useEffect(() => {
+    setSelectedPostId(null);
+  }, [inboxView]);
+
   const threadEnabled = activeThread === 'open' ? canOpen : canRestricted;
 
-  const { loading, error, posts } = useCircleMemberThread(
+  const { loading, error, rawPosts, hiddenByPostId } = useCircleMemberThread(
     db,
     patient.patientId,
     activeThread,
@@ -302,87 +256,187 @@ export function CircleCircleScreen({
     user.uid,
   );
 
+  const inboxViews = useMemo(
+    () => circlePostInboxViewsForThread(activeThread, memberRole),
+    [activeThread, memberRole],
+  );
+
+  const dropInFolderVariant = useMemo((): CirclePostFolderActionVariant | null => {
+    if (inboxView !== 'drop_ins' || activeThread !== 'restricted' || !canInitiateDropIn) {
+      return null;
+    }
+    if (dropInActive && !dropInChatOpen) return 'drop_in_resume';
+    if (dropInActive && dropInChatOpen) return null;
+    if (!patientOnline) return 'drop_in_offline';
+    if (patientDoNotDisturb) return 'drop_in_dnd';
+    return onStartDropIn ? 'drop_in_start' : null;
+  }, [
+    activeThread,
+    canInitiateDropIn,
+    dropInActive,
+    dropInChatOpen,
+    inboxView,
+    onStartDropIn,
+    patientDoNotDisturb,
+    patientOnline,
+  ]);
+
+  const showRecordVisitAction =
+    inboxView === 'visit_captures' &&
+    canRecordVisitCaptureInCircleFolder(memberRole, activeThread) &&
+    !!onRecordVisit;
+
+  const folderActionCard = dropInFolderVariant ? (
+    <CirclePostFolderActionCard
+      variant={dropInFolderVariant}
+      onAction={
+        dropInFolderVariant === 'drop_in_resume'
+          ? onResumeDropIn
+          : dropInFolderVariant === 'drop_in_start'
+            ? onStartDropIn
+            : undefined
+      }
+      t={t}
+      className="mb-3"
+    />
+  ) : showRecordVisitAction ? (
+    <CirclePostFolderActionCard variant="record_visit" onAction={onRecordVisit} t={t} className="mb-3" />
+  ) : null;
+
+  const filteredPosts = useMemo(
+    () => filterPostsForInboxView(rawPosts, inboxView, hiddenByPostId, activeThread),
+    [activeThread, hiddenByPostId, inboxView, rawPosts],
+  );
+
+  const orderedPosts = useMemo(
+    () =>
+      [...filteredPosts].sort(
+        (a, b) => getCirclePostLatestActivityAt(b) - getCirclePostLatestActivityAt(a),
+      ),
+    [filteredPosts],
+  );
+
+  const selectedPost = useMemo(
+    () => rawPosts.find((post) => post.id === selectedPostId) ?? null,
+    [rawPosts, selectedPostId],
+  );
+
+  const selectedPostIsDiscussion = useMemo(
+    () => !!selectedPost && isDiscussionThreadPost(selectedPost),
+    [selectedPost],
+  );
+
+  const selectedPostSupportsReplies = useMemo(
+    () =>
+      selectedPostIsDiscussion &&
+      canReplyToCircleMemberThreadPost(selectedPost!, memberRole, activeThread),
+    [activeThread, memberRole, selectedPost, selectedPostIsDiscussion],
+  );
+
+  const {
+    replies: selectedPostReplies,
+    loading: selectedPostRepliesLoading,
+    error: selectedPostRepliesError,
+  } = useCircleMemberThreadPostReplies(
+    db,
+    patient.patientId,
+    activeThread,
+    selectedPostId,
+    selectedPostIsDiscussion,
+  );
+
+  const inboxTabCounts = useMemo(
+    () =>
+      inboxViews.reduce(
+        (acc, view) => {
+          acc[view] = {
+            total: countPostsForInboxView(rawPosts, view, hiddenByPostId, activeThread),
+            unread: countUnreadPostsForInboxView(
+              rawPosts,
+              view,
+              hiddenByPostId,
+              activeThread,
+              user.uid,
+              getPostLastRead,
+            ),
+          };
+          return acc;
+        },
+        {} as Record<CirclePostInboxView, { total: number; unread: number }>,
+      ),
+    [activeThread, getPostLastRead, hiddenByPostId, inboxViews, postReadTick, rawPosts, user.uid],
+  );
+
+  const activeTabUnread = inboxTabCounts[inboxView]?.unread ?? 0;
+
   const authorName = useMemo(
     () => user.displayName?.trim() || user.email?.split('@')[0] || t('circle.circleMemberFallback'),
     [t, user.displayName, user.email],
   );
 
-  const orderedPosts = useMemo(() => {
-    if (threadSort === 'newest') return [...posts].reverse();
-    return posts;
-  }, [posts, threadSort]);
-
   const recentContext = useMemo(
     () =>
-      posts
+      rawPosts
+        .filter((post) => !hiddenByPostId[post.id])
         .slice(-6)
         .map((p) => `${p.authorName}: ${p.text}`)
         .join('\n'),
-    [posts],
+    [hiddenByPostId, rawPosts],
   );
 
-  const newestPostId = posts.at(-1)?.id;
-
-  const scrollTargetPostId = useMemo(() => {
-    const unreadFromOthers = posts.filter(
-      (post) => post.authorUid !== user.uid && post.createdAt > activeThreadLastRead,
+  const handleMarkTabRead = useCallback(() => {
+    markCirclePostsRead(
+      patient.patientId,
+      user.uid,
+      activeThread,
+      filterPostsForInboxView(rawPosts, inboxView, hiddenByPostId, activeThread),
     );
-    if (threadSort === 'newest') {
-      return unreadFromOthers.at(-1)?.id ?? newestPostId;
-    }
-    return unreadFromOthers[0]?.id ?? newestPostId;
-  }, [activeThreadLastRead, newestPostId, posts, threadSort, user.uid]);
+  }, [activeThread, hiddenByPostId, inboxView, patient.patientId, rawPosts, user.uid]);
 
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el || loading || posts.length === 0) return;
-
-    const scrollPostToStart = (postId: string) => {
-      const node = el.querySelector(`[data-post-id="${postId}"]`);
-      if (node) {
-        node.scrollIntoView({ block: 'start', behavior: 'auto' });
+  const openPost = useCallback(
+    (postId: string) => {
+      const post = rawPosts.find((row) => row.id === postId);
+      if (!post) return;
+      setReplyDraft('');
+      setReplySendError(null);
+      setSelectedPostId(postId);
+      if (inboxView !== 'hidden') {
+        markCirclePostThreadReadThroughActivity(
+          patient.patientId,
+          user.uid,
+          activeThread,
+          postId,
+          getCirclePostLatestActivityAt(post),
+        );
       }
-    };
+    },
+    [activeThread, inboxView, patient.patientId, rawPosts, user.uid],
+  );
 
-    requestAnimationFrame(() => {
-      if (scrollToLatestPostPendingRef.current) {
-        scrollToLatestPostPendingRef.current = false;
-        if (newestPostId) scrollPostToStart(newestPostId);
-        return;
-      }
-
-      if (scrollTargetPostId) {
-        scrollPostToStart(scrollTargetPostId);
-      }
-    });
-  }, [
-    activeThread,
-    loading,
-    newestPostId,
-    posts.length,
-    scrollTargetPostId,
-    threadSort,
-  ]);
-
-  useEffect(() => {
-    if (!patient.patientId || !user.uid) return;
-
-    return () => {
-      if (activeThread === 'open' && canOpen) {
-        markCircleThreadRead(patient.patientId, user.uid, 'open');
-      }
-      if (activeThread === 'restricted' && canRestricted) {
-        markCircleThreadRead(patient.patientId, user.uid, 'restricted');
-      }
-    };
-  }, [activeThread, canOpen, canRestricted, patient.patientId, user.uid]);
+  const leavePost = useCallback(() => {
+    setSelectedPostId(null);
+    setReplyDraft('');
+    setReplySendError(null);
+  }, []);
 
   const handleSend = useCallback(async () => {
     const text = draft.trim();
-    if (!text || sending || !threadEnabled) return;
+    const postingDiscussion = inboxView === 'discussion';
+    const postingAnnouncement = inboxView === 'announcements' && canPostAnnouncement;
+    if (!text || sending || !threadEnabled || (!postingDiscussion && !postingAnnouncement)) {
+      return;
+    }
     setSending(true);
     setSendError(null);
     try {
+      const targetLanguages = [
+        ...new Set(Object.values(memberLanguages.byUid)),
+      ] as CircleUiLanguage[];
+      const translations = await buildCircleThreadPostTranslations(
+        text,
+        viewerLanguage,
+        targetLanguages,
+      );
       await createCircleMemberThreadPost(db, {
         patientId: patient.patientId,
         threadKind: activeThread,
@@ -390,8 +444,9 @@ export function CircleCircleScreen({
         authorName,
         authorRole: memberRole,
         text,
+        postKind: postingAnnouncement ? 'announcement' : 'discussion',
+        ...(translations.length > 0 ? { translations } : {}),
       });
-      scrollToLatestPostPendingRef.current = true;
       setDraft('');
     } catch (err) {
       setSendError(err instanceof Error ? err.message : t('circle.sendFailed'));
@@ -401,13 +456,74 @@ export function CircleCircleScreen({
   }, [
     activeThread,
     authorName,
+    canPostAnnouncement,
     db,
     draft,
+    inboxView,
+    memberLanguages.byUid,
     memberRole,
     patient.patientId,
     sending,
     threadEnabled,
     user.uid,
+    viewerLanguage,
+    t,
+  ]);
+
+  const handleSendReply = useCallback(async () => {
+    const text = replyDraft.trim();
+    if (!text || replySending || !selectedPost || !selectedPostSupportsReplies) return;
+    setReplySending(true);
+    setReplySendError(null);
+    try {
+      const targetLanguages = [
+        ...new Set(Object.values(memberLanguages.byUid)),
+      ] as CircleUiLanguage[];
+      const translations = await buildCircleThreadPostTranslations(
+        text,
+        viewerLanguage,
+        targetLanguages,
+      );
+      await createCircleMemberThreadPostReply(db, {
+        patientId: patient.patientId,
+        threadKind: activeThread,
+        postId: selectedPost.id,
+        post: selectedPost,
+        authorUid: user.uid,
+        authorName,
+        authorRole: memberRole,
+        text,
+        ...(translations.length > 0 ? { translations } : {}),
+      });
+      setReplyDraft('');
+      if (selectedPost) {
+        markCirclePostThreadReadThroughActivity(
+          patient.patientId,
+          user.uid,
+          activeThread,
+          selectedPost.id,
+          Date.now(),
+        );
+      }
+    } catch (err) {
+      setReplySendError(err instanceof Error ? err.message : t('circle.replyFailed'));
+    } finally {
+      setReplySending(false);
+    }
+  }, [
+    activeThread,
+    authorName,
+    db,
+    memberLanguages.byUid,
+    memberRole,
+    patient.patientId,
+    replyDraft,
+    replySending,
+    selectedPost,
+    selectedPostSupportsReplies,
+    user.uid,
+    viewerLanguage,
+    t,
   ]);
 
   const confirmHide = useCallback(async () => {
@@ -423,12 +539,30 @@ export function CircleCircleScreen({
         hideTarget.id,
       );
       setHideTarget(null);
+      if (selectedPostId === hideTarget.id) {
+        setSelectedPostId(null);
+      }
     } catch (err) {
       setActionError(formatCircleThreadActionErrorLocalized(t, err, 'circle.hideFailed'));
     } finally {
       setActionPending(false);
     }
-  }, [activeThread, db, hideTarget, patient.patientId, user.uid]);
+  }, [activeThread, db, hideTarget, patient.patientId, selectedPostId, user.uid, t]);
+
+  const restorePost = useCallback(
+    async (post: CircleMemberThreadPost) => {
+      setActionError(null);
+      try {
+        await unhideCircleThreadPostForUser(db, patient.patientId, user.uid, post.id);
+        if (selectedPostId === post.id) {
+          setSelectedPostId(null);
+        }
+      } catch (err) {
+        setActionError(formatCircleThreadActionErrorLocalized(t, err, 'circle.hideFailed'));
+      }
+    },
+    [db, patient.patientId, selectedPostId, user.uid, t],
+  );
 
   const confirmDeleteForEveryone = useCallback(async () => {
     if (!deleteTarget) return;
@@ -442,12 +576,142 @@ export function CircleCircleScreen({
         deleteTarget.id,
       );
       setDeleteTarget(null);
+      if (selectedPostId === deleteTarget.id) {
+        setSelectedPostId(null);
+      }
     } catch (err) {
       setActionError(formatCircleThreadActionErrorLocalized(t, err, 'circle.deleteFailed'));
     } finally {
       setActionPending(false);
     }
-  }, [activeThread, db, deleteTarget, patient.patientId]);
+  }, [activeThread, db, deleteTarget, patient.patientId, selectedPostId, t]);
+
+  const renderInboxRow = (post: CircleMemberThreadPost) => {
+    const unread = isCirclePostUnread(post, user.uid, getPostLastRead(post.id));
+    const title = circlePostInboxTitle(t, post, viewerLanguage, user.uid);
+    const authorLine = circlePostInboxRowAuthorLine(t, post, user.uid, ownRoleLabel);
+    const snippet = circlePostInboxSnippet(post, viewerLanguage, user.uid, t);
+    const replyCount = post.replyCount ?? 0;
+    const activityAt = getCirclePostLatestActivityAt(post);
+    const replyCountLabel = t(replyCount === 1 ? 'circle.reply_one' : 'circle.reply_other', {
+      count: replyCount,
+    });
+
+    return (
+      <li key={post.id} className="list-none">
+        <div
+          className={cn(
+            'flex items-stretch transition-colors relative overflow-hidden rounded-xl border border-transparent',
+            circleUrgencyInboxRowClass(null, false, unread, false),
+          )}
+        >
+          {(() => {
+            const accentClass = circleUrgencyLeftAccentClass(null, false, unread, false);
+            return accentClass ? <span className={accentClass} aria-hidden /> : null;
+          })()}
+          <div
+            className={cn(
+              'flex flex-1 min-w-0 items-center gap-2',
+              compactChrome ? 'py-2.5 px-3' : 'py-3 px-3',
+              unread ? 'pl-3' : undefined,
+            )}
+          >
+            <button
+              type="button"
+              onClick={() => openPost(post.id)}
+              className="flex-1 min-w-0 text-left"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                    {unread && (
+                      <span className={circleUrgencyStatusBadgeClass('new-message')}>
+                        {t('circle.badgeNew')}
+                      </span>
+                    )}
+                    {replyCount > 0 && inboxView === 'discussion' ? (
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                        {replyCountLabel}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="text-sm font-bold truncate leading-snug text-slate-800">{title}</p>
+                  <p className="text-[10px] mt-0.5 truncate text-slate-400">{authorLine}</p>
+                  {snippet ? (
+                    <p className="text-[11px] mt-0.5 line-clamp-2 leading-relaxed text-slate-500">
+                      {snippet}
+                    </p>
+                  ) : null}
+                </div>
+                <span className="text-[10px] text-slate-400 shrink-0 whitespace-nowrap text-right leading-snug pt-0.5">
+                  {formatCirclePostTime(t, activityAt)}
+                </span>
+              </div>
+            </button>
+          </div>
+          {inboxView === 'hidden' ? (
+            <button
+              type="button"
+              onClick={() => void restorePost(post)}
+              className="shrink-0 self-center px-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50/80 transition-colors"
+              aria-label={t('circle.restoreToInbox')}
+            >
+              <Undo2 size={16} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setActionError(null);
+                setHideTarget(post);
+              }}
+              className="shrink-0 self-center px-2 text-slate-400 hover:text-red-600 hover:bg-red-50/80 transition-colors"
+              aria-label={t('circle.removeFromView')}
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+        </div>
+      </li>
+    );
+  };
+
+  const messageModals = (
+    <>
+      <CircleMessageDeleteConfirmModal
+        open={!!hideTarget}
+        onClose={() => {
+          if (actionPending) return;
+          setHideTarget(null);
+          setActionError(null);
+        }}
+        onConfirm={() => void confirmHide()}
+        isDeleting={actionPending}
+        errorMessage={actionError}
+        title={t('circle.hideTitle')}
+        description={t('circle.hideDescription')}
+        confirmLabel={t('circle.hideConfirm')}
+      />
+      <CircleMessageDeleteConfirmModal
+        open={!!deleteTarget}
+        onClose={() => {
+          if (actionPending) return;
+          setDeleteTarget(null);
+          setActionError(null);
+        }}
+        onConfirm={() => void confirmDeleteForEveryone()}
+        isDeleting={actionPending}
+        errorMessage={actionError}
+        title={t('circle.deleteTitle')}
+        description={
+          deleteTarget && deleteTarget.authorUid === user.uid
+            ? t('circle.deleteDescriptionOwn')
+            : t('circle.deleteDescriptionProxy')
+        }
+        confirmLabel={t('circle.deleteConfirm')}
+      />
+    </>
+  );
 
   if (!canOpen) {
     return (
@@ -457,25 +721,107 @@ export function CircleCircleScreen({
     );
   }
 
+  if (selectedPost) {
+    const isOwn = selectedPost.authorUid === user.uid;
+    const highlightAsUnread = isCirclePostUnread(selectedPost, user.uid, getPostLastRead(selectedPost.id));
+    const canDeleteForEveryone = canDeleteCircleThreadPostForEveryone(selectedPost, {
+      uid: user.uid,
+      isProxy,
+    });
+
+    return (
+      <>
+        <CirclePostDetailView
+          post={selectedPost}
+          isOwn={isOwn}
+          ownRoleLabel={ownRoleLabel}
+          viewerLanguage={viewerLanguage}
+          patientLanguage={patientLanguage}
+          highlightAsUnread={highlightAsUnread}
+          readOnlyAnnouncement={isAnnouncementThreadPost(selectedPost)}
+          canReply={!!selectedPostSupportsReplies}
+          replies={selectedPostReplies}
+          repliesLoading={selectedPostRepliesLoading}
+          repliesError={selectedPostRepliesError}
+          replyDraft={replyDraft}
+          replySending={replySending}
+          replySendError={replySendError}
+          currentUserUid={user.uid}
+          threadLastReadAt={getPostLastRead(selectedPost.id)}
+          onReplyDraftChange={setReplyDraft}
+          onSendReply={() => void handleSendReply()}
+          canDeleteForEveryone={canDeleteForEveryone}
+          onBack={leavePost}
+          onHide={
+            inboxView === 'hidden'
+              ? undefined
+              : () => {
+                  setActionError(null);
+                  setHideTarget(selectedPost);
+                }
+          }
+          onRestore={
+            inboxView === 'hidden' ? () => void restorePost(selectedPost) : undefined
+          }
+          onDeleteForEveryone={
+            canDeleteForEveryone
+              ? () => {
+                  setActionError(null);
+                  setDeleteTarget(selectedPost);
+                }
+              : undefined
+          }
+          t={t}
+        />
+        {messageModals}
+      </>
+    );
+  }
+
+  const showComposer =
+    inboxView === 'discussion' || (inboxView === 'announcements' && canPostAnnouncement);
+
+  const composerPlaceholder =
+    inboxView === 'announcements'
+      ? t('circle.composerPlaceholderAnnouncement')
+      : activeThread === 'open'
+        ? t('circle.composerPlaceholderCircle')
+        : t('circle.composerPlaceholderCareTeam');
+
+  const composerSendLabel =
+    inboxView === 'announcements' ? t('circle.sendAnnouncement') : t('circle.sendToEveryone');
+
+  const composerExpandTitle =
+    inboxView === 'announcements'
+      ? t('circle.expandTitleAnnouncement')
+      : activeThread === 'open'
+        ? t('circle.expandTitleCircle')
+        : t('circle.expandTitleCareTeam');
+
   return (
     <div className="flex flex-col flex-1 min-h-0 max-h-full overflow-hidden">
       <div className={cn(circleWorkTabPanelClass(compactChrome), 'max-h-full')}>
-        <div className={cn(circleSectionHeaderClass, circleSectionHeaderStackClass, compactChrome && 'p-3 space-y-2')}>
-          <div className="flex items-start justify-between gap-2">
-            <CircleWorkTabSectionIntro
-              icon={Users}
-              iconClassName="text-indigo-600"
-              title={t('circle.title')}
-              subtitle={t('circle.subtitle')}
-              titleExtra={
-                unreadCount > 0 ? (
-                  <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold inline-flex items-center justify-center tabular-nums">
-                    {t('circle.unreadBadge', { count: formatCircleBadgeCount(unreadCount) })}
-                  </span>
-                ) : undefined
-              }
-            />
-          </div>
+        <div
+          className={cn(
+            circleSectionHeaderClass,
+            circleSectionHeaderStackClass,
+            circleWorkTabHeaderClass(compactChrome),
+            'space-y-2 min-w-0',
+          )}
+        >
+          <CircleWorkTabSectionIntro
+            icon={Users}
+            iconClassName="text-indigo-600"
+            title={t('circle.title')}
+            subtitle={circlePostInboxSubtitle(t, inboxView)}
+            titleExtra={
+              unreadCount > 0 ? (
+                <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold inline-flex items-center justify-center tabular-nums">
+                  {t('circle.unreadBadge', { count: formatCircleBadgeCount(unreadCount) })}
+                </span>
+              ) : undefined
+            }
+          />
 
           <div className={circleTabListClass} role="tablist" aria-label={t('circle.threadsAria')}>
             <button
@@ -487,7 +833,10 @@ export function CircleCircleScreen({
             >
               <span className="inline-flex items-center justify-center gap-1.5">
                 <Users size={14} className="shrink-0 [@media(max-height:740px)]:hidden" />
-                <ResponsiveTabLabel long={t('circle.tabCircleLong')} compact={t('circle.tabCircleCompact')} />
+                <ResponsiveTabLabel
+                  long={t('circle.tabCircleLong')}
+                  compact={t('circle.tabCircleCompact')}
+                />
                 <CircleTabCountBadge count={openUnreadCount} />
               </span>
             </button>
@@ -511,14 +860,44 @@ export function CircleCircleScreen({
             )}
           </div>
 
+          <p className={cn(circleSectionContextHintClass, 'px-0')}>
+            {circleThreadDescriptionI18n(t, activeThread)}
+          </p>
+
+          <CircleHorizontalScrollStrip
+            className="w-full min-w-0 rounded-xl bg-slate-100 p-1"
+            innerClassName="gap-0.5"
+            role="tablist"
+            aria-label={t('circle.inboxTabBucketsAria')}
+          >
+            {inboxViews.map((view) => (
+              <button
+                key={view}
+                type="button"
+                role="tab"
+                aria-selected={inboxView === view}
+                onClick={() => setInboxView(view)}
+                className={circleTabButtonClass(
+                  inboxView === view,
+                  'shrink-0 flex-none justify-center px-3 py-2',
+                )}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  {circlePostInboxTabLabel(t, view)}
+                  <CircleFolderCountBadge {...inboxTabCounts[view]} />
+                </span>
+              </button>
+            ))}
+          </CircleHorizontalScrollStrip>
+
           <div className="flex items-start justify-between gap-2">
-            <p className={cn(circleSectionContextHintClass, 'flex-1 min-w-0')}>
-              {circleThreadDescriptionI18n(t, activeThread)}
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              {t('circle.inboxListHeading')}
             </p>
-            {activeUnreadCount > 0 && (
+            {activeTabUnread > 0 && (
               <button
                 type="button"
-                onClick={handleMarkAllRead}
+                onClick={handleMarkTabRead}
                 className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-red-700 hover:text-red-900 px-2 py-1 rounded-lg hover:bg-red-100/80"
               >
                 {t('circle.markAllRead')}
@@ -527,10 +906,10 @@ export function CircleCircleScreen({
           </div>
         </div>
 
-        <div ref={scrollRef} className={cn(circleSectionBodyClass, circleSectionBodyPaddingClass)}>
-          {(error || sendError) && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
-              {error || sendError}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 pb-3">
+          {(error || sendError || actionError) && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2 mb-3">
+              {error || sendError || actionError}
             </p>
           )}
 
@@ -538,115 +917,50 @@ export function CircleCircleScreen({
             <div className="py-12 flex justify-center text-slate-400 [@media(max-height:740px)]:py-8">
               <Loader2 size={24} className="animate-spin" />
             </div>
-          ) : posts.length === 0 ? (
+          ) : orderedPosts.length === 0 ? (
             <div className={circleSectionEmptyStateClass}>
+              {folderActionCard}
               <p className="text-sm font-bold text-slate-700">
-                {circleThreadLabelI18n(t, activeThread)}
+                {circleThreadLabelI18n(t, activeThread)} · {circlePostInboxTabLabel(t, inboxView)}
               </p>
               <p className="text-sm text-slate-500 mt-2 leading-relaxed max-w-sm mx-auto [@media(max-height:740px)]:mt-1 [@media(max-height:740px)]:text-xs">
-                {t('circle.emptyHint')}
+                {circlePostInboxEmptyMessage(t, inboxView, canPostAnnouncement)}
               </p>
             </div>
           ) : (
-            orderedPosts.map((post) => {
-              const isOwn = post.authorUid === user.uid;
-              const highlightAsUnread =
-                !isOwn && post.createdAt > activeThreadLastRead;
-              const canDeleteForEveryone = canDeleteCircleThreadPostForEveryone(post, {
-                uid: user.uid,
-                isProxy,
-              });
-              return (
-                <ThreadPostCard
-                  key={post.id}
-                  post={post}
-                  isOwn={isOwn}
-                  ownRoleLabel={ownRoleLabel}
-                  highlightAsUnread={highlightAsUnread}
-                  canDeleteForEveryone={canDeleteForEveryone}
-                  onHide={() => {
-                    setActionError(null);
-                    setHideTarget(post);
-                  }}
-                  onDeleteForEveryone={
-                    canDeleteForEveryone
-                      ? () => {
-                          setActionError(null);
-                          setDeleteTarget(post);
-                        }
-                      : undefined
-                  }
-                  t={t}
-                />
-              );
-            })
+            <>
+              {folderActionCard}
+              <ol className="space-y-2 list-none p-0 m-0">{orderedPosts.map(renderInboxRow)}</ol>
+            </>
           )}
         </div>
 
-        <div className={circleSectionComposerClass}>
-          <CircleExpandableMessageComposer
-            value={draft}
-            onChange={setDraft}
-            placeholder={
-              activeThread === 'open'
-                ? t('circle.composerPlaceholderCircle')
-                : t('circle.composerPlaceholderCareTeam')
-            }
-            disabled={sending}
-            sending={sending}
-            onClear={() => setDraft('')}
-            onSend={handleSend}
-            clearLabel={t('circle.clear')}
-            sendLabel={t('circle.sendToEveryone')}
-            sendingLabel={t('circle.sending')}
-            maxLength={5000}
-            expandTitle={
-              activeThread === 'open'
-                ? t('circle.expandTitleCircle')
-                : t('circle.expandTitleCareTeam')
-            }
-            aiGuidance={{
-              threadLabel: circleThreadLabelI18n(t, activeThread),
-              memberRole,
-              recentContext: recentContext || undefined,
-            }}
-          />
-        </div>
+        {showComposer ? (
+          <div className={circleSectionComposerClass}>
+            <CircleExpandableMessageComposer
+              value={draft}
+              onChange={setDraft}
+              placeholder={composerPlaceholder}
+              disabled={sending}
+              sending={sending}
+              onClear={() => setDraft('')}
+              onSend={handleSend}
+              clearLabel={t('circle.clear')}
+              sendLabel={composerSendLabel}
+              sendingLabel={t('circle.sending')}
+              maxLength={5000}
+              expandTitle={composerExpandTitle}
+              aiGuidance={{
+                threadLabel: circleThreadLabelI18n(t, activeThread),
+                memberRole,
+                recentContext: recentContext || undefined,
+              }}
+            />
+          </div>
+        ) : null}
       </div>
 
-      <CircleMessageDeleteConfirmModal
-        open={!!hideTarget}
-        onClose={() => {
-          if (actionPending) return;
-          setHideTarget(null);
-          setActionError(null);
-        }}
-        onConfirm={() => void confirmHide()}
-        isDeleting={actionPending}
-        errorMessage={actionError}
-        title={t('circle.hideTitle')}
-        description={t('circle.hideDescription')}
-        confirmLabel={t('circle.hideConfirm')}
-      />
-
-      <CircleMessageDeleteConfirmModal
-        open={!!deleteTarget}
-        onClose={() => {
-          if (actionPending) return;
-          setDeleteTarget(null);
-          setActionError(null);
-        }}
-        onConfirm={() => void confirmDeleteForEveryone()}
-        isDeleting={actionPending}
-        errorMessage={actionError}
-        title={t('circle.deleteTitle')}
-        description={
-          deleteTarget && deleteTarget.authorUid === user.uid
-            ? t('circle.deleteDescriptionOwn')
-            : t('circle.deleteDescriptionProxy')
-        }
-        confirmLabel={t('circle.deleteConfirm')}
-      />
+      {messageModals}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Cropper, { type Area } from 'react-easy-crop';
 import { Loader2, X } from 'lucide-react';
 import { getCroppedImg } from '../lib/imageCrop';
+import { useCircleT } from '../lib/circleI18nContext';
 
 type CircleProfilePhotoCropModalProps = {
   file: File;
@@ -14,6 +15,7 @@ export function CircleProfilePhotoCropModal({
   onCancel,
   onApply,
 }: CircleProfilePhotoCropModalProps) {
+  const t = useCircleT();
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -61,7 +63,7 @@ export function CircleProfilePhotoCropModal({
             onClick={onCancel}
             disabled={processing}
             className="p-2 hover:bg-slate-50 rounded-xl text-slate-400 transition-colors"
-            aria-label="Close"
+            aria-label={t('common.close')}
           >
             <X size={24} />
           </button>
@@ -100,7 +102,7 @@ export function CircleProfilePhotoCropModal({
               min={1}
               max={3}
               step={0.1}
-              aria-label="Zoom"
+              aria-label={t('common.aria.zoom')}
               onChange={(e) => setZoom(Number(e.target.value))}
               className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600"
             />

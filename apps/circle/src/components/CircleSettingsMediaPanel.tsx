@@ -7,14 +7,18 @@ import {
 import { useCircleGallerySkipPhotoDeleteConfirm } from '../hooks/useCircleGallerySkipPhotoDeleteConfirm';
 import { useCircleGalleryThumbnailSize } from '../hooks/useCircleGalleryThumbnailSize';
 import { cn } from '../lib/utils';
+import { useCircleT } from '../lib/circleI18nContext';
 
-const SIZE_OPTIONS: { id: CircleGalleryThumbnailSize; label: string }[] = [
-  { id: 'small', label: 'Small' },
-  { id: 'normal', label: 'Normal' },
-  { id: 'large', label: 'Large' },
-];
+const SIZE_OPTION_IDS: CircleGalleryThumbnailSize[] = ['small', 'normal', 'large'];
+
+const SIZE_LABEL_KEYS: Record<CircleGalleryThumbnailSize, string> = {
+  small: 'settings.thumbnailSizeSmall',
+  normal: 'settings.thumbnailSizeNormal',
+  large: 'settings.thumbnailSizeLarge',
+};
 
 export function CircleSettingsMediaPanel() {
+  const t = useCircleT();
   const thumbnailSize = useCircleGalleryThumbnailSize();
   const skipPhotoDeleteConfirm = useCircleGallerySkipPhotoDeleteConfirm();
 
@@ -25,26 +29,24 @@ export function CircleSettingsMediaPanel() {
           <ImageIcon size={22} />
         </div>
         <div className="space-y-1 min-w-0">
-          <h3 className="font-bold text-slate-800">Media settings</h3>
+          <h3 className="font-bold text-slate-800">{t('settings.mediaSettingsTitle')}</h3>
           <p className="text-sm text-slate-500 leading-relaxed">
-            Control how photos and videos appear in the media gallery.
+            {t('settings.mediaSettingsSubtitle')}
           </p>
         </div>
       </div>
 
       <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
         <div className="space-y-1">
-          <p className="font-bold text-slate-800">Thumbnail size</p>
-          <p className="text-sm text-slate-400">
-            Choose how large each picture appears in album grids.
-          </p>
+          <p className="font-bold text-slate-800">{t('settings.thumbnailSizeTitle')}</p>
+          <p className="text-sm text-slate-400">{t('settings.thumbnailSizeDesc')}</p>
         </div>
         <div
           className="inline-flex rounded-xl bg-slate-200/80 p-1 gap-0.5 flex-wrap"
           role="group"
-          aria-label="Thumbnail size"
+          aria-label={t('common.aria.thumbnailSize')}
         >
-          {SIZE_OPTIONS.map(({ id, label }) => {
+          {SIZE_OPTION_IDS.map((id) => {
             const active = thumbnailSize === id;
             return (
               <button
@@ -58,7 +60,7 @@ export function CircleSettingsMediaPanel() {
                     : 'text-slate-500 hover:text-slate-700',
                 )}
               >
-                {label}
+                {t(SIZE_LABEL_KEYS[id])}
               </button>
             );
           })}
@@ -68,16 +70,16 @@ export function CircleSettingsMediaPanel() {
       <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1 min-w-0">
-            <p className="font-bold text-slate-800">Skip photo delete confirmation</p>
+            <p className="font-bold text-slate-800">{t('settings.skipDeleteConfirmTitle')}</p>
             <p className="text-sm text-slate-400 leading-relaxed">
-              When on, deleting a photo or video removes it immediately without asking again.
-              Deleting an album always asks for confirmation.
+              {t('settings.skipDeleteConfirmDesc')}
             </p>
           </div>
           <button
             type="button"
             role="switch"
             aria-checked={skipPhotoDeleteConfirm}
+            aria-label={t('settings.skipDeleteConfirmTitle')}
             onClick={() =>
               setCircleGallerySkipPhotoDeleteConfirm(!skipPhotoDeleteConfirm)
             }

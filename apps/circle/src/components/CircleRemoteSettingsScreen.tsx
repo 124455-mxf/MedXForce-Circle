@@ -32,6 +32,16 @@ import {
 } from '../lib/circleSectionStyles';
 import { useCircleRemoteSettings } from '../hooks/useCircleRemoteSettings';
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
+import { useCircleT } from '../lib/circleI18nContext';
+import {
+  remoteSettingsAppModeDescription,
+  remoteSettingsAppModeLabel,
+  remoteSettingsFontSizeLabel,
+  remoteSettingsProxySectionTitle,
+  remoteSettingsToggleDescription,
+  remoteSettingsToggleLabel,
+  remoteSettingsVisibleAreaLabel,
+} from '../lib/remoteSettingsScreenI18n';
 import { CircleCollapsibleSection } from './CircleCollapsibleSection';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 
@@ -102,18 +112,20 @@ function ProxyToggleList({
   settings,
   paths,
   patch,
+  t,
 }: {
   settings: PatientRemoteSettingsDoc;
   paths: { path: string; label: string; description?: string }[];
   patch: (next: PatientRemoteSettingsDoc) => void;
+  t: ReturnType<typeof useCircleT>;
 }) {
   return (
     <div className="grid grid-cols-1 gap-2">
       {paths.map((item) => (
         <ToggleRow
           key={item.path}
-          label={item.label}
-          description={item.description}
+          label={remoteSettingsToggleLabel(t, item.path, item.label)}
+          description={remoteSettingsToggleDescription(t, item.path, item.description)}
           enabled={getRemoteSettingValue(settings, item.path) ?? false}
           onToggle={() =>
             patch(
@@ -145,6 +157,7 @@ export function CircleRemoteSettingsScreen({
     user,
   );
   const compactChrome = useCircleCompactChrome();
+  const t = useCircleT();
   const [pendingMode, setPendingMode] = useState<RemoteAppMode | null>(null);
 
   const patch = (next: PatientRemoteSettingsDoc) => {
@@ -174,12 +187,12 @@ export function CircleRemoteSettingsScreen({
           <CircleWorkTabSectionIntro
             icon={SlidersHorizontal}
             iconClassName="text-slate-600"
-            title="Remote Settings"
-            subtitle={`Configure ${patient.displayName}'s tablet — changes sync when the patient app is online.`}
+            title={t('nav.remoteSettings')}
+            subtitle={t('remoteSettings.subtitle', { name: patient.displayName })}
             trailing={
               saving || savedAt ? (
                 <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider shrink-0 pt-1">
-                  {saving ? 'Saving…' : 'Saved'}
+                  {saving ? t('remoteSettings.saving') : t('remoteSettings.saved')}
                 </p>
               ) : undefined
             }
@@ -195,10 +208,10 @@ export function CircleRemoteSettingsScreen({
 
           <section className="space-y-2">
             <div className="flex items-center justify-between gap-2 px-0.5">
-              <SectionLabel>Application mode</SectionLabel>
+              <SectionLabel>{t('remoteSettings.applicationMode')}</SectionLabel>
               {customized && (
                 <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">
-                  Custom toggles
+                  {t('remoteSettings.customToggles')}
                 </span>
               )}
             </div>
@@ -208,8 +221,11 @@ export function CircleRemoteSettingsScreen({
                 onClick={() => applyModeChange(settings.appMode!)}
                 className="text-xs font-semibold text-blue-600 hover:text-blue-700 px-0.5"
               >
-                Reset all toggles to{' '}
-                {REMOTE_APP_MODES.find((mode) => mode.key === settings.appMode)?.label ?? 'preset'}
+                {t('remoteSettings.resetTogglesTo', {
+                  mode: settings.appMode
+                    ? remoteSettingsAppModeLabel(t, settings.appMode)
+                    : t('remoteSettings.preset'),
+                })}
               </button>
             )}
             <div className="space-y-2">
@@ -232,14 +248,18 @@ export function CircleRemoteSettingsScreen({
                   >
                     <div className="flex items-center gap-2">
                       <Shield size={16} className={active ? 'text-blue-600' : 'text-slate-400'} />
-                      <p className="text-sm font-normal text-slate-800">{mode.label}</p>
+                      <p className="text-sm font-normal text-slate-800">
+                        {remoteSettingsAppModeLabel(t, mode.key)}
+                      </p>
                       {active && (
                         <span className="text-[9px] font-bold uppercase tracking-wider text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
-                          Current
+                          {t('remoteSettings.current')}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">{mode.description}</p>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      {remoteSettingsAppModeDescription(t, mode.key)}
+                    </p>
                   </button>
                 );
               })}
@@ -247,10 +267,10 @@ export function CircleRemoteSettingsScreen({
           </section>
 
           <div className="space-y-3">
-            <CircleCollapsibleSection title="Language">
+            <CircleCollapsibleSection title={t('remoteSettings.sections.language')}>
               <div className="p-4 space-y-2">
                 <label className="text-xs font-bold text-slate-500 ml-0.5">
-                  Primary language (patient)
+                  {t('remoteSettings.primaryLanguageLabel')}
                 </label>
                 <select
                   value={settings.primaryLanguage ?? 'English'}
@@ -266,34 +286,43 @@ export function CircleRemoteSettingsScreen({
                   ))}
                 </select>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Use this if the patient changed language and cannot switch back.
+                  {t('remoteSettings.primaryLanguageHint')}
                 </p>
               </div>
             </CircleCollapsibleSection>
 
             {REMOTE_PROXY_SECTIONS.map((section) => (
-              <CircleCollapsibleSection key={section.id} title={section.title}>
+              <CircleCollapsibleSection
+                key={section.id}
+                title={remoteSettingsProxySectionTitle(t, section.id, section.title)}
+              >
                 <div className="p-4">
-                  <ProxyToggleList settings={settings} paths={section.toggles} patch={patch} />
+                  <ProxyToggleList
+                    settings={settings}
+                    paths={section.toggles}
+                    patch={patch}
+                    t={t}
+                  />
                 </div>
               </CircleCollapsibleSection>
             ))}
 
-            <CircleCollapsibleSection title="Features & visibility">
+            <CircleCollapsibleSection title={t('remoteSettings.sections.featuresVisibility')}>
               <div className="p-4">
                 <ProxyToggleList
                   settings={settings}
                   paths={REMOTE_FEATURE_TOGGLES}
                   patch={patch}
+                  t={t}
                 />
               </div>
             </CircleCollapsibleSection>
 
-            <CircleCollapsibleSection title="3 minute engagement">
+            <CircleCollapsibleSection title={t('remoteSettings.sections.engagement')}>
               <div className="p-4 space-y-2">
                 <ToggleRow
-                  label="Daily check-in on startup"
-                  description="Once-per-day check-in after the app opens."
+                  label={t('remoteSettings.dailyCheckInOnStartup')}
+                  description={t('remoteSettings.dailyCheckInOnStartupDesc')}
                   enabled={settings.dailyCheckIn?.enabled ?? false}
                   onToggle={() =>
                     patch(
@@ -304,8 +333,8 @@ export function CircleRemoteSettingsScreen({
                   }
                 />
                 <ToggleRow
-                  label="Quiet hours"
-                  description="Suppress check-in overnight (default 10 PM–6 AM)."
+                  label={t('remoteSettings.quietHours')}
+                  description={t('remoteSettings.quietHoursDesc')}
                   enabled={settings.dailyCheckIn?.quietHours?.enabled ?? false}
                   onToggle={() =>
                     patch(
@@ -322,7 +351,9 @@ export function CircleRemoteSettingsScreen({
                 {settings.dailyCheckIn?.quietHours?.enabled && (
                   <div className="grid grid-cols-2 gap-2 px-1">
                     <label className="space-y-1">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">From</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">
+                        {t('remoteSettings.from')}
+                      </span>
                       <input
                         type="time"
                         value={settings.dailyCheckIn?.quietHours?.start ?? '22:00'}
@@ -341,7 +372,9 @@ export function CircleRemoteSettingsScreen({
                       />
                     </label>
                     <label className="space-y-1">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">To</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">
+                        {t('remoteSettings.to')}
+                      </span>
                       <input
                         type="time"
                         value={settings.dailyCheckIn?.quietHours?.end ?? '06:00'}
@@ -364,12 +397,12 @@ export function CircleRemoteSettingsScreen({
               </div>
             </CircleCollapsibleSection>
 
-            <CircleCollapsibleSection title="Quick settings">
+            <CircleCollapsibleSection title={t('remoteSettings.sections.quickSettings')}>
               <div className="p-4 space-y-2">
                 <div className="p-3 rounded-2xl border border-slate-100 bg-white space-y-2">
                   <div className="flex items-center gap-2">
                     <SlidersHorizontal size={16} className="text-blue-600" />
-                    <p className="text-sm font-normal text-slate-800">Font size</p>
+                    <p className="text-sm font-normal text-slate-800">{t('remoteSettings.fontSize')}</p>
                   </div>
                   <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100">
                     {(['small', 'medium', 'large'] as const).map((size) => (
@@ -378,13 +411,13 @@ export function CircleRemoteSettingsScreen({
                         type="button"
                         onClick={() => patch(setRemoteContentFontSize(settings, size))}
                         className={cn(
-                          'flex-1 py-2 rounded-lg text-xs font-bold capitalize transition-all',
+                          'flex-1 py-2 rounded-lg text-xs font-bold transition-all',
                           settings.contentFontSize === size
                             ? 'bg-blue-600 text-white shadow-sm'
                             : 'text-slate-500 hover:bg-white',
                         )}
                       >
-                        {size}
+                        {remoteSettingsFontSizeLabel(t, size)}
                       </button>
                     ))}
                   </div>
@@ -393,8 +426,8 @@ export function CircleRemoteSettingsScreen({
                 {REMOTE_QUICK_SETTING_TOGGLES.map((item) => (
                   <ToggleRow
                     key={item.path}
-                    label={item.label}
-                    description={item.description}
+                    label={remoteSettingsToggleLabel(t, item.path, item.label)}
+                    description={remoteSettingsToggleDescription(t, item.path, item.description)}
                     enabled={readQuickToggle(settings, item.path)}
                     onToggle={() =>
                       patch(
@@ -405,12 +438,14 @@ export function CircleRemoteSettingsScreen({
                 ))}
 
                 <div className="p-3 rounded-2xl border border-slate-100 bg-white space-y-2">
-                  <p className="text-sm font-normal text-slate-800">Communication shortcuts</p>
+                  <p className="text-sm font-normal text-slate-800">
+                    {t('remoteSettings.communicationShortcuts')}
+                  </p>
                   <div className="grid grid-cols-2 gap-2">
                     {REMOTE_VISIBLE_AREA_TOGGLES.map((item) => (
                       <ToggleRow
                         key={item.key}
-                        label={item.label}
+                        label={remoteSettingsVisibleAreaLabel(t, item.key, item.label)}
                         enabled={settings.visibleAreas?.[item.key] ?? true}
                         onToggle={() =>
                           patch(
@@ -430,9 +465,7 @@ export function CircleRemoteSettingsScreen({
           </div>
 
           <p className="text-[10px] text-slate-400 text-center leading-relaxed px-2 pb-2">
-            Only caregivers and proxies can change these settings. Family and friends cannot access
-            this screen. Individual toggles stay editable after you pick a mode; changing mode resets
-            toggles to that preset.
+            {t('remoteSettings.footerHint')}
           </p>
         </div>
       </div>
@@ -440,14 +473,11 @@ export function CircleRemoteSettingsScreen({
       {pendingMode && (
         <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white w-full sm:max-w-md rounded-t-[28px] sm:rounded-[28px] border border-slate-100 shadow-2xl p-6 space-y-4">
-            <h3 className="text-lg font-bold text-slate-800">Change application mode?</h3>
+            <h3 className="text-lg font-bold text-slate-800">{t('remoteSettings.changeModeTitle')}</h3>
             <p className="text-sm text-slate-600 leading-relaxed">
-              Switching to{' '}
-              <span className="font-semibold">
-                {REMOTE_APP_MODES.find((mode) => mode.key === pendingMode)?.label}
-              </span>{' '}
-              applies that mode&apos;s preset and updates all toggles below. You can still adjust
-              individual toggles afterward.
+              {t('remoteSettings.changeModeBody', {
+                mode: remoteSettingsAppModeLabel(t, pendingMode),
+              })}
             </p>
             <div className="flex gap-3 pt-1">
               <button
@@ -455,14 +485,14 @@ export function CircleRemoteSettingsScreen({
                 onClick={() => setPendingMode(null)}
                 className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-bold"
               >
-                Cancel
+                {t('remoteSettings.cancel')}
               </button>
               <button
                 type="button"
                 onClick={() => applyModeChange(pendingMode)}
                 className="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-bold"
               >
-                Apply mode
+                {t('remoteSettings.applyMode')}
               </button>
             </div>
           </div>

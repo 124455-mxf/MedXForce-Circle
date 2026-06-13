@@ -188,42 +188,103 @@ export function dropInCircleResponseBody(
   return `${patientName} declined your drop-in request.`;
 }
 
-function formatDropInSessionTimestamp(ts: number | undefined): string {
-  if (!ts) return 'Unknown time';
-  return new Date(ts).toLocaleString(undefined, {
+function formatDropInSessionTimestamp(
+  ts: number | undefined,
+  unknownTime = 'Unknown time',
+  locale?: string,
+): string {
+  if (!ts) return unknownTime;
+  return new Date(ts).toLocaleString(locale, {
     dateStyle: 'medium',
     timeStyle: 'short',
   });
 }
 
+export type DropInTranscriptLabels = {
+  conversationTitle: string;
+  patientLabel: string;
+  startedByLabel: string;
+  endedLabel: string;
+  endedByLabel: string;
+  footer: string;
+  careTeam: string;
+  unknown: string;
+  unknownTime: string;
+};
+
+export const DEFAULT_DROP_IN_TRANSCRIPT_LABELS: DropInTranscriptLabels = {
+  conversationTitle: 'Drop-in conversation',
+  patientLabel: 'Patient:',
+  startedByLabel: 'Started by:',
+  endedLabel: 'Ended:',
+  endedByLabel: 'Ended by:',
+  footer: '— Shared from a live drop-in session',
+  careTeam: 'Care team',
+  unknown: 'Unknown',
+  unknownTime: 'Unknown time',
+};
+
+export const DROP_IN_THREAD_TITLE_PREFIXES = [
+  'Drop-in conversation —',
+  'Spontangespräch —',
+  'Conversación drop-in —',
+  'Rozmowa drop-in —',
+] as const;
+
+export const DROP_IN_THREAD_FOOTER_MARKERS = [
+  '— Shared from a live drop-in session',
+  'Shared from a live drop-in session',
+  '— Aus einer Live-Spontansitzung geteilt',
+  'Aus einer Live-Spontansitzung geteilt',
+  '— Compartido de una sesión drop-in en vivo',
+  'Compartido de una sesión drop-in en vivo',
+  '— Udostępniono z sesji drop-in na żywo',
+  'Udostępniono z sesji drop-in na żywo',
+] as const;
+
+export const DROP_IN_THREAD_PATIENT_LINE_PREFIXES = [
+  'Patient:',
+  'Paciente:',
+  'Pacjent:',
+] as const;
+
+export type FormatDropInTranscriptOptions = {
+  labels?: DropInTranscriptLabels;
+  locale?: string;
+};
+
 export function formatDropInEndedByLabel(
   session: DropInSession,
   patientDisplayName: string,
+  labels: Pick<DropInTranscriptLabels, 'careTeam' | 'unknown'> = DEFAULT_DROP_IN_TRANSCRIPT_LABELS,
 ): string {
   if (session.endedByRole === 'patient') return patientDisplayName;
   if (session.endedByRole === 'caregiver') {
     if (session.endedByUid && session.endedByUid === session.requestedByUid) {
       return session.requestedByName;
     }
-    return 'Care team';
+    return labels.careTeam;
   }
-  return 'Unknown';
+  return labels.unknown;
 }
 
 export function formatDropInTranscriptForCareCoordination(
   session: DropInSession,
   messages: DropInMessage[],
   patientDisplayName: string,
+  options?: FormatDropInTranscriptOptions,
 ): string {
-  const started = formatDropInSessionTimestamp(session.startedAt);
-  const ended = formatDropInSessionTimestamp(session.endedAt);
-  const endedBy = formatDropInEndedByLabel(session, patientDisplayName);
+  const labels = options?.labels ?? DEFAULT_DROP_IN_TRANSCRIPT_LABELS;
+  const locale = options?.locale;
+  const started = formatDropInSessionTimestamp(session.startedAt, labels.unknownTime, locale);
+  const ended = formatDropInSessionTimestamp(session.endedAt, labels.unknownTime, locale);
+  const endedBy = formatDropInEndedByLabel(session, patientDisplayName, labels);
   const lines = [
-    `Drop-in conversation — ${started}`,
-    `Patient: ${patientDisplayName}`,
-    `Started by: ${session.requestedByName}`,
-    `Ended: ${ended}`,
-    `Ended by: ${endedBy}`,
+    `${labels.conversationTitle} — ${started}`,
+    `${labels.patientLabel} ${patientDisplayName}`,
+    `${labels.startedByLabel} ${session.requestedByName}`,
+    `${labels.endedLabel} ${ended}`,
+    `${labels.endedByLabel} ${endedBy}`,
     '',
   ];
 
@@ -232,8 +293,21 @@ export function formatDropInTranscriptForCareCoordination(
     lines.push(`${who}: ${message.text}`);
   }
 
-  lines.push('', '— Shared from a live drop-in session');
+  lines.push('', labels.footer);
   return lines.join('\n').trim();
+}
+
+/** Care coordination posts shared from a drop-in chat (title line varies by language). */
+export function isDropInThreadPost(post: { text: string; postKind?: string }): boolean {
+  if (post.postKind === 'drop_in') return true;
+  const text = post.text.replace(/\r\n/g, '\n').trim();
+  if (!text) return false;
+  if (DROP_IN_THREAD_TITLE_PREFIXES.some((prefix) => text.startsWith(prefix))) return true;
+  if (DROP_IN_THREAD_FOOTER_MARKERS.some((marker) => text.includes(marker))) return true;
+  const lines = text.split('\n');
+  return DROP_IN_THREAD_PATIENT_LINE_PREFIXES.some(
+    (prefix) => lines[1]?.trim().startsWith(prefix) === true,
+  );
 }
 
 export async function startDropInSession(

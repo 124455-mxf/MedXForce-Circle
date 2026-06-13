@@ -6,6 +6,7 @@ import { CIRCLE_AI_PRIVACY_DISCLOSURE } from '../lib/circleAiGuardrails';
 import { useDictation } from '../hooks/useDictation';
 import { cn } from '../lib/utils';
 import { CircleAiGuidanceContent } from './CircleAiGuidanceContent';
+import { useCircleT } from '../lib/circleI18nContext';
 
 const QUESTION_MAX_LENGTH = 1000;
 
@@ -24,6 +25,7 @@ export function CircleAiGuidanceModal({
   memberRole,
   recentContext,
 }: CircleAiGuidanceModalProps) {
+  const t = useCircleT();
   const [question, setQuestion] = useState('');
   const [includeRecentMessages, setIncludeRecentMessages] = useState(false);
   const [answer, setAnswer] = useState<string | null>(null);
@@ -119,7 +121,7 @@ export function CircleAiGuidanceModal({
             onClick={handleClose}
             disabled={loading}
             className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 shrink-0"
-            aria-label="Close"
+            aria-label={t('common.close')}
           >
             <X size={18} />
           </button>
@@ -167,7 +169,9 @@ export function CircleAiGuidanceModal({
                         ? 'bg-red-50 text-red-600 ring-2 ring-red-200 animate-pulse'
                         : 'text-slate-500 hover:bg-slate-100 hover:text-violet-600',
                     )}
-                    aria-label={isRecording ? 'Stop dictation' : 'Dictate your question'}
+                    aria-label={
+                      isRecording ? t('common.aria.dictateStop') : t('common.aria.dictateQuestion')
+                    }
                     aria-pressed={isRecording}
                   >
                     {isRecording ? <MicOff size={14} /> : <Mic size={14} />}

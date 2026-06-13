@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import type { User } from 'firebase/auth';
-import { ChevronLeft, ChevronDown, ClipboardList, Mail, MessageSquare, Mic, Save, Trash2, User as UserIcon, Users, AlertCircle, Bell } from 'lucide-react';
+import { ChevronLeft, ChevronDown, ClipboardList, Mail, Maximize2, MessageSquare, Mic, Save, Trash2, User as UserIcon, Users, AlertCircle, Bell } from 'lucide-react';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import {
   canCircleMemberReplyToPatientMessage,
+  canViewCommunicationLog,
+  canViewDeletedPatientMessages,
   circlePatientMessageBucket,
   circleRepliesAfterInboxHide,
   hideCircleMessageForUser,
@@ -17,7 +19,12 @@ import {
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 import { CircleMessageBodyPreview } from './CircleMessageBodyPreview';
+import { CircleStoredTranslationMessage } from './CircleStoredTranslationMessage';
+import { CircleMessageExpandOverlay } from './CircleMessageExpandOverlay';
+import { CirclePatientLanguagePill } from './CirclePatientLanguagePill';
 import { useCirclePatientMemberDisplayNames } from '../hooks/useCirclePatientMemberDisplayNames';
+import { useCircleRemoteSettings } from '../hooks/useCircleRemoteSettings';
+import { normalizeCircleUiLanguage } from '../lib/circleLanguages';
 import { resolveCircleReplySenderLabel } from '../lib/circleReplySenderDisplay';
 
 import type {
@@ -45,12 +52,12 @@ import { CircleMessageDeleteConfirmModal } from './CircleMessageDeleteConfirmMod
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 import { CircleFolderCountBadge, formatCircleBadgeCount } from './CircleCountBadge';
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
+import { CircleHorizontalScrollStrip } from './CircleHorizontalScrollStrip';
 import {
   circleSectionEmptyCardClass,
   circleSectionPanelClass,
   circleSectionTitleClass,
   circleTabButtonClass,
-  circleTabListClass,
   circleWorkTabHeaderClass,
   circleWorkTabPanelClass,
 } from '../lib/circleSectionStyles';
@@ -79,8 +86,10 @@ import {
   messagesPatientStatusLabel,
   messagesThreadHeaderTitle,
   messagesThreadBodyText,
+  messagesThreadInboxSnippet,
 } from '../lib/messagesScreenI18n';
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
+import { resolveStoredMessageText } from '../lib/messageTranslationDisplay';
 import {
   countUnreadAlertsInInbox,
   countUnreadAttentionsInInbox,
@@ -173,6 +182,8 @@ function CircleReplyCard({
   memberDisplayNames,
   patientDisplayName,
   highlightAsUnread = false,
+  viewerLanguage,
+  patientLanguage,
   t,
 }: {
   reply: CircleThreadReply;
@@ -181,6 +192,8 @@ function CircleReplyCard({
   memberDisplayNames: { byUid: Record<string, string>; byEmail: Record<string, string> };
   patientDisplayName: string;
   highlightAsUnread?: boolean;
+  viewerLanguage: ReturnType<typeof useCircleI18nContext>['language'];
+  patientLanguage: string;
   t: ReturnType<typeof useCircleT>;
 }) {
   const senderKind = circleReplySenderKind(reply, currentUserUid, normalizedEmail);
@@ -251,6 +264,12 @@ function CircleReplyCard({
           >
             {senderLabel}
           </span>
+          {fromPatient ? (
+            <CirclePatientLanguagePill
+              language={patientLanguage}
+              title={t('messages.patientLanguagePillTitle')}
+            />
+          ) : null}
         </div>
         <span
           className={cn(
@@ -268,9 +287,13 @@ function CircleReplyCard({
           })}
         </span>
       </div>
-      <CircleMessageBodyPreview
+      <CircleStoredTranslationMessage
         text={reply.text}
+        translations={reply.translations}
+        viewerLanguage={viewerLanguage}
         className="text-slate-700 font-medium"
+        t={t}
+        translateIfMissing={fromPatient}
       />
     </div>
   );
@@ -301,6 +324,9 @@ export function PatientMessagesScreen({
 }) {
   const t = useCircleT();
   const { language } = useCircleI18nContext();
+  const { settings: remoteSettings } = useCircleRemoteSettings(db, patient, user);
+  const patientLanguage = normalizeCircleUiLanguage(remoteSettings?.primaryLanguage);
+  const [threadExpandedOpen, setThreadExpandedOpen] = useState(false);
   const normalizedEmail = useMemo(
     () => (user.email ? normalizeInviteEmail(user.email) : ''),
     [user.email],
@@ -350,6 +376,35 @@ export function PatientMessagesScreen({
     [messages],
   );
 
+  const canViewDeleted = useMemo(
+    () => canViewDeletedPatientMessages(patient.role),
+    [patient.role],
+  );
+
+  const canViewCommLog = useMemo(
+    () => canViewCommunicationLog(patient.role),
+    [patient.role],
+  );
+
+  const inboxDirectMessages = useMemo(
+    () =>
+      canViewDeleted
+        ? directMessages
+        : directMessages.filter(
+            (msg) => circlePatientMessageBucket(msg.status) !== 'deleted',
+          ),
+    [canViewDeleted, directMessages],
+  );
+
+  useEffect(() => {
+    if (!canViewDeleted && inboxView === 'deleted') {
+      setInboxView('in_out');
+    }
+    if (!canViewCommLog && inboxView === 'communication_log') {
+      setInboxView('in_out');
+    }
+  }, [canViewCommLog, canViewDeleted, inboxView]);
+
   const unreadCommunicationLog = useMemo(
     () =>
       communicationLog.filter((msg) =>
@@ -361,7 +416,7 @@ export function PatientMessagesScreen({
   const inboxTabCounts = useMemo(() => {
     const countUnreadInView = (view: CircleMessagesInboxView) =>
       filterDirectMessagesForInboxView(
-        directMessages,
+        inboxDirectMessages,
         view,
         repliesByMessageId,
         patient.patientId,
@@ -379,7 +434,7 @@ export function PatientMessagesScreen({
 
     const countTotalInView = (view: CircleMessagesInboxView) =>
       countDirectMessagesForInboxView(
-        directMessages,
+        inboxDirectMessages,
         view,
         repliesByMessageId,
         patient.patientId,
@@ -404,24 +459,24 @@ export function PatientMessagesScreen({
       },
       alert: {
         unread: countUnreadAlertsInInbox(
-          directMessages,
+          inboxDirectMessages,
           repliesByMessageId,
           patient.patientId,
         ),
-        total: countAlertsInInbox(directMessages),
+        total: countAlertsInInbox(inboxDirectMessages),
       },
       attention: {
         unread: countUnreadAttentionsInInbox(
-          directMessages,
+          inboxDirectMessages,
           repliesByMessageId,
           patient.patientId,
         ),
-        total: countAttentionsInInbox(directMessages),
+        total: countAttentionsInInbox(inboxDirectMessages),
       },
     };
   }, [
     communicationLog.length,
-    directMessages,
+    inboxDirectMessages,
     memberAudience,
     patient.patientId,
     repliesByMessageId,
@@ -432,17 +487,17 @@ export function PatientMessagesScreen({
   const bucketDirectMessages = useMemo(
     () =>
       filterDirectMessagesForInboxView(
-        directMessages,
+        inboxDirectMessages,
         inboxView,
         repliesByMessageId,
         patient.patientId,
       ),
-    [directMessages, inboxView, patient.patientId, repliesByMessageId, readTick],
+    [inboxDirectMessages, inboxView, patient.patientId, repliesByMessageId, readTick],
   );
 
   useEffect(() => {
     if (!selectedMessageId) return;
-    const selectedDirect = directMessages.find((msg) => msg.id === selectedMessageId);
+    const selectedDirect = inboxDirectMessages.find((msg) => msg.id === selectedMessageId);
     const selectedSummary = communicationLog.find((msg) => msg.id === selectedMessageId);
     const selected = selectedDirect ?? selectedSummary;
     if (!selected) {
@@ -450,7 +505,7 @@ export function PatientMessagesScreen({
       return;
     }
     if (isIcuDailySummary(selected)) {
-      if (inboxView !== 'communication_log') {
+      if (!canViewCommLog || inboxView !== 'communication_log') {
         setSelectedMessageId(null);
       }
       return;
@@ -459,7 +514,7 @@ export function PatientMessagesScreen({
     if (!messageMatchesInboxView(selected, inboxView, replies, patient.patientId)) {
       setSelectedMessageId(null);
     }
-  }, [communicationLog, directMessages, inboxView, patient.patientId, repliesByMessageId, selectedMessageId]);
+  }, [canViewCommLog, communicationLog, inboxDirectMessages, inboxView, patient.patientId, repliesByMessageId, selectedMessageId]);
 
   useEffect(() => {
     const onReadChanged = (event: Event) => {
@@ -820,8 +875,6 @@ export function PatientMessagesScreen({
       ? summaryDateLabel(msg)
       : messagesThreadHeaderTitle(t, msg, language, 'inbox');
     const alertKind = summaryRow ? null : circleMessageAlertAttentionKind(msg);
-    const hasDistinctSubjectLine =
-      !!alertKind || !!(msg.subject && msg.subject.trim());
     const urgentAlertAttention =
       alertKind &&
       isUrgentUnreadAlertAttentionMessage(
@@ -830,14 +883,12 @@ export function PatientMessagesScreen({
         msg.id,
         threadReplies,
       );
-    let snippet = summaryRow
+    const snippet = summaryRow
       ? messagesCountLabel(t, summaryUtteranceCount(msg), 'messages.utterance_one', 'messages.utterance_other')
-      : hasDistinctSubjectLine
-        ? messagesThreadBodyText(msg, language).slice(0, 80) || ''
-        : '';
-    if (!summaryRow && resurrected && latestVisiblePatientReply?.text) {
-      snippet = latestVisiblePatientReply.text.slice(0, 80);
-    }
+      : messagesThreadInboxSnippet(msg, threadReplies, language, replySort, {
+          resurrected,
+          latestVisiblePatientReply,
+        });
 
     return (
       <li key={msg.id} className={summaryRow ? 'list-none' : undefined}>
@@ -923,6 +974,7 @@ export function PatientMessagesScreen({
                   </span>
                 )}
                 {!summaryRow && msg.status && msg.status !== 'sent' && msg.status !== 'sending' && msg.status !== 'failed' && (
+                  !(msg.status === 'deleted' && !canViewDeleted) ? (
                   <span
                     className={cn(
                       'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full',
@@ -933,6 +985,7 @@ export function PatientMessagesScreen({
                   >
                     {messagesPatientStatusLabel(t, msg.status)}
                   </span>
+                  ) : null
                 )}
               </div>
               <p className={cn('text-sm font-bold truncate leading-snug', summaryRow ? 'text-indigo-950' : 'text-slate-800')}>
@@ -971,7 +1024,7 @@ export function PatientMessagesScreen({
     return (
       <>
       <div className={circleWorkTabPanelClass(compactChrome)}>
-        <div className={cn(circleWorkTabHeaderClass(compactChrome), 'space-y-2')}>
+        <div className={cn(circleWorkTabHeaderClass(compactChrome), 'space-y-2 min-w-0')}>
           <CircleWorkTabSectionIntro
             icon={MessageSquare}
             iconClassName="text-blue-600"
@@ -985,16 +1038,13 @@ export function PatientMessagesScreen({
               ) : undefined
             }
           />
-          <div
-            className={cn(
-              circleTabListClass,
-              'flex-nowrap items-center gap-0.5 p-1',
-              'overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden',
-            )}
+          <CircleHorizontalScrollStrip
+            className="rounded-xl bg-slate-100 p-1"
+            innerClassName="gap-0.5"
             role="tablist"
             aria-label={t('messages.tabBucketsAria')}
           >
-            <div className="flex items-center gap-0.5 shrink-0">
+            {canViewCommLog ? (
             <button
               type="button"
               role="tab"
@@ -1018,6 +1068,7 @@ export function PatientMessagesScreen({
                 />
               </span>
             </button>
+            ) : null}
             <button
               type="button"
               role="tab"
@@ -1058,9 +1109,7 @@ export function PatientMessagesScreen({
                 <CircleFolderCountBadge {...inboxTabCounts.attention} placement="overlay" />
               </span>
             </button>
-            </div>
             <span className="w-px h-5 bg-slate-200/90 shrink-0 mx-0.5 self-center" aria-hidden />
-            <div className="flex items-center gap-0.5 shrink-0">
             <button
               type="button"
               role="tab"
@@ -1091,6 +1140,7 @@ export function PatientMessagesScreen({
                 <CircleFolderCountBadge {...inboxTabCounts.archived} />
               </span>
             </button>
+            {canViewDeleted ? (
             <button
               type="button"
               role="tab"
@@ -1106,11 +1156,11 @@ export function PatientMessagesScreen({
                 <CircleFolderCountBadge {...inboxTabCounts.deleted} />
               </span>
             </button>
-            </div>
-          </div>
+            ) : null}
+          </CircleHorizontalScrollStrip>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-          {inboxView === 'communication_log' ? (
+          {canViewCommLog && inboxView === 'communication_log' ? (
             communicationLog.length > 0 ? (
               <>
                 <div className="flex items-center gap-2 px-4 py-3 bg-indigo-50/60 border-b border-indigo-100">
@@ -1202,6 +1252,8 @@ export function PatientMessagesScreen({
           highlightAsUnread={
             selectedThreadHasUnread && r.isPatient && r.id === latestPatientReplyId
           }
+          viewerLanguage={language}
+          patientLanguage={patientLanguage}
           t={t}
         />
       </div>
@@ -1251,7 +1303,10 @@ export function PatientMessagesScreen({
     );
   }
 
-  const selectedStatusHint = messagesPatientStatusHint(t, selectedMessage.status);
+  const selectedStatusHint =
+    canViewDeleted || selectedMessage.status !== 'deleted'
+      ? messagesPatientStatusHint(t, selectedMessage.status)
+      : '';
   const selectedAlertKind = circleMessageAlertAttentionKind(selectedMessage);
   const canReplyToThread =
     canCircleMemberReplyToPatientMessage(selectedMessage.status) && !selectedAlertKind;
@@ -1277,15 +1332,30 @@ export function PatientMessagesScreen({
             <ChevronLeft size={20} />
           </button>
           <div className="min-w-0 flex-1 pb-1">
-            <p className="font-bold text-slate-800 line-clamp-2 leading-snug">
-              {messagesThreadHeaderTitle(t, selectedMessage, language)}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-bold text-slate-800 line-clamp-2 leading-snug min-w-0 flex-1">
+                {messagesThreadHeaderTitle(t, selectedMessage, language)}
+              </p>
+              <CirclePatientLanguagePill
+                language={patientLanguage}
+                title={t('messages.patientLanguagePillTitle')}
+              />
+            </div>
             <p className="text-[11px] text-slate-500 mt-0.5">
               {isIcuDailySummary(selectedMessage)
                 ? messagesCommunicationLogThreadSubtitle(t, selectedMessage)
                 : formatMessagesThreadTime(t, selectedMessage.updatedAt || selectedMessage.createdAt)}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => setThreadExpandedOpen(true)}
+            className="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 shrink-0"
+            aria-label={t('circle.expandMessage')}
+            title={t('circle.expandMessage')}
+          >
+            <Maximize2 size={18} />
+          </button>
           {circlePatientMessageBucket(selectedMessage.status) === 'in_out' ? (
           <button
             type="button"
@@ -1314,7 +1384,20 @@ export function PatientMessagesScreen({
         ) : null}
         {showSelectedInitialMessage ? (
           <div className="px-4 pb-4 pt-1 pl-14">
-            <CircleMessageBodyPreview text={messagesThreadBodyText(selectedMessage, language)} />
+            {selectedAlertKind ? (
+              <CircleMessageBodyPreview
+                text={messagesThreadBodyText(selectedMessage, language)}
+              />
+            ) : (
+              <CircleStoredTranslationMessage
+                text={selectedMessage.text}
+                translations={selectedMessage.translations}
+                viewerLanguage={language}
+                className="text-slate-700 font-medium"
+                t={t}
+                translateIfMissing
+              />
+            )}
           </div>
         ) : selectedThreadResurrected ? (
           <p className="px-4 pb-4 pt-1 pl-14 text-[11px] text-slate-400 leading-relaxed">
@@ -1405,6 +1488,36 @@ export function PatientMessagesScreen({
         </div>
       )}
     </div>
+    <CircleMessageExpandOverlay
+      open={threadExpandedOpen}
+      title={messagesThreadHeaderTitle(t, selectedMessage, language)}
+      subtitle={formatMessagesThreadTime(
+        t,
+        selectedMessage.updatedAt || selectedMessage.createdAt,
+      )}
+      onClose={() => setThreadExpandedOpen(false)}
+      t={t}
+    >
+      <div className="space-y-4">
+        {showSelectedInitialMessage && !selectedAlertKind ? (
+          <CircleStoredTranslationMessage
+            text={selectedMessage.text}
+            translations={selectedMessage.translations}
+            viewerLanguage={language}
+            className="text-slate-700 font-medium"
+            t={t}
+            translateIfMissing
+            disableTruncate
+          />
+        ) : selectedAlertKind ? (
+          <CircleMessageBodyPreview
+            text={messagesThreadBodyText(selectedMessage, language)}
+            disableTruncate
+          />
+        ) : null}
+        {[...orderedReplies].map(renderReply)}
+      </div>
+    </CircleMessageExpandOverlay>
     {messageModals}
     </>
   );

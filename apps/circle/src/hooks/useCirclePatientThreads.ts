@@ -10,6 +10,7 @@ import {
 import type { Firestore } from 'firebase/firestore';
 import {
   isPatientReplyVisibleToCircleMember,
+  canViewCommunicationLog,
   normalizeInviteEmail,
   shouldShowCircleThreadInInbox,
   isCirclePatientMessageActive,
@@ -55,6 +56,7 @@ export type CircleThreadReply = {
   channel: 'app' | 'email';
   recipientEmails?: string[];
   circleMemberUids?: string[];
+  translations?: { language: string; text: string; isAuto?: boolean }[];
   timestamp: number;
 };
 
@@ -75,7 +77,12 @@ export function useCirclePatientThreads(
   db: Firestore,
   patientId: string,
   user: User,
+  memberRole = 'friend',
 ) {
+  const showCommunicationLog = useMemo(
+    () => canViewCommunicationLog(memberRole),
+    [memberRole],
+  );
   const normalizedEmail = useMemo(
     () => (user.email ? normalizeInviteEmail(user.email) : ''),
     [user.email],
@@ -196,14 +203,14 @@ export function useCirclePatientThreads(
 
   const messages = useMemo(() => {
     return rawMessages.filter((msg) => {
-      if (isIcuDailySummary(msg)) return true;
+      if (isIcuDailySummary(msg)) return showCommunicationLog;
       const hiddenAt = hiddenAtByMessageId[msg.id];
       if (isCirclePatientMessageActive(msg.status)) {
         return shouldShowCircleThreadInInbox(hiddenAt, repliesByMessageId[msg.id] || []);
       }
       return true;
     });
-  }, [rawMessages, hiddenAtByMessageId, repliesByMessageId]);
+  }, [rawMessages, hiddenAtByMessageId, repliesByMessageId, showCommunicationLog]);
 
   useEffect(() => {
     if (!patientId || rawMessages.length === 0) {
@@ -254,7 +261,7 @@ export function useCirclePatientThreads(
   const unreadCount = useMemo(() => {
     return messages.filter((m) => {
       if (isIcuDailySummary(m)) {
-        return isCommunicationLogSummaryUnread(m, patientId, m.id);
+        return showCommunicationLog && isCommunicationLogSummaryUnread(m, patientId, m.id);
       }
       if (!isCirclePatientMessageActive(m.status)) return false;
       return threadHasUnreadPatientReply(
@@ -264,7 +271,7 @@ export function useCirclePatientThreads(
         m,
       );
     }).length;
-  }, [messages, repliesByMessageId, patientId, readTick, repliesVisibleToMember]);
+  }, [messages, repliesByMessageId, patientId, readTick, repliesVisibleToMember, showCommunicationLog]);
 
   return {
     loading,

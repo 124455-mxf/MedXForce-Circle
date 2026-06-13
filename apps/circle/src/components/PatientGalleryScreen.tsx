@@ -39,6 +39,7 @@ import {
 import { useCircleGalleryThumbnailSize } from '../hooks/useCircleGalleryThumbnailSize';
 import { useCircleGallerySkipPhotoDeleteConfirm } from '../hooks/useCircleGallerySkipPhotoDeleteConfirm';
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
+import { CircleHorizontalScrollStrip } from './CircleHorizontalScrollStrip';
 import { CircleGalleryLightbox, GalleryThumb } from './CircleGalleryLightbox';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 import { CircleDeleteAlbumConfirmModal } from './CircleDeleteAlbumConfirmModal';
@@ -54,7 +55,6 @@ import {
   circleSectionTitleClass,
   circleBrowsePillButtonClass,
   circleBrowsePillListClass,
-  circleBrowsePillRowClass,
   circleTabButtonClass,
   circleTabListClass,
   circleWorkTabHeaderClass,
@@ -486,19 +486,19 @@ export function PatientGalleryScreen({
   const sharedBrowsePills: { id: SharedBrowseMode; label: string }[] = [
     { id: 'photos', label: t('gallery.allPictures') },
     { id: 'videos', label: t('gallery.allVideos') },
-    { id: 'album', label: t('gallery.byAlbum') },
+    { id: 'album', label: t('gallery.allAlbums') },
     ...(canUpload ? [{ id: 'my-albums' as const, label: t('gallery.myAlbums') }] : []),
     { id: 'newest', label: t('gallery.newest') },
   ];
 
   const renderBrowsePills = () => (
-    <div
-      className={circleBrowsePillListClass}
+    <CircleHorizontalScrollStrip
+      className={cn(circleBrowsePillListClass, 'touch-pan-x')}
+      innerClassName="gap-2"
       role="tablist"
       aria-label={t('gallery.browseSharedMediaAria')}
     >
-      <div className={circleBrowsePillRowClass}>
-        {sharedBrowsePills.map((pill) => {
+      {sharedBrowsePills.map((pill) => {
           const active = sharedBrowseMode === pill.id && !showGrid;
           const counts = sharedBrowseTabCounts[pill.id];
           return (
@@ -521,8 +521,7 @@ export function PatientGalleryScreen({
           </button>
           );
         })}
-      </div>
-    </div>
+    </CircleHorizontalScrollStrip>
   );
 
   const renderMediaGrid = (items: GalleryAlbumMedia[]) => (
@@ -737,7 +736,7 @@ export function PatientGalleryScreen({
   return (
     <div className="flex flex-col flex-1 min-h-0 max-h-full overflow-hidden">
       <div className={cn(circleWorkTabPanelClass(compactChrome), 'max-h-full')}>
-        <div className={cn(circleWorkTabHeaderClass(compactChrome), circleSectionHeaderStackClass, compactChrome && 'space-y-2')}>
+        <div className={cn(circleWorkTabHeaderClass(compactChrome), circleSectionHeaderStackClass, compactChrome && 'space-y-2', 'min-w-0')}>
           <div className="flex items-start justify-between gap-2">
             {mainMode === 'browse' && (
               <CircleWorkTabSectionIntro
@@ -855,6 +854,10 @@ export function PatientGalleryScreen({
               )}
             </div>
           )}
+
+          {mainMode === 'browse' && browseTab === 'shared' && !showGrid && !loading && (
+            <div className="min-w-0">{renderBrowsePills()}</div>
+          )}
         </div>
 
         <div className={cn(circleSectionBodyClass, 'p-4')}>
@@ -863,9 +866,7 @@ export function PatientGalleryScreen({
         )}
 
         {mainMode === 'browse' && browseTab === 'shared' && !showGrid && !loading && (
-          <div className="space-y-4">
-            {renderBrowsePills()}
-
+          <div className="space-y-4 min-w-0">
             {sharedBrowseMode === 'album' && albumCards.length > 0 && (
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 px-1">

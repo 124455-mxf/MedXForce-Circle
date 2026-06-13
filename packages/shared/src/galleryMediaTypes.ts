@@ -68,6 +68,28 @@ export function resolveGalleryMediaKind(file: File): GalleryMediaKind | null {
   return null;
 }
 
+/** Profile avatars — accept HEIC/HEIF and extension-only picks (common on Windows). */
+export function isAcceptedProfilePhotoFile(file: File): boolean {
+  return resolveGalleryMediaKind(file) === 'image';
+}
+
+export async function normalizeProfilePhotoFile(file: File): Promise<File> {
+  if (!isAcceptedProfilePhotoFile(file)) {
+    throw new Error('Only image files are supported.');
+  }
+  if (isHeicLike(file)) {
+    const jpeg = await convertHeicFileToJpeg(file);
+    const baseName = file.name.replace(/\.(heic|heif)$/i, '') || 'photo';
+    return new File([jpeg], `${baseName}.jpg`, { type: 'image/jpeg' });
+  }
+  const mime = (file.type || '').toLowerCase();
+  if (!mime.startsWith('image/')) {
+    const ext = extensionOf(file.name) || 'jpg';
+    return new File([file], file.name, { type: contentTypeFromExtension(ext, 'image') });
+  }
+  return file;
+}
+
 function contentTypeFromExtension(ext: string, kind: GalleryMediaKind): string {
   const map: Record<string, string> = {
     heic: 'image/heic',

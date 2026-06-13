@@ -1,4 +1,5 @@
 import { AlertCircle, Bell } from 'lucide-react';
+import { useCircleT } from '../lib/circleI18nContext';
 
 export type CircleNotifyTurnOffKey = 'alert' | 'attention';
 
@@ -11,20 +12,16 @@ type CircleNotifyTurnOffConfirmModalProps = {
   isSubmitting?: boolean;
 };
 
-const COPY: Record<
+const STYLE: Record<
   CircleNotifyTurnOffKey,
-  { title: string; body: string; icon: typeof Bell; iconWrap: string; confirmClass: string }
+  { icon: typeof Bell; iconWrap: string; confirmClass: string }
 > = {
   alert: {
-    title: 'Turn off Alert notifications?',
-    body: 'You will no longer be notified when urgent alerts are sent. Turn this back on anytime if you want to receive them again.',
     icon: Bell,
     iconWrap: 'bg-red-50 text-red-500',
     confirmClass: 'bg-red-600 hover:bg-red-700 shadow-red-200',
   },
   attention: {
-    title: 'Turn off Attention notifications?',
-    body: 'You will no longer be notified when attention is needed. Turn this back on anytime if you want to receive them again.',
     icon: AlertCircle,
     iconWrap: 'bg-orange-50 text-orange-500',
     confirmClass: 'bg-orange-600 hover:bg-orange-700 shadow-orange-200',
@@ -39,10 +36,15 @@ export function CircleNotifyTurnOffConfirmModal({
   onCancel,
   isSubmitting = false,
 }: CircleNotifyTurnOffConfirmModalProps) {
+  const t = useCircleT();
   if (!open) return null;
 
-  const config = COPY[notifyKey];
+  const config = STYLE[notifyKey];
   const Icon = config.icon;
+  const title =
+    notifyKey === 'alert' ? t('settings.turnOffAlertTitle') : t('settings.turnOffAttentionTitle');
+  const body =
+    notifyKey === 'alert' ? t('settings.turnOffAlertBody') : t('settings.turnOffAttentionBody');
 
   return (
     <div className="fixed inset-0 z-[140] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
@@ -54,11 +56,10 @@ export function CircleNotifyTurnOffConfirmModal({
         </div>
 
         <div className="text-center space-y-2">
-          <h3 className="text-xl font-bold text-slate-900">{config.title}</h3>
-          <p className="text-slate-600 leading-relaxed text-sm">{config.body}</p>
+          <h3 className="text-xl font-bold text-slate-900">{title}</h3>
+          <p className="text-slate-600 leading-relaxed text-sm">{body}</p>
           <p className="text-sm text-slate-500">
-            Patient:{' '}
-            <span className="font-bold text-red-600">{patientDisplayName}</span>
+            {t('settings.turnOffPatient', { name: patientDisplayName })}
           </p>
         </div>
 
@@ -69,7 +70,7 @@ export function CircleNotifyTurnOffConfirmModal({
             disabled={isSubmitting}
             className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50"
           >
-            Keep on
+            {t('settings.turnOffKeepOn')}
           </button>
           <button
             type="button"
@@ -77,7 +78,7 @@ export function CircleNotifyTurnOffConfirmModal({
             disabled={isSubmitting}
             className={`flex-1 py-4 text-white rounded-2xl font-bold transition-all shadow-lg disabled:opacity-50 ${config.confirmClass}`}
           >
-            {isSubmitting ? 'Saving…' : 'Turn off'}
+            {isSubmitting ? t('admin.contact.saving') : t('settings.turnOffConfirm')}
           </button>
         </div>
       </div>

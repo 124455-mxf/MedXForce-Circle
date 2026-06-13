@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom';
 import { Loader2, Share2, X } from 'lucide-react';
+import { useCircleT } from '../lib/circleI18nContext';
 
 type CircleDropInShareModalProps = {
   open: boolean;
@@ -18,6 +19,8 @@ export function CircleDropInShareModal({
   sharing = false,
   error = null,
 }: CircleDropInShareModalProps) {
+  const t = useCircleT();
+
   if (!open || typeof document === 'undefined') return null;
 
   return createPortal(
@@ -41,7 +44,7 @@ export function CircleDropInShareModal({
             onClick={onDismiss}
             disabled={sharing}
             className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 disabled:opacity-50"
-            aria-label="Close"
+            aria-label={t('remotePromptsModal.closeAria')}
           >
             <X size={20} />
           </button>
@@ -49,14 +52,14 @@ export function CircleDropInShareModal({
 
         <div className="space-y-2">
           <h3 id="circle-drop-in-share-title" className="text-xl font-bold text-slate-900">
-            Share to Care coordination?
+            {t('remotePromptsModal.dropInShareTitle')}
           </h3>
           <p className="text-sm text-slate-500 leading-relaxed">
-            Nothing is shared automatically. You can post a transcript of this drop-in conversation
-            to Care coordination for proxies and caregivers only.
+            {t('remotePromptsModal.dropInShareBody')}
           </p>
           <p className="text-sm text-slate-700">
-            Patient: <span className="font-semibold">{patientName}</span>
+            {t('remotePromptsModal.patientLabel')}{' '}
+            <span className="font-semibold">{patientName}</span>
           </p>
         </div>
 
@@ -73,7 +76,7 @@ export function CircleDropInShareModal({
             disabled={sharing}
             className="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 disabled:opacity-50"
           >
-            Don&apos;t share
+            {t('remotePromptsModal.dropInShareDontShare')}
           </button>
           <button
             type="button"
@@ -82,7 +85,7 @@ export function CircleDropInShareModal({
             className="flex-1 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {sharing ? <Loader2 size={18} className="animate-spin" /> : null}
-            Share
+            {t('remotePromptsModal.dropInShareButton')}
           </button>
         </div>
       </div>

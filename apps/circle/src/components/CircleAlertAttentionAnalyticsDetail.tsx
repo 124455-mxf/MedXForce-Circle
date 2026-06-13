@@ -19,14 +19,14 @@ import {
   circleAnalyticsTooltipLabelFormatter,
   prepareDailyBucketChartData,
 } from '../lib/circleAnalyticsChart';
+import { useCircleT } from '../lib/circleI18nContext';
+import {
+  analyticsTrendHigherLowerStable,
+  analyticsWindowDaysLabel,
+} from '../lib/circleAnalyticsI18n';
 import { cn } from '../lib/utils';
 import { CircleAnalyticsChartFooter } from './CircleAnalyticsChartFooter';
 import { CircleAnalyticsChartXAxis } from './CircleAnalyticsChartXAxis';
-
-const ALERT_ATTENTION_LEGEND = [
-  { color: '#ef4444', label: 'Alert' },
-  { color: '#3b82f6', label: 'Attention' },
-] as const;
 
 type CircleAlertAttentionAnalyticsDetailProps = {
   alerts?: number;
@@ -35,13 +35,13 @@ type CircleAlertAttentionAnalyticsDetailProps = {
   timeline?: AlertAttentionTimelinePoint[];
 };
 
-function trendLabel(trend: AnalyticsTrendDirection): string {
-  if (trend === 'up') return 'Higher';
-  if (trend === 'down') return 'Lower';
-  return 'Stable';
-}
-
-function TrendSummary({ trend }: { trend: AnalyticsTrendDirection }) {
+function TrendSummary({
+  trend,
+  t,
+}: {
+  trend: AnalyticsTrendDirection;
+  t: ReturnType<typeof useCircleT>;
+}) {
   const Icon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
   const colorClass =
     trend === 'up'
@@ -57,7 +57,7 @@ function TrendSummary({ trend }: { trend: AnalyticsTrendDirection }) {
       )}
     >
       <Icon size={12} />
-      {trendLabel(trend)}
+      {analyticsTrendHigherLowerStable(t, trend)}
     </span>
   );
 }
@@ -68,7 +68,12 @@ export function CircleAlertAttentionAnalyticsDetail({
   trend = 'stable',
   timeline,
 }: CircleAlertAttentionAnalyticsDetailProps) {
+  const t = useCircleT();
   const [chartType, setChartType] = useState<'line' | 'bar'>('line');
+  const legend = [
+    { color: '#ef4444', label: t('analytics.alertAttention.alert') },
+    { color: '#3b82f6', label: t('analytics.alertAttention.attention') },
+  ] as const;
   const chartData = prepareDailyBucketChartData(
     Array.isArray(timeline)
       ? timeline.map((point) => ({
@@ -83,33 +88,35 @@ export function CircleAlertAttentionAnalyticsDetail({
   );
   const hasCharts = chartData.length > 0;
   const chartMargin = circleAnalyticsChartMargin();
+  const alertLabel = t('analytics.alertAttention.alert');
+  const attentionLabel = t('analytics.alertAttention.attention');
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="px-3 py-2 border-b border-slate-100 bg-orange-50/60">
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
-          30 days
+          {analyticsWindowDaysLabel(t, 30)}
         </p>
       </div>
       <div className="p-4 space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-0.5 min-w-0">
-            <p className="text-[9px] font-bold text-red-500 uppercase tracking-tight">Alert</p>
+            <p className="text-[9px] font-bold text-red-500 uppercase tracking-tight">{alertLabel}</p>
             <p className="text-2xl font-black text-red-600 leading-none tabular-nums">{alerts}</p>
           </div>
           <div className="space-y-0.5 min-w-0">
-            <p className="text-[9px] font-bold text-blue-500 uppercase tracking-tight">Attention</p>
+            <p className="text-[9px] font-bold text-blue-500 uppercase tracking-tight">{attentionLabel}</p>
             <p className="text-2xl font-black text-blue-600 leading-none tabular-nums">{attentions}</p>
           </div>
         </div>
 
         <div className="pt-3 border-t border-slate-50 space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Trend</span>
-            <TrendSummary trend={trend} />
+            <span className="text-[10px] font-bold text-slate-400 uppercase">{t('analytics.trend')}</span>
+            <TrendSummary trend={trend} t={t} />
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Chart</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase">{t('analytics.chart')}</span>
             <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg">
               <button
                 type="button"
@@ -120,7 +127,7 @@ export function CircleAlertAttentionAnalyticsDetail({
                     ? 'text-blue-600 bg-white shadow-sm'
                     : 'text-slate-400 hover:text-slate-600',
                 )}
-                aria-label="Line chart"
+                aria-label={t('analytics.lineChart')}
                 aria-pressed={chartType === 'line'}
               >
                 <ChartLine size={14} />
@@ -134,7 +141,7 @@ export function CircleAlertAttentionAnalyticsDetail({
                     ? 'text-blue-600 bg-white shadow-sm'
                     : 'text-slate-400 hover:text-slate-600',
                 )}
-                aria-label="Bar chart"
+                aria-label={t('analytics.barChart')}
                 aria-pressed={chartType === 'bar'}
               >
                 <BarChart3 size={14} />
@@ -169,7 +176,7 @@ export function CircleAlertAttentionAnalyticsDetail({
                   <Line
                     type="monotone"
                     dataKey="alert"
-                    name="Alert"
+                    name={alertLabel}
                     stroke="#ef4444"
                     strokeWidth={2}
                     dot={false}
@@ -178,7 +185,7 @@ export function CircleAlertAttentionAnalyticsDetail({
                   <Line
                     type="monotone"
                     dataKey="attention"
-                    name="Attention"
+                    name={attentionLabel}
                     stroke="#3b82f6"
                     strokeWidth={2}
                     dot={false}
@@ -205,20 +212,20 @@ export function CircleAlertAttentionAnalyticsDetail({
                       fontSize: '11px',
                     }}
                   />
-                  <Bar dataKey="alert" name="Alert" fill="#ef4444" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="attention" name="Attention" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="alert" name={alertLabel} fill="#ef4444" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="attention" name={attentionLabel} fill="#3b82f6" radius={[3, 3, 0, 0]} />
                 </BarChart>
               )}
             </ResponsiveContainer>
             <CircleAnalyticsChartFooter
-              legend={[...ALERT_ATTENTION_LEGEND]}
+              legend={[...legend]}
               plotInsetLeft={circleAnalyticsPlotInsetLeft(chartMargin)}
               plotInsetRight={circleAnalyticsPlotInsetRight(chartMargin)}
             />
           </div>
         ) : (
           <p className="text-[11px] text-slate-400 text-center leading-relaxed py-2">
-            Chart data not synced yet. On the patient app, open Analytics and tap Sync to Circle.
+            {t('analytics.chartNotSynced')}
           </p>
         )}
       </div>

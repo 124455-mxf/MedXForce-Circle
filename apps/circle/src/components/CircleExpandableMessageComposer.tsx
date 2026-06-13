@@ -5,6 +5,7 @@ import { useDictation } from '../hooks/useDictation';
 import { isCircleAiAssistAvailable } from '../lib/circleAiAssist';
 import { cn } from '../lib/utils';
 import { CircleAiGuidanceModal } from './CircleAiGuidanceModal';
+import { useCircleT } from '../lib/circleI18nContext';
 
 type CircleAiGuidanceConfig = {
   threadLabel: string;
@@ -61,6 +62,7 @@ export function CircleExpandableMessageComposer({
   wrapperClassName,
   aiGuidance,
 }: CircleExpandableMessageComposerProps) {
+  const t = useCircleT();
   const [expanded, setExpanded] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const inlineRef = useRef<HTMLTextAreaElement>(null);
@@ -160,7 +162,7 @@ export function CircleExpandableMessageComposer({
             onClick={() => setExpanded(true)}
             disabled={inputDisabled}
             className={iconButtonClass}
-            aria-label="Expand message box"
+            aria-label={t('common.aria.expandMessageBox')}
             title="Expand"
           >
             <Maximize2 size={18} className="[@media(max-height:740px)]:hidden" />
@@ -175,7 +177,7 @@ export function CircleExpandableMessageComposer({
             iconButtonClass,
             isRecording && 'border-red-200 bg-red-50 text-red-600 animate-pulse',
           )}
-          aria-label={isRecording ? 'Stop dictation' : 'Dictate with microphone'}
+          aria-label={isRecording ? t('common.aria.dictateStop') : t('common.aria.dictateStart')}
           aria-pressed={isRecording}
           title={isRecording ? 'Stop dictation' : 'Dictate'}
         >
@@ -190,7 +192,7 @@ export function CircleExpandableMessageComposer({
               iconButtonClass,
               'border-violet-100 text-violet-600 hover:bg-violet-50 hover:border-violet-200',
             )}
-            aria-label="Private AI guidance"
+            aria-label={t('common.aria.privateAiGuidance')}
             title="Private AI guidance"
           >
             <Sparkles size={18} />
@@ -271,7 +273,7 @@ export function CircleExpandableMessageComposer({
               type="button"
               onClick={collapseExpanded}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold uppercase tracking-wide text-[10px] hover:bg-slate-50 shrink-0 outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/20"
-              aria-label="Collapse message box"
+              aria-label={t('common.aria.collapseMessageBox')}
             >
               <Minimize2 size={16} />
               Collapse

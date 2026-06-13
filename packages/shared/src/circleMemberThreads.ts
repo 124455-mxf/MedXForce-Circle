@@ -9,12 +9,20 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import type { CircleMemberRole } from './patientPermissions';
+import { isDropInThreadPost } from './dropIn';
+import { isVisitCaptureThreadPost } from './visitCapture';
 
 /** Author or proxy may delete for everyone within this window (unless someone responded). */
 export const CIRCLE_THREAD_POST_DELETE_WINDOW_MS = 30 * 60 * 1000;
 
 /** All-to-all circle member threads (not patient ↔ member messaging). */
 export type CircleMemberThreadKind = 'open' | 'restricted';
+
+export type CircleMemberThreadPostTranslation = {
+  language: string;
+  text: string;
+  isAuto?: boolean;
+};
 
 export interface CircleMemberThreadPost {
   id: string;
@@ -25,10 +33,38 @@ export interface CircleMemberThreadPost {
   authorRole: CircleMemberRole;
   text: string;
   createdAt: number;
+  translations?: CircleMemberThreadPostTranslation[];
   /** Set when another member posts after this one — blocks delete-for-everyone. */
   respondLocked?: boolean;
-  postKind?: 'visit_capture';
+  postKind?: 'discussion' | 'announcement' | 'visit_capture' | 'drop_in';
   visitCaptureId?: string;
+  replyCount?: number;
+  lastReplyAt?: number;
+  lastReplyAuthorUid?: string;
+  lastReplyAuthorName?: string;
+  lastReplyPreviewText?: string;
+}
+
+function parseCircleMemberThreadPostTranslations(
+  data: Record<string, unknown>,
+): CircleMemberThreadPostTranslation[] | undefined {
+  const raw = data.translations;
+  if (!Array.isArray(raw)) return undefined;
+  const parsed = raw
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return null;
+      const row = entry as Record<string, unknown>;
+      const language = typeof row.language === 'string' ? row.language.trim() : '';
+      const text = typeof row.text === 'string' ? row.text.trim() : '';
+      if (!language || !text) return null;
+      return {
+        language,
+        text,
+        ...(row.isAuto === true ? { isAuto: true as const } : {}),
+      };
+    })
+    .filter((entry): entry is CircleMemberThreadPostTranslation => entry !== null);
+  return parsed.length > 0 ? parsed : undefined;
 }
 
 const OPEN_THREAD_ROLES = new Set<CircleMemberRole>([
@@ -89,6 +125,36 @@ export function circleMemberRoleLabel(role: CircleMemberRole): string {
   }
 }
 
+/** Bold the first title line for structured care posts (visit capture, drop-in). */
+export function circleThreadPostBoldTitleLine(post: {
+  text: string;
+  postKind?: string;
+}): boolean {
+  return isVisitCaptureThreadPost(post) || isDropInThreadPost(post);
+}
+
+export function isAnnouncementThreadPost(post: { postKind?: string }): boolean {
+  return post.postKind === 'announcement';
+}
+
+/** Member posts that support discussion replies (not announcements or care artifacts). */
+export function isDiscussionThreadPost(post: {
+  text: string;
+  postKind?: string;
+}): boolean {
+  if (isVisitCaptureThreadPost(post) || isDropInThreadPost(post) || isAnnouncementThreadPost(post)) {
+    return false;
+  }
+  return post.postKind === 'discussion' || !post.postKind;
+}
+
+/** Proxies and caregivers may post one-way announcements. */
+export function canPostCircleAnnouncement(role: string): boolean {
+  return (
+    role === 'proxy' || role === 'caregiver' || role === 'professional_caregiver'
+  );
+}
+
 export function circleMemberThreadPostsCollection(
   db: Firestore,
   patientId: string,
@@ -110,9 +176,27 @@ export function parseCircleMemberThreadPost(
     authorRole: String(data.authorRole || 'friend') as CircleMemberRole,
     text: String(data.text || ''),
     createdAt: Number(data.createdAt || 0),
+    translations: parseCircleMemberThreadPostTranslations(data),
     respondLocked: data.respondLocked === true,
-    postKind: data.postKind === 'visit_capture' ? 'visit_capture' : undefined,
+    postKind:
+      data.postKind === 'visit_capture'
+        ? 'visit_capture'
+        : data.postKind === 'drop_in'
+          ? 'drop_in'
+          : data.postKind === 'announcement'
+            ? 'announcement'
+            : data.postKind === 'discussion'
+              ? 'discussion'
+              : undefined,
     visitCaptureId: data.visitCaptureId ? String(data.visitCaptureId) : undefined,
+    replyCount: typeof data.replyCount === 'number' ? data.replyCount : undefined,
+    lastReplyAt: typeof data.lastReplyAt === 'number' ? data.lastReplyAt : undefined,
+    lastReplyAuthorUid:
+      typeof data.lastReplyAuthorUid === 'string' ? data.lastReplyAuthorUid : undefined,
+    lastReplyAuthorName:
+      typeof data.lastReplyAuthorName === 'string' ? data.lastReplyAuthorName : undefined,
+    lastReplyPreviewText:
+      typeof data.lastReplyPreviewText === 'string' ? data.lastReplyPreviewText : undefined,
   };
 }
 
@@ -148,10 +232,18 @@ export async function createCircleMemberThreadPost(
     authorName: string;
     authorRole: CircleMemberRole;
     text: string;
+    translations?: CircleMemberThreadPostTranslation[];
+    postKind?: 'discussion' | 'announcement' | 'visit_capture' | 'drop_in';
+    visitCaptureId?: string;
   },
 ): Promise<string> {
   const body = params.text.trim();
   if (!body) throw new Error('Please write a message before sending.');
+
+  const kind = params.postKind ?? 'discussion';
+  if (kind === 'announcement' && !canPostCircleAnnouncement(params.authorRole)) {
+    throw new Error('Only proxies and caregivers can post announcements.');
+  }
 
   const now = Date.now();
   const col = circleMemberThreadPostsCollection(db, params.patientId, params.threadKind);
@@ -176,6 +268,9 @@ export async function createCircleMemberThreadPost(
     text: body,
     createdAt: now,
     respondLocked: false,
+    postKind: kind,
+    ...(params.translations?.length ? { translations: params.translations } : {}),
+    ...(params.visitCaptureId ? { visitCaptureId: params.visitCaptureId } : {}),
   });
 
   await batch.commit();

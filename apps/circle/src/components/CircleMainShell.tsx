@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
-import type { AnalyticsMetricId, CirclePatientSummary } from '@medxforce/shared';
+import type { AnalyticsMetricId, CircleMemberThreadKind, CirclePatientSummary } from '@medxforce/shared';
 import {
   canSendPatientRemoteCommands,
   canStartVisitCapture,
   normalizeMemberRole,
+  visitCapturePublishThreadKind,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 import { CircleChromeProvider } from '../lib/circleChromeContext';
@@ -22,7 +23,7 @@ import {
   primaryNavItemsForPatient,
   type CircleMainTab,
 } from './CircleBottomNav';
-import { useCircleT } from '../lib/circleI18nContext';
+import { useCircleI18nContext } from '../lib/circleI18nContext';
 import { CircleCircleScreen } from './CircleCircleScreen';
 import { CircleDashboardScreen } from './CircleDashboardScreen';
 import { CircleDiaryScreen } from './CircleDiaryScreen';
@@ -31,6 +32,7 @@ import { CircleRemoteSettingsScreen } from './CircleRemoteSettingsScreen';
 import { CirclePatientSwitcher } from './CirclePatientSwitcher';
 import { PatientGalleryScreen } from './PatientGalleryScreen';
 import { PatientMessagesScreen } from './PatientMessagesScreen';
+import { useCircleOwnManagedContact } from '../hooks/useCircleOwnManagedContact';
 import { useCircleOnlineVisibility } from '../hooks/useCircleOnlineVisibility';
 import { startCircleMemberPresenceHeartbeat } from '../services/circleMemberPresenceService';
 import { useCircleAlertAttentionState } from '../hooks/useCircleAlertAttentionState';
@@ -53,6 +55,10 @@ import { CircleDropInShareModal } from './CircleDropInShareModal';
 import { CircleDropInResponseModal } from './CircleDropInResponseModal';
 import { useCircleDropIn } from '../hooks/useCircleDropIn';
 import { useCircleDropInResponseNotice } from '../hooks/useCircleDropInResponseNotice';
+import { useCirclePatientMemberLanguages } from '../hooks/useCirclePatientMemberLanguages';
+import { useCircleRemoteSettings } from '../hooks/useCircleRemoteSettings';
+import { normalizeCircleUiLanguage } from '../lib/circleLanguages';
+import type { CirclePostInboxView } from '../lib/circlePostInboxViews';
 
 interface CircleMainShellProps {
   user: User;
@@ -81,9 +87,13 @@ export function CircleMainShell({
   const [activeTab, setActiveTab] = useState<CircleMainTab>('dashboard');
   const [initialAnalyticsMetricId, setInitialAnalyticsMetricId] =
     useState<AnalyticsMetricId | null>(null);
-  const t = useCircleT();
+  const { language, t } = useCircleI18nContext();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [visitCaptureOpen, setVisitCaptureOpen] = useState(false);
+  const [circleInboxIntent, setCircleInboxIntent] = useState<{
+    thread: CircleMemberThreadKind;
+    view: CirclePostInboxView;
+  } | null>(null);
   const [dropInConfirmOpen, setDropInConfirmOpen] = useState(false);
   const [dropInSentThisOpen, setDropInSentThisOpen] = useState(false);
   const replyDraftGuardRef = useRef<UnsavedReplyDraftGuard | null>(null);
@@ -131,6 +141,10 @@ export function CircleMainShell({
     setInitialAnalyticsMetricId(null);
   }, []);
 
+  const handleCircleInboxIntentConsumed = useCallback(() => {
+    setCircleInboxIntent(null);
+  }, []);
+
   const selectedPatient = useMemo((): CirclePatientSummary | null => {
     if (patients.length === 0) return null;
     if (selectedPatientId) {
@@ -145,6 +159,23 @@ export function CircleMainShell({
   const canReceiveRemoteCommandResponses =
     !!selectedPatient && canSendPatientRemoteCommands(selectedPatient.role);
 
+  const handleVisitCapturePublished = useCallback(() => {
+    setVisitCaptureOpen(false);
+    setCircleInboxIntent({
+      thread: visitCapturePublishThreadKind(memberRole),
+      view: 'visit_captures',
+    });
+    handleTabChange('circle');
+  }, [handleTabChange, memberRole]);
+
+  const handleOpenCircleFolder = useCallback(
+    (thread: CircleMemberThreadKind, folder: CirclePostInboxView) => {
+      setCircleInboxIntent({ thread, view: folder });
+      handleTabChange('circle');
+    },
+    [handleTabChange],
+  );
+
   const { notice: remoteCommandResponseNotice, dismissNotice: dismissRemoteCommandResponse } =
     useCirclePatientRemoteCommandResponse(
       db,
@@ -156,7 +187,14 @@ export function CircleMainShell({
   const caregiverDisplayName =
     user.displayName?.trim() || user.email?.split('@')[0] || t('common.careTeam');
 
+  const { contact: ownManagedContact } = useCircleOwnManagedContact(db, user, selectedPatient);
+  const memberDisplayName = ownManagedContact?.name?.trim() || caregiverDisplayName;
+
   const patientPresence = usePatientOnlinePresence(db, selectedPatient?.patientId);
+
+  const memberLanguages = useCirclePatientMemberLanguages(db, selectedPatient?.patientId);
+  const { settings: remoteSettings } = useCircleRemoteSettings(db, selectedPatient, user);
+  const patientLanguage = normalizeCircleUiLanguage(remoteSettings?.primaryLanguage);
 
   const circleDropIn = useCircleDropIn(
     db,
@@ -167,6 +205,9 @@ export function CircleMainShell({
     selectedPatient?.displayName ?? 'Patient',
     canReceiveRemoteCommandResponses,
     patientPresence.online,
+    language,
+    t,
+    memberLanguages.byUid,
   );
 
   const openDropInConfirmModal = useCallback(() => {
@@ -239,6 +280,7 @@ export function CircleMainShell({
     db,
     selectedPatient?.patientId ?? '',
     user,
+    selectedPatient?.role ?? 'friend',
   );
 
   const alertAttention = useCircleAlertAttentionState(
@@ -338,6 +380,7 @@ export function CircleMainShell({
           accountPhotoUrl={accountPhotoUrl}
           onOpenProfile={onOpenProfile}
           selectedPatient={selectedPatient}
+          memberDisplayName={memberDisplayName}
           patientOnline={patientPresence.online}
           patientLastSeen={patientPresence.lastSeen}
           onOpenPatientSwitcher={
@@ -364,6 +407,7 @@ export function CircleMainShell({
               open={switcherOpen}
               onOpenChange={setSwitcherOpen}
               onSelect={handleSelectPatient}
+              memberDisplayName={memberDisplayName}
               patientOnline={patientPresence.online}
               patientLastSeen={patientPresence.lastSeen}
             />
@@ -397,6 +441,13 @@ export function CircleMainShell({
               unreadCount={threadState.unreadCount}
               messageCount={threadState.messages.length}
               circleUnreadCount={circleThreadUnread.unreadCount}
+              circleAnnouncementsUnreadCount={circleThreadUnread.announcementsUnreadCount}
+              circleDropInsUnreadCount={circleThreadUnread.dropInsUnreadCount}
+              circleVisitCapturesUnreadCount={circleThreadUnread.visitCapturesUnreadCount}
+              circleVisitCapturesOpenUnreadCount={circleThreadUnread.visitCapturesOpenUnreadCount}
+              circleVisitCapturesRestrictedUnreadCount={
+                circleThreadUnread.visitCapturesRestrictedUnreadCount
+              }
               circlePostCount={circleThreadUnread.circlePostCount}
               totalMediaCount={galleryCounts.totalCount}
               myMediaUploadCount={galleryCounts.myUploadCount}
@@ -404,6 +455,7 @@ export function CircleMainShell({
               urgentAlertAttention={alertAttention.urgentItems}
               subduedAlertAttention={alertAttention.subduedItems}
               onGoToTab={handleTabChange}
+              onOpenCircleFolder={handleOpenCircleFolder}
               onOpenAnalyticsDetail={handleOpenAnalyticsDetail}
               onOpenVisitCapture={
                 showVisitCapture ? () => setVisitCaptureOpen(true) : undefined
@@ -421,7 +473,7 @@ export function CircleMainShell({
             />
           )}
           {activeTab === 'messages' && (
-            <div className="flex flex-col flex-1 min-h-0">
+            <div className="flex flex-col flex-1 min-h-0 min-w-0">
               <PatientMessagesScreen
                 user={user}
                 patient={selectedPatient}
@@ -437,7 +489,7 @@ export function CircleMainShell({
             </div>
           )}
           {activeTab === 'media' && (
-            <div className="flex flex-col flex-1 min-h-0">
+            <div className="flex flex-col flex-1 min-h-0 min-w-0">
               <PatientGalleryScreen
                 user={user}
                 patient={selectedPatient}
@@ -455,6 +507,16 @@ export function CircleMainShell({
                 unreadCount={circleThreadUnread.unreadCount}
                 openUnreadCount={circleThreadUnread.openUnreadCount}
                 restrictedUnreadCount={circleThreadUnread.restrictedUnreadCount}
+                canInitiateDropIn={canReceiveRemoteCommandResponses}
+                patientOnline={patientPresence.online}
+                patientDoNotDisturb={isPatientDoNotDisturbSection(patientPresence.activeSection)}
+                onStartDropIn={openDropInConfirmModal}
+                onResumeDropIn={circleDropIn.resumeChat}
+                dropInActive={!!circleDropIn.activeSession}
+                dropInChatOpen={circleDropIn.chatOpen}
+                onRecordVisit={showVisitCapture ? () => setVisitCaptureOpen(true) : undefined}
+                circleInboxIntent={circleInboxIntent}
+                onCircleInboxIntentConsumed={handleCircleInboxIntentConsumed}
               />
             </div>
           )}
@@ -503,6 +565,7 @@ export function CircleMainShell({
           <VisitCaptureFlow
             open={visitCaptureOpen}
             onClose={() => setVisitCaptureOpen(false)}
+            onPublished={handleVisitCapturePublished}
             patientId={selectedPatient.patientId}
             capturedBy={{
               uid: user.uid,
@@ -543,6 +606,8 @@ export function CircleMainShell({
               caregiverName={caregiverDisplayName}
               messages={circleDropIn.sessionMessages}
               busy={circleDropIn.busy}
+              viewerLanguage={language}
+              patientLanguage={patientLanguage}
               onSend={circleDropIn.sendMessage}
               onEnd={circleDropIn.endConversation}
               onClose={circleDropIn.closeChat}

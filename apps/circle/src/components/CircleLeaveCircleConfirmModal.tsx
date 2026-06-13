@@ -1,4 +1,5 @@
 import { LogOut } from 'lucide-react';
+import { useCircleT } from '../lib/circleI18nContext';
 
 type CircleLeaveCircleConfirmModalProps = {
   open: boolean;
@@ -15,6 +16,7 @@ export function CircleLeaveCircleConfirmModal({
   onCancel,
   onConfirm,
 }: CircleLeaveCircleConfirmModalProps) {
+  const t = useCircleT();
   if (!open) return null;
 
   return (
@@ -30,13 +32,10 @@ export function CircleLeaveCircleConfirmModal({
         </div>
         <div className="space-y-2">
           <h3 id="leave-circle-title" className="text-xl font-bold text-slate-900">
-            Leave this circle?
+            {t('settings.leaveCircleTitle')}
           </h3>
           <p className="text-slate-500 text-sm leading-relaxed">
-            You will no longer see messages, media, or updates for{' '}
-            <span className="font-semibold text-slate-700">{patientName}</span>. Photos and
-            messages you already shared may remain visible to them. They can invite you again
-            later if needed.
+            {t('settings.leaveCircleBody', { name: patientName })}
           </p>
         </div>
         <div className="flex flex-col gap-3">
@@ -46,7 +45,7 @@ export function CircleLeaveCircleConfirmModal({
             disabled={busy}
             className="w-full py-4 bg-red-600 text-white rounded-2xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200 disabled:opacity-50"
           >
-            {busy ? 'Leaving…' : 'Leave circle'}
+            {busy ? t('settings.leaveCircleLeaving') : t('settings.leaveCircleConfirm')}
           </button>
           <button
             type="button"
@@ -54,7 +53,7 @@ export function CircleLeaveCircleConfirmModal({
             disabled={busy}
             className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
         </div>
       </div>

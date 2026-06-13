@@ -78,13 +78,17 @@ export async function uploadVisitCaptureSegment(params: {
 export async function finishVisitCaptureSession(params: {
   patientId: string;
   sessionId: string;
+  previewLanguage?: string;
 }): Promise<VisitCaptureSession> {
   const res = await fetch(
     `${apiBase()}/api/visit-capture/sessions/${params.sessionId}/finish`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ patientId: params.patientId }),
+      body: JSON.stringify({
+        patientId: params.patientId,
+        previewLanguage: params.previewLanguage,
+      }),
     },
   );
   const data = await parseJson<{ success: boolean; session: VisitCaptureSession }>(res);

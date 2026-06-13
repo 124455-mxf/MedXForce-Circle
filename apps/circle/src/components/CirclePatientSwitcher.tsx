@@ -1,6 +1,6 @@
 import { Check, ChevronDown, HeartHandshake, X } from 'lucide-react';
 
-import { cn, circleMemberAccessLabel, type CirclePatientSummary } from '@medxforce/shared';
+import { cn, type CirclePatientSummary } from '@medxforce/shared';
 
 import {
 
@@ -9,6 +9,9 @@ import {
   PatientPresenceCaption,
 
 } from './PatientPresenceCaption';
+
+import { useCircleT } from '../lib/circleI18nContext';
+import { translateCircleMemberAccessLabel } from '../lib/adminScreenI18n';
 
 
 
@@ -32,6 +35,8 @@ interface CirclePatientSwitcherProps {
 
   patientLastSeen?: number;
 
+  memberDisplayName?: string;
+
 }
 
 
@@ -54,11 +59,21 @@ export function CirclePatientSwitcher({
 
   patientLastSeen = 0,
 
+  memberDisplayName,
+
 }: CirclePatientSwitcherProps) {
+  const t = useCircleT();
 
   const selectedFromList =
 
     patients.find((p) => p.patientId === selected.patientId) ?? selected;
+
+  const cardTitle = memberDisplayName
+    ? t('common.memberForPatientTitle', {
+        member: memberDisplayName,
+        patient: selectedFromList.displayName,
+      })
+    : selectedFromList.displayName;
 
 
 
@@ -114,7 +129,7 @@ export function CirclePatientSwitcher({
 
             <p className="font-bold text-slate-800 truncate leading-tight">
 
-              {selectedFromList.displayName}
+              {cardTitle}
 
             </p>
 
@@ -148,7 +163,7 @@ export function CirclePatientSwitcher({
 
             className="absolute inset-0 bg-slate-900/40"
 
-            aria-label="Close"
+            aria-label={t('common.close')}
 
             onClick={() => onOpenChange(false)}
 
@@ -158,7 +173,7 @@ export function CirclePatientSwitcher({
 
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
 
-              <h2 className="font-bold text-slate-800">Switch patient</h2>
+              <h2 className="font-bold text-slate-800">{t('drawer.switchPatient')}</h2>
 
               <button
 
@@ -237,9 +252,7 @@ export function CirclePatientSwitcher({
                         <p className="font-bold text-slate-800 truncate">{patient.displayName}</p>
 
                         <p className="text-xs text-slate-500">
-
-                          {circleMemberAccessLabel(patient.role, patient.proxyTier)}
-
+                          {translateCircleMemberAccessLabel(t, patient.role, patient.proxyTier)}
                         </p>
 
                       </div>

@@ -44,6 +44,13 @@ import {
 } from '../lib/circleSectionStyles';
 import { useCircleAnalyticsSummaries } from '../hooks/useCircleAnalyticsSummaries';
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
+import { useCircleI18nContext, type CircleTranslator } from '../lib/circleI18nContext';
+import type { CircleUiLanguage } from '../lib/circleLanguages';
+import {
+  analyticsSectionTitle,
+  analyticsSummaryFooterText,
+  localizeAnalyticsSummary,
+} from '../lib/circleAnalyticsI18n';
 import { firebase } from '../lib/firebaseClient';
 import { CircleAnalyticsDetailSheet } from './CircleAnalyticsDetailSheet';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
@@ -88,11 +95,12 @@ function footerColorClass(tone: PatientAnalyticsSummary['footerTone']): string {
   return 'text-slate-500';
 }
 
-function metricFooterLabel(summary: PatientAnalyticsSummary): string {
-  if (!summary.isReleased || summary.status === 'coming_soon') {
-    return 'To be released';
-  }
-  return summary.summaryText;
+function metricFooterLabel(
+  summary: PatientAnalyticsSummary,
+  t: CircleTranslator,
+  language: CircleUiLanguage,
+): string {
+  return analyticsSummaryFooterText(t, summary, language);
 }
 
 function isTodayAlertAttention(summary: PatientAnalyticsSummary): boolean {
@@ -127,18 +135,23 @@ function resolveAnalyticsSummary(
 function AnalyticsMetricRow({
   summary,
   onOpen,
+  t,
+  language,
 }: {
   summary: PatientAnalyticsSummary;
   onOpen: () => void;
+  t: CircleTranslator;
+  language: CircleUiLanguage;
 }) {
-  const Icon = METRIC_ICONS[summary.metricId] ?? Activity;
-  const footerLabel = metricFooterLabel(summary);
-  const unreleased = !summary.isReleased || summary.status === 'coming_soon';
+  const localized = localizeAnalyticsSummary(t, summary, language);
+  const Icon = METRIC_ICONS[localized.metricId] ?? Activity;
+  const footerLabel = metricFooterLabel(localized, t, language);
+  const unreleased = !localized.isReleased || localized.status === 'coming_soon';
   const iconClass = unreleased
     ? 'bg-slate-100 text-slate-400'
-    : METRIC_COLORS[summary.metricId] ?? 'bg-blue-50 text-blue-600';
-  const tappable = summary.isReleased && summary.status !== 'coming_soon';
-  const todayAlertAttention = isTodayAlertAttention(summary);
+    : METRIC_COLORS[localized.metricId] ?? 'bg-blue-50 text-blue-600';
+  const tappable = localized.isReleased && localized.status !== 'coming_soon';
+  const todayAlertAttention = isTodayAlertAttention(localized);
 
   return (
     <button
@@ -167,7 +180,7 @@ function AnalyticsMetricRow({
           unreleased ? 'text-slate-400' : 'text-slate-800',
         )}
       >
-        {summary.title}
+        {localized.title}
       </p>
       <div
         className={cn(
@@ -176,7 +189,7 @@ function AnalyticsMetricRow({
             ? 'text-slate-400'
             : todayAlertAttention
               ? 'text-red-500'
-              : footerColorClass(summary.footerTone),
+              : footerColorClass(localized.footerTone),
         )}
       >
         <Clock size={10} className="shrink-0 opacity-80" />
@@ -198,6 +211,7 @@ export function CircleAnalyticsScreen({
 }) {
   const [detailSummary, setDetailSummary] = useState<PatientAnalyticsSummary | null>(null);
   const compactChrome = useCircleCompactChrome();
+  const { t, language } = useCircleI18nContext();
   const { byMetricId, totalFromServer, loading, error } = useCircleAnalyticsSummaries(
     firebase.db,
     patient,
@@ -207,10 +221,10 @@ export function CircleAnalyticsScreen({
     if (!initialMetricId || loading) return;
     const summary = resolveAnalyticsSummary(initialMetricId, byMetricId, patient);
     if (summary?.isReleased && summary.status !== 'coming_soon') {
-      setDetailSummary(summary);
+      setDetailSummary(localizeAnalyticsSummary(t, summary, language));
     }
     onInitialMetricConsumed?.();
-  }, [initialMetricId, loading, byMetricId, patient, onInitialMetricConsumed]);
+  }, [initialMetricId, loading, byMetricId, patient, onInitialMetricConsumed, t, language]);
 
   return (
     <>
@@ -220,8 +234,8 @@ export function CircleAnalyticsScreen({
           <CircleWorkTabSectionIntro
             icon={BarChart3}
             iconClassName="text-blue-600"
-            title="Analytics"
-            subtitle={`Trends for ${patient.displayName} — summaries update when the patient app syncs.`}
+            title={t('analytics.title')}
+            subtitle={t('analytics.subtitle', { name: patient.displayName })}
           />
         </div>
 
@@ -261,14 +275,16 @@ export function CircleAnalyticsScreen({
               return (
                 <section key={section.id} className="space-y-1.5">
                   <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5 pt-0.5">
-                    {section.title}
+                    {analyticsSectionTitle(t, section.id)}
                   </h4>
                   <div className="flex flex-col gap-1.5">
                     {cards.map((summary) => (
                       <AnalyticsMetricRow
                         key={summary.metricId}
                         summary={summary}
-                        onOpen={() => setDetailSummary(summary)}
+                        t={t}
+                        language={language}
+                        onOpen={() => setDetailSummary(localizeAnalyticsSummary(t, summary, language))}
                       />
                     ))}
                   </div>
@@ -283,15 +299,13 @@ export function CircleAnalyticsScreen({
               (error.includes('resource-exhausted') ||
                 error.toLowerCase().includes('quota')) ? (
                 <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 leading-relaxed max-w-md mx-auto">
-                  Firebase daily write limit is exhausted for this project. Analytics cannot sync
-                  until the quota resets (usually midnight Pacific) or billing is enabled. Close
-                  extra tabs to stop background writes, then try again tomorrow.
+                  {t('analytics.emptyQuota')}
                 </p>
               ) : (
                 <p className="text-sm text-slate-500 leading-relaxed max-w-sm mx-auto">
                   {totalFromServer > 0
-                    ? 'Summaries exist but none match your role. Caregivers see physical trends; everyone sees engagement (messages, check-in, vitality).'
-                    : 'No analytics in the cloud yet. On the patient app, open Analytics and tap Sync to Circle while signed in. If sync fails, check the patient console for quota or permission errors.'}
+                    ? t('analytics.emptyNoMatchRole')
+                    : t('analytics.emptyNoCloud')}
                 </p>
               )}
             </div>

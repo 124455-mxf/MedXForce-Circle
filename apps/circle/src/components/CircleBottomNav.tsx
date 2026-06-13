@@ -151,7 +151,7 @@ export function CircleBottomNav({
                 <span
                   className={cn(
                     'font-bold uppercase tracking-wide leading-none truncate w-full text-center',
-                    compact ? 'text-[7px]' : 'text-[8px]',
+                    compact ? 'text-[8px]' : 'text-[9px]',
                     active
                       ? 'text-white'
                       : showMessagesUrgency
@@ -187,7 +187,7 @@ export function CircleBottomNav({
               <span
                 className={cn(
                   'font-bold uppercase tracking-wide leading-none truncate w-full text-center',
-                  compact ? 'text-[7px]' : 'text-[8px]',
+                  compact ? 'text-[8px]' : 'text-[9px]',
                   moreActive ? 'text-white' : 'text-slate-400',
                 )}
               >

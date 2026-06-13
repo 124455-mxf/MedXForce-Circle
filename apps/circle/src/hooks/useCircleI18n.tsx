@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
@@ -36,7 +36,16 @@ export function useCircleI18n(db: Firestore, user: User | null) {
     });
   }, [db, user]);
 
+  const setUiLanguage = useCallback((next: CircleUiLanguage) => {
+    setLanguage(next);
+    try {
+      localStorage.setItem(CIRCLE_UI_LANGUAGE_STORAGE_KEY, next);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const t = useMemo(() => createCircleTranslator(language), [language]);
 
-  return { language, t };
+  return { language, t, setLanguage: setUiLanguage };
 }

@@ -1,13 +1,13 @@
 import { createPortal } from 'react-dom';
 import { Calendar, Loader2, Radio, Stethoscope, X } from 'lucide-react';
+import type { PatientRemoteCommandType } from '@medxforce/shared';
+import { useCircleT } from '../lib/circleI18nContext';
 import {
-  patientRemoteCommandCircleAwaitingBody,
-  patientRemoteCommandCircleAwaitingCountdownLabel,
-  patientRemoteCommandCircleAwaitingTitle,
-  patientRemoteCommandCircleConfirmBody,
-  patientRemoteCommandCircleConfirmTitle,
-  type PatientRemoteCommandType,
-} from '@medxforce/shared';
+  remoteCommandAwaitingBodyI18n,
+  remoteCommandConfirmBodyI18n,
+  remoteCommandConfirmTitleI18n,
+  remotePromptAwaitingCountdownLabel,
+} from '../lib/remotePromptsModalI18n';
 
 type CirclePatientCommandConfirmModalProps = {
   open: boolean;
@@ -32,6 +32,8 @@ export function CirclePatientCommandConfirmModal({
   secondsRemaining = null,
   error = null,
 }: CirclePatientCommandConfirmModalProps) {
+  const t = useCircleT();
+
   if (!open || !type || typeof document === 'undefined') return null;
 
   const lockDismiss = sending || awaiting;
@@ -60,7 +62,9 @@ export function CirclePatientCommandConfirmModal({
             onClick={onClose}
             disabled={sending}
             className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 disabled:opacity-50"
-            aria-label={awaiting ? 'Cancel request' : 'Cancel'}
+            aria-label={
+              awaiting ? t('remotePromptsModal.cancelRequest') : t('remotePromptsModal.cancel')
+            }
           >
             <X size={20} />
           </button>
@@ -69,16 +73,17 @@ export function CirclePatientCommandConfirmModal({
         <div className="space-y-2">
           <h3 id="circle-patient-command-title" className="text-xl font-bold text-slate-900">
             {awaiting
-              ? patientRemoteCommandCircleAwaitingTitle()
-              : patientRemoteCommandCircleConfirmTitle(type)}
+              ? t('remotePromptsModal.remoteAwaitingTitle')
+              : remoteCommandConfirmTitleI18n(t, type)}
           </h3>
           <p className="text-sm text-slate-500 leading-relaxed">
             {awaiting
-              ? patientRemoteCommandCircleAwaitingBody(type)
-              : patientRemoteCommandCircleConfirmBody(type)}
+              ? remoteCommandAwaitingBodyI18n(t, type)
+              : remoteCommandConfirmBodyI18n(t, type)}
           </p>
           <p className="text-sm text-slate-700">
-            Patient: <span className="font-semibold">{patientName}</span>
+            {t('remotePromptsModal.patientLabel')}{' '}
+            <span className="font-semibold">{patientName}</span>
           </p>
         </div>
 
@@ -92,10 +97,10 @@ export function CirclePatientCommandConfirmModal({
               {countdown}
             </div>
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-600/80">
-              seconds remaining
+              {t('remotePromptsModal.secondsRemaining')}
             </p>
             <p className="text-sm text-blue-900/80">
-              {patientRemoteCommandCircleAwaitingCountdownLabel(countdown)}
+              {remotePromptAwaitingCountdownLabel(t, countdown)}
             </p>
           </div>
         ) : null}
@@ -114,7 +119,7 @@ export function CirclePatientCommandConfirmModal({
               disabled={sending}
               className="w-full py-3 rounded-2xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 disabled:opacity-50"
             >
-              Cancel request
+              {t('remotePromptsModal.cancelRequest')}
             </button>
           </div>
         ) : (
@@ -125,7 +130,7 @@ export function CirclePatientCommandConfirmModal({
               disabled={sending}
               className="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 disabled:opacity-50"
             >
-              Cancel
+              {t('remotePromptsModal.cancel')}
             </button>
             <button
               type="button"
@@ -134,7 +139,7 @@ export function CirclePatientCommandConfirmModal({
               className="flex-1 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {sending ? <Loader2 size={18} className="animate-spin" /> : null}
-              Send to tablet
+              {t('remotePromptsModal.remoteSendToTablet')}
             </button>
           </div>
         )}

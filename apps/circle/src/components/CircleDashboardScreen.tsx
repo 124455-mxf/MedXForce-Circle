@@ -28,6 +28,7 @@ import {
   normalizeMemberRole,
   type AnalyticsMetricId,
   type CirclePatientSummary,
+  type CircleMemberThreadKind,
   type PatientRemoteCommandType,
 } from '@medxforce/shared';
 
@@ -35,6 +36,10 @@ import type { CircleMainTab } from './CircleBottomNav';
 
 import { CircleProfileChangeBanner } from './CircleProfileChangeBanner';
 import { CirclePatientInsightsSection } from './CirclePatientInsightsSection';
+import { CircleDashboardCelebrationSection } from './CircleDashboardCelebrationSection';
+import { CircleDashboardAttentionTiles } from './CircleDashboardAttentionTiles';
+import type { CircleInboxFolder } from './CircleDashboardAttentionTiles';
+import { CircleDashboardPatientLocaleWidget } from './CircleDashboardPatientLocaleWidget';
 import { CircleGalleryRotatingPreviewWidget } from './CircleGalleryRotatingPreviewWidget';
 
 import { CirclePatientCommandConfirmModal } from './CirclePatientCommandConfirmModal';
@@ -67,6 +72,7 @@ import {
 } from '../hooks/usePatientOnlinePresence';
 
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
+import { analyticsSummaryFooterText } from '../lib/circleAnalyticsI18n';
 import {
   assistiveDevicesLabelT,
   dashboardPlural,
@@ -103,6 +109,11 @@ interface CircleDashboardScreenProps {
   unreadCount: number;
   messageCount: number;
   circleUnreadCount: number;
+  circleAnnouncementsUnreadCount: number;
+  circleDropInsUnreadCount: number;
+  circleVisitCapturesUnreadCount: number;
+  circleVisitCapturesOpenUnreadCount: number;
+  circleVisitCapturesRestrictedUnreadCount: number;
   circlePostCount: number;
   totalMediaCount: number;
   myMediaUploadCount: number;
@@ -110,6 +121,7 @@ interface CircleDashboardScreenProps {
   urgentAlertAttention: CircleAlertAttentionItem[];
   subduedAlertAttention: CircleAlertAttentionItem[];
   onGoToTab: (tab: CircleMainTab) => void;
+  onOpenCircleFolder?: (thread: CircleMemberThreadKind, folder: CircleInboxFolder) => void;
   onOpenAnalyticsDetail: (metricId: AnalyticsMetricId) => void;
   onOpenVisitCapture?: () => void;
   onRequestDropIn?: () => void;
@@ -178,6 +190,7 @@ function LivePatientWidget({
   onlineDurationLabel,
   activeSectionLabel,
   showRemotePrompts,
+  compact = false,
   onPromptCheckIn,
   onPromptDoctorVisit,
   onDropIn,
@@ -189,6 +202,7 @@ function LivePatientWidget({
   onlineDurationLabel: string;
   activeSectionLabel: string;
   showRemotePrompts: boolean;
+  compact?: boolean;
   onPromptCheckIn: () => void;
   onPromptDoctorVisit: () => void;
   onDropIn?: () => void;
@@ -198,6 +212,30 @@ function LivePatientWidget({
   t: ReturnType<typeof useCircleT>;
 }) {
   const showResumeDropIn = dropInActive && !dropInChatOpen && !!onResumeDropIn;
+
+  if (compact) {
+    return (
+      <div
+        className={cn(
+          'w-full rounded-2xl border text-left transition-colors',
+          'flex flex-row items-center gap-3 sm:gap-4 px-4 py-3 sm:px-5 sm:py-3.5',
+          'border-emerald-200 bg-emerald-50/40',
+        )}
+      >
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="relative flex h-2.5 w-2.5" aria-hidden>
+            <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+          </span>
+          <p className="font-bold text-slate-800 text-sm">{t('dashboard.live')}</p>
+        </div>
+        <div className="flex-1 min-w-0 text-right text-xs text-slate-600 leading-snug">
+          <p className="truncate">{t('dashboard.onlineFor', { duration: onlineDurationLabel })}</p>
+          <p className="truncate">{t('dashboard.currently', { section: activeSectionLabel })}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative h-full w-full">
@@ -335,10 +373,16 @@ export function CircleDashboardScreen({
   unreadCount,
   messageCount,
   circleUnreadCount,
+  circleAnnouncementsUnreadCount,
+  circleDropInsUnreadCount,
+  circleVisitCapturesUnreadCount,
+  circleVisitCapturesOpenUnreadCount,
+  circleVisitCapturesRestrictedUnreadCount,
   circlePostCount,
   urgentAlertAttention,
   subduedAlertAttention,
   onGoToTab,
+  onOpenCircleFolder,
   onOpenAnalyticsDetail,
   onOpenVisitCapture,
   onRequestDropIn,
@@ -509,7 +553,9 @@ export function CircleDashboardScreen({
                     row3: lastLine(dailyCheckInLatestAt),
                   }
               : {
-                  row1: dailyCheckIn?.summaryText || t('dashboard.noCheckInsYet'),
+                  row1: dailyCheckIn
+                    ? analyticsSummaryFooterText(t, dailyCheckIn, language)
+                    : t('dashboard.noCheckInsYet'),
                   row2: t('common.last7Days'),
                   row3: lastLine(dailyCheckIn?.latestAt),
                 }),
@@ -847,7 +893,8 @@ export function CircleDashboardScreen({
           <div className="grid grid-cols-2 gap-3">
             <div
               className={cn(
-                'col-span-2 h-[10.75rem] sm:h-[11.25rem]',
+                'col-span-2',
+                memberRole === 'family' ? null : 'h-[10.75rem] sm:h-[11.25rem]',
                 dropInActive && !dropInChatOpen && onResumeDropIn ? 'mb-6' : null,
               )}
             >
@@ -855,6 +902,7 @@ export function CircleDashboardScreen({
                 onlineDurationLabel={liveOnlineDurationLabel}
                 activeSectionLabel={formatPatientActiveSectionT(t, patientPresence.activeSection)}
                 showRemotePrompts={showRemotePrompts}
+                compact={memberRole === 'family'}
                 t={t}
                 onPromptCheckIn={() => {
                   setSentCommandThisOpen(false);
@@ -872,6 +920,25 @@ export function CircleDashboardScreen({
             </div>
           </div>
         ) : null}
+
+        <CircleDashboardAttentionTiles
+          memberRole={memberRole}
+          messageUnreadCount={unreadCount}
+          announcementsUnreadCount={circleAnnouncementsUnreadCount}
+          dropInsUnreadCount={circleDropInsUnreadCount}
+          visitCapturesUnreadCount={circleVisitCapturesUnreadCount}
+          visitCapturesOpenUnreadCount={circleVisitCapturesOpenUnreadCount}
+          visitCapturesRestrictedUnreadCount={circleVisitCapturesRestrictedUnreadCount}
+          dailyCheckInsCompletedCount={checkInStats.completed}
+          messagingEnabled={caps.messaging === true}
+          onOpenMessages={() => onGoToTab('messages')}
+          onOpenCircleFolder={onOpenCircleFolder}
+          onOpenCheckIns={() => onOpenAnalyticsDetail('daily-check-in')}
+        />
+
+        <CircleDashboardCelebrationSection patient={patient} snapshot={profileSnapshot} />
+
+        <CircleDashboardPatientLocaleWidget snapshot={profileSnapshot} />
 
         <CirclePatientInsightsSection
           patient={patient}

@@ -2,7 +2,7 @@ import { AlertCircle, Bell, MessageSquare, Smartphone } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useCircleT } from '../lib/circleI18nContext';
 
-const NOTIFY_META = [
+export const CIRCLE_CONTACT_NOTIFY_META = [
   {
     key: 'alert' as const,
     labelKey: 'admin.contact.notifyAlert',
@@ -37,7 +37,7 @@ const NOTIFY_META = [
   },
 ];
 
-export type CircleNotifyKey = (typeof NOTIFY_META)[number]['key'];
+export type CircleNotifyKey = (typeof CIRCLE_CONTACT_NOTIFY_META)[number]['key'];
 
 type CircleContactNotifyGridProps = {
   values: Record<CircleNotifyKey, boolean>;
@@ -59,8 +59,8 @@ export function CircleContactNotifyGrid({
 }: CircleContactNotifyGridProps) {
   const t = useCircleT();
   const options = keys
-    ? NOTIFY_META.filter((option) => keys.includes(option.key))
-    : NOTIFY_META;
+    ? CIRCLE_CONTACT_NOTIFY_META.filter((option) => keys.includes(option.key))
+    : CIRCLE_CONTACT_NOTIFY_META;
 
   return (
     <div

@@ -186,7 +186,7 @@ export function resolveBirthdayReminder(
   const thisYearBirthday = new Date(today.getFullYear(), dob.getMonth(), dob.getDate());
   const delta = daysBetween(thisYearBirthday, todayStart);
 
-  if (delta < -2 || delta > 7) return null;
+  if (delta < -3 || delta > 7) return null;
 
   const name = displayProfileName(snapshot, patientDisplayName);
   const ageOnBirthday = thisYearBirthday.getFullYear() - dob.getFullYear();
@@ -238,7 +238,7 @@ export function resolveOnsetMilestone(
   for (let years = 1; years <= 10; years += 1) {
     const anniversary = new Date(onset.getFullYear() + years, onset.getMonth(), onset.getDate());
     const delta = daysBetween(anniversary, todayStart);
-    if (delta >= -2 && delta <= 7) {
+    if (delta >= -3 && delta <= 7) {
       const headline =
         years === 1
           ? '1 year since initial onset'

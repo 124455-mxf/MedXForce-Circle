@@ -2,11 +2,13 @@ import type { LucideIcon } from 'lucide-react';
 import { ChevronLeft } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useCircleBackToDashboard } from '../lib/circleChromeContext';
+import { useCircleT } from '../lib/circleI18nContext';
 import { cn } from '../lib/utils';
 import { circleSectionSubtitleClass, circleSectionTitleClass } from '../lib/circleSectionStyles';
 
 export function CircleWorkTabDashboardBackButton({ className }: { className?: string }) {
   const onBackToDashboard = useCircleBackToDashboard();
+  const t = useCircleT();
   if (!onBackToDashboard) return null;
 
   return (
@@ -17,7 +19,7 @@ export function CircleWorkTabDashboardBackButton({ className }: { className?: st
         'p-2 rounded-xl text-slate-500 hover:bg-slate-100 shrink-0',
         className,
       )}
-      aria-label="Back to dashboard"
+      aria-label={t('common.aria.backToDashboard')}
     >
       <ChevronLeft size={20} />
     </button>

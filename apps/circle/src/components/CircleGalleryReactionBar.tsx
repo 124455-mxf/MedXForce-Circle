@@ -7,6 +7,7 @@ import {
   type GalleryReactionRecord,
 } from '@medxforce/shared';
 import { formatCircleBadgeCount } from './CircleCountBadge';
+import { useCircleT } from '../lib/circleI18nContext';
 
 type TaggedPersonChip = {
   id: string;
@@ -42,6 +43,7 @@ export function CircleGalleryReactionBar({
   showIdentify = false,
   onToggleIdentify,
 }: CircleGalleryReactionBarProps) {
+  const t = useCircleT();
   const summary = aggregateReactionCounts(mediaReactions);
   const [showPop, setShowPop] = useState<string | null>(null);
 
@@ -109,7 +111,7 @@ export function CircleGalleryReactionBar({
                 type="button"
                 onClick={onToggleIdentify}
                 className="w-10 h-10 sm:w-11 sm:h-11 text-slate-700/70 rounded-full flex items-center justify-center hover:text-blue-600 transition-all shrink-0"
-                aria-label="Identify someone"
+                aria-label={t('common.aria.identifySomeone')}
               >
                 <UserPlus size={18} />
               </button>

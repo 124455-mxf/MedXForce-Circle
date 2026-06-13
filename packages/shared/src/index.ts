@@ -29,6 +29,7 @@ export * from './messageReplyVisibility';
 export * from './circleThreadInboxHide';
 export * from './circleMemberRoles';
 export * from './circleMemberThreads';
+export * from './circleMemberThreadReplies';
 export * from './analyticsSummaries';
 export * from './analyticsMetricDetail';
 export * from './remoteSettings';

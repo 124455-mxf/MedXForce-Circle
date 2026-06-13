@@ -1,12 +1,7 @@
 import { createPortal } from 'react-dom';
 import { Loader2, MessageCircle, X } from 'lucide-react';
-import {
-  dropInCircleAwaitingBody,
-  dropInCircleAwaitingCountdownLabel,
-  dropInCircleAwaitingTitle,
-  dropInCircleInviteConfirmBody,
-  dropInCircleInviteConfirmTitle,
-} from '@medxforce/shared';
+import { useCircleT } from '../lib/circleI18nContext';
+import { remotePromptAwaitingCountdownLabel } from '../lib/remotePromptsModalI18n';
 
 type CircleDropInConfirmModalProps = {
   open: boolean;
@@ -29,6 +24,8 @@ export function CircleDropInConfirmModal({
   secondsRemaining = null,
   error = null,
 }: CircleDropInConfirmModalProps) {
+  const t = useCircleT();
+
   if (!open || typeof document === 'undefined') return null;
 
   const lockDismiss = sending || awaiting;
@@ -56,7 +53,9 @@ export function CircleDropInConfirmModal({
             onClick={onClose}
             disabled={sending}
             className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 disabled:opacity-50"
-            aria-label={awaiting ? 'Cancel request' : 'Cancel'}
+            aria-label={
+              awaiting ? t('remotePromptsModal.cancelRequest') : t('remotePromptsModal.cancel')
+            }
           >
             <X size={20} />
           </button>
@@ -64,13 +63,18 @@ export function CircleDropInConfirmModal({
 
         <div className="space-y-2">
           <h3 id="circle-drop-in-title" className="text-xl font-bold text-slate-900">
-            {awaiting ? dropInCircleAwaitingTitle() : dropInCircleInviteConfirmTitle()}
+            {awaiting
+              ? t('remotePromptsModal.dropInAwaitingTitle')
+              : t('remotePromptsModal.dropInInviteTitle')}
           </h3>
           <p className="text-sm text-slate-500 leading-relaxed">
-            {awaiting ? dropInCircleAwaitingBody() : dropInCircleInviteConfirmBody()}
+            {awaiting
+              ? t('remotePromptsModal.dropInAwaitingBody')
+              : t('remotePromptsModal.dropInInviteBody')}
           </p>
           <p className="text-sm text-slate-700">
-            Patient: <span className="font-semibold">{patientName}</span>
+            {t('remotePromptsModal.patientLabel')}{' '}
+            <span className="font-semibold">{patientName}</span>
           </p>
         </div>
 
@@ -84,9 +88,11 @@ export function CircleDropInConfirmModal({
               {countdown}
             </div>
             <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600/80">
-              seconds remaining
+              {t('remotePromptsModal.secondsRemaining')}
             </p>
-            <p className="text-sm text-indigo-900/80">{dropInCircleAwaitingCountdownLabel(countdown)}</p>
+            <p className="text-sm text-indigo-900/80">
+              {remotePromptAwaitingCountdownLabel(t, countdown)}
+            </p>
           </div>
         ) : null}
 
@@ -104,7 +110,7 @@ export function CircleDropInConfirmModal({
               disabled={sending}
               className="w-full py-3 rounded-2xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 disabled:opacity-50"
             >
-              Cancel request
+              {t('remotePromptsModal.cancelRequest')}
             </button>
           </div>
         ) : (
@@ -115,7 +121,7 @@ export function CircleDropInConfirmModal({
               disabled={sending}
               className="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 disabled:opacity-50"
             >
-              Cancel
+              {t('remotePromptsModal.cancel')}
             </button>
             <button
               type="button"
@@ -124,7 +130,7 @@ export function CircleDropInConfirmModal({
               className="flex-1 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {sending ? <Loader2 size={18} className="animate-spin" /> : null}
-              Drop in
+              {t('remotePromptsModal.dropInConfirmButton')}
             </button>
           </div>
         )}

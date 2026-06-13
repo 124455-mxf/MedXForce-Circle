@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom';
 import { XCircle, X } from 'lucide-react';
-import { dropInCircleResponseBody } from '@medxforce/shared';
+import { useCircleT } from '../lib/circleI18nContext';
 
 type CircleDropInResponseModalProps = {
   open: boolean;
@@ -13,6 +13,8 @@ export function CircleDropInResponseModal({
   patientName,
   onClose,
 }: CircleDropInResponseModalProps) {
+  const t = useCircleT();
+
   if (!open || typeof document === 'undefined') return null;
 
   return createPortal(
@@ -35,7 +37,7 @@ export function CircleDropInResponseModal({
             type="button"
             onClick={onClose}
             className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"
-            aria-label="Close"
+            aria-label={t('remotePromptsModal.closeAria')}
           >
             <X size={20} />
           </button>
@@ -43,11 +45,11 @@ export function CircleDropInResponseModal({
 
         <div className="space-y-2">
           <h3 id="circle-drop-in-response-title" className="text-xl font-bold text-slate-900">
-            Patient chose{' '}
-            <span className="text-red-600">Not now</span>
+            {t('remotePromptsModal.patientChosePrefix')}{' '}
+            <span className="text-red-600">{t('remotePromptsModal.notNow')}</span>
           </h3>
           <p className="text-sm text-slate-500 leading-relaxed">
-            {dropInCircleResponseBody('declined', patientName)}
+            {t('remotePromptsModal.dropInDeclinedBody', { name: patientName })}
           </p>
         </div>
 
@@ -56,7 +58,7 @@ export function CircleDropInResponseModal({
           onClick={onClose}
           className="w-full py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold"
         >
-          OK
+          {t('remotePromptsModal.ok')}
         </button>
       </div>
     </div>,

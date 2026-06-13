@@ -4,9 +4,6 @@ import {
   doc,
   getDoc,
   getDocs,
-  limit,
-  orderBy,
-  query,
   setDoc,
   updateDoc,
 } from 'firebase/firestore';
@@ -17,6 +14,7 @@ import {
   meaningfulProfileChangedLabels,
   parseCircleProfileMeta,
   parseCircleProfileSnapshot,
+  profileNotificationDocId,
   type CirclePatientProfileMeta,
   type CirclePatientProfileSnapshot,
   type CircleProfileNotification,
@@ -76,15 +74,19 @@ export async function updateCirclePatientProfileFromProxy(
 
   const meaningfulChanges = meaningfulProfileChangedLabels(changedLabels);
   if (meaningfulChanges.length > 0) {
-    const notificationId = `proxy_edit_${meta.updatedAt}`;
+    const notificationId = profileNotificationDocId('patient_edit', changedLabels);
     try {
-      await setDoc(doc(db, 'patients', patientId, 'profile_notifications', notificationId), {
-        type: 'patient_edit',
-        timestamp: meta.updatedAt,
-        summary: meta.summary || buildProfileChangeSummary('proxy', patientDisplayName, changedLabels),
-        changedLabels,
-        readBy: { [actorUid]: meta.updatedAt },
-      });
+      await setDoc(
+        doc(db, 'patients', patientId, 'profile_notifications', notificationId),
+        {
+          type: 'patient_edit',
+          timestamp: meta.updatedAt,
+          summary: meta.summary || buildProfileChangeSummary('proxy', patientDisplayName, changedLabels),
+          changedLabels,
+          readBy: { [actorUid]: meta.updatedAt },
+        },
+        { merge: true },
+      );
     } catch (err) {
       console.warn('[updateCirclePatientProfileFromProxy] profile notification', err);
     }
@@ -101,27 +103,39 @@ export async function listUnreadProfileNotifications(
   readerUid: string,
   max = 5,
 ): Promise<CircleProfileNotificationRow[]> {
-  const snap = await getDocs(
-    query(
+  try {
+    const snap = await getDocs(
       collection(db, 'patients', patientId, 'profile_notifications'),
-      orderBy('timestamp', 'desc'),
-      limit(max),
-    ),
-  );
+    );
 
-  return snap.docs
-    .map((row) => {
-      const data = row.data();
-      return {
-        id: row.id,
-        type: data.type as CircleProfileNotification['type'],
-        timestamp: Number(data.timestamp) || 0,
-        summary: String(data.summary || ''),
-        changedLabels: Array.isArray(data.changedLabels) ? data.changedLabels.map(String) : [],
-        readBy: (data.readBy as Record<string, number>) || {},
-      };
-    })
-    .filter((row) => !row.readBy?.[readerUid]);
+    const unread = snap.docs
+      .map((row) => {
+        const data = row.data();
+        return {
+          id: row.id,
+          type: data.type as CircleProfileNotification['type'],
+          timestamp: Number(data.timestamp) || 0,
+          summary: String(data.summary || ''),
+          changedLabels: Array.isArray(data.changedLabels) ? data.changedLabels.map(String) : [],
+          readBy: (data.readBy as Record<string, number>) || {},
+        };
+      })
+      .filter((row) => !row.readBy?.[readerUid])
+      .sort((a, b) => b.timestamp - a.timestamp);
+
+    const seenSignatures = new Set<string>();
+    return unread
+      .filter((row) => {
+        const signature = profileNotificationDocId(row.type, row.changedLabels);
+        if (seenSignatures.has(signature)) return false;
+        seenSignatures.add(signature);
+        return true;
+      })
+      .slice(0, max);
+  } catch (err) {
+    console.warn('[listUnreadProfileNotifications]', err);
+    return [];
+  }
 }
 
 export async function markProfileNotificationRead(
@@ -131,8 +145,7 @@ export async function markProfileNotificationRead(
   readerUid: string,
 ): Promise<void> {
   const ref = doc(db, 'patients', patientId, 'profile_notifications', notificationId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return;
-  const readBy = { ...((snap.data()?.readBy as Record<string, number>) || {}), [readerUid]: Date.now() };
-  await updateDoc(ref, { readBy });
+  await updateDoc(ref, {
+    [`readBy.${readerUid}`]: Date.now(),
+  });
 }

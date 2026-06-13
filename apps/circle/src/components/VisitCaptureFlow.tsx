@@ -14,13 +14,17 @@ import {
   X,
 } from 'lucide-react';
 import {
+  canParticipateInCircleOpenThread,
   canViewCareCoordinationCaptures,
   downloadVisitCaptureHtml,
   downloadVisitCaptureWord,
+  visitCapturePreviewAnalysis,
+  visitCapturePublishThreadKind,
   type VisitCaptureCapturedBy,
   type VisitCaptureSession,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
+import { useCircleI18nContext } from '../lib/circleI18nContext';
 import {
   clearLocalVisitSegments,
   listLocalVisitSegments,
@@ -46,6 +50,7 @@ type VisitCaptureStep =
 export type VisitCaptureFlowProps = {
   open: boolean;
   onClose: () => void;
+  onPublished?: () => void;
   patientId: string;
   capturedBy: VisitCaptureCapturedBy;
 };
@@ -60,10 +65,12 @@ function formatElapsed(ms: number): string {
 export function VisitCaptureFlow({
   open,
   onClose,
+  onPublished,
   patientId,
   capturedBy,
 }: VisitCaptureFlowProps) {
   const apiConfigured = isVisitCaptureApiConfigured();
+  const { language: recorderLanguage, t } = useCircleI18nContext();
   const [step, setStep] = useState<VisitCaptureStep>('consent');
   const [roomInformed, setRoomInformed] = useState(false);
   const [session, setSession] = useState<VisitCaptureSession | null>(null);
@@ -126,7 +133,7 @@ export function VisitCaptureFlow({
       setSession(created);
       setStep('recording');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not start visit capture.');
+      setError(err instanceof Error ? err.message : t('visitCapture.errorStartFailed'));
     } finally {
       setBusy(false);
     }
@@ -149,7 +156,7 @@ export function VisitCaptureFlow({
       setElapsedMs(0);
       startTimer();
     } catch {
-      setError('Microphone access is required to record the visit.');
+      setError(t('visitCapture.errorMicRequired'));
     }
   };
 
@@ -176,7 +183,7 @@ export function VisitCaptureFlow({
 
     if (blob.size === 0) {
       setBusy(false);
-      setError('No audio captured. Try again.');
+      setError(t('visitCapture.errorNoAudio'));
       return;
     }
 
@@ -192,7 +199,7 @@ export function VisitCaptureFlow({
       });
       setSegmentCount((c) => c + 1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save recording locally.');
+      setError(err instanceof Error ? err.message : t('visitCapture.errorSaveLocalFailed'));
     } finally {
       setBusy(false);
     }
@@ -217,15 +224,16 @@ export function VisitCaptureFlow({
       const updated = await finishVisitCaptureSession({
         patientId,
         sessionId: session.id,
+        previewLanguage: recorderLanguage,
       });
       setSession(updated);
       setStep(updated.status === 'failed' ? 'failed' : 'preview');
       if (updated.status === 'failed') {
-        setError(updated.errorMessage ?? 'Processing failed.');
+        setError(updated.errorMessage ?? t('visitCapture.errorProcessingFailed'));
       }
     } catch (err) {
       setStep('failed');
-      setError(err instanceof Error ? err.message : 'Processing failed.');
+      setError(err instanceof Error ? err.message : t('visitCapture.errorProcessingFailed'));
     } finally {
       setBusy(false);
     }
@@ -238,9 +246,10 @@ export function VisitCaptureFlow({
     try {
       await publishVisitCaptureSession({ patientId, sessionId: session.id });
       await clearLocalVisitSegments(session.id);
+      onPublished?.();
       setStep('done');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not share with care team.');
+      setError(err instanceof Error ? err.message : t('visitCapture.errorShareFailed'));
     } finally {
       setBusy(false);
     }
@@ -263,7 +272,15 @@ export function VisitCaptureFlow({
     }
   };
 
-  const recorderSeesThread = canViewCareCoordinationCaptures(capturedBy.role);
+  const publishThreadKind = visitCapturePublishThreadKind(capturedBy.role);
+  const recorderSeesThread =
+    publishThreadKind === 'open'
+      ? canParticipateInCircleOpenThread(capturedBy.role)
+      : canViewCareCoordinationCaptures(capturedBy.role);
+  const publishShareLabel =
+    publishThreadKind === 'open'
+      ? t('visitCapture.shareWithCircle')
+      : t('visitCapture.shareWithCareTeam');
 
   if (!open || typeof document === 'undefined') return null;
 
@@ -283,23 +300,22 @@ export function VisitCaptureFlow({
                   onClick={() => void handleDiscard()}
                   disabled={busy && step === 'processing'}
                   className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 disabled:opacity-50"
-                  aria-label="Close"
+                  aria-label={t('common.close')}
                 >
                   <X size={20} />
                 </button>
               </div>
 
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Doctor visit capture</h2>
+                <h2 className="text-xl font-bold text-slate-900">{t('visitCapture.title')}</h2>
                 <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-                  Record the visit for your Care Coordination team only — not the wider circle.
+                  {t('visitCapture.subtitle')}
                 </p>
               </div>
 
               {!apiConfigured && (
                 <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
-                  Set <code className="text-xs">VITE_MEDXFORCE_API_URL</code> in the Circle app env
-                  (patient server URL) to enable visit capture.
+                  {t('visitCapture.apiNotConfigured')}
                 </p>
               )}
 
@@ -319,8 +335,7 @@ export function VisitCaptureFlow({
                       className="mt-1"
                     />
                     <span className="text-sm text-slate-700 leading-relaxed">
-                      Everyone in the room has been informed that this conversation will be recorded
-                      and shared with the Care Coordination team.
+                      {t('visitCapture.consentLabel')}
                     </span>
                   </label>
                   <button
@@ -330,7 +345,7 @@ export function VisitCaptureFlow({
                     className="w-full py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {busy ? <Loader2 size={18} className="animate-spin" /> : <Shield size={18} />}
-                    Start visit capture
+                    {t('visitCapture.startCapture')}
                   </button>
                 </div>
               )}
@@ -340,13 +355,17 @@ export function VisitCaptureFlow({
                   <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                        Segments
+                        {t('visitCapture.segmentsLabel')}
                       </p>
-                      <p className="text-lg font-bold text-slate-800">{segmentCount} saved</p>
+                      <p className="text-lg font-bold text-slate-800">
+                        {t('visitCapture.segmentsSaved', { count: segmentCount })}
+                      </p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                        {isRecording ? 'Recording' : 'Ready'}
+                        {isRecording
+                          ? t('visitCapture.statusRecording')
+                          : t('visitCapture.statusReady')}
                       </p>
                       <p
                         className={cn(
@@ -368,7 +387,9 @@ export function VisitCaptureFlow({
                         className="flex-1 py-3.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold flex items-center justify-center gap-2"
                       >
                         <Mic size={18} />
-                        {segmentCount === 0 ? 'Start recording' : 'Add segment'}
+                        {segmentCount === 0
+                          ? t('visitCapture.startRecording')
+                          : t('visitCapture.addSegment')}
                       </button>
                     ) : (
                       <button
@@ -378,7 +399,7 @@ export function VisitCaptureFlow({
                         className="flex-1 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-900 text-white font-bold flex items-center justify-center gap-2"
                       >
                         <Square size={16} fill="currentColor" />
-                        Stop segment
+                        {t('visitCapture.stopSegment')}
                       </button>
                     )}
                   </div>
@@ -389,7 +410,7 @@ export function VisitCaptureFlow({
                     disabled={segmentCount < 1 || isRecording || busy}
                     className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold disabled:opacity-50"
                   >
-                    Finish visit & analyze
+                    {t('visitCapture.finishAnalyze')}
                   </button>
                 </div>
               )}
@@ -397,40 +418,51 @@ export function VisitCaptureFlow({
               {step === 'processing' && (
                 <div className="py-8 flex flex-col items-center gap-3 text-slate-600">
                   <Loader2 size={32} className="animate-spin text-blue-600" />
-                  <p className="font-medium">Transcribing and analyzing…</p>
-                  <p className="text-xs text-slate-400">This may take a minute.</p>
+                  <p className="font-medium">{t('visitCapture.processingTitle')}</p>
+                  <p className="text-xs text-slate-400">{t('visitCapture.processingHint')}</p>
                 </div>
               )}
 
-              {step === 'preview' && session?.analysis && (
+              {step === 'preview' && session?.analysis && (() => {
+                const previewAnalysis = visitCapturePreviewAnalysis(session);
+                if (!previewAnalysis) return null;
+                return (
                 <div className="space-y-4">
+                  {session.localizedPreview ? (
+                    <div className="space-y-1 pb-1 border-b border-slate-100">
+                      <p className="text-sm font-bold text-slate-800">
+                        {session.localizedPreview.headingLine1}
+                      </p>
+                      <p className="text-xs text-slate-500">{session.localizedPreview.headingLine2}</p>
+                    </div>
+                  ) : null}
                   <div className="space-y-2">
                     <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
-                      Summary
+                      {t('visitCapture.summaryHeading')}
                     </h3>
-                    <p className="text-sm text-slate-700 leading-relaxed">{session.analysis.summary}</p>
+                    <p className="text-sm text-slate-700 leading-relaxed">{previewAnalysis.summary}</p>
                   </div>
 
-                  {session.analysis.actionItems.length > 0 && (
+                  {previewAnalysis.actionItems.length > 0 && (
                     <div className="space-y-2">
                       <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
-                        Action items
+                        {t('visitCapture.actionItemsHeading')}
                       </h3>
                       <ul className="text-sm text-slate-700 space-y-1 list-disc pl-5">
-                        {session.analysis.actionItems.map((item, i) => (
+                        {previewAnalysis.actionItems.map((item, i) => (
                           <li key={i}>{item.text}</li>
                         ))}
                       </ul>
                     </div>
                   )}
 
-                  {session.analysis.followUpQuestions.length > 0 && (
+                  {previewAnalysis.followUpQuestions.length > 0 && (
                     <div className="space-y-2">
                       <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
-                        Follow-up questions
+                        {t('visitCapture.followUpHeading')}
                       </h3>
                       <ul className="text-sm text-slate-700 space-y-1 list-disc pl-5">
-                        {session.analysis.followUpQuestions.map((q, i) => (
+                        {previewAnalysis.followUpQuestions.map((q, i) => (
                           <li key={i}>{q}</li>
                         ))}
                       </ul>
@@ -440,7 +472,7 @@ export function VisitCaptureFlow({
                   {session.transcript && (
                     <details className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
                       <summary className="text-sm font-bold text-slate-600 cursor-pointer">
-                        Full transcript
+                        {t('visitCapture.transcriptHeading')}
                       </summary>
                       <p className="text-xs text-slate-600 mt-2 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto">
                         {session.transcript}
@@ -457,7 +489,7 @@ export function VisitCaptureFlow({
                     >
                       <span className="inline-flex items-center justify-center gap-2">
                         <FileText size={16} className="shrink-0" aria-hidden />
-                        Download Word
+                        {t('visitCapture.downloadWord')}
                       </span>
                     </button>
                     <button
@@ -468,7 +500,7 @@ export function VisitCaptureFlow({
                     >
                       <span className="inline-flex items-center justify-center gap-2">
                         <Download size={16} className="shrink-0" aria-hidden />
-                        Download HTML
+                        {t('visitCapture.downloadHtml')}
                       </span>
                     </button>
                   </div>
@@ -482,7 +514,7 @@ export function VisitCaptureFlow({
                     >
                       <span className="inline-flex items-center justify-center gap-2">
                         <Trash2 size={16} className="shrink-0" aria-hidden />
-                        Delete
+                        {t('visitCapture.delete')}
                       </span>
                     </button>
                     <button
@@ -497,20 +529,21 @@ export function VisitCaptureFlow({
                         ) : (
                           <CheckCircle2 size={16} className="shrink-0" aria-hidden />
                         )}
-                        <span className="text-sm leading-snug">Share with care team</span>
+                        <span className="text-sm leading-snug">{publishShareLabel}</span>
                       </span>
                     </button>
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               {step === 'done' && (
                 <div className="space-y-4 py-4 text-center">
                   <CheckCircle2 size={40} className="mx-auto text-emerald-600" />
-                  <p className="font-bold text-slate-800">Shared with your care team</p>
+                  <p className="font-bold text-slate-800">{t('visitCapture.doneTitle')}</p>
                   {!recorderSeesThread && (
                     <p className="text-sm text-slate-500">
-                      You won&apos;t see this in Care coordination — only the care team can.
+                      {t('visitCapture.doneHiddenHint')}
                     </p>
                   )}
                   <button
@@ -518,31 +551,28 @@ export function VisitCaptureFlow({
                     onClick={onClose}
                     className="w-full py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold"
                   >
-                    Done
+                    {t('visitCapture.doneButton')}
                   </button>
                 </div>
               )}
 
               {step === 'failed' && (
                 <div className="space-y-4">
-                  <p className="text-sm text-slate-600">
-                    We couldn&apos;t process this visit. Your recordings are still saved locally until
-                    you delete them.
-                  </p>
+                  <p className="text-sm text-slate-600">{t('visitCapture.failedBody')}</p>
                   <div className="flex gap-3">
                     <button
                       type="button"
                       onClick={() => void handleDiscard()}
                       className="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-700 font-bold"
                     >
-                      Delete
+                      {t('visitCapture.delete')}
                     </button>
                     <button
                       type="button"
                       onClick={() => void handleFinish()}
                       className="flex-1 py-3 rounded-2xl bg-blue-600 text-white font-bold"
                     >
-                      Retry
+                      {t('visitCapture.retry')}
                     </button>
                   </div>
                 </div>

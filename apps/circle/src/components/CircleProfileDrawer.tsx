@@ -29,15 +29,20 @@ import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
 import { dataUrlToBlob } from '../lib/imageCrop';
 import {
-  circleMemberAccessLabel,
   getCircleUserProfile,
   saveCircleUserProfile,
+  isAcceptedProfilePhotoFile,
+  normalizeProfilePhotoFile,
   type CirclePatientSummary,
   type CircleUserProfile,
   canInviteMembers,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 import { usePatientOnlinePresence } from '../hooks/usePatientOnlinePresence';
+import { useCircleOwnManagedContact } from '../hooks/useCircleOwnManagedContact';
+import { translateCircleMemberAccessLabel } from '../lib/adminScreenI18n';
+import { memberRoleBadgeClass } from '../lib/circleContactDisplay';
+import { CircleContactMemberOverviewStrip } from './CircleContactMemberOverviewStrip';
 import { PatientOnlineIndicator } from './PatientOnlineIndicator';
 import { useCircleT } from '../lib/circleI18nContext';
 
@@ -86,6 +91,11 @@ export function CircleProfileDrawer({
 
   const proxyCanManageUsers = canInviteMembers(patient?.capabilities);
   const { online: patientOnline } = usePatientOnlinePresence(db, patient?.patientId);
+  const { contact: ownContact, loading: ownContactLoading } = useCircleOwnManagedContact(
+    db,
+    user,
+    patient,
+  );
   const canSwitchPatient = patients.length > 1;
 
   useEffect(() => {
@@ -120,20 +130,28 @@ export function CircleProfileDrawer({
     profile?.displayName?.trim() ||
     user.displayName?.trim() ||
     user.email?.split('@')[0] ||
-    'Circle member';
+    t('drawer.defaultMemberName');
   const photoUrl = profile?.photoUrl || user.photoURL || '';
 
   const handlePhotoChange = async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      setError('Please choose an image file.');
+    if (!isAcceptedProfilePhotoFile(file)) {
+      setError(t('drawer.chooseImageError'));
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      setError('Image must be smaller than 10 MB.');
+      setError(t('drawer.imageSizeError'));
       return;
     }
     setError(null);
-    setFileToCrop(file);
+    setUploading(true);
+    try {
+      const normalized = await normalizeProfilePhotoFile(file);
+      setFileToCrop(normalized);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('drawer.uploadFailed'));
+    } finally {
+      setUploading(false);
+    }
   };
 
   const uploadCroppedPhoto = async (croppedDataUrl: string) => {
@@ -160,7 +178,7 @@ export function CircleProfileDrawer({
       });
       setFileToCrop(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not upload photo.');
+      setError(err instanceof Error ? err.message : t('drawer.uploadFailed'));
     } finally {
       setUploading(false);
     }
@@ -380,7 +398,7 @@ export function CircleProfileDrawer({
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-slate-800 truncate">{row.displayName}</p>
                         <p className="text-xs text-slate-500">
-                          {circleMemberAccessLabel(row.role, row.proxyTier)}
+                          {translateCircleMemberAccessLabel(t, row.role, row.proxyTier)}
                         </p>
                       </div>
                       {isActive && <Check size={20} className="text-blue-600 shrink-0" />}
@@ -466,11 +484,11 @@ export function CircleProfileDrawer({
             <input
               ref={fileRef}
               type="file"
-              accept="image/*"
+              accept="image/*,.heic,.heif"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) handlePhotoChange(file);
+                if (file) void handlePhotoChange(file);
                 e.target.value = '';
               }}
             />
@@ -483,14 +501,39 @@ export function CircleProfileDrawer({
                 disabled={uploading}
                 className="mt-2 text-xs font-semibold text-blue-600 hover:text-blue-700"
               >
-                {uploading ? 'Uploading…' : 'Change profile photo'}
+                {uploading ? t('drawer.uploadingPhoto') : t('drawer.changePhoto')}
               </button>
             </div>
           </div>
           {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
           <p className="text-xs text-slate-400 mt-3 leading-relaxed">
-            Your photo can appear to your loved one in the patient app as you connect and message.
+            {t('drawer.photoHint')}
           </p>
+          {patient && (
+            <div className="mt-4 pt-4 border-t border-slate-100">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                {t('drawer.accountOverview')}
+              </p>
+              {ownContactLoading && !ownContact ? (
+                <p className="text-xs text-slate-400">{t('common.loading')}</p>
+              ) : ownContact ? (
+                <CircleContactMemberOverviewStrip
+                  contact={ownContact}
+                  accessLabel={translateCircleMemberAccessLabel(t, patient.role, patient.proxyTier)}
+                  accessBadgeClass={memberRoleBadgeClass(patient.role, patient.proxyTier)}
+                />
+              ) : (
+                <span
+                  className={cn(
+                    'inline-flex shrink-0 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border',
+                    memberRoleBadgeClass(patient.role, patient.proxyTier),
+                  )}
+                >
+                  {translateCircleMemberAccessLabel(t, patient.role, patient.proxyTier)}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
@@ -501,8 +544,8 @@ export function CircleProfileDrawer({
           >
             <UserIcon size={20} className="text-violet-600" />
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-slate-800 text-sm">My contact details</p>
-              <p className="text-xs text-slate-400">Name, relationship, and language</p>
+              <p className="font-semibold text-slate-800 text-sm">{t('drawer.myContact')}</p>
+              <p className="text-xs text-slate-400">{t('drawer.myContactHint')}</p>
             </div>
             <ChevronRight size={16} className="text-slate-300 shrink-0" />
           </button>
@@ -513,8 +556,8 @@ export function CircleProfileDrawer({
           >
             <Bell size={20} className="text-slate-500" />
             <div className="flex-1">
-              <p className="font-semibold text-slate-800 text-sm">Notifications</p>
-              <p className="text-xs text-slate-400">Alert, attention, and message preferences</p>
+              <p className="font-semibold text-slate-800 text-sm">{t('drawer.notifications')}</p>
+              <p className="text-xs text-slate-400">{t('drawer.notificationsHint')}</p>
             </div>
             <ChevronRight size={16} className="text-slate-300" />
           </button>
@@ -525,8 +568,12 @@ export function CircleProfileDrawer({
           >
             <Settings size={20} className="text-slate-500" />
             <div className="flex-1">
-              <p className="font-semibold text-slate-800 text-sm">Settings</p>
-              <p className="text-xs text-slate-400">Messaging, media, care relationship{proxyCanManageUsers ? ', user management' : ''}, and more</p>
+              <p className="font-semibold text-slate-800 text-sm">{t('drawer.settings')}</p>
+              <p className="text-xs text-slate-400">
+                {proxyCanManageUsers
+                  ? t('drawer.openSettingsHintWithUserMgmt')
+                  : t('drawer.openSettingsHint')}
+              </p>
             </div>
             <ChevronRight size={16} className="text-slate-300" />
           </button>

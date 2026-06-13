@@ -2,13 +2,11 @@ import { useState } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import { HeartHandshake, LogOut } from 'lucide-react';
-import {
-  circleMemberAccessLabel,
-  leaveCircleForPatient,
-  type CirclePatientSummary,
-} from '@medxforce/shared';
+import { leaveCircleForPatient, type CirclePatientSummary } from '@medxforce/shared';
 import { useCircleOnlineVisibility } from '../hooks/useCircleOnlineVisibility';
 import { CircleLeaveCircleConfirmModal } from './CircleLeaveCircleConfirmModal';
+import { useCircleT } from '../lib/circleI18nContext';
+import { translateCircleMemberAccessLabel } from '../lib/adminScreenI18n';
 
 interface CircleSettingsCareRelationshipPanelProps {
   user: User;
@@ -23,6 +21,7 @@ export function CircleSettingsCareRelationshipPanel({
   patient,
   onLeftCircle,
 }: CircleSettingsCareRelationshipPanelProps) {
+  const t = useCircleT();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,13 +43,15 @@ export function CircleSettingsCareRelationshipPanel({
         email: user.email || '',
       });
       if (!ok) {
-        setError('Could not leave this circle. Try again or contact your loved one.');
+        setError(t('settings.careRelationshipLeaveFailed'));
         return;
       }
       setConfirmOpen(false);
       await onLeftCircle();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not leave this circle.');
+      setError(
+        err instanceof Error ? err.message : t('settings.careRelationshipLeaveFailedGeneric'),
+      );
     } finally {
       setBusy(false);
     }
@@ -60,7 +61,7 @@ export function CircleSettingsCareRelationshipPanel({
     return (
       <div className="p-5">
         <p className="text-sm text-slate-500 leading-relaxed">
-          Open Settings → Switch patient to choose who you are supporting.
+          {t('settings.notificationsNoPatient')}
         </p>
       </div>
     );
@@ -78,9 +79,9 @@ export function CircleSettingsCareRelationshipPanel({
             )}
           </div>
           <div className="space-y-1 min-w-0">
-            <h3 className="font-bold text-slate-800">Care relationship</h3>
+            <h3 className="font-bold text-slate-800">{t('drawer.careRelationship')}</h3>
             <p className="text-sm text-slate-500 leading-relaxed">
-              Your role and access for the person you are supporting in MedXForce Circle.
+              {t('settings.careRelationshipPanelSubtitle')}
             </p>
           </div>
         </div>
@@ -91,18 +92,19 @@ export function CircleSettingsCareRelationshipPanel({
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">
-              Your role
+              {t('settings.careRelationshipYourRole')}
             </p>
             <p className="text-sm font-semibold text-slate-700">
-              {circleMemberAccessLabel(patient.role, patient.proxyTier)}
+              {translateCircleMemberAccessLabel(t, patient.role, patient.proxyTier)}
             </p>
           </div>
           <div className="flex items-start justify-between gap-4 p-4 bg-white rounded-2xl border border-slate-100">
             <div className="space-y-1 min-w-0">
-              <p className="text-sm font-bold text-slate-800">Hide my online status</p>
+              <p className="text-sm font-bold text-slate-800">
+                {t('common.aria.hideMyOnlineStatus')}
+              </p>
               <p className="text-xs text-slate-400 leading-relaxed">
-                When on, you won&apos;t appear as online in the patient app (sidebar dot and Circle
-                online list).
+                {t('settings.careRelationshipHideOnlineDesc')}
               </p>
             </div>
             <button
@@ -115,7 +117,7 @@ export function CircleSettingsCareRelationshipPanel({
                 hideOnlineStatusFromPatient ? 'bg-blue-600' : 'bg-slate-300'
               }`}
               aria-pressed={hideOnlineStatusFromPatient}
-              aria-label="Hide my online status"
+              aria-label={t('common.aria.hideMyOnlineStatus')}
             >
               <span
                 className={`absolute top-1 left-0 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 ${
@@ -125,8 +127,7 @@ export function CircleSettingsCareRelationshipPanel({
             </button>
           </div>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Leaving removes your access to their messages and media in Circle. It works the same
-            way as when they revoke your access in the patient app.
+            {t('settings.careRelationshipLeaveHint')}
           </p>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button
@@ -136,7 +137,7 @@ export function CircleSettingsCareRelationshipPanel({
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-red-600 bg-white border border-red-100 hover:bg-red-50 transition-colors disabled:opacity-50"
           >
             <LogOut size={18} />
-            Leave circle
+            {t('settings.careRelationshipLeaveButton')}
           </button>
         </div>
       </div>

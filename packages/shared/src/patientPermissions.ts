@@ -154,6 +154,16 @@ export function canInviteMembers(capabilities: PatientCapabilities | undefined):
   return !!capabilities?.inviteMembers;
 }
 
+/** Patient-deleted threads are visible in Circle only to proxies (not friend/family/caregiver). */
+export function canViewDeletedPatientMessages(role: string): boolean {
+  return normalizeMemberRole(role) === 'proxy';
+}
+
+/** ICU daily communication summaries are hidden from friends in Circle. */
+export function canViewCommunicationLog(role: string): boolean {
+  return normalizeMemberRole(role) !== 'friend';
+}
+
 export function normalizeInviteEmail(email: string): string {
   return email.trim().toLowerCase();
 }

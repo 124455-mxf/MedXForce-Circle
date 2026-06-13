@@ -19,6 +19,13 @@ import {
   type DropInMessage,
   type DropInSession,
 } from '@medxforce/shared';
+import type { CircleTranslator } from '../lib/circleI18nContext';
+import type { CircleUiLanguage } from '../lib/circleLanguages';
+import { buildCircleThreadPostTranslations } from '../lib/circleThreadPostTranslate';
+import {
+  buildDropInTranscriptLabels,
+  circleUiLanguageToLocale,
+} from '../lib/dropInTranscriptI18n';
 
 export type CircleDropInSharePrompt = {
   session: DropInSession;
@@ -34,6 +41,9 @@ export function useCircleDropIn(
   patientDisplayName: string,
   enabled: boolean,
   patientOnline: boolean,
+  viewerLanguage: CircleUiLanguage,
+  t: CircleTranslator,
+  memberLanguagesByUid: Record<string, CircleUiLanguage>,
 ) {
   const [session, setSession] = useState<DropInSession | null>(null);
   const [messages, setMessages] = useState<DropInMessage[]>([]);
@@ -230,10 +240,20 @@ export function useCircleDropIn(
     setBusy(true);
     setError(null);
     try {
+      const labels = buildDropInTranscriptLabels(t);
       const text = formatDropInTranscriptForCareCoordination(
         sharePrompt.session,
         sharePrompt.messages,
         patientDisplayName,
+        { labels, locale: circleUiLanguageToLocale(viewerLanguage) },
+      );
+      const targetLanguages = [
+        ...new Set(Object.values(memberLanguagesByUid)),
+      ] as CircleUiLanguage[];
+      const translations = await buildCircleThreadPostTranslations(
+        text,
+        viewerLanguage,
+        targetLanguages,
       );
       await createCircleMemberThreadPost(db, {
         patientId: sharePrompt.session.patientId,
@@ -242,6 +262,8 @@ export function useCircleDropIn(
         authorName: userDisplayName,
         authorRole: memberRole,
         text,
+        postKind: 'drop_in',
+        ...(translations.length > 0 ? { translations } : {}),
       });
       setSharePrompt(null);
     } catch (err) {
@@ -250,7 +272,7 @@ export function useCircleDropIn(
     } finally {
       setBusy(false);
     }
-  }, [db, memberRole, patientDisplayName, sharePrompt, userDisplayName, userId]);
+  }, [db, memberRole, memberLanguagesByUid, patientDisplayName, sharePrompt, t, userDisplayName, userId, viewerLanguage]);
 
   const dismissSharePrompt = useCallback(() => {
     setSharePrompt(null);

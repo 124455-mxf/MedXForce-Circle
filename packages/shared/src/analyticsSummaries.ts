@@ -371,6 +371,21 @@ export function analyticsSummaryDoc(db: Firestore, patientId: string, metricId: 
   return doc(db, 'patients', patientId, 'analytics_summaries', metricId);
 }
 
+/** Firestore may store millis as a number or a Timestamp-like object. */
+function readAnalyticsMillis(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (
+    value &&
+    typeof value === 'object' &&
+    'toMillis' in value &&
+    typeof (value as { toMillis: () => number }).toMillis === 'function'
+  ) {
+    const millis = (value as { toMillis: () => number }).toMillis();
+    return Number.isFinite(millis) ? millis : null;
+  }
+  return null;
+}
+
 export function parsePatientAnalyticsSummary(
   metricId: string,
   data: Record<string, unknown> | undefined,
@@ -384,7 +399,7 @@ export function parsePatientAnalyticsSummary(
     patientId: String(data.patientId ?? ''),
     audience: (data.audience as AnalyticsAudience) ?? def?.audience ?? 'engagement',
     status: (data.status as AnalyticsSummaryStatus) ?? 'none',
-    latestAt: typeof data.latestAt === 'number' ? data.latestAt : null,
+    latestAt: readAnalyticsMillis(data.latestAt),
     countInWindow: typeof data.countInWindow === 'number' ? data.countInWindow : 0,
     windowDays: typeof data.windowDays === 'number' ? data.windowDays : 30,
     averageInWindow:

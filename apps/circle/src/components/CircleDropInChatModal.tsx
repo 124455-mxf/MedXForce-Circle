@@ -4,7 +4,11 @@ import { Loader2, Mic, MicOff, Send, X } from 'lucide-react';
 import type { DropInMessage } from '@medxforce/shared';
 import { DROP_IN_MESSAGE_MAX_LENGTH } from '@medxforce/shared';
 import { useDictation } from '../hooks/useDictation';
+import { useCircleT } from '../lib/circleI18nContext';
+import type { CircleUiLanguage } from '../lib/circleLanguages';
 import { cn } from '../lib/utils';
+import { CircleDropInChatTranslatedText } from './CircleDropInChatTranslatedText';
+import { CirclePatientLanguagePill } from './CirclePatientLanguagePill';
 import {
   DROP_IN_CHAT_BACKDROP_CLASS,
   DROP_IN_CHAT_BODY_CLASS,
@@ -20,6 +24,8 @@ type CircleDropInChatModalProps = {
   messages: DropInMessage[];
   caregiverName: string;
   busy?: boolean;
+  viewerLanguage: CircleUiLanguage;
+  patientLanguage: CircleUiLanguage;
   onSend: (text: string) => Promise<void>;
   onEnd: () => Promise<void>;
   onClose: () => void;
@@ -35,10 +41,13 @@ export function CircleDropInChatModal({
   messages,
   caregiverName,
   busy = false,
+  viewerLanguage,
+  patientLanguage,
   onSend,
   onEnd,
   onClose,
 }: CircleDropInChatModalProps) {
+  const t = useCircleT();
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +82,7 @@ export function CircleDropInChatModal({
       await onSend(text);
       setDraft('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send message.');
+      setError(err instanceof Error ? err.message : t('remotePromptsModal.dropInChatSendError'));
     } finally {
       setSending(false);
     }
@@ -84,7 +93,7 @@ export function CircleDropInChatModal({
     try {
       await onEnd();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not end conversation.');
+      setError(err instanceof Error ? err.message : t('remotePromptsModal.dropInChatEndError'));
     }
   };
 
@@ -92,16 +101,26 @@ export function CircleDropInChatModal({
     <div className={DROP_IN_CHAT_BACKDROP_CLASS}>
       <div className={DROP_IN_CHAT_PANEL_CLASS}>
         <div className={DROP_IN_CHAT_HEADER_CLASS}>
-          <div>
-            <p className="text-lg font-bold text-slate-900">Drop-in with {patientName}</p>
-            <p className="text-sm text-slate-500 mt-0.5">Live until either of you ends it</p>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-lg font-bold text-slate-900 min-w-0">
+                {t('remotePromptsModal.dropInChatTitle', { name: patientName })}
+              </p>
+              <CirclePatientLanguagePill
+                language={patientLanguage}
+                title={t('messages.patientLanguagePillTitle')}
+              />
+            </div>
+            <p className="text-sm text-slate-500 mt-0.5">
+              {t('remotePromptsModal.dropInChatSubtitle')}
+            </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={busy}
             className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 disabled:opacity-50"
-            aria-label="Minimize"
+            aria-label={t('remotePromptsModal.dropInChatMinimizeAria')}
           >
             <X size={20} />
           </button>
@@ -110,7 +129,7 @@ export function CircleDropInChatModal({
         <div ref={scrollRef} className={DROP_IN_CHAT_BODY_CLASS}>
           {messages.length === 0 ? (
             <p className="text-sm text-slate-500 text-center py-8">
-              Waiting for {patientName} to reply…
+              {t('remotePromptsModal.dropInChatWaitingReply', { name: patientName })}
             </p>
           ) : (
             messages.map((message) => {
@@ -131,9 +150,18 @@ export function CircleDropInChatModal({
                     <p className="text-[10px] font-bold uppercase tracking-wide opacity-80">
                       {isCaregiver ? caregiverName : patientName}
                     </p>
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap mt-0.5">
-                      {message.text}
-                    </p>
+                    {isCaregiver ? (
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap mt-0.5">
+                        {message.text}
+                      </p>
+                    ) : (
+                      <CircleDropInChatTranslatedText
+                        text={message.text}
+                        viewerLanguage={viewerLanguage}
+                        t={t}
+                        className="text-sm leading-relaxed whitespace-pre-wrap mt-0.5"
+                      />
+                    )}
                     <p className="text-[10px] opacity-70 mt-1">{formatTime(message.createdAt)}</p>
                   </div>
                 </div>
@@ -159,7 +187,7 @@ export function CircleDropInChatModal({
               setMicError(null);
               setDraft(e.target.value.slice(0, DROP_IN_MESSAGE_MAX_LENGTH));
             }}
-            placeholder="Write a message…"
+            placeholder={t('remotePromptsModal.dropInChatPlaceholder')}
             rows={3}
             disabled={busy || sending}
             className={DROP_IN_CHAT_TEXTAREA_CLASS}
@@ -180,7 +208,11 @@ export function CircleDropInChatModal({
                   ? 'border-red-200 bg-red-50 text-red-600'
                   : 'border-slate-200 text-slate-600 hover:bg-slate-50',
               )}
-              aria-label={isRecording ? 'Stop dictation' : 'Start dictation'}
+              aria-label={
+                isRecording
+                  ? t('remotePromptsModal.dropInChatStopDictation')
+                  : t('remotePromptsModal.dropInChatStartDictation')
+              }
             >
               {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
             </button>
@@ -190,7 +222,7 @@ export function CircleDropInChatModal({
               disabled={busy || sending}
               className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-bold hover:bg-slate-50 disabled:opacity-50"
             >
-              End conversation
+              {t('remotePromptsModal.dropInChatEndConversation')}
             </button>
             <button
               type="button"
@@ -199,7 +231,7 @@ export function CircleDropInChatModal({
               className="ml-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold disabled:opacity-50"
             >
               {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-              Send
+              {t('remotePromptsModal.dropInChatSend')}
             </button>
           </div>
         </div>

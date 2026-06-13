@@ -700,6 +700,22 @@ export function meaningfulProfileChangedLabels(changedLabels: string[]): string[
   return changedLabels.filter((label) => label !== GENERIC_PROFILE_CHANGE_LABEL);
 }
 
+/** Stable Firestore doc id — one row per change signature so dismissals persist across re-syncs. */
+export function profileNotificationDocId(
+  type: CircleProfileNotificationType,
+  changedLabels: string[],
+): string {
+  const meaningful = meaningfulProfileChangedLabels(changedLabels);
+  if (meaningful.length === 0) return `${type}_profile_updated`;
+  const slug = meaningful
+    .join('_')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 100);
+  return `${type}_${slug || 'profile_updated'}`;
+}
+
 /** Comma-separated field names, omitting generic fallback labels. */
 export function formatProfileChangedFields(changedLabels: string[], maxFields = 8): string {
   const meaningful = meaningfulProfileChangedLabels(changedLabels);

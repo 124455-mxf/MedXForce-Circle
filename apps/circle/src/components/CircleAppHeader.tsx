@@ -20,6 +20,7 @@ type CircleAppHeaderProps = {
   accountPhotoUrl?: string;
   onOpenProfile: () => void;
   selectedPatient: CirclePatientSummary;
+  memberDisplayName: string;
   patientOnline?: boolean;
   patientLastSeen?: number;
   onOpenPatientSwitcher?: () => void;
@@ -34,12 +35,14 @@ function CircleYouButton({
   accountPhotoUrl?: string;
   onOpenProfile: () => void;
 }) {
+  const t = useCircleT();
   return (
     <button
       type="button"
       onClick={onOpenProfile}
       className="flex flex-col items-center shrink-0 gap-0.5 outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/20 rounded-full"
-      title="Your account"
+      title={t('common.aria.yourAccount')}
+      aria-label={t('common.aria.yourAccount')}
     >
       <span className="rounded-full bg-blue-100 border-2 border-blue-200 overflow-hidden flex items-center justify-center w-11 h-11">
         {accountPhotoUrl ? (
@@ -51,7 +54,7 @@ function CircleYouButton({
         )}
       </span>
       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide leading-none">
-        You
+        {t('dashboard.sectionYou')}
       </span>
     </button>
   );
@@ -64,6 +67,7 @@ function CirclePatientAvatar({
   patient: CirclePatientSummary;
   onClick?: () => void;
 }) {
+  const t = useCircleT();
   const className =
     'w-11 h-11 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden';
 
@@ -79,8 +83,8 @@ function CirclePatientAvatar({
         type="button"
         onClick={onClick}
         className={cn(className, 'outline-none focus-visible:ring-2 focus-visible:ring-blue-500/20')}
-        title="Switch patient"
-        aria-label="Switch patient"
+        title={t('common.aria.switchPatient')}
+        aria-label={t('common.aria.switchPatient')}
       >
         {content}
       </button>
@@ -108,12 +112,17 @@ export function CircleAppHeader({
   accountPhotoUrl,
   onOpenProfile,
   selectedPatient,
+  memberDisplayName,
   patientOnline = false,
   patientLastSeen = 0,
   onOpenPatientSwitcher,
 }: CircleAppHeaderProps) {
   const t = useCircleT();
   const compact = variant === 'compact';
+  const headerTitle = t('common.memberForPatientTitle', {
+    member: memberDisplayName,
+    patient: selectedPatient.displayName,
+  });
 
   return (
     <header className={HEADER_SHELL_CLASS}>
@@ -123,7 +132,7 @@ export function CircleAppHeader({
         {compact ? (
           <>
             <div className="flex items-center gap-1.5 min-w-0">
-              <h1 className={TITLE_CLASS}>{selectedPatient.displayName}</h1>
+              <h1 className={TITLE_CLASS}>{headerTitle}</h1>
               <PatientOnlineIndicator online={patientOnline} showWhenOffline />
             </div>
             <PatientPresenceCaption

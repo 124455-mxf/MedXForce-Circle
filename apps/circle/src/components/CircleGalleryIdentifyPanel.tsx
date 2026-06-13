@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, Search, X } from 'lucide-react';
 import type { GalleryTagPerson } from '@medxforce/shared';
 import { cn } from '../lib/utils';
+import { useCircleT } from '../lib/circleI18nContext';
 
 function filterTagPeople(people: GalleryTagPerson[], query: string): GalleryTagPerson[] {
   const q = query.trim().toLowerCase();
@@ -29,6 +30,7 @@ export function CircleGalleryIdentifyPanel({
   onCreateAndTag,
   onClose,
 }: CircleGalleryIdentifyPanelProps) {
+  const t = useCircleT();
   const [isAddingNewPerson, setIsAddingNewPerson] = useState(false);
   const [newPersonName, setNewPersonName] = useState('');
   const [newPersonRelationship, setNewPersonRelationship] = useState('');
@@ -89,7 +91,7 @@ export function CircleGalleryIdentifyPanel({
                 type="button"
                 onClick={onClose}
                 className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"
-                aria-label="Close"
+                aria-label={t('common.close')}
               >
                 <X size={20} />
               </button>
@@ -163,14 +165,14 @@ export function CircleGalleryIdentifyPanel({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by name or relationship..."
                 className="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-100 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
-                aria-label="Search people"
+                aria-label={t('common.aria.searchPeople')}
               />
               {searchQuery ? (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
                   className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"
-                  aria-label="Clear search"
+                  aria-label={t('common.aria.clearSearch')}
                 >
                   <X size={14} />
                 </button>

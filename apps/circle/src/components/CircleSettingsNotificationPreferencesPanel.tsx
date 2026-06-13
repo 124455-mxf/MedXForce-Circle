@@ -18,6 +18,7 @@ import {
   CircleNotifyTurnOffConfirmModal,
   type CircleNotifyTurnOffKey,
 } from './CircleNotifyTurnOffConfirmModal';
+import { useCircleT } from '../lib/circleI18nContext';
 
 type CircleSettingsNotificationPreferencesPanelProps = {
   user: User;
@@ -30,6 +31,7 @@ export function CircleSettingsNotificationPreferencesPanel({
   db,
   patient,
 }: CircleSettingsNotificationPreferencesPanelProps) {
+  const t = useCircleT();
   const [contact, setContact] = useState<CircleManagedContact | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -55,11 +57,11 @@ export function CircleSettingsNotificationPreferencesPanel({
       setContact(mergeContactWithMemberNotifyPreferences(base, memberPrefs));
     } catch (err) {
       console.warn('[CircleSettingsNotificationPreferencesPanel]', err);
-      setError('Could not load your notification settings.');
+      setError(t('settings.notificationsLoadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [db, patient?.patientId, user.email]);
+  }, [db, patient?.patientId, t, user.email, user.uid]);
 
   useEffect(() => {
     void loadOwnContact();
@@ -120,7 +122,7 @@ export function CircleSettingsNotificationPreferencesPanel({
       setSaved(true);
     } catch (err) {
       console.warn('[CircleSettingsNotificationPreferencesPanel] save', err);
-      setError(err instanceof Error ? err.message : 'Could not save.');
+      setError(err instanceof Error ? err.message : t('settings.notificationsSaveFailed'));
     } finally {
       setSaving(false);
     }
@@ -148,7 +150,7 @@ export function CircleSettingsNotificationPreferencesPanel({
   if (!patient) {
     return (
       <div className="p-5">
-        <p className="text-sm text-slate-500">Open Settings → Switch patient to choose who you are supporting first.</p>
+        <p className="text-sm text-slate-500">{t('settings.notificationsNoPatient')}</p>
       </div>
     );
   }
@@ -160,10 +162,9 @@ export function CircleSettingsNotificationPreferencesPanel({
           <Bell size={20} />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-bold text-slate-800">Notifications</h3>
+          <h3 className="font-bold text-slate-800">{t('drawer.notifications')}</h3>
           <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-            How <span className="font-bold text-red-600">{patient.displayName}</span> reaches you for
-            alerts and messages
+            {t('settings.notificationsSubtitle', { name: patient.displayName })}
           </p>
         </div>
       </div>
@@ -174,28 +175,32 @@ export function CircleSettingsNotificationPreferencesPanel({
         </div>
       ) : !contact ? (
         <p className="text-sm text-slate-500 leading-relaxed bg-slate-50 border border-slate-100 rounded-2xl p-4">
-          We could not find your contact record for this circle. Ask the patient or proxy to add{' '}
-          <span className="font-semibold text-slate-700">{user.email}</span> in the Patient app.
+          {t('settings.notificationsContactNotFound', { email: user.email ?? '' })}
         </p>
       ) : (
         <>
           <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Your email</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                {t('settings.notificationsYourEmail')}
+              </p>
               <p className="text-sm font-medium text-slate-800 mt-1 break-all">{contact.email}</p>
             </div>
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mobile</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                {t('settings.notificationsMobile')}
+              </p>
               <p className="text-sm font-medium text-slate-800 mt-1">{contact.mobile || '—'}</p>
             </div>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Email and mobile are managed by the patient or proxy so Circle sign-in stays secure.
-              You can choose Alert, Attention, and Message below.
+              {t('settings.notificationsManagedHint')}
             </p>
           </div>
 
           <section className="space-y-3">
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Notify me</h4>
+            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {t('admin.contact.notifyMe')}
+            </h4>
             <CircleContactNotifyGrid
               values={{
                 alert: contact.alert,
@@ -221,12 +226,12 @@ export function CircleSettingsNotificationPreferencesPanel({
           )}
           {saved && !error && (
             <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
-              Saved
+              {t('settings.notificationsSaved')}
             </p>
           )}
           {saving && (
             <p className="text-xs text-slate-400 flex items-center gap-2">
-              <Loader2 size={14} className="animate-spin" /> Saving…
+              <Loader2 size={14} className="animate-spin" /> {t('admin.contact.saving')}
             </p>
           )}
         </>

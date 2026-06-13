@@ -1,11 +1,14 @@
 import { createPortal } from 'react-dom';
 import { CheckCircle2, X, XCircle } from 'lucide-react';
-import {
-  patientRemoteCommandCircleResponseBody,
-  patientRemoteCommandLabel,
-  type PatientRemoteCommandPatientResponse,
-  type PatientRemoteCommandType,
+import type {
+  PatientRemoteCommandPatientResponse,
+  PatientRemoteCommandType,
 } from '@medxforce/shared';
+import { useCircleT } from '../lib/circleI18nContext';
+import {
+  remoteCommandLabelI18n,
+  remoteCommandResponseBodyI18n,
+} from '../lib/remotePromptsModalI18n';
 
 type CirclePatientCommandResponseModalProps = {
   open: boolean;
@@ -22,10 +25,14 @@ export function CirclePatientCommandResponseModal({
   patientName,
   onClose,
 }: CirclePatientCommandResponseModalProps) {
+  const t = useCircleT();
+
   if (!open || !status || !type || typeof document === 'undefined') return null;
 
   const accepted = status === 'acknowledged';
-  const decisionLabel = accepted ? 'Open now' : 'Not now';
+  const decisionLabel = accepted
+    ? t('remotePromptsModal.openNow')
+    : t('remotePromptsModal.notNow');
 
   return createPortal(
     <div
@@ -53,7 +60,7 @@ export function CirclePatientCommandResponseModal({
             type="button"
             onClick={onClose}
             className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"
-            aria-label="Close"
+            aria-label={t('remotePromptsModal.closeAria')}
           >
             <X size={20} />
           </button>
@@ -64,16 +71,16 @@ export function CirclePatientCommandResponseModal({
             id="circle-patient-command-response-title"
             className="text-xl font-bold text-slate-900"
           >
-            Patient chose{' '}
+            {t('remotePromptsModal.patientChosePrefix')}{' '}
             <span className={accepted ? 'text-emerald-600' : 'text-red-600'}>
               {decisionLabel}
             </span>
           </h3>
           <p className="text-sm text-slate-500 leading-relaxed">
-            {patientRemoteCommandCircleResponseBody(status, type, patientName)}
+            {remoteCommandResponseBodyI18n(t, status, type, patientName)}
           </p>
           <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-            {patientRemoteCommandLabel(type)}
+            {remoteCommandLabelI18n(t, type)}
           </p>
         </div>
 
@@ -82,7 +89,7 @@ export function CirclePatientCommandResponseModal({
           onClick={onClose}
           className="w-full py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold"
         >
-          OK
+          {t('remotePromptsModal.ok')}
         </button>
       </div>
     </div>,

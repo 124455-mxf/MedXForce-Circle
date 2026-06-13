@@ -63,5 +63,5 @@ export function useCircleMemberThread(
     [hiddenByPostId, rawPosts, threadKind],
   );
 
-  return { loading, error, posts };
+  return { loading, error, posts, rawPosts, hiddenByPostId };
 }

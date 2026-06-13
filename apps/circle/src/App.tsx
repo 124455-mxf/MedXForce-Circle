@@ -40,7 +40,7 @@ export default function App() {
   const [refreshingPatients, setRefreshingPatients] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
-  const { language, t } = useCircleI18n(firebase.db, user);
+  const { language, t, setLanguage } = useCircleI18n(firebase.db, user);
 
   const selectedPatientForSettings = useMemo(() => {
     if (patients.length === 0) return null;
@@ -221,84 +221,75 @@ export default function App() {
   };
 
   const startup = useCircleStartupSequence(!authLoading);
+  const accountPhotoUrl = user?.photoURL || undefined;
 
-  if (startup.visible) {
-    return (
-      <CircleStartupSequence
-        phase={startup.phase}
-        exiting={startup.exiting}
-        tagline={t('brand.startupTagline')}
-      />
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="w-full max-w-md bg-white rounded-[32px] border border-slate-100 shadow-sm p-8 space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shrink-0">
-              <MedXForceBrandLogo />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800">{t('auth.title')}</h1>
-              <p className="text-sm text-slate-500">{t('auth.subtitle')}</p>
-            </div>
+  const appBody = startup.visible ? (
+    <CircleStartupSequence
+      phase={startup.phase}
+      exiting={startup.exiting}
+      tagline={t('brand.startupTagline')}
+    />
+  ) : !user ? (
+    <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="w-full max-w-md bg-white rounded-[32px] border border-slate-100 shadow-sm p-8 space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shrink-0">
+            <MedXForceBrandLogo />
           </div>
-          <div className="space-y-3">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={t('auth.emailPlaceholder')}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl"
-            />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={t('auth.passwordPlaceholder')}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl"
-            />
-            {authError && <p className="text-sm text-red-600">{authError}</p>}
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              disabled={googleSigningIn}
-              className="w-full py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-semibold hover:bg-slate-50 flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              <span className="text-lg leading-none">G</span>
-              {googleSigningIn ? t('auth.signingIn') : t('auth.continueGoogle')}
-            </button>
-            <div className="flex items-center gap-3 text-xs text-slate-400">
-              <div className="h-px flex-1 bg-slate-200" />
-              {t('auth.orEmailPassword')}
-              <div className="h-px flex-1 bg-slate-200" />
-            </div>
-            <button
-              type="button"
-              onClick={handleSignIn}
-              className="w-full py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700"
-            >
-              {t('auth.signIn')}
-            </button>
-            <button
-              type="button"
-              onClick={handleCreateAccount}
-              className="w-full py-3 bg-slate-100 text-slate-700 rounded-2xl font-semibold hover:bg-slate-200"
-            >
-              {t('auth.createAccount')}
-            </button>
-            <p className="text-xs text-slate-500 text-center">{t('auth.googleHint')}</p>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">{t('auth.title')}</h1>
+            <p className="text-sm text-slate-500">{t('auth.subtitle')}</p>
           </div>
         </div>
+        <div className="space-y-3">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder={t('auth.emailPlaceholder')}
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl"
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder={t('auth.passwordPlaceholder')}
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl"
+          />
+          {authError && <p className="text-sm text-red-600">{authError}</p>}
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={googleSigningIn}
+            className="w-full py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-semibold hover:bg-slate-50 flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            <span className="text-lg leading-none">G</span>
+            {googleSigningIn ? t('auth.signingIn') : t('auth.continueGoogle')}
+          </button>
+          <div className="flex items-center gap-3 text-xs text-slate-400">
+            <div className="h-px flex-1 bg-slate-200" />
+            {t('auth.orEmailPassword')}
+            <div className="h-px flex-1 bg-slate-200" />
+          </div>
+          <button
+            type="button"
+            onClick={handleSignIn}
+            className="w-full py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700"
+          >
+            {t('auth.signIn')}
+          </button>
+          <button
+            type="button"
+            onClick={handleCreateAccount}
+            className="w-full py-3 bg-slate-100 text-slate-700 rounded-2xl font-semibold hover:bg-slate-200"
+          >
+            {t('auth.createAccount')}
+          </button>
+          <p className="text-xs text-slate-500 text-center">{t('auth.googleHint')}</p>
+        </div>
       </div>
-    );
-  }
-
-  const accountPhotoUrl = user.photoURL || undefined;
-
-  return (
+    </div>
+  ) : (
     <div className="flex flex-col h-dvh max-h-dvh overflow-hidden box-border max-w-2xl mx-auto w-full pt-4 px-3 pb-2.5 sm:pt-5 sm:px-4 sm:pb-3 [@media(max-height:740px)]:pt-3.5 [@media(max-height:740px)]:px-2.5 [@media(max-height:740px)]:pb-2">
       {patients.length === 0 ? (
         <>
@@ -312,34 +303,34 @@ export default function App() {
             </div>
           </div>
           <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-4">
-          <div className="flex items-center justify-between gap-2 text-slate-700">
-            <div className="flex items-center gap-2">
-              <Users size={18} />
-              <h2 className="font-bold">{t('patients.yourPatients')}</h2>
+            <div className="flex items-center justify-between gap-2 text-slate-700">
+              <div className="flex items-center gap-2">
+                <Users size={18} />
+                <h2 className="font-bold">{t('patients.yourPatients')}</h2>
+              </div>
+              <button
+                type="button"
+                onClick={handleRefreshPatients}
+                disabled={refreshingPatients}
+                className="text-sm font-semibold text-blue-600 disabled:opacity-50"
+              >
+                {refreshingPatients ? t('common.refreshing') : t('common.refresh')}
+              </button>
             </div>
+            {authError && <p className="text-sm text-red-600">{authError}</p>}
+            <p className="text-sm text-slate-500 leading-relaxed">{t('patients.noInvitesYet')}</p>
             <button
               type="button"
-              onClick={handleRefreshPatients}
-              disabled={refreshingPatients}
-              className="text-sm font-semibold text-blue-600 disabled:opacity-50"
+              onClick={() => signOut(firebase.auth)}
+              className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-blue-600"
             >
-              {refreshingPatients ? t('common.refreshing') : t('common.refresh')}
+              <LogOut size={16} />
+              {t('common.signOut')}
             </button>
           </div>
-          {authError && <p className="text-sm text-red-600">{authError}</p>}
-          <p className="text-sm text-slate-500 leading-relaxed">{t('patients.noInvitesYet')}</p>
-          <button
-            type="button"
-            onClick={() => signOut(firebase.auth)}
-            className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-blue-600"
-          >
-            <LogOut size={16} />
-            {t('common.signOut')}
-          </button>
-        </div>
         </>
       ) : (
-        <CircleI18nProvider language={language} t={t}>
+        <>
           <div className="flex flex-col flex-1 min-h-0">
             <CircleMainShell
               user={user}
@@ -368,9 +359,15 @@ export default function App() {
               await refreshPatients(user);
             }}
           />
-        </CircleI18nProvider>
+        </>
       )}
     </div>
+  );
+
+  return (
+    <CircleI18nProvider language={language} t={t} setLanguage={setLanguage}>
+      {appBody}
+    </CircleI18nProvider>
   );
 }
 

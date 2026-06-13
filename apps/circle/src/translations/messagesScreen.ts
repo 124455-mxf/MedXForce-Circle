@@ -88,6 +88,10 @@ export const messagesScreenEnglish = {
     'Your loved one deleted this conversation on their tablet. Replies are closed.',
   bodyShowMore: 'Show more',
   bodyShowLess: 'Show less',
+  showOriginal: 'Show original',
+  hideOriginal: 'Hide original',
+  translating: 'Translating…',
+  patientLanguagePillTitle: 'Patient app language',
   familyMemberFallback: 'Family member',
 };
 
@@ -190,6 +194,10 @@ export const messagesScreenGerman = {
     'Ihr Angehöriger hat diese Unterhaltung auf dem Tablet gelöscht. Antworten sind geschlossen.',
   bodyShowMore: 'Mehr anzeigen',
   bodyShowLess: 'Weniger anzeigen',
+  showOriginal: 'Original anzeigen',
+  hideOriginal: 'Original ausblenden',
+  translating: 'Übersetze…',
+  patientLanguagePillTitle: 'Patienten-App-Sprache',
   familyMemberFallback: 'Familienmitglied',
 };
 
@@ -291,6 +299,10 @@ export const messagesScreenSpanish = {
     'Su ser querido eliminó esta conversación en su tableta. Las respuestas están cerradas.',
   bodyShowMore: 'Mostrar más',
   bodyShowLess: 'Mostrar menos',
+  showOriginal: 'Mostrar original',
+  hideOriginal: 'Ocultar original',
+  translating: 'Traduciendo…',
+  patientLanguagePillTitle: 'Idioma de la app del paciente',
   familyMemberFallback: 'Familiar',
 };
 
@@ -391,5 +403,9 @@ export const messagesScreenPolish = {
     'Bliska osoba usunęła tę rozmowę na tablecie. Odpowiedzi są zamknięte.',
   bodyShowMore: 'Pokaż więcej',
   bodyShowLess: 'Pokaż mniej',
+  showOriginal: 'Pokaż oryginał',
+  hideOriginal: 'Ukryj oryginał',
+  translating: 'Tłumaczenie…',
+  patientLanguagePillTitle: 'Język aplikacji pacjenta',
   familyMemberFallback: 'Członek rodziny',
 };

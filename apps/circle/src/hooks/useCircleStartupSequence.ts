@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-/** Minimum splash duration so Circle startup is visible (actual load is usually faster). */
-const MIN_DISPLAY_MS = 10_000;
+const STEP_INTERVAL_MS = 2000;
+/** Brief hold on the final step before fade-out. */
+const FINAL_DWELL_MS = 400;
+/** Never block the app longer than this if auth is slow. */
 const MAX_WAIT_MS = 12_000;
-const STEP_INTERVAL_MS = 3200;
 const EXIT_MS = 550;
 
 export type CircleStartupPhase = 0 | 1 | 2;
@@ -12,8 +13,14 @@ export function useCircleStartupSequence(appReady: boolean) {
   const [phase, setPhase] = useState<CircleStartupPhase>(0);
   const [visible, setVisible] = useState(true);
   const [exiting, setExiting] = useState(false);
-  const startTimeRef = useRef(Date.now());
   const finishedRef = useRef(false);
+
+  const finish = useCallback(() => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+    setExiting(true);
+    window.setTimeout(() => setVisible(false), EXIT_MS);
+  }, []);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -23,24 +30,15 @@ export function useCircleStartupSequence(appReady: boolean) {
   }, []);
 
   useEffect(() => {
-    const finish = () => {
-      if (finishedRef.current) return;
-      finishedRef.current = true;
-      setExiting(true);
-      window.setTimeout(() => setVisible(false), EXIT_MS);
-    };
+    const timer = window.setTimeout(finish, MAX_WAIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [finish]);
 
-    const elapsed = Date.now() - startTimeRef.current;
-    const remainingMin = Math.max(0, MIN_DISPLAY_MS - elapsed);
-
-    if (appReady) {
-      const timer = window.setTimeout(finish, remainingMin);
-      return () => window.clearTimeout(timer);
-    }
-
-    const maxTimer = window.setTimeout(finish, Math.max(0, MAX_WAIT_MS - elapsed));
-    return () => window.clearTimeout(maxTimer);
-  }, [appReady]);
+  useEffect(() => {
+    if (!appReady || phase < 2) return;
+    const timer = window.setTimeout(finish, FINAL_DWELL_MS);
+    return () => window.clearTimeout(timer);
+  }, [appReady, phase, finish]);
 
   return { visible, exiting, phase };
 }

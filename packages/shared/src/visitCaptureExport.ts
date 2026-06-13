@@ -1,5 +1,5 @@
 import {
-  formatVisitCapturePostText,
+  formatVisitCapturePostTextForSession,
   visitCaptureClipboardHtml,
   type VisitCaptureSession,
 } from './visitCapture';
@@ -22,7 +22,7 @@ function exportFilename(session: VisitCaptureSession, ext: string): string {
 }
 
 function sessionExportHtmlBody(session: VisitCaptureSession): string {
-  return visitCaptureClipboardHtml(formatVisitCapturePostText(session));
+  return visitCaptureClipboardHtml(formatVisitCapturePostTextForSession(session));
 }
 
 /** Word-compatible .doc download (HTML payload Word opens with formatting). */

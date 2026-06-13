@@ -49,6 +49,23 @@ export interface VisitCaptureConsent {
   roomInformed: true;
 }
 
+export const VISIT_CAPTURE_LANGUAGES = ['English', 'German', 'Spanish', 'Polish'] as const;
+export type VisitCaptureLanguage = (typeof VISIT_CAPTURE_LANGUAGES)[number];
+
+export function normalizeVisitCaptureLanguage(
+  raw: string | undefined | null,
+): VisitCaptureLanguage {
+  if (raw === 'German' || raw === 'Spanish' || raw === 'Polish') return raw;
+  return 'English';
+}
+
+/** Translatable visit capture content (headline + AI analysis — not the transcript). */
+export type VisitCaptureLocalizedBundle = {
+  headingLine1: string;
+  headingLine2: string;
+  analysis: VisitCaptureAnalysis;
+};
+
 export interface VisitCaptureSession {
   id: string;
   patientId: string;
@@ -58,6 +75,10 @@ export interface VisitCaptureSession {
   segmentCount: number;
   transcript?: string;
   analysis?: VisitCaptureAnalysis;
+  /** Recorder UI language used for the preview translation. */
+  previewLanguage?: VisitCaptureLanguage;
+  /** Headline + analysis translated for preview (transcript stays separate). */
+  localizedPreview?: VisitCaptureLocalizedBundle;
   audioExpiresAt: number;
   publishedPostId?: string;
   errorMessage?: string;
@@ -81,6 +102,22 @@ const CARE_COORDINATION_ROLES = new Set<CircleMemberRole>([
 
 export function canStartVisitCapture(role: VisitCaptureRole | string): boolean {
   return CAPTURE_ROLES.has(role as VisitCaptureRole);
+}
+
+/** Family visit captures publish to the open Circle thread; care team stays restricted. */
+export function visitCapturePublishThreadKind(
+  role: VisitCaptureRole | string,
+): 'open' | 'restricted' {
+  return role === 'family' ? 'open' : 'restricted';
+}
+
+export function canRecordVisitCaptureInCircleFolder(
+  role: string,
+  threadKind: 'open' | 'restricted',
+): boolean {
+  if (!canStartVisitCapture(role)) return false;
+  if (threadKind === 'open') return role === 'family';
+  return canViewCareCoordinationCaptures(role);
 }
 
 export function canViewCareCoordinationCaptures(role: CircleMemberRole | string): boolean {
@@ -111,9 +148,9 @@ export function newVisitCaptureSessionId(): string {
   return `vc_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export function formatVisitCapturePostText(
-  session: Pick<VisitCaptureSession, 'capturedBy' | 'analysis' | 'transcript' | 'createdAt'>,
-): string {
+export function buildCanonicalVisitCaptureBundle(
+  session: Pick<VisitCaptureSession, 'capturedBy' | 'analysis' | 'createdAt'>,
+): VisitCaptureLocalizedBundle {
   const dateLabel = new Date(session.createdAt).toLocaleString(undefined, {
     weekday: 'short',
     month: 'short',
@@ -123,18 +160,25 @@ export function formatVisitCapturePostText(
     minute: '2-digit',
   });
   const starter = visitCaptureRoleLabel(session.capturedBy.role);
-  const lines: string[] = [
-    `Visit capture — ${dateLabel}`,
-    `Started by ${session.capturedBy.name} (${starter})`,
-    '',
-  ];
+  return {
+    headingLine1: `Visit capture — ${dateLabel}`,
+    headingLine2: `Started by ${session.capturedBy.name} (${starter})`,
+    analysis: session.analysis ?? { summary: '', actionItems: [], followUpQuestions: [] },
+  };
+}
 
-  const analysis = session.analysis;
-  if (analysis?.summary) {
-    lines.push('SUMMARY', analysis.summary, '');
+export function formatVisitCapturePostTextFromBundle(
+  bundle: VisitCaptureLocalizedBundle,
+  transcript?: string,
+): string {
+  const lines: string[] = [bundle.headingLine1, bundle.headingLine2, ''];
+  const analysis = bundle.analysis;
+
+  if (analysis.summary?.trim()) {
+    lines.push('SUMMARY', analysis.summary.trim(), '');
   }
 
-  if (analysis?.actionItems?.length) {
+  if (analysis.actionItems?.length) {
     lines.push('ACTION ITEMS');
     for (const item of analysis.actionItems) {
       lines.push(`• ${item.text}`);
@@ -142,7 +186,7 @@ export function formatVisitCapturePostText(
     lines.push('');
   }
 
-  if (analysis?.followUpQuestions?.length) {
+  if (analysis.followUpQuestions?.length) {
     lines.push('FOLLOW-UP QUESTIONS');
     for (const q of analysis.followUpQuestions) {
       lines.push(`• ${q}`);
@@ -150,12 +194,36 @@ export function formatVisitCapturePostText(
     lines.push('');
   }
 
-  if (session.transcript?.trim()) {
-    lines.push('---', 'FULL TRANSCRIPT', session.transcript.trim());
+  const trimmedTranscript = transcript?.trim();
+  if (trimmedTranscript) {
+    lines.push('---', 'FULL TRANSCRIPT', trimmedTranscript);
   }
 
   const body = lines.join('\n').trim();
   return body.length > 5000 ? `${body.slice(0, 4980)}…` : body;
+}
+
+export function formatVisitCapturePostText(
+  session: Pick<VisitCaptureSession, 'capturedBy' | 'analysis' | 'transcript' | 'createdAt'>,
+): string {
+  return formatVisitCapturePostTextFromBundle(
+    buildCanonicalVisitCaptureBundle(session),
+    session.transcript,
+  );
+}
+
+export function formatVisitCapturePostTextForSession(session: VisitCaptureSession): string {
+  if (session.localizedPreview) {
+    return formatVisitCapturePostTextFromBundle(session.localizedPreview, session.transcript);
+  }
+  return formatVisitCapturePostText(session);
+}
+
+export function visitCapturePreviewAnalysis(
+  session: VisitCaptureSession,
+): VisitCaptureAnalysis | undefined {
+  if (!session.analysis) return undefined;
+  return session.localizedPreview?.analysis ?? session.analysis;
 }
 
 export function isVisitCaptureThreadPost(post: {
@@ -163,7 +231,10 @@ export function isVisitCaptureThreadPost(post: {
   postKind?: string;
 }): boolean {
   if (post.postKind === 'visit_capture') return true;
-  return post.text.startsWith('Visit capture —');
+  const firstLine = post.text.replace(/\r\n/g, '\n').split('\n')[0]?.trim() ?? '';
+  if (!firstLine) return false;
+  if (firstLine.startsWith('Visit capture —')) return true;
+  return firstLine.includes(' — ') && post.text.includes('\nFULL TRANSCRIPT\n');
 }
 
 export function extractVisitCaptureTranscriptFromPostText(text: string): string | null {
@@ -174,6 +245,8 @@ export function extractVisitCaptureTranscriptFromPostText(text: string): string 
 export type ParsedVisitCapturePost = {
   heading: string;
   dateLabel: string;
+  /** Full second line (e.g. "Started by …") — use for display. */
+  startedByLine: string;
   recordedBy: string;
   summary?: string;
   actionItems: string[];
@@ -213,6 +286,7 @@ export function parseVisitCapturePostText(text: string): ParsedVisitCapturePost 
   const heading = lines[0]?.trim() || 'Visit capture';
   const dateLabel = heading.replace(/^Visit capture —\s*/i, '').trim() || heading;
   const startedLine = lines[1]?.trim() || '';
+  const startedByLine = startedLine;
   const recordedBy = startedLine.replace(/^Started by\s+/i, '').trim();
 
   const sections: Record<string, string> = {};
@@ -234,6 +308,7 @@ export function parseVisitCapturePostText(text: string): ParsedVisitCapturePost 
   return {
     heading,
     dateLabel,
+    startedByLine,
     recordedBy,
     summary: sections.SUMMARY || undefined,
     actionItems: parseVisitCaptureBulletLines(sections['ACTION ITEMS'] || ''),

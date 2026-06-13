@@ -7,6 +7,8 @@ import type { FirebaseStorage } from 'firebase/storage';
 import { Camera, ClipboardList, Loader2, UserRound } from 'lucide-react';
 import {
   displayProfileName,
+  isAcceptedProfilePhotoFile,
+  normalizeProfilePhotoFile,
   parseCircleProfileMeta,
   parseCircleProfileSnapshot,
   updateCirclePatientProfileFromProxy,
@@ -118,9 +120,9 @@ export function CirclePatientProfilePanel({
     }
   };
 
-  const handlePhotoChange = (file: File) => {
+  const handlePhotoChange = async (file: File) => {
     if (!canEdit || !snapshot) return;
-    if (!file.type.startsWith('image/')) {
+    if (!isAcceptedProfilePhotoFile(file)) {
       setError(t('admin.profile.imageTypeError'));
       return;
     }
@@ -129,7 +131,15 @@ export function CirclePatientProfilePanel({
       return;
     }
     setError(null);
-    setFileToCrop(file);
+    setUploadingPhoto(true);
+    try {
+      const normalized = await normalizeProfilePhotoFile(file);
+      setFileToCrop(normalized);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('admin.profile.photoUploadError'));
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const uploadCroppedPhoto = async (croppedDataUrl: string) => {
@@ -233,7 +243,7 @@ export function CirclePatientProfilePanel({
                   <input
                     ref={fileRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,.heic,.heif"
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0];

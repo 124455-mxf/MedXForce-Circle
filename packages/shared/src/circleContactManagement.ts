@@ -61,6 +61,25 @@ export function readPatientDocUpdatedAt(data: Record<string, unknown> | undefine
   return typeof value === 'number' && value > 0 ? value : 0;
 }
 
+/** Fingerprint of a contact row on patients/{id} — for edit conflict detection. */
+export function managedContactRecordFingerprint(contact: CircleManagedContact): string {
+  return JSON.stringify({
+    id: contact.id,
+    name: (contact.name || '').trim(),
+    email: normalizeInviteEmail(contact.email || ''),
+    mobile: (contact.mobile || '').trim(),
+    relationship: (contact.relationship || '').trim(),
+    kind: contact.kind,
+    language: (contact.language || 'English').trim(),
+    message: !!contact.message,
+    sms: !!contact.sms,
+    alert: !!contact.alert,
+    attention: !!contact.attention,
+    circleRole: contact.circleRole ?? '',
+    proxyTier: contact.proxyTier ?? '',
+  });
+}
+
 function asArray(value: unknown): Record<string, unknown>[] {
   return Array.isArray(value) ? (value as Record<string, unknown>[]) : [];
 }
@@ -315,6 +334,39 @@ function inviteAccessUnchanged(
   );
 }
 
+async function syncMemberContactProfileFromManagedContact(
+  db: Firestore,
+  patientId: string,
+  contact: CircleManagedContact,
+): Promise<void> {
+  const email = normalizeInviteEmail(contact.email || '');
+  if (!email) return;
+
+  const invite = await lookupCircleInviteByPatientEmail(db, patientId, email);
+  if (!invite.exists) return;
+  const data = invite.data;
+  if (data?.status !== 'accepted') return;
+
+  const uid = typeof data.acceptedByUid === 'string' ? data.acceptedByUid.trim() : '';
+  if (!uid) return;
+
+  const name = contact.name.trim();
+  if (!name) return;
+
+  await setDoc(
+    doc(db, 'patients', patientId, 'members', uid),
+    {
+      contactProfile: {
+        name,
+        language: contact.language?.trim() || 'English',
+        relationship: contact.relationship.trim(),
+      },
+      updatedAt: Date.now(),
+    },
+    { merge: true },
+  );
+}
+
 async function syncInviteForCircleRoleContact(
   db: Firestore,
   patientId: string,
@@ -413,6 +465,8 @@ export async function upsertPatientManagedContact(
   input: Omit<CircleManagedContact, 'id'> & { id?: string },
   options: {
     expectedPatientUpdatedAt?: number;
+    /** Prefer contact-row fingerprint — avoids false conflicts when unrelated patient fields change. */
+    expectedContactFingerprint?: string;
     syncInvite?: boolean;
     /** Proxy contact saves rebuild the index; member self-service edits must not. */
     updateAccessIndex?: boolean;
@@ -424,7 +478,17 @@ export async function upsertPatientManagedContact(
   const data = snap.data() as PatientContactsDocShape;
   const remoteUpdatedAt = readPatientDocUpdatedAt(data as Record<string, unknown>);
   const expected = options.expectedPatientUpdatedAt ?? 0;
-  if (expected > 0 && remoteUpdatedAt > expected) {
+  const expectedContactFingerprint = options.expectedContactFingerprint?.trim() || '';
+
+  if (input.id && expectedContactFingerprint) {
+    const remoteContact = parsePatientManagedContacts(data).find((row) => row.id === input.id);
+    if (
+      remoteContact &&
+      managedContactRecordFingerprint(remoteContact) !== expectedContactFingerprint
+    ) {
+      throw new ContactConflictError();
+    }
+  } else if (expected > 0 && remoteUpdatedAt > expected) {
     throw new ContactConflictError();
   }
   const caregivers = asArray(data.caregivers).map((x) => ({ ...x }));
@@ -533,6 +597,7 @@ export async function upsertPatientManagedContact(
   try {
     if (syncInvite && normalizedEmail && input.kind !== 'contact') {
       await syncInviteForCircleRoleContact(db, patientId, next);
+      await syncMemberContactProfileFromManagedContact(db, patientId, next);
     } else if (syncInvite && normalizedEmail && input.kind === 'contact') {
       await revokeCircleInviteByEmail(db, patientId, normalizedEmail);
     }

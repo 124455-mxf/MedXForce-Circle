@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDocs,
   setDoc,
@@ -56,6 +57,16 @@ export async function hideCircleThreadPostForUser(
     },
     { merge: true },
   );
+}
+
+/** Restore a post to the member's Circle inbox folders. */
+export async function unhideCircleThreadPostForUser(
+  db: Firestore,
+  patientId: string,
+  uid: string,
+  postId: string,
+): Promise<void> {
+  await deleteDoc(doc(db, 'patients', patientId, 'circle_thread_inbox', uid, 'hidden', postId));
 }
 
 export function isCircleThreadPostHiddenForUser(

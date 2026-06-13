@@ -206,6 +206,28 @@ const contactEnglish = {
   notifyManagedByProxy: 'Managed by proxy',
 };
 
+const myContactPanelEnglish = {
+  subtitle: 'How you appear to {{name}} in messages and the care list',
+  noPatient: 'Open Settings → Switch patient to choose who you are supporting first.',
+  loadError: 'Could not load your contact details.',
+  notFound:
+    'We could not find your contact record for this circle. Ask the patient or proxy to add {{email}} in the Patient app.',
+  circleAccess: 'Circle access',
+  circleAccessManaged: 'Your access level is managed by the patient or proxy.',
+  youCanEdit: 'You can edit',
+  editable: 'Editable',
+  saved: 'Saved. Your name and language are updated for this circle.',
+  saveChanges: 'Save changes',
+  managedByPatient: 'Managed by patient or proxy',
+  readOnly: 'Read-only',
+  lockedSecurity: 'Email and mobile stay locked here so Circle sign-in stays secure.',
+  lockedProxyUserMgmt: 'You can update these for circle members in User Management.',
+  lockedReachOutPrefix: 'To update yours, reach out to',
+  lockedReachOutNone: 'To update yours, reach out to your proxy.',
+  or: 'or',
+  saveFailed: 'Could not save your contact details.',
+};
+
 export const adminScreenEnglish = {
   title: 'Admin',
   subtitle: 'Patient profile and circle management',
@@ -214,6 +236,7 @@ export const adminScreenEnglish = {
   profile: profileEnglish,
   users: usersEnglish,
   contact: contactEnglish,
+  myContactPanel: myContactPanelEnglish,
 };
 
 const profileGerman = {
@@ -427,6 +450,31 @@ const contactGerman = {
   notifyManagedByProxy: 'Vom Vertreter verwaltet',
 };
 
+const myContactPanelGerman = {
+  subtitle: 'So erscheinen Sie {{name}} in Nachrichten und der Betreuungsliste',
+  noPatient:
+    'Öffnen Sie Einstellungen → Patient wechseln, um zuerst auszuwählen, wen Sie unterstützen.',
+  loadError: 'Ihre Kontaktdaten konnten nicht geladen werden.',
+  notFound:
+    'Wir konnten Ihren Kontakteintrag für diesen Circle nicht finden. Bitten Sie den Patienten oder Vertreter, {{email}} in der Patienten-App hinzuzufügen.',
+  circleAccess: 'Circle-Zugang',
+  circleAccessManaged: 'Ihre Zugriffsstufe wird vom Patienten oder Vertreter verwaltet.',
+  youCanEdit: 'Sie können bearbeiten',
+  editable: 'Bearbeitbar',
+  saved: 'Gespeichert. Name und Sprache sind für diesen Circle aktualisiert.',
+  saveChanges: 'Änderungen speichern',
+  managedByPatient: 'Vom Patienten oder Vertreter verwaltet',
+  readOnly: 'Nur lesen',
+  lockedSecurity:
+    'E-Mail und Mobilnummer bleiben hier gesperrt, damit die Circle-Anmeldung sicher bleibt.',
+  lockedProxyUserMgmt:
+    'Sie können diese Angaben für Circle-Mitglieder in der Benutzerverwaltung ändern.',
+  lockedReachOutPrefix: 'Um Ihre Daten zu ändern, wenden Sie sich an',
+  lockedReachOutNone: 'Um Ihre Daten zu ändern, wenden Sie sich an Ihren Vertreter.',
+  or: 'oder',
+  saveFailed: 'Ihre Kontaktdaten konnten nicht gespeichert werden.',
+};
+
 export const adminScreenGerman = {
   title: 'Administration',
   subtitle: 'Patientenprofil und Circle-Verwaltung',
@@ -435,6 +483,7 @@ export const adminScreenGerman = {
   profile: profileGerman,
   users: usersGerman,
   contact: contactGerman,
+  myContactPanel: myContactPanelGerman,
 };
 
 const profileSpanish = {
@@ -648,6 +697,31 @@ const contactSpanish = {
   notifyManagedByProxy: 'Gestionado por el representante',
 };
 
+const myContactPanelSpanish = {
+  subtitle: 'Cómo aparece ante {{name}} en mensajes y la lista de cuidados',
+  noPatient:
+    'Abra Ajustes → Cambiar paciente para elegir primero a quién está apoyando.',
+  loadError: 'No se pudieron cargar sus datos de contacto.',
+  notFound:
+    'No encontramos su registro de contacto para este círculo. Pida al paciente o representante que añada {{email}} en la app del paciente.',
+  circleAccess: 'Acceso al Circle',
+  circleAccessManaged: 'Su nivel de acceso lo gestionan el paciente o el representante.',
+  youCanEdit: 'Puede editar',
+  editable: 'Editable',
+  saved: 'Guardado. Su nombre e idioma se actualizaron para este círculo.',
+  saveChanges: 'Guardar cambios',
+  managedByPatient: 'Gestionado por el paciente o representante',
+  readOnly: 'Solo lectura',
+  lockedSecurity:
+    'El correo y el móvil permanecen bloqueados aquí para mantener seguro el inicio de sesión en Circle.',
+  lockedProxyUserMgmt:
+    'Puede actualizarlos para miembros del círculo en Gestión de usuarios.',
+  lockedReachOutPrefix: 'Para actualizar los suyos, contacte a',
+  lockedReachOutNone: 'Para actualizar los suyos, contacte a su representante.',
+  or: 'o',
+  saveFailed: 'No se pudieron guardar sus datos de contacto.',
+};
+
 export const adminScreenSpanish = {
   title: 'Administración',
   subtitle: 'Perfil del paciente y gestión del Circle',
@@ -656,6 +730,7 @@ export const adminScreenSpanish = {
   profile: profileSpanish,
   users: usersSpanish,
   contact: contactSpanish,
+  myContactPanel: myContactPanelSpanish,
 };
 
 const profilePolish = {
@@ -869,6 +944,31 @@ const contactPolish = {
   notifyManagedByProxy: 'Zarządzane przez pełnomocnika',
 };
 
+const myContactPanelPolish = {
+  subtitle: 'Jak jesteś widoczny/a dla {{name}} w wiadomościach i na liście opieki',
+  noPatient:
+    'Otwórz Ustawienia → Zmień pacjenta, aby najpierw wybrać, kogo wspierasz.',
+  loadError: 'Nie udało się wczytać Twoich danych kontaktowych.',
+  notFound:
+    'Nie znaleźliśmy Twojego wpisu kontaktowego dla tego Circle. Poproś pacjenta lub pełnomocnika o dodanie {{email}} w aplikacji pacjenta.',
+  circleAccess: 'Dostęp do Circle',
+  circleAccessManaged: 'Poziom dostępu zarządza pacjent lub pełnomocnik.',
+  youCanEdit: 'Możesz edytować',
+  editable: 'Edytowalne',
+  saved: 'Zapisano. Imię i język zostały zaktualizowane dla tego Circle.',
+  saveChanges: 'Zapisz zmiany',
+  managedByPatient: 'Zarządzane przez pacjenta lub pełnomocnika',
+  readOnly: 'Tylko do odczytu',
+  lockedSecurity:
+    'E-mail i telefon pozostają tutaj zablokowane, aby logowanie do Circle było bezpieczne.',
+  lockedProxyUserMgmt:
+    'Możesz je zaktualizować dla członków Circle w Zarządzaniu użytkownikami.',
+  lockedReachOutPrefix: 'Aby zaktualizować swoje dane, skontaktuj się z',
+  lockedReachOutNone: 'Aby zaktualizować swoje dane, skontaktuj się ze swoim pełnomocnikiem.',
+  or: 'lub',
+  saveFailed: 'Nie udało się zapisać Twoich danych kontaktowych.',
+};
+
 export const adminScreenPolish = {
   title: 'Administracja',
   subtitle: 'Profil pacjenta i zarządzanie Circle',
@@ -877,4 +977,5 @@ export const adminScreenPolish = {
   profile: profilePolish,
   users: usersPolish,
   contact: contactPolish,
+  myContactPanel: myContactPanelPolish,
 };

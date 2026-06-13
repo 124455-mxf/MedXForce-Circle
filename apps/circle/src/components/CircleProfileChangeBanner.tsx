@@ -5,9 +5,8 @@ import { Bell, Sparkles, X } from 'lucide-react';
 import {
   listUnreadProfileNotifications,
   markProfileNotificationRead,
-  publishCircleAccessIndexFromPatientDoc,
-  isGenericProfileSummary,
   parseCircleProfileMeta,
+  isGenericProfileSummary,
   type CirclePatientProfileMeta,
   type CirclePatientSummary,
   type CircleProfileNotificationRow,
@@ -20,6 +19,10 @@ import {
   profileNotificationFieldListT,
   profileNotificationTitleT,
 } from '../lib/profileNotificationI18n';
+import {
+  filterLocallyDismissedProfileNotifications,
+  rememberDismissedProfileNotificationRow,
+} from '../lib/circleProfileNotificationDismiss';
 
 interface CircleProfileChangeBannerProps {
   user: User;
@@ -47,14 +50,14 @@ export function CircleProfileChangeBanner({ user, db, patient }: CircleProfileCh
         const patientSnap = await getDoc(doc(db, 'patients', patient.patientId));
         let meta: CirclePatientProfileMeta | null = null;
         if (patientSnap.exists()) {
-          const patientData = patientSnap.data();
-          await publishCircleAccessIndexFromPatientDoc(db, patient.patientId, patientData);
-          meta = parseCircleProfileMeta(patientData.profileMeta);
+          meta = parseCircleProfileMeta(patientSnap.data().profileMeta);
         }
         const rows = await listUnreadProfileNotifications(db, patient.patientId, user.uid, 3);
         if (active) {
           setProfileMeta(meta);
-          setNotifications(rows);
+          setNotifications(
+            filterLocallyDismissedProfileNotifications(patient.patientId, user.uid, rows),
+          );
         }
       } catch (err) {
         console.warn('[CircleProfileChangeBanner]', err);
@@ -72,9 +75,10 @@ export function CircleProfileChangeBanner({ user, db, patient }: CircleProfileCh
   if (!isProxy || notifications.length === 0) return null;
 
   const dismiss = async (row: CircleProfileNotificationRow) => {
+    setNotifications((prev) => prev.filter((item) => item.id !== row.id));
+    rememberDismissedProfileNotificationRow(patient.patientId, user.uid, row);
     try {
       await markProfileNotificationRead(db, patient.patientId, row.id, user.uid);
-      setNotifications((prev) => prev.filter((item) => item.id !== row.id));
     } catch (err) {
       console.warn('[CircleProfileChangeBanner] dismiss', err);
     }

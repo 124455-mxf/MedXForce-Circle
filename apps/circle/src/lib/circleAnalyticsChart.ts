@@ -132,3 +132,28 @@ export const circleAnalyticsSparseLineProps = {
   activeDot: { r: 4 },
   connectNulls: false,
 };
+
+export type DailyCheckInParticipationChartPoint = CircleAnalyticsChartPoint & {
+  date: string;
+  chartDate?: string;
+  finished: number;
+  skipped: number;
+  notTaken: number;
+};
+
+/** One bar per day: finished, skipped, or not taken (mutually exclusive, stacked height 1). */
+export function prepareDailyCheckInParticipationChartData(
+  timeline: Array<{ date: string; completed: number; skipped: number }> | undefined,
+): DailyCheckInParticipationChartPoint[] {
+  return prepareDailyBucketChartData(timeline).map((point) => {
+    const finished = point.completed > 0 ? 1 : 0;
+    const skipped = point.skipped > 0 && finished === 0 ? 1 : 0;
+    const notTaken = finished === 0 && skipped === 0 ? 1 : 0;
+    return {
+      ...point,
+      finished,
+      skipped,
+      notTaken,
+    };
+  });
+}
