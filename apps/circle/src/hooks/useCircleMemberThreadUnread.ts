@@ -100,40 +100,89 @@ export function useCircleMemberThreadUnread(
     [patientId, userId],
   );
 
-  const announcementsUnreadCount = useMemo(() => {
-    let total = 0;
-    if (canOpen) {
-      total += countUnreadPostsForInboxView(
-        openPosts,
-        'announcements',
-        hiddenByPostId,
-        'open',
-        userId,
-        getOpenPostLastRead,
-      );
-    }
-    if (canRestricted) {
-      total += countUnreadPostsForInboxView(
-        restrictedPosts,
-        'announcements',
-        hiddenByPostId,
-        'restricted',
-        userId,
-        getRestrictedPostLastRead,
-      );
-    }
-    return total;
-  }, [
-    canOpen,
-    canRestricted,
-    getOpenPostLastRead,
-    getRestrictedPostLastRead,
-    hiddenByPostId,
-    openPosts,
-    postReadTick,
-    restrictedPosts,
-    userId,
-  ]);
+  const announcementsOpenUnreadCount = useMemo(
+    () =>
+      canOpen
+        ? countUnreadPostsForInboxView(
+            openPosts,
+            'announcements',
+            hiddenByPostId,
+            'open',
+            userId,
+            getOpenPostLastRead,
+          )
+        : 0,
+    [canOpen, getOpenPostLastRead, hiddenByPostId, openPosts, postReadTick, userId],
+  );
+
+  const announcementsRestrictedUnreadCount = useMemo(
+    () =>
+      canRestricted
+        ? countUnreadPostsForInboxView(
+            restrictedPosts,
+            'announcements',
+            hiddenByPostId,
+            'restricted',
+            userId,
+            getRestrictedPostLastRead,
+          )
+        : 0,
+    [
+      canRestricted,
+      getRestrictedPostLastRead,
+      hiddenByPostId,
+      postReadTick,
+      restrictedPosts,
+      userId,
+    ],
+  );
+
+  const announcementsUnreadCount = useMemo(
+    () => announcementsOpenUnreadCount + announcementsRestrictedUnreadCount,
+    [announcementsOpenUnreadCount, announcementsRestrictedUnreadCount],
+  );
+
+  const discussionsOpenUnreadCount = useMemo(
+    () =>
+      canOpen
+        ? countUnreadPostsForInboxView(
+            openPosts,
+            'discussion',
+            hiddenByPostId,
+            'open',
+            userId,
+            getOpenPostLastRead,
+          )
+        : 0,
+    [canOpen, getOpenPostLastRead, hiddenByPostId, openPosts, postReadTick, userId],
+  );
+
+  const discussionsRestrictedUnreadCount = useMemo(
+    () =>
+      canRestricted
+        ? countUnreadPostsForInboxView(
+            restrictedPosts,
+            'discussion',
+            hiddenByPostId,
+            'restricted',
+            userId,
+            getRestrictedPostLastRead,
+          )
+        : 0,
+    [
+      canRestricted,
+      getRestrictedPostLastRead,
+      hiddenByPostId,
+      postReadTick,
+      restrictedPosts,
+      userId,
+    ],
+  );
+
+  const discussionsUnreadCount = useMemo(
+    () => discussionsOpenUnreadCount + discussionsRestrictedUnreadCount,
+    [discussionsOpenUnreadCount, discussionsRestrictedUnreadCount],
+  );
 
   const dropInsUnreadCount = useMemo(
     () =>
@@ -267,6 +316,11 @@ export function useCircleMemberThreadUnread(
     openUnreadCount,
     restrictedUnreadCount,
     announcementsUnreadCount,
+    announcementsOpenUnreadCount,
+    announcementsRestrictedUnreadCount,
+    discussionsUnreadCount,
+    discussionsOpenUnreadCount,
+    discussionsRestrictedUnreadCount,
     dropInsUnreadCount,
     visitCapturesUnreadCount,
     visitCapturesOpenUnreadCount,

@@ -8,6 +8,7 @@ import {
   Settings2,
   Sparkles,
   SlidersHorizontal,
+  TestTube2,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -27,13 +28,17 @@ export type CircleMainTab =
   | 'analytics'
   | 'diary'
   | 'know'
+  | 'medxforce-lab'
   | 'remote-settings';
+
+export type CircleMoreSection = 'default' | 'medxforceLab';
 
 export interface CircleNavItem {
   id: CircleMainTab;
   label: string;
   icon: LucideIcon;
   description?: string;
+  moreSection?: CircleMoreSection;
 }
 
 export interface CircleBottomNavBadges {
@@ -87,6 +92,8 @@ export function CircleBottomNav({
   const hasMore = moreItems.length > 0;
   const compact = barItems.length + (hasMore ? 1 : 0) >= 6;
   const moreActive = moreItems.some((item) => item.id === activeTab);
+  const defaultMoreItems = moreItems.filter((item) => item.moreSection !== 'medxforceLab');
+  const labMoreItems = moreItems.filter((item) => item.moreSection === 'medxforceLab');
 
   if (barItems.length === 0 && !hasMore) return null;
 
@@ -215,46 +222,95 @@ export function CircleBottomNav({
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-center">
               {t('nav.more')}
             </p>
-            <div className="grid grid-cols-2 gap-2">
-              {moreItems.map((item) => {
-                const Icon = item.icon;
-                const active = item.id === activeTab;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => selectTab(item.id)}
-                    className={cn(
-                      'flex items-start gap-3 p-4 rounded-2xl border text-left transition-colors',
-                      active
-                        ? 'border-blue-200 bg-blue-50/60'
-                        : 'border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-white',
-                    )}
-                  >
-                    <div
+            {defaultMoreItems.length > 0 ? (
+              <div className="grid grid-cols-2 gap-2">
+                {defaultMoreItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = item.id === activeTab;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => selectTab(item.id)}
                       className={cn(
-                        'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200',
+                        'flex items-start gap-3 p-4 rounded-2xl border text-left transition-colors',
                         active
-                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-                          : 'bg-white text-slate-500 border border-slate-100',
+                          ? 'border-blue-200 bg-blue-50/60'
+                          : 'border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-white',
                       )}
                     >
-                      <Icon size={20} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className={cn('font-bold text-sm', active ? 'text-blue-700' : 'text-slate-800')}>
-                        {item.label}
-                      </p>
-                      {item.description && (
-                        <p className="text-[11px] text-slate-500 mt-0.5 leading-snug line-clamp-2">
-                          {item.description}
+                      <div
+                        className={cn(
+                          'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200',
+                          active
+                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+                            : 'bg-white text-slate-500 border border-slate-100',
+                        )}
+                      >
+                        <Icon size={20} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className={cn('font-bold text-sm', active ? 'text-blue-700' : 'text-slate-800')}>
+                          {item.label}
                         </p>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                        {item.description && (
+                          <p className="text-[11px] text-slate-500 mt-0.5 leading-snug line-clamp-2">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+            {labMoreItems.length > 0 ? (
+              <div className="space-y-2 pt-1">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">
+                  {t('nav.medxforceLabSection')}
+                </p>
+                <div className="grid grid-cols-1 gap-2">
+                  {labMoreItems.map((item) => {
+                    const Icon = item.icon;
+                    const active = item.id === activeTab;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => selectTab(item.id)}
+                        className={cn(
+                          'flex items-start gap-3 p-4 rounded-2xl border text-left transition-colors',
+                          active
+                            ? 'border-fuchsia-200 bg-fuchsia-50/60'
+                            : 'border-slate-100 bg-gradient-to-r from-fuchsia-50/40 via-violet-50/30 to-white hover:border-fuchsia-100 hover:bg-white',
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200',
+                            active
+                              ? 'bg-fuchsia-600 text-white shadow-lg shadow-fuchsia-200'
+                              : 'bg-white text-fuchsia-600 border border-fuchsia-100',
+                          )}
+                        >
+                          <Icon size={20} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className={cn('font-bold text-sm', active ? 'text-fuchsia-700' : 'text-slate-800')}>
+                            {item.label}
+                          </p>
+                          {item.description && (
+                            <p className="text-[11px] text-slate-500 mt-0.5 leading-snug line-clamp-2">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       )}
@@ -322,6 +378,14 @@ export function moreNavItemsForPatient(capabilities: PatientCapabilities): Circl
     description: 'Learning, community & AI',
   });
 
+  items.push({
+    id: 'medxforce-lab',
+    label: 'MedXForce Lab',
+    icon: TestTube2,
+    description: 'AI media, voice, avatar & games',
+    moreSection: 'medxforceLab',
+  });
+
   return items;
 }
 
@@ -344,6 +408,7 @@ const NAV_LABEL_KEYS: Record<CircleMainTab, string> = {
   analytics: 'nav.analytics',
   'remote-settings': 'nav.remoteSettings',
   know: 'nav.know',
+  'medxforce-lab': 'nav.medxforceLab',
 };
 
 const NAV_DESC_KEYS: Partial<Record<CircleMainTab, string>> = {
@@ -351,6 +416,7 @@ const NAV_DESC_KEYS: Partial<Record<CircleMainTab, string>> = {
   analytics: 'nav.analyticsDesc',
   'remote-settings': 'nav.remoteSettingsDesc',
   know: 'nav.knowDesc',
+  'medxforce-lab': 'nav.medxforceLabDesc',
 };
 
 export function localizeNavItems(items: CircleNavItem[], t: CircleTranslator): CircleNavItem[] {

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Bell,
   BookOpen,
@@ -22,9 +22,11 @@ import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 
 import {
+  canSeeCareTeamDashboardReminders,
   canViewRemoteSettingsTab,
   canSendPatientRemoteCommands,
   diaryMoodLabel,
+  isPatientInsightsPreviewRemindersEnabled,
   normalizeMemberRole,
   type AnalyticsMetricId,
   type CirclePatientSummary,
@@ -38,6 +40,7 @@ import { CircleProfileChangeBanner } from './CircleProfileChangeBanner';
 import { CirclePatientInsightsSection } from './CirclePatientInsightsSection';
 import { CircleDashboardCelebrationSection } from './CircleDashboardCelebrationSection';
 import { CircleDashboardAttentionTiles } from './CircleDashboardAttentionTiles';
+import { CircleDashboardPatientOfflineTile } from './CircleDashboardPatientOfflineTile';
 import type { CircleInboxFolder } from './CircleDashboardAttentionTiles';
 import { CircleDashboardPatientLocaleWidget } from './CircleDashboardPatientLocaleWidget';
 import { CircleGalleryRotatingPreviewWidget } from './CircleGalleryRotatingPreviewWidget';
@@ -55,10 +58,18 @@ import { useCircleRemoteSettings } from '../hooks/useCircleRemoteSettings';
 import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfileSnapshot';
 
 import { useFamilyGalleryDashboard } from '../hooks/useFamilyGalleryDashboard';
+import { useCircleDashboardLayout } from '../hooks/useCircleDashboardLayout';
+import {
+  buildPreviewPatientOfflineAlert,
+  canSeePatientOfflineAlert,
+  getPatientOfflineAlertDays,
+} from '../lib/patientPresenceAlert';
 import {
   diaryEntryPreviewLine,
   useDiaryDashboardPreview,
 } from '../hooks/useDiaryDashboardPreview';
+import { useMemberDiaryActivity } from '../hooks/useMemberDiaryActivity';
+import { usePatientFirstEngagementAt } from '../hooks/usePatientFirstEngagementAt';
 import { useCirclePatientRemoteCommandAwaiting } from '../hooks/useCirclePatientRemoteCommandAwaiting';
 
 import {
@@ -85,6 +96,7 @@ import {
   treatmentPhaseLabelT,
 } from '../lib/dashboardI18n';
 import {
+  DASHBOARD_RECENCY_TINT_CLASSES,
   DASHBOARD_STATS_DAYS,
   getAlertAttentionRecencyUrgency,
   getDailyCheckInRecencyUrgency,
@@ -110,6 +122,11 @@ interface CircleDashboardScreenProps {
   messageCount: number;
   circleUnreadCount: number;
   circleAnnouncementsUnreadCount: number;
+  circleAnnouncementsOpenUnreadCount: number;
+  circleAnnouncementsRestrictedUnreadCount: number;
+  circleDiscussionsUnreadCount: number;
+  circleDiscussionsOpenUnreadCount: number;
+  circleDiscussionsRestrictedUnreadCount: number;
   circleDropInsUnreadCount: number;
   circleVisitCapturesUnreadCount: number;
   circleVisitCapturesOpenUnreadCount: number;
@@ -133,15 +150,6 @@ interface CircleDashboardScreenProps {
 const DASHBOARD_WIDGET_BASE_CLASS =
   'w-full h-full p-4 sm:p-5 rounded-2xl border text-left transition-colors flex flex-col';
 
-const DASHBOARD_WIDGET_RECENCY_TINT: Record<
-  AlertAttentionRecencyUrgency,
-  string
-> = {
-  neutral: 'border-slate-100 bg-white hover:border-blue-200 hover:bg-blue-50/30',
-  green: 'border-emerald-200 bg-emerald-50/50 hover:border-emerald-300 hover:bg-emerald-50/70',
-  orange: 'border-amber-200 bg-amber-50/50 hover:border-amber-300 hover:bg-amber-50/70',
-  red: 'border-red-200 bg-red-50/50 hover:border-red-300 hover:bg-red-50/70',
-};
 const DASHBOARD_WIDGET_CELL_CLASS = 'h-[10rem] sm:h-[10.5rem]';
 const DASHBOARD_SECTION_TITLE_CLASS =
   'text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5';
@@ -170,7 +178,7 @@ function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
       onClick={spec.onClick}
       className={cn(
         DASHBOARD_WIDGET_BASE_CLASS,
-        DASHBOARD_WIDGET_RECENCY_TINT[spec.recencyTint ?? 'neutral'],
+        DASHBOARD_RECENCY_TINT_CLASSES[spec.recencyTint ?? 'neutral'],
       )}
     >
       <Icon size={20} className="text-blue-600 mb-2" />
@@ -374,6 +382,11 @@ export function CircleDashboardScreen({
   messageCount,
   circleUnreadCount,
   circleAnnouncementsUnreadCount,
+  circleAnnouncementsOpenUnreadCount,
+  circleAnnouncementsRestrictedUnreadCount,
+  circleDiscussionsUnreadCount,
+  circleDiscussionsOpenUnreadCount,
+  circleDiscussionsRestrictedUnreadCount,
   circleDropInsUnreadCount,
   circleVisitCapturesUnreadCount,
   circleVisitCapturesOpenUnreadCount,
@@ -394,6 +407,12 @@ export function CircleDashboardScreen({
   const { language } = useCircleI18nContext();
   const caps = patient.capabilities;
   const memberRole = normalizeMemberRole(patient.role);
+  const { isWidgetVisible } = useCircleDashboardLayout(
+    db,
+    patient.patientId,
+    user.uid,
+    memberRole,
+  );
   const showEngagementStats = caps.viewEngagementTrends !== false;
   const showRemoteSettings = canViewRemoteSettingsTab(caps);
   const showLiveTile = memberRole !== 'friend';
@@ -452,6 +471,16 @@ export function CircleDashboardScreen({
   );
 
   const diaryPreview = useDiaryDashboardPreview(db, patient.patientId, user, DASHBOARD_STATS_DAYS);
+  const memberDiaryActivity = useMemberDiaryActivity(db, patient.patientId, user.uid);
+
+  const galleryReminderEnabled =
+    isWidgetVisible('reminder-gallery-upload') && caps.richMediaUpload === true;
+  const diaryReminderEnabled = isWidgetVisible('reminder-diary-entry');
+  const careRemindersEnabled = canSeeCareTeamDashboardReminders(memberRole);
+  const { firstEngagementAt, loading: firstEngagementLoading } = usePatientFirstEngagementAt(
+    db,
+    patient.patientId,
+  );
 
   const dailyCheckIn = byMetricId.get('daily-check-in');
   const dailyDetail =
@@ -486,6 +515,14 @@ export function CircleDashboardScreen({
   const communicationStats = sumMessagesLast7(speechDetail?.timeline);
   const companionLast7 = sumCompanionLast7ExcludingDetected(companionDetail?.timeline);
   const checkInStats = resolveDailyCheckInLast7Stats(dailyDetail);
+  const dailyCheckInLatestAt =
+    dailyDetail?.latestCompletedAt ?? dailyCheckIn?.latestAt ?? null;
+  const dailyCheckInRecencyTint = getDailyCheckInRecencyUrgency({
+    completedInWindow: checkInStats.completed,
+    skippedInWindow: checkInStats.skipped,
+    latestCompletedAt: dailyCheckInLatestAt,
+    hasHistory: !!(dailyDetail || dailyCheckIn?.latestAt),
+  });
   const vitalityGamesLast7 = sumVitalityGamesLast7(vitalityDetail?.timeline);
   const assessmentsLast7 = sumAssessmentsLast7(byMetricId);
   const latestAssessment = getLatestAssessment(byMetricId);
@@ -493,6 +530,18 @@ export function CircleDashboardScreen({
   const lastSevenDayWidgets: DashboardWidgetSpec[] = [];
   const youWidgets: DashboardWidgetSpec[] = [];
   const patientAppWidgets: DashboardWidgetSpec[] = [];
+
+  const previewReminders = useMemo(() => isPatientInsightsPreviewRemindersEnabled(), []);
+  const previewOfflineAlert = previewReminders ? buildPreviewPatientOfflineAlert() : null;
+
+  const patientOfflineAlertDays =
+    previewOfflineAlert?.daysAway ??
+    getPatientOfflineAlertDays(patientPresence.lastSeen, patientPresence.online);
+  const patientOfflineLastSeen =
+    previewOfflineAlert?.lastSeen ?? patientPresence.lastSeen;
+  const showPatientOfflineAlert = previewOfflineAlert
+    ? true
+    : canSeePatientOfflineAlert(memberRole) && patientOfflineAlertDays != null;
 
   const liveOnlineDurationLabel = patientPresence.online
     ? formatPatientOnlineDurationLabelT(
@@ -527,9 +576,6 @@ export function CircleDashboardScreen({
           }),
       onClick: () => onOpenAnalyticsDetail('alert-attention'),
     });
-
-    const dailyCheckInLatestAt =
-      dailyDetail?.latestCompletedAt ?? dailyCheckIn?.latestAt ?? null;
 
     lastSevenDayWidgets.push({
       key: 'daily-check-in',
@@ -793,6 +839,18 @@ export function CircleDashboardScreen({
       }
     : null;
 
+  const richMediaReactionsFromPatient = galleryDashboard.patientReactionsTotal > 0;
+  const richMediaReactionsCount =
+    canSeeGallery && !galleryDashboard.loading
+      ? richMediaReactionsFromPatient
+        ? galleryDashboard.patientReactionsTotal
+        : galleryDashboard.totalReactions
+      : 0;
+  const richMediaReactionsRecencyTint: AlertAttentionRecencyUrgency =
+    galleryDashboard.patientReactionsLast7 > 0 || galleryDashboard.reactionsLast7 > 0
+      ? 'green'
+      : 'neutral';
+
   if (showRemoteSettings) {
     const checkInLabel =
       remoteSettings?.dailyCheckIn?.enabled !== false
@@ -832,6 +890,14 @@ export function CircleDashboardScreen({
         }),
     onClick: () => onGoToTab('admin'),
   });
+
+  const visibleLastSevenDayWidgets = lastSevenDayWidgets.filter((widget) =>
+    isWidgetVisible(widget.key),
+  );
+  const visibleYouWidgets = youWidgets.filter((widget) => isWidgetVisible(widget.key));
+  const visiblePatientAppWidgets = patientAppWidgets.filter((widget) =>
+    isWidgetVisible(widget.key),
+  );
 
   const handleConfirmRemoteCommand = async () => {
     if (!confirmCommandType || !canSendPatientRemoteCommands(patient.role)) return;
@@ -889,7 +955,7 @@ export function CircleDashboardScreen({
           </div>
         ) : null}
 
-        {patientPresence.online && showLiveTile ? (
+        {patientPresence.online && showLiveTile && !previewOfflineAlert ? (
           <div className="grid grid-cols-2 gap-3">
             <div
               className={cn(
@@ -921,31 +987,75 @@ export function CircleDashboardScreen({
           </div>
         ) : null}
 
+        {showPatientOfflineAlert && patientOfflineAlertDays != null ? (
+          <CircleDashboardPatientOfflineTile
+            daysAway={patientOfflineAlertDays}
+            lastSeen={patientOfflineLastSeen}
+            isPreview={previewOfflineAlert != null}
+          />
+        ) : null}
+
         <CircleDashboardAttentionTiles
           memberRole={memberRole}
           messageUnreadCount={unreadCount}
           announcementsUnreadCount={circleAnnouncementsUnreadCount}
+          announcementsOpenUnreadCount={circleAnnouncementsOpenUnreadCount}
+          announcementsRestrictedUnreadCount={circleAnnouncementsRestrictedUnreadCount}
+          discussionsUnreadCount={circleDiscussionsUnreadCount}
+          discussionsOpenUnreadCount={circleDiscussionsOpenUnreadCount}
+          discussionsRestrictedUnreadCount={circleDiscussionsRestrictedUnreadCount}
           dropInsUnreadCount={circleDropInsUnreadCount}
           visitCapturesUnreadCount={circleVisitCapturesUnreadCount}
           visitCapturesOpenUnreadCount={circleVisitCapturesOpenUnreadCount}
           visitCapturesRestrictedUnreadCount={circleVisitCapturesRestrictedUnreadCount}
           dailyCheckInsCompletedCount={checkInStats.completed}
+          dailyCheckInsRecencyTint={dailyCheckInRecencyTint}
+          richMediaReactionsCount={richMediaReactionsCount}
+          richMediaReactionsFromPatient={richMediaReactionsFromPatient}
+          richMediaReactionsRecencyTint={richMediaReactionsRecencyTint}
           messagingEnabled={caps.messaging === true}
           onOpenMessages={() => onGoToTab('messages')}
           onOpenCircleFolder={onOpenCircleFolder}
           onOpenCheckIns={() => onOpenAnalyticsDetail('daily-check-in')}
+          onOpenRichMediaReactions={() => onGoToTab('media')}
         />
 
-        <CircleDashboardCelebrationSection patient={patient} snapshot={profileSnapshot} />
-
-        <CircleDashboardPatientLocaleWidget snapshot={profileSnapshot} />
-
-        <CirclePatientInsightsSection
+        <CircleDashboardCelebrationSection
+          db={db}
+          user={user}
           patient={patient}
           snapshot={profileSnapshot}
-          loading={profileLoading}
-          onOpenProfile={canOpenFullProfile ? () => onGoToTab('admin') : undefined}
+          galleryReminderEnabled={galleryReminderEnabled}
+          diaryReminderEnabled={diaryReminderEnabled}
+          latestMyUploadAt={galleryDashboard.latestMyUploadAt}
+          latestMyDiaryAt={memberDiaryActivity.latestMyDiaryAt}
+          participationLoading={galleryDashboard.loading || memberDiaryActivity.loading}
+          careRemindersEnabled={careRemindersEnabled}
+          firstEngagementAt={firstEngagementAt}
+          firstEngagementLoading={firstEngagementLoading}
+          analyticsByMetricId={byMetricId}
+          analyticsLoading={analyticsLoading}
+          profileLoading={profileLoading}
+          canOpenPatientProfile={canOpenFullProfile}
+          onGoToTab={onGoToTab}
         />
+
+        {isWidgetVisible('patient-locale') || previewReminders ? (
+          <CircleDashboardPatientLocaleWidget
+            db={db}
+            patientId={patient.patientId}
+            snapshot={profileSnapshot}
+          />
+        ) : null}
+
+        {isWidgetVisible('patient-insights') ? (
+          <CirclePatientInsightsSection
+            patient={patient}
+            snapshot={profileSnapshot}
+            loading={profileLoading}
+            onOpenProfile={canOpenFullProfile ? () => onGoToTab('admin') : undefined}
+          />
+        ) : null}
 
         {familyGalleryWidget ? (
           <section className="space-y-2">
@@ -965,16 +1075,22 @@ export function CircleDashboardScreen({
           </section>
         ) : null}
 
-        {lastSevenDayWidgets.length > 0 ? (
-          <DashboardSection title={t('dashboard.sectionLast7Days')} widgets={lastSevenDayWidgets} />
+        {visibleLastSevenDayWidgets.length > 0 ? (
+          <DashboardSection
+            title={t('dashboard.sectionLast7Days')}
+            widgets={visibleLastSevenDayWidgets}
+          />
         ) : null}
 
-        {youWidgets.length > 0 ? (
-          <DashboardSection title={t('dashboard.sectionYou')} widgets={youWidgets} />
+        {visibleYouWidgets.length > 0 ? (
+          <DashboardSection title={t('dashboard.sectionYou')} widgets={visibleYouWidgets} />
         ) : null}
 
-        {patientAppWidgets.length > 0 ? (
-          <DashboardSection title={t('dashboard.sectionPatientApp')} widgets={patientAppWidgets} />
+        {visiblePatientAppWidgets.length > 0 ? (
+          <DashboardSection
+            title={t('dashboard.sectionPatientApp')}
+            widgets={visiblePatientAppWidgets}
+          />
         ) : null}
       </div>
     </div>

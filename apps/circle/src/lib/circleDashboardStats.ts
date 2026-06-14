@@ -51,6 +51,13 @@ export function sumAlertAttentionLast7(timeline?: AlertAttentionTimelinePoint[])
 
 export type AlertAttentionRecencyUrgency = 'neutral' | 'green' | 'orange' | 'red';
 
+export const DASHBOARD_RECENCY_TINT_CLASSES: Record<AlertAttentionRecencyUrgency, string> = {
+  neutral: 'border-slate-100 bg-white hover:border-blue-200 hover:bg-blue-50/30',
+  green: 'border-emerald-200 bg-emerald-50/50 hover:border-emerald-300 hover:bg-emerald-50/70',
+  orange: 'border-amber-200 bg-amber-50/50 hover:border-amber-300 hover:bg-amber-50/70',
+  red: 'border-red-200 bg-red-50/50 hover:border-red-300 hover:bg-red-50/70',
+};
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Whole calendar days since the event (0 = today). */

@@ -18,6 +18,30 @@ export type CirclePostInboxView =
 
 export type CirclePostCategory = Exclude<CirclePostInboxView, 'hidden'>;
 
+/** Folders shown as icon-only tabs at the start of the Circle inbox strip. */
+export const CIRCLE_POST_INBOX_ICON_VIEWS: readonly CirclePostInboxView[] = [
+  'announcements',
+  'visit_captures',
+  'drop_ins',
+];
+
+/** Folders shown as labeled text tabs after the icon group. */
+export const CIRCLE_POST_INBOX_TEXT_VIEWS: readonly CirclePostInboxView[] = [
+  'discussion',
+  'hidden',
+];
+
+export function partitionCirclePostInboxViews(views: readonly CirclePostInboxView[]): {
+  iconViews: CirclePostInboxView[];
+  textViews: CirclePostInboxView[];
+} {
+  const viewSet = new Set(views);
+  return {
+    iconViews: CIRCLE_POST_INBOX_ICON_VIEWS.filter((view) => viewSet.has(view)),
+    textViews: CIRCLE_POST_INBOX_TEXT_VIEWS.filter((view) => viewSet.has(view)),
+  };
+}
+
 export function circlePostCategory(post: CircleMemberThreadPost): CirclePostCategory {
   if (isDropInThreadPost(post)) return 'drop_ins';
   if (isVisitCaptureThreadPost(post)) return 'visit_captures';

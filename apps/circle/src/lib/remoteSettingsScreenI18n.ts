@@ -2,6 +2,7 @@ import type { RemoteAppMode } from '@medxforce/shared';
 import type { CircleTranslator } from './circleI18nContext';
 
 const PROXY_SECTION_KEYS: Record<string, string> = {
+  location: 'remoteSettings.sections.location',
   alerts: 'remoteSettings.sections.alerts',
   communication: 'remoteSettings.sections.communication',
   messaging: 'remoteSettings.sections.messaging',
@@ -44,6 +45,7 @@ const TOGGLE_LABEL_KEYS: Record<string, string> = {
   speakOnSelection: 'remoteSettings.toggles.speakOnSelection',
   showFrequentlyUsed: 'remoteSettings.toggles.frequentlyUsed',
   hideRightSidebar: 'remoteSettings.toggles.showRightSidebar',
+  shareLocationWithCircle: 'remoteSettings.toggles.shareLocationWithCircle',
 };
 
 const TOGGLE_DESC_KEYS: Record<string, string> = {
@@ -71,6 +73,7 @@ const TOGGLE_DESC_KEYS: Record<string, string> = {
   speakOnSelection: 'remoteSettings.toggleDesc.speakOnSelection',
   showFrequentlyUsed: 'remoteSettings.toggleDesc.frequentlyUsed',
   hideRightSidebar: 'remoteSettings.toggleDesc.showRightSidebar',
+  shareLocationWithCircle: 'remoteSettings.toggleDesc.shareLocationWithCircle',
 };
 
 const VISIBLE_AREA_KEYS: Record<string, string> = {

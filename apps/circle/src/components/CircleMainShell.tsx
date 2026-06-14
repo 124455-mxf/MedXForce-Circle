@@ -28,6 +28,7 @@ import { CircleCircleScreen } from './CircleCircleScreen';
 import { CircleDashboardScreen } from './CircleDashboardScreen';
 import { CircleDiaryScreen } from './CircleDiaryScreen';
 import { CircleKnowScreen } from './CircleKnowScreen';
+import { CircleMedXForceLabScreen } from './CircleMedXForceLabScreen';
 import { CircleRemoteSettingsScreen } from './CircleRemoteSettingsScreen';
 import { CirclePatientSwitcher } from './CirclePatientSwitcher';
 import { PatientGalleryScreen } from './PatientGalleryScreen';
@@ -442,6 +443,15 @@ export function CircleMainShell({
               messageCount={threadState.messages.length}
               circleUnreadCount={circleThreadUnread.unreadCount}
               circleAnnouncementsUnreadCount={circleThreadUnread.announcementsUnreadCount}
+              circleAnnouncementsOpenUnreadCount={circleThreadUnread.announcementsOpenUnreadCount}
+              circleAnnouncementsRestrictedUnreadCount={
+                circleThreadUnread.announcementsRestrictedUnreadCount
+              }
+              circleDiscussionsUnreadCount={circleThreadUnread.discussionsUnreadCount}
+              circleDiscussionsOpenUnreadCount={circleThreadUnread.discussionsOpenUnreadCount}
+              circleDiscussionsRestrictedUnreadCount={
+                circleThreadUnread.discussionsRestrictedUnreadCount
+              }
               circleDropInsUnreadCount={circleThreadUnread.dropInsUnreadCount}
               circleVisitCapturesUnreadCount={circleThreadUnread.visitCapturesUnreadCount}
               circleVisitCapturesOpenUnreadCount={circleThreadUnread.visitCapturesOpenUnreadCount}
@@ -538,6 +548,7 @@ export function CircleMainShell({
             </div>
           )}
           {activeTab === 'know' && <CircleKnowScreen />}
+          {activeTab === 'medxforce-lab' && <CircleMedXForceLabScreen />}
           {activeTab === 'remote-settings' && (
             <div className="flex flex-col flex-1 min-h-0">
               <CircleRemoteSettingsScreen db={db} user={user} patient={selectedPatient} />

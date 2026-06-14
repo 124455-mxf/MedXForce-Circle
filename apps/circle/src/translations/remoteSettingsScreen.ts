@@ -37,6 +37,7 @@ const remoteSettingsEnglish = {
     alerts: 'Alerts & Attention',
     communication: 'Communication',
     messaging: 'Messaging',
+    location: 'Location',
   },
   modes: {
     intensiveCare: 'Intensive Care',
@@ -54,6 +55,7 @@ const remoteSettingsEnglish = {
     useAiAssistant: 'AI Assistant in messaging',
     aiConversation: 'MedIsOn Companion',
     allowSendMessages: 'Allow sending messages',
+    shareLocationWithCircle: 'Share location with Circle',
     showUserInSidebar: 'Show user',
     dashboard: 'Dashboard',
     communicationTab: 'Communication',
@@ -80,6 +82,8 @@ const remoteSettingsEnglish = {
     useAiAssistant: 'AI writing help when composing messages.',
     aiConversation: 'Enable the MedIsOn companion conversation feature.',
     allowSendMessages: 'Let the patient send outgoing messages.',
+    shareLocationWithCircle:
+      'Let Circle see city, local time, and weather from the tablet while the app is open.',
     showUserInSidebar: 'User profile in the left sidebar.',
     dashboard: 'Dashboard tab in the sidebar.',
     communicationTab: 'Primary communication interface.',
@@ -145,6 +149,7 @@ const remoteSettingsGerman = {
     alerts: 'Alarm & Aufmerksamkeit',
     communication: 'Kommunikation',
     messaging: 'Nachrichten',
+    location: 'Standort',
   },
   modes: {
     intensiveCare: 'Intensivstation',
@@ -162,6 +167,7 @@ const remoteSettingsGerman = {
     useAiAssistant: 'KI-Assistent in Nachrichten',
     aiConversation: 'MedIsOn Begleiter',
     allowSendMessages: 'Nachrichten senden erlauben',
+    shareLocationWithCircle: 'Standort mit Circle teilen',
     showUserInSidebar: 'Benutzer anzeigen',
     dashboard: 'Dashboard',
     communicationTab: 'Kommunikation',
@@ -188,6 +194,8 @@ const remoteSettingsGerman = {
     useAiAssistant: 'KI-Schreibhilfe beim Verfassen von Nachrichten.',
     aiConversation: 'MedIsOn-Begleiter-Gesprächsfunktion aktivieren.',
     allowSendMessages: 'Patient darf ausgehende Nachrichten senden.',
+    shareLocationWithCircle:
+      'Circle sieht Stadt, Ortszeit und Wetter vom Tablet, solange die App geöffnet ist.',
     showUserInSidebar: 'Benutzerprofil in der linken Seitenleiste.',
     dashboard: 'Dashboard-Tab in der Seitenleiste.',
     communicationTab: 'Primäre Kommunikationsoberfläche.',
@@ -252,6 +260,7 @@ const remoteSettingsSpanish = {
     alerts: 'Alerta y atención',
     communication: 'Comunicación',
     messaging: 'Mensajería',
+    location: 'Ubicación',
   },
   modes: {
     intensiveCare: 'Cuidados intensivos',
@@ -309,6 +318,7 @@ const remoteSettingsPolish = {
     alerts: 'Alarm i uwaga',
     communication: 'Komunikacja',
     messaging: 'Wiadomości',
+    location: 'Lokalizacja',
   },
   modes: {
     intensiveCare: 'Intensywna terapia',

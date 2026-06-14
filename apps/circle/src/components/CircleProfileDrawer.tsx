@@ -8,7 +8,9 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Globe,
   HeartHandshake,
+  LayoutGrid,
   LogOut,
   Image as ImageIcon,
   MessageSquare,
@@ -19,10 +21,12 @@ import {
 } from 'lucide-react';
 import { CircleSettingsMessagingPanel } from './CircleSettingsMessagingPanel';
 import { CircleSettingsMediaPanel } from './CircleSettingsMediaPanel';
+import { CircleSettingsLocalePanel } from './CircleSettingsLocalePanel';
 import { CircleSettingsCareRelationshipPanel } from './CircleSettingsCareRelationshipPanel';
 import { CircleSettingsUserManagementPanel } from './CircleSettingsUserManagementPanel';
 import { CircleSettingsNotificationPreferencesPanel } from './CircleSettingsNotificationPreferencesPanel';
 import { CircleSettingsMyContactPanel } from './CircleSettingsMyContactPanel';
+import { CircleDashboardCustomizePanel } from './CircleDashboardCustomizePanel';
 import { CircleDiscardChangesModal } from './CircleDiscardChangesModal';
 import { CircleProfilePhotoCropModal } from './CircleProfilePhotoCropModal';
 import type { Firestore } from 'firebase/firestore';
@@ -82,10 +86,12 @@ export function CircleProfileDrawer({
     | 'settings'
     | 'messaging'
     | 'media'
+    | 'localeDisplay'
     | 'careRelationship'
     | 'userManagement'
     | 'notifications'
     | 'myContact'
+    | 'customizeDashboard'
     | 'switchPatient'
   >('account');
 
@@ -192,6 +198,7 @@ export function CircleProfileDrawer({
     if (
       drawerView === 'messaging' ||
       drawerView === 'media' ||
+      drawerView === 'localeDisplay' ||
       drawerView === 'careRelationship' ||
       drawerView === 'userManagement' ||
       drawerView === 'switchPatient'
@@ -258,10 +265,12 @@ export function CircleProfileDrawer({
             {drawerView === 'settings' && t('drawer.settings')}
             {drawerView === 'messaging' && t('drawer.messaging')}
             {drawerView === 'media' && t('drawer.media')}
+            {drawerView === 'localeDisplay' && t('drawer.localeDisplay')}
             {drawerView === 'careRelationship' && t('drawer.careRelationship')}
             {drawerView === 'userManagement' && t('drawer.userManagement')}
             {drawerView === 'notifications' && t('drawer.notifications')}
             {drawerView === 'myContact' && t('drawer.myContact')}
+            {drawerView === 'customizeDashboard' && t('drawer.customizeDashboard')}
             {drawerView === 'switchPatient' && t('drawer.switchPatient')}
           </h2>
           <button
@@ -350,6 +359,18 @@ export function CircleProfileDrawer({
               </div>
               <ChevronRight size={16} className="text-slate-300 shrink-0" />
             </button>
+            <button
+              type="button"
+              onClick={() => setDrawerView('localeDisplay')}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+            >
+              <Globe size={20} className="text-sky-600" />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-800 text-sm">{t('drawer.localeDisplay')}</p>
+                <p className="text-xs text-slate-400">{t('drawer.localeDisplayHint')}</p>
+              </div>
+              <ChevronRight size={16} className="text-slate-300 shrink-0" />
+            </button>
           </div>
         )}
 
@@ -362,6 +383,12 @@ export function CircleProfileDrawer({
         {drawerView === 'media' && (
           <div className="flex-1 overflow-y-auto">
             <CircleSettingsMediaPanel />
+          </div>
+        )}
+
+        {drawerView === 'localeDisplay' && (
+          <div className="flex-1 overflow-y-auto">
+            <CircleSettingsLocalePanel />
           </div>
         )}
 
@@ -433,6 +460,12 @@ export function CircleProfileDrawer({
         {drawerView === 'notifications' && (
           <div className="flex-1 overflow-y-auto">
             <CircleSettingsNotificationPreferencesPanel user={user} db={db} patient={patient} />
+          </div>
+        )}
+
+        {drawerView === 'customizeDashboard' && (
+          <div className="flex-1 overflow-y-auto">
+            <CircleDashboardCustomizePanel user={user} db={db} patient={patient} />
           </div>
         )}
 
@@ -560,6 +593,18 @@ export function CircleProfileDrawer({
               <p className="text-xs text-slate-400">{t('drawer.notificationsHint')}</p>
             </div>
             <ChevronRight size={16} className="text-slate-300" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setDrawerView('customizeDashboard')}
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+          >
+            <LayoutGrid size={20} className="text-blue-600" />
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-slate-800 text-sm">{t('drawer.customizeDashboard')}</p>
+              <p className="text-xs text-slate-400">{t('drawer.customizeDashboardHint')}</p>
+            </div>
+            <ChevronRight size={16} className="text-slate-300 shrink-0" />
           </button>
           <button
             type="button"

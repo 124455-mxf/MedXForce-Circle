@@ -22,9 +22,13 @@ export type FamilyGalleryDashboardStats = {
   totalReactions: number;
   reactionsLast7: number;
   myUploadCount: number;
+  latestMyUploadAt: number | null;
   reactionsOnMyUploads: number;
   reactionsOnMyUploadsLast7: number;
   patientReactionsOnMyUploads: number;
+  /** All reactions the patient gave on circle gallery media. */
+  patientReactionsTotal: number;
+  patientReactionsLast7: number;
   loading: boolean;
 };
 
@@ -34,9 +38,12 @@ const EMPTY: FamilyGalleryDashboardStats = {
   totalReactions: 0,
   reactionsLast7: 0,
   myUploadCount: 0,
+  latestMyUploadAt: null,
   reactionsOnMyUploads: 0,
   reactionsOnMyUploadsLast7: 0,
   patientReactionsOnMyUploads: 0,
+  patientReactionsTotal: 0,
+  patientReactionsLast7: 0,
   loading: true,
 };
 
@@ -51,6 +58,7 @@ export function useFamilyGalleryDashboard(
   const [previewPhotos, setPreviewPhotos] = useState<FamilyGalleryPreviewPhoto[]>([]);
   const [photoCount, setPhotoCount] = useState(0);
   const [myMediaIds, setMyMediaIds] = useState<Set<string>>(new Set());
+  const [latestMyUploadAt, setLatestMyUploadAt] = useState<number | null>(null);
   const [reactions, setReactions] = useState<
     { mediaId: string; userId: string; timestamp: number }[]
   >([]);
@@ -65,6 +73,7 @@ export function useFamilyGalleryDashboard(
       setPreviewPhotos([]);
       setPhotoCount(0);
       setMyMediaIds(new Set());
+      setLatestMyUploadAt(null);
       setLoadingMedia(false);
       return undefined;
     }
@@ -78,6 +87,7 @@ export function useFamilyGalleryDashboard(
         const photos: FamilyGalleryPreviewPhoto[] = [];
         const myIds = new Set<string>();
         let photosTotal = 0;
+        let latestMyUploadAt: number | null = null;
 
         for (const snap of snapshot.docs) {
           const data = snap.data();
@@ -90,6 +100,10 @@ export function useFamilyGalleryDashboard(
 
           if (String(data.uploadedByUid || '') === memberUid) {
             myIds.add(snap.id);
+            const ts = typeof data.timestamp === 'number' ? data.timestamp : 0;
+            if (ts > 0 && (latestMyUploadAt == null || ts > latestMyUploadAt)) {
+              latestMyUploadAt = ts;
+            }
           }
 
           if (isVideo) continue;
@@ -113,12 +127,14 @@ export function useFamilyGalleryDashboard(
         setPreviewPhotos(photos.slice(0, PREVIEW_PHOTO_LIMIT));
         setPhotoCount(photosTotal);
         setMyMediaIds(myIds);
+        setLatestMyUploadAt(latestMyUploadAt);
         setLoadingMedia(false);
       },
       () => {
         setPreviewPhotos([]);
         setPhotoCount(0);
         setMyMediaIds(new Set());
+        setLatestMyUploadAt(null);
         setLoadingMedia(false);
       },
     );
@@ -166,10 +182,17 @@ export function useFamilyGalleryDashboard(
     let reactionsOnMyUploads = 0;
     let reactionsOnMyUploadsLast7 = 0;
     let patientReactionsOnMyUploads = 0;
+    let patientReactionsTotal = 0;
+    let patientReactionsLast7 = 0;
 
     for (const reaction of reactions) {
       totalReactions += 1;
       if (reaction.timestamp >= cutoff) reactionsLast7 += 1;
+
+      if (reaction.userId === patientId) {
+        patientReactionsTotal += 1;
+        if (reaction.timestamp >= cutoff) patientReactionsLast7 += 1;
+      }
 
       if (!myMediaIds.has(reaction.mediaId)) continue;
       if (reaction.userId === memberUid) continue;
@@ -184,9 +207,12 @@ export function useFamilyGalleryDashboard(
       totalReactions,
       reactionsLast7,
       myUploadCount: myMediaIds.size,
+      latestMyUploadAt,
       reactionsOnMyUploads,
       reactionsOnMyUploadsLast7,
       patientReactionsOnMyUploads,
+      patientReactionsTotal,
+      patientReactionsLast7,
       loading: loadingMedia || loadingReactions,
     };
   }, [
@@ -194,6 +220,7 @@ export function useFamilyGalleryDashboard(
     loadingReactions,
     memberUid,
     myMediaIds,
+    latestMyUploadAt,
     patientId,
     photoCount,
     previewPhotos,

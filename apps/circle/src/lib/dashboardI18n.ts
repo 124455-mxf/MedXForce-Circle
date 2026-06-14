@@ -376,6 +376,86 @@ export function localizePreviewOnsetMilestoneOneYear(t: CircleTranslator): Local
   };
 }
 
+export function localizeParticipationGalleryReminder(
+  t: CircleTranslator,
+  variant: 'never' | 'stale',
+): LocalizedReminderCopy {
+  return {
+    headline:
+      variant === 'never'
+        ? t('dashboard.reminders.galleryNeverHeadline')
+        : t('dashboard.reminders.galleryStaleHeadline'),
+    body:
+      variant === 'never'
+        ? t('dashboard.reminders.galleryNeverBody')
+        : t('dashboard.reminders.galleryStaleBody'),
+  };
+}
+
+export function localizeParticipationDiaryReminder(
+  t: CircleTranslator,
+  variant: 'never' | 'stale',
+): LocalizedReminderCopy {
+  return {
+    headline:
+      variant === 'never'
+        ? t('dashboard.reminders.diaryNeverHeadline')
+        : t('dashboard.reminders.diaryStaleHeadline'),
+    body:
+      variant === 'never'
+        ? t('dashboard.reminders.diaryNeverBody')
+        : t('dashboard.reminders.diaryStaleBody'),
+  };
+}
+
+export function localizePreviewParticipationGalleryReminder(t: CircleTranslator): LocalizedReminderCopy {
+  return {
+    headline: t('dashboard.reminders.previewGalleryHeadline'),
+    body: t('dashboard.reminders.previewGalleryBody'),
+  };
+}
+
+export function localizePreviewParticipationDiaryReminder(t: CircleTranslator): LocalizedReminderCopy {
+  return {
+    headline: t('dashboard.reminders.previewDiaryHeadline'),
+    body: t('dashboard.reminders.previewDiaryBody'),
+  };
+}
+
+export function localizeCareAssessmentReminder(t: CircleTranslator): LocalizedReminderCopy {
+  return {
+    headline: t('dashboard.reminders.careAssessmentHeadline'),
+    body: t('dashboard.reminders.careAssessmentBody'),
+  };
+}
+
+export function localizePreviewCareAssessmentReminder(t: CircleTranslator): LocalizedReminderCopy {
+  return {
+    headline: t('dashboard.reminders.previewCareAssessmentHeadline'),
+    body: t('dashboard.reminders.previewCareAssessmentBody'),
+  };
+}
+
+export function localizeCareProfileReminder(
+  t: CircleTranslator,
+  patientName: string,
+): LocalizedReminderCopy {
+  return {
+    headline: t('dashboard.reminders.careProfileHeadline', { name: patientName }),
+    body: t('dashboard.reminders.careProfileBody'),
+  };
+}
+
+export function localizePreviewCareProfileReminder(
+  t: CircleTranslator,
+  patientName: string,
+): LocalizedReminderCopy {
+  return {
+    headline: t('dashboard.reminders.previewCareProfileHeadline', { name: patientName }),
+    body: t('dashboard.reminders.previewCareProfileBody'),
+  };
+}
+
 export function insightHintT(t: CircleTranslator, key: CirclePatientInsightKey): string | undefined {
   const path = `dashboard.insightHints.${key}`;
   const translated = t(path);

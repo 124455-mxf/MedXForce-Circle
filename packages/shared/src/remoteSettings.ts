@@ -75,6 +75,7 @@ export type RemoteSettingsPayload = {
   contentFontSize?: 'small' | 'medium' | 'large';
   visibleAreas?: RemoteVisibleAreas;
   quickAreasOrder?: string[];
+  shareLocationWithCircle?: boolean;
 };
 
 export type RemoteSettingsSource = 'patient' | 'circle';
@@ -149,6 +150,18 @@ export const REMOTE_PROXY_SECTIONS: {
   title: string;
   toggles: RemoteFeatureToggleDef[];
 }[] = [
+  {
+    id: 'location',
+    title: 'Location',
+    toggles: [
+      {
+        path: 'shareLocationWithCircle',
+        label: 'Share location with Circle',
+        description:
+          'Let Circle see the patient\'s city, local time, and weather from the tablet when the app is open.',
+      },
+    ],
+  },
   {
     id: 'alerts',
     title: 'Alerts & Attention',
@@ -326,6 +339,7 @@ export function parsePatientRemoteSettings(
     quickAreasOrder: Array.isArray(data.quickAreasOrder)
       ? data.quickAreasOrder.filter((x): x is string => typeof x === 'string')
       : undefined,
+    shareLocationWithCircle: asBool(data.shareLocationWithCircle),
     updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : 0,
     updatedByUid: asString(data.updatedByUid) ?? '',
     updatedByName: asString(data.updatedByName) ?? '',
@@ -406,6 +420,7 @@ export function extractRemoteSettingsFromPreferences(
     quickAreasOrder: Array.isArray(preferences.quickAreasOrder)
       ? (preferences.quickAreasOrder as string[])
       : ['phrases', 'categories', 'emojis', 'unicode'],
+    shareLocationWithCircle: !!preferences.shareLocationWithCircle,
     updatedAt: Date.now(),
     updatedByUid: meta.uid,
     updatedByName: meta.displayName,
@@ -432,6 +447,7 @@ export function getRemoteSettingValue(
   if (path === 'speakOnSelection') return doc.speakOnSelection;
   if (path === 'showFrequentlyUsed') return doc.showFrequentlyUsed;
   if (path === 'hideRightSidebar') return doc.hideRightSidebar;
+  if (path === 'shareLocationWithCircle') return doc.shareLocationWithCircle;
   if (path === 'journeyDiary.allowViewSharedEntries') {
     return doc.journeyDiary?.allowViewSharedEntries;
   }
@@ -470,6 +486,7 @@ export function setRemoteSettingValue(
   else if (path === 'speakOnSelection') next.speakOnSelection = value;
   else if (path === 'showFrequentlyUsed') next.showFrequentlyUsed = value;
   else if (path === 'hideRightSidebar') next.hideRightSidebar = value;
+  else if (path === 'shareLocationWithCircle') next.shareLocationWithCircle = value;
   else if (path === 'journeyDiary.allowViewSharedEntries') {
     next.journeyDiary = { ...next.journeyDiary, allowViewSharedEntries: value };
   } else if (path.startsWith('featuresVisibility.')) {
@@ -597,6 +614,7 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
       dailyCheckIn: { enabled: true, quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS } },
       visibleAreas: { phrases: false, categories: false, emojis: false, unicode: true },
       contentFontSize: 'medium',
+      shareLocationWithCircle: false,
     };
   }
 
@@ -629,6 +647,7 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
       },
       visibleAreas: visibleAll,
       contentFontSize: 'medium',
+      shareLocationWithCircle: false,
     };
   }
 
@@ -657,6 +676,7 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
     dailyCheckIn: { enabled: true, quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS } },
     visibleAreas: visibleAll,
     contentFontSize: 'medium',
+    shareLocationWithCircle: false,
   };
 }
 

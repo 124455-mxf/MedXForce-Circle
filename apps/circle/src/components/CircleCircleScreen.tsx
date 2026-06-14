@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
-import { Loader2, Shield, Trash2, Undo2, Users } from 'lucide-react';
+import { Loader2, Megaphone, MessageCircle, Shield, Stethoscope, Trash2, Undo2, Users } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import {
   canDeleteCircleThreadPostForEveryone,
   canParticipateInCircleOpenThread,
@@ -59,6 +60,7 @@ import {
   getCirclePostLatestActivityAt,
   isCirclePostUnread,
   circlePostInboxViewsForThread,
+  partitionCirclePostInboxViews,
   type CirclePostInboxView,
 } from '../lib/circlePostInboxViews';
 import {
@@ -155,6 +157,33 @@ function circlePostInboxTabLabel(t: ReturnType<typeof useCircleT>, view: CircleP
       return t('circle.tabHidden');
     default:
       return t('circle.tabDiscussion');
+  }
+}
+
+function circlePostInboxTabIcon(view: CirclePostInboxView): LucideIcon | null {
+  switch (view) {
+    case 'announcements':
+      return Megaphone;
+    case 'visit_captures':
+      return Stethoscope;
+    case 'drop_ins':
+      return MessageCircle;
+    default:
+      return null;
+  }
+}
+
+function circlePostInboxTabIconClass(view: CirclePostInboxView, active: boolean): string {
+  if (!active) return 'text-slate-500';
+  switch (view) {
+    case 'announcements':
+      return 'text-violet-600';
+    case 'visit_captures':
+      return 'text-teal-600';
+    case 'drop_ins':
+      return 'text-blue-600';
+    default:
+      return 'text-slate-500';
   }
 }
 
@@ -260,6 +289,11 @@ export function CircleCircleScreen({
     () => circlePostInboxViewsForThread(activeThread, memberRole),
     [activeThread, memberRole],
   );
+  const { iconViews: inboxIconViews, textViews: inboxTextViews } = useMemo(
+    () => partitionCirclePostInboxViews(inboxViews),
+    [inboxViews],
+  );
+  const showInboxTabDivider = inboxIconViews.length > 0 && inboxTextViews.length > 0;
 
   const dropInFolderVariant = useMemo((): CirclePostFolderActionVariant | null => {
     if (inboxView !== 'drop_ins' || activeThread !== 'restricted' || !canInitiateDropIn) {
@@ -870,7 +904,41 @@ export function CircleCircleScreen({
             role="tablist"
             aria-label={t('circle.inboxTabBucketsAria')}
           >
-            {inboxViews.map((view) => (
+            {inboxIconViews.map((view) => {
+              const Icon = circlePostInboxTabIcon(view);
+              if (!Icon) return null;
+              const active = inboxView === view;
+              return (
+                <button
+                  key={view}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  aria-label={circlePostInboxTabLabel(t, view)}
+                  onClick={() => setInboxView(view)}
+                  className={circleTabButtonClass(
+                    active,
+                    'shrink-0 flex-none justify-center min-w-[2.125rem] px-2 py-2',
+                  )}
+                >
+                  <span className="relative inline-flex items-center justify-center pr-1 pt-0.5">
+                    <Icon
+                      size={16}
+                      className={circlePostInboxTabIconClass(view, active)}
+                      aria-hidden
+                    />
+                    <CircleFolderCountBadge {...inboxTabCounts[view]} placement="overlay" />
+                  </span>
+                </button>
+              );
+            })}
+            {showInboxTabDivider ? (
+              <span
+                className="w-px h-5 bg-slate-200/90 shrink-0 mx-0.5 self-center"
+                aria-hidden
+              />
+            ) : null}
+            {inboxTextViews.map((view) => (
               <button
                 key={view}
                 type="button"
