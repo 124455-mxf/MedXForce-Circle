@@ -16,11 +16,14 @@ import {
   ensureMemberCapabilitiesForUser,
   reconcileAcceptedMemberRolesForUser,
   isFirestoreQuotaError,
-  listCirclePatientsForUser,
+  listCirclePatientsAndProvisionsForUser,
+  pendingProvisionToCircleSummary,
   normalizeInviteEmail,
   type CirclePatientSummary,
 } from '@medxforce/shared';
 import { CircleMainShell } from './components/CircleMainShell';
+import { CircleAddPatientPanel } from './components/CircleAddPatientPanel';
+import { CirclePendingProvisionPanel } from './components/CirclePendingProvisionPanel';
 import { CircleProfileDrawer } from './components/CircleProfileDrawer';
 import { CircleStartupSequence } from './components/CircleStartupSequence';
 import { useCircleStartupSequence } from './hooks/useCircleStartupSequence';
@@ -69,7 +72,7 @@ export default function App() {
     const accepted = await acceptPendingCircleInvites(firebase.db, currentUser);
     await reconcileAcceptedMemberRolesForUser(firebase.db, currentUser.uid);
     await ensureMemberCapabilitiesForUser(firebase.db, currentUser.uid);
-    const list = await listCirclePatientsForUser(firebase.db, currentUser.uid);
+    const list = await listCirclePatientsAndProvisionsForUser(firebase.db, currentUser.uid);
     setPatients(list);
     return { list, accepted };
   };
@@ -154,7 +157,7 @@ export default function App() {
     if (!user) return;
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return;
-      void listCirclePatientsForUser(firebase.db, user.uid)
+      void listCirclePatientsAndProvisionsForUser(firebase.db, user.uid)
         .then(setPatients)
         .catch((err) => {
           console.warn('[CIRCLE] Could not refresh patients on focus:', err);
@@ -319,6 +322,18 @@ export default function App() {
             </div>
             {authError && <p className="text-sm text-red-600">{authError}</p>}
             <p className="text-sm text-slate-500 leading-relaxed">{t('patients.noInvitesYet')}</p>
+            <CircleAddPatientPanel
+              user={user}
+              db={firebase.db}
+              onCreated={(provision) => {
+                setPatients((prev) => [
+                  ...prev,
+                  pendingProvisionToCircleSummary(provision),
+                ]);
+                setSelectedPatientId(provision.provisionId);
+                setAuthError(null);
+              }}
+            />
             <button
               type="button"
               onClick={() => signOut(firebase.auth)}
@@ -328,6 +343,26 @@ export default function App() {
               {t('common.signOut')}
             </button>
           </div>
+        </>
+      ) : selectedPatientForSettings?.isPendingProvision ? (
+        <>
+          <div className="flex items-center gap-3 shrink-0 mb-4">
+            <div className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shrink-0">
+              <MedXForceBrandLogo />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl font-bold text-slate-800">{t('auth.title')}</h1>
+              <p className="text-xs text-slate-500 truncate">{selectedPatientForSettings.displayName}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => signOut(firebase.auth)}
+              className="text-sm font-semibold text-slate-500 hover:text-blue-600"
+            >
+              {t('common.signOut')}
+            </button>
+          </div>
+          <CirclePendingProvisionPanel patient={selectedPatientForSettings} />
         </>
       ) : (
         <>
@@ -357,6 +392,10 @@ export default function App() {
             onLeftCircle={async () => {
               if (!user) return;
               await refreshPatients(user);
+            }}
+            onProvisionCreated={(provision) => {
+              setPatients((prev) => [...prev, pendingProvisionToCircleSummary(provision)]);
+              setSelectedPatientId(provision.provisionId);
             }}
           />
         </>

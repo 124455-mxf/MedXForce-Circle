@@ -40,7 +40,9 @@ import {
   type CirclePatientSummary,
   type CircleUserProfile,
   canInviteMembers,
+  type PatientProvisionRecord,
 } from '@medxforce/shared';
+import { CircleAddPatientPanel } from './CircleAddPatientPanel';
 import { cn } from '../lib/utils';
 import { usePatientOnlinePresence } from '../hooks/usePatientOnlinePresence';
 import { useCircleOwnManagedContact } from '../hooks/useCircleOwnManagedContact';
@@ -61,6 +63,7 @@ interface CircleProfileDrawerProps {
   onSelectPatient: (patient: CirclePatientSummary) => void;
   onSignOut: () => void;
   onLeftCircle: () => void | Promise<void>;
+  onProvisionCreated?: (provision: PatientProvisionRecord) => void;
 }
 
 export function CircleProfileDrawer({
@@ -74,6 +77,7 @@ export function CircleProfileDrawer({
   onSelectPatient,
   onSignOut,
   onLeftCircle,
+  onProvisionCreated,
 }: CircleProfileDrawerProps) {
   const t = useCircleT();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -425,7 +429,9 @@ export function CircleProfileDrawer({
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-slate-800 truncate">{row.displayName}</p>
                         <p className="text-xs text-slate-500">
-                          {translateCircleMemberAccessLabel(t, row.role, row.proxyTier)}
+                          {row.isPendingProvision
+                            ? t('provision.waitingForIpad')
+                            : translateCircleMemberAccessLabel(t, row.role, row.proxyTier)}
                         </p>
                       </div>
                       {isActive && <Check size={20} className="text-blue-600 shrink-0" />}
@@ -434,6 +440,19 @@ export function CircleProfileDrawer({
                 );
               })}
             </ul>
+            {onProvisionCreated && (
+              <div className="pt-2 px-2">
+                <CircleAddPatientPanel
+                  user={user}
+                  db={db}
+                  compact
+                  onCreated={(provision) => {
+                    onProvisionCreated(provision);
+                    setDrawerView('settings');
+                  }}
+                />
+              </div>
+            )}
           </div>
         )}
 

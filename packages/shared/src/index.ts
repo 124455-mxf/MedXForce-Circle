@@ -1,3 +1,4 @@
+export * from './patientProvisions';
 export * from './patientPermissions';
 export * from './galleryMessages';
 export * from './circleInvites';

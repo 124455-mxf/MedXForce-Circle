@@ -16,6 +16,7 @@ import {
   type PatientCapabilities,
 } from './patientPermissions';
 import { resolveCircleAccessForInviteEmail } from './circleMemberRoles';
+import { listPendingProvisionsForProxy, pendingProvisionToCircleSummary } from './patientProvisions';
 
 export interface CirclePatientSummary {
   patientId: string;
@@ -26,6 +27,11 @@ export interface CirclePatientSummary {
   capabilities: PatientCapabilities;
   /** Patient profile photo from the patient app (Firestore patients/{id}.photoUrl). */
   photoUrl?: string;
+  /** Proxy-led setup not yet linked on a patient iPad. */
+  isPendingProvision?: boolean;
+  provisionStatus?: 'pending' | 'claimed';
+  /** Shown to the proxy who created the pending provision (no SMS/email needed). */
+  setupCode?: string;
 }
 
 /** Patients this circle user may access (accepted invites + active member doc). */
@@ -102,4 +108,18 @@ export async function listCirclePatientsForUser(
   }
 
   return summaries;
+}
+
+/** Active patients plus proxy-created provisions waiting for iPad setup. */
+export async function listCirclePatientsAndProvisionsForUser(
+  db: Firestore,
+  uid: string,
+): Promise<CirclePatientSummary[]> {
+  const active = await listCirclePatientsForUser(db, uid);
+  const pending = await listPendingProvisionsForProxy(db, uid);
+  const activeIds = new Set(active.map((p) => p.patientId));
+  const pendingSummaries = pending
+    .filter((p) => !activeIds.has(p.provisionId))
+    .map(pendingProvisionToCircleSummary);
+  return [...active, ...pendingSummaries];
 }

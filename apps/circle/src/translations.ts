@@ -59,6 +59,12 @@ import {
   visitCaptureScreenPolish,
   visitCaptureScreenSpanish,
 } from './translations/visitCaptureScreen';
+import {
+  provisionScreenEnglish,
+  provisionScreenGerman,
+  provisionScreenPolish,
+  provisionScreenSpanish,
+} from './translations/provisionScreen';
 
 type TranslationTree = Record<string, string | TranslationTree>;
 
@@ -110,6 +116,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     visitCapture: visitCaptureScreenEnglish,
     analytics: analyticsScreenEnglish,
     remoteSettings: remoteSettingsScreenEnglish,
+    provision: provisionScreenEnglish,
     common: {
       refresh: 'Refresh',
       refreshing: 'Refreshing…',
@@ -167,6 +174,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     visitCapture: visitCaptureScreenGerman,
     analytics: analyticsScreenGerman,
     remoteSettings: remoteSettingsScreenGerman,
+    provision: provisionScreenGerman,
     common: {
       refresh: 'Aktualisieren',
       refreshing: 'Aktualisiere…',
@@ -224,6 +232,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     visitCapture: visitCaptureScreenSpanish,
     analytics: analyticsScreenSpanish,
     remoteSettings: remoteSettingsScreenSpanish,
+    provision: provisionScreenSpanish,
     common: {
       refresh: 'Actualizar',
       refreshing: 'Actualizando…',
@@ -281,6 +290,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     visitCapture: visitCaptureScreenPolish,
     analytics: analyticsScreenPolish,
     remoteSettings: remoteSettingsScreenPolish,
+    provision: provisionScreenPolish,
     common: {
       refresh: 'Odśwież',
       refreshing: 'Odświeżanie…',
