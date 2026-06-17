@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import type { Firestore } from 'firebase/firestore';
+import { collection, doc, onSnapshot, type Firestore } from 'firebase/firestore';
 import {
   listCircleInvitesForPatient,
   listPatientManagedContacts,
   normalizeInviteEmail,
+  parseMemberContactProfile,
+  parsePatientManagedContacts,
 } from '@medxforce/shared';
 
 export type CircleMemberDisplayNameMaps = {
@@ -11,7 +13,7 @@ export type CircleMemberDisplayNameMaps = {
   byEmail: Record<string, string>;
 };
 
-/** Names the patient configured for each Circle member (contacts + accepted invites). */
+/** Names for Circle members: patient-managed contact, overridden by member self-service profile. */
 export function useCirclePatientMemberDisplayNames(
   db: Firestore,
   patientId: string | undefined,
@@ -25,46 +27,88 @@ export function useCirclePatientMemberDisplayNames(
     }
 
     let active = true;
-    const load = async () => {
+    let latestContacts: Awaited<ReturnType<typeof listPatientManagedContacts>> = [];
+    let latestInvites: Awaited<ReturnType<typeof listCircleInvitesForPatient>> = [];
+    let profileByEmail = new Map<string, string>();
+
+    const rebuild = () => {
+      if (!active) return;
+
+      const nameByEmail = new Map(
+        latestContacts.map((contact) => [
+          normalizeInviteEmail(contact.email),
+          contact.name?.trim() || '',
+        ]),
+      );
+
+      for (const [email, name] of profileByEmail) {
+        if (name) nameByEmail.set(email, name);
+      }
+
+      const byUid: Record<string, string> = {};
+      const byEmail: Record<string, string> = {};
+
+      for (const invite of latestInvites) {
+        if (invite.status !== 'accepted' || !invite.acceptedByUid) continue;
+        const uid = invite.acceptedByUid.trim();
+        const email = normalizeInviteEmail(invite.invitedEmail);
+        const fromContact = email ? nameByEmail.get(email) : undefined;
+        const name = (fromContact || invite.displayName || '').trim();
+        if (!name) continue;
+        byUid[uid] = name;
+        if (email) byEmail[email] = name;
+      }
+
+      setMaps({ byUid, byEmail });
+    };
+
+    const loadStatic = async () => {
       try {
         const [invites, contacts] = await Promise.all([
           listCircleInvitesForPatient(db, patientId),
           listPatientManagedContacts(db, patientId),
         ]);
         if (!active) return;
-
-        const nameByEmail = new Map(
-          contacts.map((contact) => [
-            normalizeInviteEmail(contact.email),
-            contact.name?.trim() || '',
-          ]),
-        );
-        const byUid: Record<string, string> = {};
-        const byEmail: Record<string, string> = {};
-
-        for (const invite of invites) {
-          if (invite.status !== 'accepted' || !invite.acceptedByUid) continue;
-          const uid = invite.acceptedByUid.trim();
-          const email = normalizeInviteEmail(invite.invitedEmail);
-          const fromContact = email ? nameByEmail.get(email) : undefined;
-          const name = (fromContact || invite.displayName || '').trim();
-          if (!name) continue;
-          byUid[uid] = name;
-          if (email) byEmail[email] = name;
-        }
-
-        setMaps({ byUid, byEmail });
+        latestInvites = invites;
+        latestContacts = contacts;
+        rebuild();
       } catch (err) {
         console.warn('[useCirclePatientMemberDisplayNames] load failed', err);
         if (active) setMaps({ byUid: {}, byEmail: {} });
       }
     };
 
-    void load();
-    const interval = window.setInterval(() => void load(), 60_000);
+    void loadStatic();
+
+    const unsubPatient = onSnapshot(doc(db, 'patients', patientId), (snap) => {
+      if (!snap.exists()) return;
+      latestContacts = parsePatientManagedContacts(snap.data() as Record<string, unknown>);
+      rebuild();
+    });
+
+    const unsubMembers = onSnapshot(
+      collection(db, 'patients', patientId, 'members'),
+      (snap) => {
+        const next = new Map<string, string>();
+        snap.forEach((memberDoc) => {
+          const data = memberDoc.data() as Record<string, unknown>;
+          const email = normalizeInviteEmail(String(data.invitedEmail ?? ''));
+          if (!email) return;
+          const profile = parseMemberContactProfile(data);
+          if (profile?.name) next.set(email, profile.name);
+        });
+        profileByEmail = next;
+        rebuild();
+      },
+      (err) => {
+        console.warn('[useCirclePatientMemberDisplayNames] members listener', err);
+      },
+    );
+
     return () => {
       active = false;
-      window.clearInterval(interval);
+      unsubPatient();
+      unsubMembers();
     };
   }, [db, patientId]);
 

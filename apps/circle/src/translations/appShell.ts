@@ -86,6 +86,13 @@ export const appShellEnglish = {
     myContact: 'My contact details',
     switchPatient: 'Switch patient',
     switchPatientHint: 'Choose who you are supporting in MedXForce Circle.',
+    startupPatient: 'Opens on startup',
+    setStartupPatient: 'Set {{name}} as startup patient',
+    setStartupPatientHint: 'Tap the home icon to choose which patient Circle opens when you sign in.',
+    otherPatientNeedsAttention: '{{count}} unread on another patient',
+    otherPatientsNeedAttention: '{{count}} unread on other patients',
+    patientUnreadBadge: '{{count}} unread',
+    patientUrgentAttention: 'Urgent alert — tap to view',
     careRelationshipHint: 'Role and access for your loved one',
     careRelationshipHintNamed: 'Your role for {{name}}',
     userManagementHint: 'Circle access for {{name}}',
@@ -205,6 +212,19 @@ export const appShellEnglish = {
     oldestFirst: 'Oldest first',
     newestFirst: 'Newest first',
   },
+  onboarding: {
+    welcomeEyebrow: 'Welcome',
+    welcomeHeadline: 'Welcome to Circle for {{patient}}',
+    welcomeBodyDashboard:
+      'You joined the care circle for {{patient}} as {{role}}. Here is how to get started.',
+    welcomeBodyCircle:
+      'You are part of the care circle for {{patient}} as {{role}}. This is where everyone stays connected.',
+    tipDashboard: 'Home shows patient activity, messages, and reminders.',
+    tipCircle: 'Circle conversation is where the whole team shares updates.',
+    tipRole: 'Your role is {{role}} — permissions match what you were invited to do.',
+    learnMore: 'Watch onboarding & read docs',
+    dismissWelcome: 'Dismiss welcome',
+  },
   dashboard: {
     recordVisit: 'Record visit',
     recordVisitDesc: 'Capture audio and notes from a doctor visit on your device.',
@@ -299,6 +319,7 @@ export const appShellEnglish = {
     localeLocalTime: 'Local time',
     localeWeather: 'Weather',
     localeUnavailable: 'Weather unavailable',
+    localeLocationUnknown: 'Location not set',
     localeSameTimeAsYou: 'Same time as you',
     localeTimeAheadOfYou: '{{amount}} ahead of you',
     localeTimeBehindYou: '{{amount}} behind you',
@@ -450,6 +471,7 @@ export const appShellEnglish = {
       previewDiaryHeadline: 'Write a journal moment',
       previewDiaryBody: 'Sample participation nudge — tap to open Diary.',
       dismissReminder: 'Dismiss for 4 weeks',
+      dismissCareReminder: 'Dismiss for 7 days',
       careAssessmentHeadline: 'Time for a baseline assessment?',
       careAssessmentBody:
         'It has been two weeks since the first patient message — no assessment has been logged yet. Tap to review assessments.',
@@ -458,7 +480,25 @@ export const appShellEnglish = {
         'Sample care-team nudge — tap to open Assessments analytics.',
       careProfileHeadline: "{{name}}'s profile needs attention",
       careProfileBody:
-        'Key user profile details are still missing. Tap to open User Profile and fill in what you can.',
+        'Key profile details are still missing. Tap to open Admin and fill them in as proxy, or wait for the patient to save their profile on the iPad.',
+      careProfileBodyCaregiver:
+        'Key profile details are still missing. Ask the patient\'s proxy to complete the profile in Admin, or wait for the patient to save their profile on the iPad.',
+      careTeamCoverageHeadline: 'Strengthen the care team',
+      careTeamCoverageBodyBothProxy:
+        'No backup proxy and fewer than two caregivers on the team. Tap Admin → User management to invite a backup proxy and another caregiver.',
+      careTeamCoverageBodyBothCaregiver:
+        'No backup proxy and fewer than two caregivers on the team. Ask the patient\'s proxy to add people in Admin → User management.',
+      careTeamCoverageBodyBackupProxy:
+        'No backup proxy is on the team yet. Tap Admin → User management to invite one.',
+      careTeamCoverageBodyBackupCaregiver:
+        'No backup proxy is on the team yet. Ask the patient\'s proxy to add one in Admin → User management.',
+      careTeamCoverageBodyCaregiversProxy:
+        'Fewer than two caregivers are on the team. Tap Admin → User management to invite another caregiver.',
+      careTeamCoverageBodyCaregiversCaregiver:
+        'Fewer than two caregivers are on the team. Ask the patient\'s proxy to invite another caregiver.',
+      previewCareTeamCoverageHeadline: 'Strengthen the care team',
+      previewCareTeamCoverageBody:
+        'Sample care-team nudge — tap to open User management when available.',
       previewCareProfileHeadline: "{{name}}'s profile needs attention",
       previewCareProfileBody:
         'Sample care-team nudge — tap to open User Profile when available.',
@@ -704,6 +744,13 @@ export const appShellGerman = {
     myContact: 'Meine Kontaktdaten',
     switchPatient: 'Patient wechseln',
     switchPatientHint: 'Wählen Sie, wen Sie in MedXForce Circle unterstützen.',
+    startupPatient: 'Beim Start öffnen',
+    setStartupPatient: '{{name}} als Start-Patient festlegen',
+    setStartupPatientHint: 'Tippen Sie auf das Haus-Symbol, um festzulegen, welcher Patient beim Anmelden geöffnet wird.',
+    otherPatientNeedsAttention: '{{count}} ungelesen bei einem anderen Patienten',
+    otherPatientsNeedAttention: '{{count}} ungelesen bei anderen Patienten',
+    patientUnreadBadge: '{{count}} ungelesen',
+    patientUrgentAttention: 'Dringender Alarm — tippen zum Ansehen',
     careRelationshipHint: 'Rolle und Zugriff für Ihren Angehörigen',
     careRelationshipHintNamed: 'Ihre Rolle für {{name}}',
     userManagementHint: 'Circle-Zugang für {{name}}',
@@ -827,6 +874,19 @@ export const appShellGerman = {
     oldestFirst: 'Älteste zuerst',
     newestFirst: 'Neueste zuerst',
   },
+  onboarding: {
+    welcomeEyebrow: 'Willkommen',
+    welcomeHeadline: 'Willkommen bei Circle für {{patient}}',
+    welcomeBodyDashboard:
+      'Sie sind dem Betreuungskreis für {{patient}} als {{role}} beigetreten. So starten Sie.',
+    welcomeBodyCircle:
+      'Sie gehören zum Betreuungskreis für {{patient}} als {{role}}. Hier bleibt das Team verbunden.',
+    tipDashboard: 'Start zeigt Patientenaktivität, Nachrichten und Erinnerungen.',
+    tipCircle: 'Im Circle-Gespräch teilt das Team Updates mit allen.',
+    tipRole: 'Ihre Rolle: {{role}} — Berechtigungen entsprechen Ihrer Einladung.',
+    learnMore: 'Onboarding ansehen & Dokumentation',
+    dismissWelcome: 'Willkommen schließen',
+  },
   dashboard: {
     recordVisit: 'Besuch aufzeichnen',
     recordVisitDesc: 'Audio und Notizen vom Arztbesuch auf Ihrem Gerät erfassen.',
@@ -921,6 +981,7 @@ export const appShellGerman = {
     localeLocalTime: 'Ortszeit',
     localeWeather: 'Wetter',
     localeUnavailable: 'Wetter nicht verfügbar',
+    localeLocationUnknown: 'Standort nicht festgelegt',
     localeSameTimeAsYou: 'Gleiche Zeit wie bei Ihnen',
     localeTimeAheadOfYou: '{{amount}} voraus',
     localeTimeBehindYou: '{{amount}} zurück',
@@ -1072,6 +1133,7 @@ export const appShellGerman = {
       previewDiaryHeadline: 'Schreib einen Tagebuch-Moment',
       previewDiaryBody: 'Beispiel-Erinnerung — tippen für Tagebuch.',
       dismissReminder: '4 Wochen ausblenden',
+      dismissCareReminder: '7 Tage ausblenden',
       careAssessmentHeadline: 'Zeit für eine Basis-Beurteilung?',
       careAssessmentBody:
         'Seit der ersten Patientennachricht sind zwei Wochen vergangen — noch keine Beurteilung erfasst. Tippen für Beurteilungen.',
@@ -1080,7 +1142,25 @@ export const appShellGerman = {
         'Beispiel-Betreuungs-Erinnerung — tippen für Beurteilungs-Analysen.',
       careProfileHeadline: 'Profil von {{name}} braucht Aufmerksamkeit',
       careProfileBody:
-        'Wichtige Profildaten fehlen noch. Tippen für Benutzerprofil und ergänzen Sie, was Sie können.',
+        'Wichtige Profildaten fehlen noch. Tippen Sie auf Admin und ergänzen Sie als Stellvertreter, oder warten Sie, bis der Patient das Profil auf dem iPad speichert.',
+      careProfileBodyCaregiver:
+        'Wichtige Profildaten fehlen noch. Bitten Sie den Stellvertreter des Patienten, das Profil in Admin zu vervollständigen, oder warten Sie, bis der Patient das Profil auf dem iPad speichert.',
+      careTeamCoverageHeadline: 'Betreuungsteam stärken',
+      careTeamCoverageBodyBothProxy:
+        'Kein Backup-Stellvertreter und nur ein Betreuer im Team. Tippen Sie auf Admin → Benutzerverwaltung, um einen Backup-Stellvertreter und einen weiteren Betreuer einzuladen.',
+      careTeamCoverageBodyBothCaregiver:
+        'Kein Backup-Stellvertreter und nur ein Betreuer im Team. Bitten Sie den Stellvertreter des Patienten, Personen in Admin → Benutzerverwaltung hinzuzufügen.',
+      careTeamCoverageBodyBackupProxy:
+        'Noch kein Backup-Stellvertreter im Team. Tippen Sie auf Admin → Benutzerverwaltung, um einen einzuladen.',
+      careTeamCoverageBodyBackupCaregiver:
+        'Noch kein Backup-Stellvertreter im Team. Bitten Sie den Stellvertreter des Patienten, einen in Admin → Benutzerverwaltung hinzuzufügen.',
+      careTeamCoverageBodyCaregiversProxy:
+        'Nur ein Betreuer im Team. Tippen Sie auf Admin → Benutzerverwaltung, um einen weiteren Betreuer einzuladen.',
+      careTeamCoverageBodyCaregiversCaregiver:
+        'Nur ein Betreuer im Team. Bitten Sie den Stellvertreter des Patienten, einen weiteren Betreuer einzuladen.',
+      previewCareTeamCoverageHeadline: 'Betreuungsteam stärken',
+      previewCareTeamCoverageBody:
+        'Beispiel-Betreuungs-Erinnerung — tippen für Benutzerverwaltung, wenn verfügbar.',
       previewCareProfileHeadline: 'Profil von {{name}} braucht Aufmerksamkeit',
       previewCareProfileBody:
         'Beispiel-Betreuungs-Erinnerung — tippen für Benutzerprofil, wenn verfügbar.',
@@ -1326,6 +1406,13 @@ export const appShellSpanish = {
     myContact: 'Mis datos de contacto',
     switchPatient: 'Cambiar paciente',
     switchPatientHint: 'Elija a quién apoya en MedXForce Circle.',
+    startupPatient: 'Se abre al iniciar',
+    setStartupPatient: 'Establecer a {{name}} como paciente de inicio',
+    setStartupPatientHint: 'Toque el icono de inicio para elegir qué paciente se abre al iniciar sesión.',
+    otherPatientNeedsAttention: '{{count}} sin leer en otro paciente',
+    otherPatientsNeedAttention: '{{count}} sin leer en otros pacientes',
+    patientUnreadBadge: '{{count}} sin leer',
+    patientUrgentAttention: 'Alerta urgente — toque para ver',
     careRelationshipHint: 'Rol y acceso para su ser querido',
     careRelationshipHintNamed: 'Su rol para {{name}}',
     userManagementHint: 'Acceso Circle para {{name}}',
@@ -1449,6 +1536,19 @@ export const appShellSpanish = {
     oldestFirst: 'Más antiguas primero',
     newestFirst: 'Más recientes primero',
   },
+  onboarding: {
+    welcomeEyebrow: 'Bienvenido',
+    welcomeHeadline: 'Bienvenido a Circle para {{patient}}',
+    welcomeBodyDashboard:
+      'Se unió al círculo de cuidado de {{patient}} como {{role}}. Así puede empezar.',
+    welcomeBodyCircle:
+      'Forma parte del círculo de cuidado de {{patient}} como {{role}}. Aquí el equipo se mantiene conectado.',
+    tipDashboard: 'Inicio muestra actividad del paciente, mensajes y recordatorios.',
+    tipCircle: 'La conversación del Circle es donde el equipo comparte novedades.',
+    tipRole: 'Su rol es {{role}} — los permisos coinciden con su invitación.',
+    learnMore: 'Ver onboarding y documentación',
+    dismissWelcome: 'Cerrar bienvenida',
+  },
   dashboard: {
     recordVisit: 'Registrar visita',
     recordVisitDesc: 'Capture audio y notas de una visita médica en su dispositivo.',
@@ -1543,6 +1643,7 @@ export const appShellSpanish = {
     localeLocalTime: 'Hora local',
     localeWeather: 'Clima',
     localeUnavailable: 'Clima no disponible',
+    localeLocationUnknown: 'Ubicación no establecida',
     localeSameTimeAsYou: 'Misma hora que usted',
     localeTimeAheadOfYou: '{{amount}} por delante',
     localeTimeBehindYou: '{{amount}} por detrás',
@@ -1694,6 +1795,7 @@ export const appShellSpanish = {
       previewDiaryHeadline: 'Escribe un momento en el diario',
       previewDiaryBody: 'Recordatorio de ejemplo — toca para Diario.',
       dismissReminder: 'Ocultar 4 semanas',
+      dismissCareReminder: 'Ocultar 7 días',
       careAssessmentHeadline: '¿Hora de una evaluación inicial?',
       careAssessmentBody:
         'Han pasado dos semanas desde el primer mensaje del paciente — aún no hay evaluación registrada. Toca para revisar evaluaciones.',
@@ -1702,7 +1804,25 @@ export const appShellSpanish = {
         'Recordatorio de ejemplo del equipo — toca para analíticas de evaluaciones.',
       careProfileHeadline: 'El perfil de {{name}} necesita atención',
       careProfileBody:
-        'Faltan datos clave del perfil de usuario. Toca para abrir Perfil de usuario y completar lo que puedas.',
+        'Faltan datos clave del perfil. Toca para abrir Admin y completarlos como apoderado, o espera a que el paciente guarde su perfil en el iPad.',
+      careProfileBodyCaregiver:
+        'Faltan datos clave del perfil. Pide al apoderado del paciente que complete el perfil en Admin, o espera a que el paciente lo guarde en el iPad.',
+      careTeamCoverageHeadline: 'Fortalecer el equipo de cuidado',
+      careTeamCoverageBodyBothProxy:
+        'No hay apoderado de respaldo y solo un cuidador en el equipo. Toca Admin → Gestión de usuarios para invitar un apoderado de respaldo y otro cuidador.',
+      careTeamCoverageBodyBothCaregiver:
+        'No hay apoderado de respaldo y solo un cuidador en el equipo. Pide al apoderado del paciente que añada personas en Admin → Gestión de usuarios.',
+      careTeamCoverageBodyBackupProxy:
+        'Aún no hay apoderado de respaldo en el equipo. Toca Admin → Gestión de usuarios para invitar uno.',
+      careTeamCoverageBodyBackupCaregiver:
+        'Aún no hay apoderado de respaldo en el equipo. Pide al apoderado del paciente que añada uno en Admin → Gestión de usuarios.',
+      careTeamCoverageBodyCaregiversProxy:
+        'Solo hay un cuidador en el equipo. Toca Admin → Gestión de usuarios para invitar otro cuidador.',
+      careTeamCoverageBodyCaregiversCaregiver:
+        'Solo hay un cuidador en el equipo. Pide al apoderado del paciente que invite otro cuidador.',
+      previewCareTeamCoverageHeadline: 'Fortalecer el equipo de cuidado',
+      previewCareTeamCoverageBody:
+        'Recordatorio de ejemplo del equipo — toca para Gestión de usuarios cuando esté disponible.',
       previewCareProfileHeadline: 'El perfil de {{name}} necesita atención',
       previewCareProfileBody:
         'Recordatorio de ejemplo del equipo — toca para Perfil de usuario cuando esté disponible.',
@@ -1948,6 +2068,13 @@ export const appShellPolish = {
     myContact: 'Moje dane kontaktowe',
     switchPatient: 'Zmień pacjenta',
     switchPatientHint: 'Wybierz, kogo wspierasz w MedXForce Circle.',
+    startupPatient: 'Otwiera się przy starcie',
+    setStartupPatient: 'Ustaw {{name}} jako pacjenta startowego',
+    setStartupPatientHint: 'Dotknij ikony domu, aby wybrać, który pacjent otwiera się po zalogowaniu.',
+    otherPatientNeedsAttention: '{{count}} nieprzeczytanych u innego pacjenta',
+    otherPatientsNeedAttention: '{{count}} nieprzeczytanych u innych pacjentów',
+    patientUnreadBadge: '{{count}} nieprzeczytanych',
+    patientUrgentAttention: 'Pilny alert — dotknij, aby zobaczyć',
     careRelationshipHint: 'Rola i dostęp dla bliskiej osoby',
     careRelationshipHintNamed: 'Twoja rola dla {{name}}',
     userManagementHint: 'Dostęp Circle dla {{name}}',
@@ -2071,6 +2198,19 @@ export const appShellPolish = {
     oldestFirst: 'Najstarsze najpierw',
     newestFirst: 'Najnowsze najpierw',
   },
+  onboarding: {
+    welcomeEyebrow: 'Witamy',
+    welcomeHeadline: 'Witamy w Circle dla {{patient}}',
+    welcomeBodyDashboard:
+      'Dołączyłeś do kręgu opieki dla {{patient}} jako {{role}}. Oto jak zacząć.',
+    welcomeBodyCircle:
+      'Jesteś częścią kręgu opieki dla {{patient}} jako {{role}}. Tutaj cały zespół pozostaje w kontakcie.',
+    tipDashboard: 'Start pokazuje aktywność pacjenta, wiadomości i przypomnienia.',
+    tipCircle: 'Rozmowa w Circle to miejsce, gdzie zespół dzieli się aktualnościami.',
+    tipRole: 'Twoja rola: {{role}} — uprawnienia odpowiadają zaproszeniu.',
+    learnMore: 'Obejrzyj onboarding i dokumentację',
+    dismissWelcome: 'Zamknij powitanie',
+  },
   dashboard: {
     recordVisit: 'Nagraj wizytę',
     recordVisitDesc: 'Nagraj audio i notatki z wizyty u lekarza na swoim urządzeniu.',
@@ -2165,6 +2305,7 @@ export const appShellPolish = {
     localeLocalTime: 'Czas lokalny',
     localeWeather: 'Pogoda',
     localeUnavailable: 'Pogoda niedostępna',
+    localeLocationUnknown: 'Lokalizacja nie ustawiona',
     localeSameTimeAsYou: 'Ten sam czas co u Ciebie',
     localeTimeAheadOfYou: '{{amount}} do przodu',
     localeTimeBehindYou: '{{amount}} do tyłu',
@@ -2316,6 +2457,7 @@ export const appShellPolish = {
       previewDiaryHeadline: 'Zapisz moment w dzienniku',
       previewDiaryBody: 'Przykładowe przypomnienie — dotknij Dziennik.',
       dismissReminder: 'Ukryj na 4 tygodnie',
+      dismissCareReminder: 'Ukryj na 7 dni',
       careAssessmentHeadline: 'Czas na ocenę wyjściową?',
       careAssessmentBody:
         'Minęły dwa tygodnie od pierwszej wiadomości pacjenta — nie zarejestrowano jeszcze oceny. Dotknij, aby przejrzeć oceny.',
@@ -2324,7 +2466,25 @@ export const appShellPolish = {
         'Przykładowe przypomnienie opieki — dotknij analityki ocen.',
       careProfileHeadline: 'Profil {{name}} wymaga uwagi',
       careProfileBody:
-        'Brakuje kluczowych danych profilu użytkownika. Dotknij Profil użytkownika i uzupełnij, co możesz.',
+        'Brakuje kluczowych danych profilu. Dotknij Admin i uzupełnij je jako pełnomocnik, lub poczekaj, aż pacjent zapisze profil na iPadzie.',
+      careProfileBodyCaregiver:
+        'Brakuje kluczowych danych profilu. Poproś pełnomocnika pacjenta o uzupełnienie profilu w Admin lub poczekaj, aż pacjent zapisze profil na iPadzie.',
+      careTeamCoverageHeadline: 'Wzmocnij zespół opieki',
+      careTeamCoverageBodyBothProxy:
+        'Brak zapasowego pełnomocnika i tylko jeden opiekun w zespole. Dotknij Admin → Zarządzanie użytkownikami, aby zaprosić zapasowego pełnomocnika i kolejnego opiekuna.',
+      careTeamCoverageBodyBothCaregiver:
+        'Brak zapasowego pełnomocnika i tylko jeden opiekun w zespole. Poproś pełnomocnika pacjenta o dodanie osób w Admin → Zarządzanie użytkownikami.',
+      careTeamCoverageBodyBackupProxy:
+        'W zespole nie ma jeszcze zapasowego pełnomocnika. Dotknij Admin → Zarządzanie użytkownikami, aby go zaprosić.',
+      careTeamCoverageBodyBackupCaregiver:
+        'W zespole nie ma jeszcze zapasowego pełnomocnika. Poproś pełnomocnika pacjenta o dodanie go w Admin → Zarządzanie użytkownikami.',
+      careTeamCoverageBodyCaregiversProxy:
+        'W zespole jest tylko jeden opiekun. Dotknij Admin → Zarządzanie użytkownikami, aby zaprosić kolejnego opiekuna.',
+      careTeamCoverageBodyCaregiversCaregiver:
+        'W zespole jest tylko jeden opiekun. Poproś pełnomocnika pacjenta o zaproszenie kolejnego opiekuna.',
+      previewCareTeamCoverageHeadline: 'Wzmocnij zespół opieki',
+      previewCareTeamCoverageBody:
+        'Przykładowe przypomnienie opieki — dotknij Zarządzanie użytkownikami, gdy dostępne.',
       previewCareProfileHeadline: 'Profil {{name}} wymaga uwagi',
       previewCareProfileBody:
         'Przykładowe przypomnienie opieki — dotknij Profil użytkownika, gdy dostępny.',

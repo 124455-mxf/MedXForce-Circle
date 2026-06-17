@@ -89,6 +89,8 @@ import {
   circleUrgencyLeftAccentClass,
   circleUrgencyStatusBadgeClass,
 } from '../lib/circleUrgencyStyles';
+import { useCircleMemberOnboarding } from '../hooks/useCircleMemberOnboarding';
+import { CircleOnboardingWelcomeCard } from './CircleOnboardingWelcomeCard';
 
 interface CircleCircleScreenProps {
   user: User;
@@ -225,6 +227,12 @@ export function CircleCircleScreen({
   const canRestricted = canSeeCircleRestrictedThread(memberRole);
   const canPostAnnouncement = canPostCircleAnnouncement(memberRole);
   const compactChrome = useCircleCompactChrome();
+  const onboardingEnabled = patient.isPendingProvision !== true;
+  const {
+    showWelcome: showOnboardingWelcome,
+    dismissWelcome,
+    dismissing: onboardingDismissing,
+  } = useCircleMemberOnboarding(db, patient.patientId, user.uid, onboardingEnabled);
 
   const [activeThread, setActiveThread] = useState<CircleMemberThreadKind>('open');
   const [inboxView, setInboxView] = useState<CirclePostInboxView>('discussion');
@@ -284,6 +292,9 @@ export function CircleCircleScreen({
     threadEnabled,
     user.uid,
   );
+
+  const showCircleOnboarding =
+    showOnboardingWelcome && activeThread === 'open' && inboxView === 'discussion';
 
   const inboxViews = useMemo(
     () => circlePostInboxViewsForThread(activeThread, memberRole),
@@ -980,6 +991,17 @@ export function CircleCircleScreen({
               {error || sendError || actionError}
             </p>
           )}
+
+          {showCircleOnboarding ? (
+            <div className="mb-3">
+              <CircleOnboardingWelcomeCard
+                patient={patient}
+                variant="circle"
+                onDismiss={() => void dismissWelcome()}
+                dismissing={onboardingDismissing}
+              />
+            </div>
+          ) : null}
 
           {loading ? (
             <div className="py-12 flex justify-center text-slate-400 [@media(max-height:740px)]:py-8">

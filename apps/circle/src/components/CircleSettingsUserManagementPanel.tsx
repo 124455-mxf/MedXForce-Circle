@@ -21,16 +21,27 @@ import {
   previewCircleAccessRevoke,
   previewManagedContactDeleteInviteChange,
   previewManagedContactInviteChange,
+  previewProvisionCircleAccessRevoke,
+  previewProvisionManagedContactDeleteInviteChange,
+  previewProvisionManagedContactInviteChange,
   reconcileAcceptedMemberRolesForUser,
   revokeCircleInviteByEmail,
+  revokeProvisionDraftInviteByEmail,
   saveCircleUserProfile,
   upsertPatientManagedContact,
+  upsertProvisionManagedContact,
+  deleteProvisionManagedContact,
+  listProvisionDraftInvites,
+  listProvisionManagedContacts,
   type CircleContactKind,
   type CircleInviteListItem,
   type CircleInvitePreviewItem,
+  mergeContactWithMemberContactProfile,
   mergeContactWithMemberNotifyPreferences,
+  parseMemberContactProfile,
   parseMemberNotifyPreferences,
   type CircleManagedContact,
+  type CircleMemberContactProfile,
   type CircleMemberNotifyPreferences,
   type CirclePatientSummary,
 } from '@medxforce/shared';
@@ -87,13 +98,18 @@ function contactForEditorDisplay(
   contact: CircleManagedContact,
   members: CircleInviteListItem[],
   memberNotifyByEmail: Map<string, CircleMemberNotifyPreferences>,
+  memberContactProfileByEmail: Map<string, CircleMemberContactProfile>,
 ): CircleManagedContact {
   const email = normalizeInviteEmail(contact.email);
   if (!email) return contact;
   const invite = inviteForContactEmail(contact, members);
   if (invite?.status !== 'accepted') return contact;
-  return mergeContactWithMemberNotifyPreferences(
+  const withProfile = mergeContactWithMemberContactProfile(
     contact,
+    memberContactProfileByEmail.get(email) ?? null,
+  );
+  return mergeContactWithMemberNotifyPreferences(
+    withProfile,
     memberNotifyByEmail.get(email) ?? null,
   );
 }
@@ -267,8 +283,13 @@ export function CircleSettingsUserManagementPanel({
   const [memberNotifyByEmail, setMemberNotifyByEmail] = useState<
     Map<string, CircleMemberNotifyPreferences>
   >(() => new Map());
+  const [memberContactProfileByEmail, setMemberContactProfileByEmail] = useState<
+    Map<string, CircleMemberContactProfile>
+  >(() => new Map());
   const draftRef = useRef(draft);
   draftRef.current = draft;
+
+  const isPendingProvision = patient?.isPendingProvision === true;
 
   const loadMembers = useCallback(async () => {
     if (!patient?.patientId) {
@@ -279,19 +300,28 @@ export function CircleSettingsUserManagementPanel({
     setLoading(true);
     setError(null);
     try {
-      const [rows, listedContacts] = await Promise.all([
-        listCircleInvitesForPatient(db, patient.patientId),
-        listPatientManagedContacts(db, patient.patientId),
-      ]);
-      setMembers(rows);
-      setContacts(listedContacts);
+      if (isPendingProvision) {
+        const [rows, listedContacts] = await Promise.all([
+          listProvisionDraftInvites(db, patient.patientId),
+          listProvisionManagedContacts(db, patient.patientId),
+        ]);
+        setMembers(rows);
+        setContacts(listedContacts);
+      } else {
+        const [rows, listedContacts] = await Promise.all([
+          listCircleInvitesForPatient(db, patient.patientId),
+          listPatientManagedContacts(db, patient.patientId),
+        ]);
+        setMembers(rows);
+        setContacts(listedContacts);
+      }
     } catch (err) {
       console.warn('[CircleSettingsUserManagementPanel]', err);
       setError(t('admin.users.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [db, patient?.patientId, t]);
+  }, [db, isPendingProvision, patient?.patientId, t]);
 
   useEffect(() => {
     if (!patient?.patientId || !patient.capabilities.inviteMembers) return;
@@ -305,23 +335,28 @@ export function CircleSettingsUserManagementPanel({
   }, [loadMembers]);
 
   useEffect(() => {
-    if (!patient?.patientId) {
+    if (!patient?.patientId || isPendingProvision) {
       setMemberNotifyByEmail(new Map());
+      setMemberContactProfileByEmail(new Map());
       return;
     }
 
     return onSnapshot(collection(db, 'patients', patient.patientId, 'members'), (snap) => {
-      const next = new Map<string, CircleMemberNotifyPreferences>();
+      const notifyNext = new Map<string, CircleMemberNotifyPreferences>();
+      const profileNext = new Map<string, CircleMemberContactProfile>();
       snap.forEach((memberDoc) => {
         const data = memberDoc.data() as Record<string, unknown>;
         const email = normalizeInviteEmail(String(data.invitedEmail ?? ''));
         if (!email) return;
         const prefs = parseMemberNotifyPreferences(data);
-        if (prefs) next.set(email, prefs);
+        if (prefs) notifyNext.set(email, prefs);
+        const profile = parseMemberContactProfile(data);
+        if (profile) profileNext.set(email, profile);
       });
-      setMemberNotifyByEmail(next);
+      setMemberNotifyByEmail(notifyNext);
+      setMemberContactProfileByEmail(profileNext);
     });
-  }, [db, patient?.patientId]);
+  }, [db, isPendingProvision, patient?.patientId]);
 
   useEffect(() => {
     if (!patient?.patientId) {
@@ -329,19 +364,72 @@ export function CircleSettingsUserManagementPanel({
       return;
     }
 
+    if (isPendingProvision) {
+      return onSnapshot(
+        doc(db, 'patient_provisions', patient.patientId),
+        (snap) => {
+          if (!snap.exists()) return;
+          const listed = parsePatientManagedContacts(snap.data());
+          setContacts(listed);
+        },
+        (err) => {
+          console.warn('[CircleSettingsUserManagementPanel] live provision contacts', err);
+        },
+      );
+    }
+
     return onSnapshot(
       doc(db, 'patients', patient.patientId),
       (snap) => {
         if (!snap.exists()) return;
-        const data = snap.data();
-        const listed = parsePatientManagedContacts(data);
+        const listed = parsePatientManagedContacts(snap.data());
         setContacts(listed);
       },
       (err) => {
         console.warn('[CircleSettingsUserManagementPanel] live contacts', err);
       },
     );
-  }, [db, patient?.patientId]);
+  }, [db, isPendingProvision, patient?.patientId]);
+
+  useEffect(() => {
+    if (!patient?.patientId || !isPendingProvision) return;
+
+    return onSnapshot(
+      collection(db, 'patient_provisions', patient.patientId, 'draft_invites'),
+      (snap) => {
+        const rows = snap.docs
+          .map((inviteDoc) => {
+            const data = inviteDoc.data() as Record<string, unknown>;
+            const status = (data.status || 'pending') as CircleInviteListItem['status'];
+            return {
+              id: inviteDoc.id,
+              invitedEmail: String(data.invitedEmail || ''),
+              displayName: typeof data.displayName === 'string' ? data.displayName : undefined,
+              role: String(data.role || 'member'),
+              proxyTier:
+                data.proxyTier === 'backup' || data.proxyTier === 'primary'
+                  ? data.proxyTier
+                  : undefined,
+              status,
+              updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : 0,
+              acceptedByUid:
+                typeof data.acceptedByUid === 'string' ? data.acceptedByUid : undefined,
+            } satisfies CircleInviteListItem;
+          })
+          .filter((item) => item.invitedEmail)
+          .sort((a, b) => {
+            const statusOrder = { accepted: 0, pending: 1, revoked: 2 };
+            const diff = statusOrder[a.status] - statusOrder[b.status];
+            if (diff !== 0) return diff;
+            return (a.displayName || a.invitedEmail).localeCompare(b.displayName || b.invitedEmail);
+          });
+        setMembers(rows);
+      },
+      (err) => {
+        console.warn('[CircleSettingsUserManagementPanel] live provision invites', err);
+      },
+    );
+  }, [db, isPendingProvision, patient?.patientId]);
 
   useEffect(() => {
     if (!editorOpen || editorMode === 'view') {
@@ -362,7 +450,7 @@ export function CircleSettingsUserManagementPanel({
     const dirty = draftFingerprint(currentDraft) !== initialDraftFingerprint;
     if (!dirty) {
       const refreshed = contactToDraft(
-        contactForEditorDisplay(remoteContact, members, memberNotifyByEmail),
+        contactForEditorDisplay(remoteContact, members, memberNotifyByEmail, memberContactProfileByEmail),
       );
       setDraft(refreshed);
       setInitialDraftFingerprint(draftFingerprint(refreshed));
@@ -379,6 +467,7 @@ export function CircleSettingsUserManagementPanel({
     editorOpen,
     initialDraftFingerprint,
     memberNotifyByEmail,
+    memberContactProfileByEmail,
     members,
   ]);
 
@@ -389,9 +478,9 @@ export function CircleSettingsUserManagementPanel({
     const remoteContact = contacts.find((contact) => contact.id === currentDraft.id);
     if (!remoteContact) return;
     setDraft(
-      contactToDraft(contactForEditorDisplay(remoteContact, members, memberNotifyByEmail)),
+      contactToDraft(contactForEditorDisplay(remoteContact, members, memberNotifyByEmail, memberContactProfileByEmail)),
     );
-  }, [contacts, editorMode, editorOpen, memberNotifyByEmail, members]);
+  }, [contacts, editorMode, editorOpen, memberContactProfileByEmail, memberNotifyByEmail, members]);
 
   const { activeMembers, pastMembers } = useMemo(() => {
     const active: CircleInviteListItem[] = [];
@@ -417,9 +506,11 @@ export function CircleSettingsUserManagementPanel({
     setRevokingEmail(item.invitedEmail);
     setError(null);
     try {
-      const ok = await revokeCircleInviteByEmail(db, patient.patientId, item.invitedEmail, {
-        actorUid: user.uid,
-      });
+      const ok = isPendingProvision
+        ? await revokeProvisionDraftInviteByEmail(db, patient.patientId, item.invitedEmail)
+        : await revokeCircleInviteByEmail(db, patient.patientId, item.invitedEmail, {
+            actorUid: user.uid,
+          });
       if (!ok) {
         setError(t('admin.users.revokeFailed'));
         return;
@@ -444,12 +535,19 @@ export function CircleSettingsUserManagementPanel({
     setRevokingEmail(item.invitedEmail);
     setError(null);
     try {
-      const preview = await previewCircleAccessRevoke(
-        db,
-        patient.patientId,
-        item.invitedEmail,
-        item.displayName || undefined,
-      );
+      const preview = isPendingProvision
+        ? await previewProvisionCircleAccessRevoke(
+            db,
+            patient.patientId,
+            item.invitedEmail,
+            item.displayName || undefined,
+          )
+        : await previewCircleAccessRevoke(
+            db,
+            patient.patientId,
+            item.invitedEmail,
+            item.displayName || undefined,
+          );
       if (preview.length > 0) {
         setInvitePreviewItems(preview);
         setInviteConfirmAction({ type: 'revoke', item });
@@ -490,7 +588,7 @@ export function CircleSettingsUserManagementPanel({
 
   const openView = (contact: CircleManagedContact) => {
     openEditorWithDraft(
-      contactToDraft(contactForEditorDisplay(contact, members, memberNotifyByEmail)),
+      contactToDraft(contactForEditorDisplay(contact, members, memberNotifyByEmail, memberContactProfileByEmail)),
       'view',
       contact,
     );
@@ -498,7 +596,7 @@ export function CircleSettingsUserManagementPanel({
 
   const openEdit = (contact: CircleManagedContact) => {
     openEditorWithDraft(
-      contactToDraft(contactForEditorDisplay(contact, members, memberNotifyByEmail)),
+      contactToDraft(contactForEditorDisplay(contact, members, memberNotifyByEmail, memberContactProfileByEmail)),
       'edit',
       contact,
     );
@@ -527,7 +625,7 @@ export function CircleSettingsUserManagementPanel({
       : undefined;
     if (!remoteContact) return;
     const refreshed = contactToDraft(
-      contactForEditorDisplay(remoteContact, members, memberNotifyByEmail),
+      contactForEditorDisplay(remoteContact, members, memberNotifyByEmail, memberContactProfileByEmail),
     );
     setDraft(refreshed);
     setEditorAccess(resolvedContactAccess(t, remoteContact, members));
@@ -568,7 +666,7 @@ export function CircleSettingsUserManagementPanel({
         ? existing?.proxyTier ?? (invite?.proxyTier as CircleManagedContact['proxyTier'] | undefined)
         : existing?.proxyTier;
 
-    await upsertPatientManagedContact(
+    await (isPendingProvision ? upsertProvisionManagedContact : upsertPatientManagedContact)(
       db,
       patient.patientId,
       {
@@ -589,7 +687,7 @@ export function CircleSettingsUserManagementPanel({
       { expectedContactFingerprint: editorBaselineContactFingerprint || undefined },
     );
 
-    if (invite?.status === 'accepted' && invite.acceptedByUid) {
+    if (!isPendingProvision && invite?.status === 'accepted' && invite.acceptedByUid) {
       await saveCircleUserProfile(db, invite.acceptedByUid, {
         language: currentDraft.language || 'English',
         languageSource: 'circle',
@@ -625,17 +723,29 @@ export function CircleSettingsUserManagementPanel({
     setEditorError(null);
     try {
       const previous = draft.id ? contacts.find((contact) => contact.id === draft.id) : undefined;
-      const preview = await previewManagedContactInviteChange(
-        db,
-        patient.patientId,
-        {
-          id: draft.id ?? '',
-          name: draft.name,
-          email: draft.email ?? '',
-          kind: draft.kind,
-        },
-        { previousEmail: previous?.email },
-      );
+      const preview = isPendingProvision
+        ? await previewProvisionManagedContactInviteChange(
+            db,
+            patient.patientId,
+            {
+              id: draft.id ?? '',
+              name: draft.name,
+              email: draft.email ?? '',
+              kind: draft.kind,
+            },
+            { previousEmail: previous?.email },
+          )
+        : await previewManagedContactInviteChange(
+            db,
+            patient.patientId,
+            {
+              id: draft.id ?? '',
+              name: draft.name,
+              email: draft.email ?? '',
+              kind: draft.kind,
+            },
+            { previousEmail: previous?.email },
+          );
       if (preview.length > 0) {
         setInvitePreviewItems(preview);
         setInviteConfirmAction({ type: 'save' });
@@ -689,7 +799,11 @@ export function CircleSettingsUserManagementPanel({
     if (!patient?.patientId) return;
     setError(null);
     try {
-      await deletePatientManagedContact(db, patient.patientId, contact);
+      if (isPendingProvision) {
+        await deleteProvisionManagedContact(db, patient.patientId, contact);
+      } else {
+        await deletePatientManagedContact(db, patient.patientId, contact);
+      }
       setConfirmDelete(null);
       await loadMembers();
     } catch (err) {
@@ -709,7 +823,9 @@ export function CircleSettingsUserManagementPanel({
     setSaving(true);
     setError(null);
     try {
-      const preview = await previewManagedContactDeleteInviteChange(db, patient.patientId, contact);
+      const preview = isPendingProvision
+        ? await previewProvisionManagedContactDeleteInviteChange(db, patient.patientId, contact)
+        : await previewManagedContactDeleteInviteChange(db, patient.patientId, contact);
       if (preview.length > 0) {
         setConfirmDelete(null);
         setInvitePreviewItems(preview);
@@ -834,7 +950,7 @@ export function CircleSettingsUserManagementPanel({
                 {sortedContacts.map((contact) => (
                   <PersonRow
                     key={contact.id}
-                    contact={contactForEditorDisplay(contact, members, memberNotifyByEmail)}
+                    contact={contactForEditorDisplay(contact, members, memberNotifyByEmail, memberContactProfileByEmail)}
                     members={members}
                     onView={() => openView(contact)}
                     onEdit={() => openEdit(contact)}

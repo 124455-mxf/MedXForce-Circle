@@ -112,7 +112,7 @@ export function formatContactSaveErrorI18n(t: CircleTranslator, err: unknown): s
 
 export function profileEditorSectionTitleI18n(
   t: CircleTranslator,
-  section: 'identity' | 'extended' | 'engagement' | 'lifestyle' | 'clinical',
+  section: 'identity' | 'extended' | 'engagement' | 'lifestyle' | 'functional' | 'clinical',
 ): string {
   switch (section) {
     case 'identity':
@@ -125,5 +125,7 @@ export function profileEditorSectionTitleI18n(
       return t('admin.profile.editClinical');
     case 'lifestyle':
       return t('admin.profile.editLifestyle');
+    case 'functional':
+      return t('admin.profile.editFunctional');
   }
 }

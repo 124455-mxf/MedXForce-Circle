@@ -32,6 +32,10 @@ export interface CirclePatientSummary {
   provisionStatus?: 'pending' | 'claimed';
   /** Shown to the proxy who created the pending provision (no SMS/email needed). */
   setupCode?: string;
+  /** Optional email the proxy expects on the patient iPad. */
+  intendedEmail?: string;
+  /** Patient app sign-in email after the iPad is linked. */
+  claimedLoginEmail?: string;
 }
 
 /** Patients this circle user may access (accepted invites + active member doc). */
@@ -52,9 +56,17 @@ export async function listCirclePatientsForUser(
   for (const inviteDoc of invitesSnap.docs) {
     const invite = inviteDoc.data() as CircleInviteRecord;
     const memberSnap = await getDoc(doc(db, 'patients', invite.patientId, 'members', uid));
-    const member = memberSnap.exists() ? memberSnap.data() : null;
-    const patientSnap = await getDoc(doc(db, 'patients', invite.patientId));
-    const patientData = patientSnap.exists() ? patientSnap.data() : null;
+    if (!memberSnap.exists()) continue;
+    const member = memberSnap.data();
+
+    let patientData: Record<string, unknown> | null = null;
+    try {
+      const patientSnap = await getDoc(doc(db, 'patients', invite.patientId));
+      patientData = patientSnap.exists() ? patientSnap.data() : null;
+    } catch (err) {
+      console.warn('[Circle] Skipping patient in list — insufficient permissions:', invite.patientId, err);
+      continue;
+    }
     const patientName =
       (patientData && String(patientData.displayName || '')) ||
       invite.displayName ||
@@ -92,8 +104,11 @@ export async function listCirclePatientsForUser(
         invite.capabilities,
     );
 
-    const photoUrl = patientSnap.exists()
-      ? String(patientSnap.data()?.photoUrl || '').trim() || undefined
+    const photoUrl = patientData
+      ? String(patientData.photoUrl || '').trim() || undefined
+      : undefined;
+    const claimedLoginEmail = patientData
+      ? String(patientData.claimedLoginEmail || '').trim() || undefined
       : undefined;
 
     summaries.push({
@@ -104,6 +119,7 @@ export async function listCirclePatientsForUser(
       canUpload: canUploadRichMedia(capabilities),
       capabilities,
       photoUrl,
+      claimedLoginEmail,
     });
   }
 

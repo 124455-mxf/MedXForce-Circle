@@ -15,7 +15,14 @@ type ProfileSection = {
   items: { label: string; value: ReactNode; aiDiscovered?: boolean; fullWidth?: boolean }[];
 };
 
-const EDITABLE_SECTION_IDS = new Set(['identity', 'extended', 'engagement', 'lifestyle', 'clinical']);
+const EDITABLE_SECTION_IDS = new Set([
+  'identity',
+  'extended',
+  'engagement',
+  'lifestyle',
+  'functional',
+  'clinical',
+]);
 
 function listValue(items: string[], empty: string) {
   if (!items.length) return empty;

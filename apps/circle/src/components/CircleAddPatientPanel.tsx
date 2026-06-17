@@ -63,13 +63,18 @@ export function CircleAddPatientPanel({
         }
       }
 
+      const draftFirst = firstName.trim();
+      const draftLast = lastName.trim();
       const provision = await createPatientProvisionForProxy(db, user, {
         displayName: name,
         intendedEmail: intendedEmail.trim() || undefined,
-        profileDraft: {
-          firstName: firstName.trim() || undefined,
-          lastName: lastName.trim() || undefined,
-        },
+        profileDraft:
+          draftFirst || draftLast
+            ? {
+                ...(draftFirst ? { firstName: draftFirst } : {}),
+                ...(draftLast ? { lastName: draftLast } : {}),
+              }
+            : undefined,
         proxyDisplayName: user.displayName || undefined,
       });
       reset();

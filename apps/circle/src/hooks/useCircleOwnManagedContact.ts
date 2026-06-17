@@ -4,9 +4,12 @@ import { doc, onSnapshot, type Firestore } from 'firebase/firestore';
 import {
   findManagedContactByEmail,
   listPatientManagedContacts,
+  mergeContactWithMemberContactProfile,
   mergeContactWithMemberNotifyPreferences,
+  parseMemberContactProfile,
   parseMemberNotifyPreferences,
   parsePatientManagedContacts,
+  readMemberContactProfile,
   readMemberNotifyPreferences,
   type CircleManagedContact,
   type CirclePatientSummary,
@@ -34,8 +37,12 @@ export function useCircleOwnManagedContact(
         setContact(base);
         return;
       }
-      const memberPrefs = await readMemberNotifyPreferences(db, patient.patientId, user.uid);
-      setContact(mergeContactWithMemberNotifyPreferences(base, memberPrefs));
+      const [memberProfile, memberPrefs] = await Promise.all([
+        readMemberContactProfile(db, patient.patientId, user.uid),
+        readMemberNotifyPreferences(db, patient.patientId, user.uid),
+      ]);
+      const merged = mergeContactWithMemberContactProfile(base, memberProfile);
+      setContact(mergeContactWithMemberNotifyPreferences(merged, memberPrefs));
     } catch (err) {
       console.warn('[useCircleOwnManagedContact]', err);
       setContact(null);
@@ -65,8 +72,10 @@ export function useCircleOwnManagedContact(
         setContact(null);
         return;
       }
+      const memberProfile = parseMemberContactProfile(memberData);
       const memberPrefs = parseMemberNotifyPreferences(memberData);
-      setContact(mergeContactWithMemberNotifyPreferences(base, memberPrefs));
+      const merged = mergeContactWithMemberContactProfile(base, memberProfile);
+      setContact(mergeContactWithMemberNotifyPreferences(merged, memberPrefs));
     };
 
     let latestPatient: Record<string, unknown> | undefined;

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Cake, Camera, ClipboardList, Flag, PartyPopper, PenLine, UserRound, X } from 'lucide-react';
+import { Cake, Camera, ClipboardList, Flag, PartyPopper, PenLine, UserRound, Users, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { Firestore } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
@@ -11,6 +11,7 @@ import {
   shouldShowDiaryEntryReminder,
   shouldShowGalleryUploadReminder,
   shouldShowProfileIncompleteReminder,
+  shouldShowTeamCoverageReminder,
   type CircleParticipationReminderKind,
   type CirclePatientProfileSnapshot,
   type CirclePatientSummary,
@@ -30,13 +31,16 @@ import {
   localizePreviewParticipationGalleryReminder,
   localizePreviewCareAssessmentReminder,
   localizePreviewCareProfileReminder,
+  localizePreviewTeamCoverageReminder,
   localizeCareAssessmentReminder,
   localizeCareProfileReminder,
+  localizeTeamCoverageReminder,
   patientFriendlyDisplayName,
 } from '../lib/dashboardI18n';
 import { cn } from '../lib/utils';
 import type { CircleMainTab } from './CircleBottomNav';
 import { useCircleParticipationReminderSnoozes } from '../hooks/useCircleParticipationReminderSnoozes';
+import { useCircleTeamCoverage } from '../hooks/useCircleTeamCoverage';
 
 type CelebrationTileTone = 'birthday' | 'milestone' | 'participation' | 'care';
 
@@ -89,7 +93,11 @@ function CelebrationCard({
       {dismissKind && onDismiss && !isPreview ? (
         <button
           type="button"
-          aria-label={t('dashboard.reminders.dismissReminder')}
+          aria-label={t(
+            dismissKind === 'teamCoverage' || dismissKind === 'profileIncomplete'
+              ? 'dashboard.reminders.dismissCareReminder'
+              : 'dashboard.reminders.dismissReminder',
+          )}
           onClick={(event) => {
             event.stopPropagation();
             onDismiss(dismissKind);
@@ -182,6 +190,12 @@ export function CircleDashboardCelebrationSection({
     patient.patientId,
     user.uid,
   );
+  const { analysis: teamCoverage, loading: teamCoverageLoading } = useCircleTeamCoverage(
+    db,
+    patient.patientId,
+    patient.isPendingProvision === true,
+  );
+  const canManageTeam = patient.capabilities.inviteMembers === true;
 
   const friendlyName = patientFriendlyDisplayName(snapshot, patient.displayName);
   const birthday = localizeBirthdayReminder(t, language, snapshot, patient.displayName);
@@ -244,6 +258,16 @@ export function CircleDashboardCelebrationSection({
       enabled: true,
       profileComplete,
       snoozedUntil: snoozes.profileIncomplete,
+    });
+  const showTeamCoverageReminder =
+    careRemindersEnabled &&
+    !teamCoverageLoading &&
+    !snoozeLoading &&
+    shouldShowTeamCoverageReminder({
+      enabled: true,
+      gaps: teamCoverage.gaps,
+      loading: teamCoverageLoading,
+      snoozedUntil: snoozes.teamCoverage,
     });
 
   const tiles: CelebrationTile[] = [];
@@ -368,7 +392,7 @@ export function CircleDashboardCelebrationSection({
   }
 
   if (showProfileReminder) {
-    const copy = localizeCareProfileReminder(t, friendlyName);
+    const copy = localizeCareProfileReminder(t, friendlyName, canOpenPatientProfile);
     tiles.push({
       key: 'profile-incomplete',
       tone: 'care',
@@ -388,6 +412,30 @@ export function CircleDashboardCelebrationSection({
       body: preview.body,
       isPreview: true,
       onOpen: canOpenPatientProfile ? () => onGoToTab('admin') : undefined,
+    });
+  }
+
+  if (showTeamCoverageReminder) {
+    const copy = localizeTeamCoverageReminder(t, teamCoverage.gaps, canManageTeam);
+    tiles.push({
+      key: 'team-coverage',
+      tone: 'care',
+      icon: Users,
+      headline: copy.headline,
+      body: copy.body,
+      dismissKind: 'teamCoverage',
+      onOpen: canManageTeam ? () => onGoToTab('admin') : undefined,
+    });
+  } else if (previewReminders && careRemindersEnabled) {
+    const preview = localizePreviewTeamCoverageReminder(t);
+    tiles.push({
+      key: 'preview-team-coverage',
+      tone: 'care',
+      icon: Users,
+      headline: preview.headline,
+      body: preview.body,
+      isPreview: true,
+      onOpen: canManageTeam ? () => onGoToTab('admin') : undefined,
     });
   }
 

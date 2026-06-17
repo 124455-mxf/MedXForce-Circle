@@ -95,6 +95,105 @@ export function canSeeCircleRestrictedThread(role: string): boolean {
   return canParticipateInCircleRestrictedThread(role);
 }
 
+const PERSONAL_CIRCLE_DROP_IN_ROLES = new Set<CircleMemberRole>([
+  'family',
+  'friend',
+  'facility_staff',
+]);
+
+/** Where a drop-in transcript belongs based on who joined the live chat. */
+export function circleMemberThreadKindsForDropInShare(
+  participantRole: string | undefined,
+): CircleMemberThreadKind[] {
+  const role = participantRole as CircleMemberRole;
+  if (PERSONAL_CIRCLE_DROP_IN_ROLES.has(role)) {
+    return ['open'];
+  }
+  if (canParticipateInCircleRestrictedThread(role)) {
+    return ['restricted'];
+  }
+  return ['open'];
+}
+
+export type DropInShareDestination = 'open' | 'restricted';
+
+export function primaryDropInShareDestination(
+  threadKinds: CircleMemberThreadKind[],
+): DropInShareDestination {
+  if (threadKinds.includes('restricted') && !threadKinds.includes('open')) {
+    return 'restricted';
+  }
+  return 'open';
+}
+
+export function filterDropInShareThreadKindsForSharer(
+  threadKinds: CircleMemberThreadKind[],
+  sharerRole: string,
+): CircleMemberThreadKind[] {
+  return threadKinds.filter((kind) =>
+    kind === 'open'
+      ? canParticipateInCircleOpenThread(sharerRole)
+      : canParticipateInCircleRestrictedThread(sharerRole),
+  );
+}
+
+/** Show "Also notify care team" when the primary share target is Circle conversation. */
+export function canOfferDropInCareTeamNotify(
+  participantRole: string | undefined,
+  shareDestination: DropInShareDestination,
+): boolean {
+  if (shareDestination !== 'open') return false;
+  const role = participantRole as CircleMemberRole;
+  return PERSONAL_CIRCLE_DROP_IN_ROLES.has(role);
+}
+
+export function resolveDropInShareThreadKinds(
+  participantRole: string | undefined,
+  options: {
+    alsoNotifyCareTeam?: boolean;
+    sharerRole: string;
+  },
+): CircleMemberThreadKind[] {
+  const base = circleMemberThreadKindsForDropInShare(participantRole);
+  let kinds = filterDropInShareThreadKindsForSharer(base, options.sharerRole);
+
+  if (
+    options.alsoNotifyCareTeam &&
+    base.includes('open') &&
+    !kinds.includes('restricted')
+  ) {
+    kinds = [...kinds, 'restricted'];
+  }
+
+  return [...new Set(kinds)];
+}
+
+/** Circle member UIDs who can read posts in the given thread kinds. */
+export async function resolveCircleThreadAudienceUids(
+  db: Firestore,
+  patientId: string,
+  threadKinds: CircleMemberThreadKind[],
+): Promise<string[]> {
+  const needOpen = threadKinds.includes('open');
+  const needRestricted = threadKinds.includes('restricted');
+  if (!needOpen && !needRestricted) return [];
+
+  const snap = await getDocs(collection(db, 'patients', patientId, 'members'));
+  const uids = new Set<string>();
+  for (const memberDoc of snap.docs) {
+    const data = memberDoc.data() as { role?: string; status?: string };
+    if (data.status === 'invited') continue;
+    const role = String(data.role ?? '');
+    if (needOpen && canParticipateInCircleOpenThread(role)) {
+      uids.add(memberDoc.id);
+    }
+    if (needRestricted && canParticipateInCircleRestrictedThread(role)) {
+      uids.add(memberDoc.id);
+    }
+  }
+  return [...uids];
+}
+
 export function circleMemberThreadLabel(kind: CircleMemberThreadKind): string {
   return kind === 'open' ? 'Circle conversation' : 'Care coordination';
 }

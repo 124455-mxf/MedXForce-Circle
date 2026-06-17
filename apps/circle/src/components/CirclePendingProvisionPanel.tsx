@@ -1,13 +1,22 @@
 import { useState } from 'react';
-import { Check, Copy, KeyRound, Stethoscope } from 'lucide-react';
+import { Check, Copy, KeyRound, Stethoscope, X } from 'lucide-react';
 import type { CirclePatientSummary } from '@medxforce/shared';
 import { useCircleT } from '../lib/circleI18nContext';
 
 type CirclePendingProvisionPanelProps = {
   patient: CirclePatientSummary;
+  /** When the proxy manages other active patients, allow leaving this setup screen. */
+  canDismiss?: boolean;
+  onDismiss?: () => void;
+  onSwitchPatient?: () => void;
 };
 
-export function CirclePendingProvisionPanel({ patient }: CirclePendingProvisionPanelProps) {
+export function CirclePendingProvisionPanel({
+  patient,
+  canDismiss = false,
+  onDismiss,
+  onSwitchPatient,
+}: CirclePendingProvisionPanelProps) {
   const t = useCircleT();
   const [copied, setCopied] = useState(false);
   const setupCode = patient.setupCode || '--------';
@@ -24,8 +33,19 @@ export function CirclePendingProvisionPanel({ patient }: CirclePendingProvisionP
 
   return (
     <div className="flex flex-col flex-1 min-h-0 gap-4">
-      <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-4">
-        <div className="flex items-start gap-3">
+      <div className="relative bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-4">
+        {canDismiss && onDismiss ? (
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+            aria-label={t('provision.dismissSetup')}
+          >
+            <X size={20} />
+          </button>
+        ) : null}
+
+        <div className="flex items-start gap-3 pr-10">
           <div className="w-11 h-11 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-700 shrink-0">
             <Stethoscope size={20} />
           </div>
@@ -36,6 +56,20 @@ export function CirclePendingProvisionPanel({ patient }: CirclePendingProvisionP
         </div>
 
         <p className="text-sm text-slate-600 leading-relaxed">{t('provision.waitingBody')}</p>
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-1">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            {t('provision.intendedEmailLabel')}
+          </p>
+          {patient.intendedEmail ? (
+            <>
+              <p className="text-sm font-semibold text-slate-900 break-all">{patient.intendedEmail}</p>
+              <p className="text-xs text-slate-500 leading-relaxed">{t('provision.intendedEmailHint')}</p>
+            </>
+          ) : (
+            <p className="text-sm text-slate-600 leading-relaxed">{t('provision.intendedEmailUnset')}</p>
+          )}
+        </div>
 
         <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 space-y-3">
           <div className="flex items-center gap-2 text-blue-900">
@@ -61,7 +95,20 @@ export function CirclePendingProvisionPanel({ patient }: CirclePendingProvisionP
           <li>{t('provision.stepEnterCode')}</li>
         </ol>
 
-        <p className="text-xs text-slate-500">{t('provision.noSmsEmail')}</p>
+        {canDismiss && onSwitchPatient ? (
+          <div className="pt-2 border-t border-slate-100 space-y-2">
+            <button
+              type="button"
+              onClick={onSwitchPatient}
+              className="w-full py-3 rounded-2xl bg-slate-100 text-slate-800 font-semibold hover:bg-slate-200"
+            >
+              {t('provision.continueOtherPatients')}
+            </button>
+            <p className="text-xs text-slate-500 text-center leading-relaxed">
+              {t('provision.continueOtherPatientsHint')}
+            </p>
+          </div>
+        ) : null}
       </div>
     </div>
   );

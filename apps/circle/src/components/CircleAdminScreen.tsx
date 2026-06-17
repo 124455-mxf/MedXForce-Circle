@@ -28,7 +28,7 @@ export function CircleAdminScreen({ user, db, storage, patient }: CircleAdminScr
         </div>
       </div>
 
-      <CircleCollapsibleSection title={t('admin.sectionPatientProfile')}>
+      <CircleCollapsibleSection title={t('admin.sectionPatientProfile')} defaultOpen>
         <CirclePatientProfilePanel user={user} db={db} storage={storage} patient={patient} compact />
       </CircleCollapsibleSection>
 

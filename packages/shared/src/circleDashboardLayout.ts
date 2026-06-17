@@ -49,10 +49,20 @@ export const ALL_CUSTOMIZABLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
   'reminder-diary-entry',
 ];
 
-/** Participation reminder tiles hidden for proxy until they opt in via Customize dashboard. */
+/** Participation + personal sharing tiles hidden for proxy until they opt in via Customize dashboard. */
 export const PROXY_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
+  'diary',
+  'gallery-engagement',
   'reminder-gallery-upload',
   'reminder-diary-entry',
+];
+
+/** Optional tiles hidden for family until they opt in via Customize dashboard. */
+export const FAMILY_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
+  'vitality',
+  'assessments',
+  'gallery-engagement',
+  'user-profile',
 ];
 
 /** Optional tiles hidden for friends until they opt in (locale + insights stay on). */
@@ -113,6 +123,7 @@ export function defaultHiddenDashboardWidgetsForRole(
   role: CircleMemberRole,
 ): CircleDashboardWidgetKey[] {
   if (role === 'friend') return [...FRIEND_ROLE_HIDDEN_DASHBOARD_WIDGETS];
+  if (role === 'family') return [...FAMILY_ROLE_HIDDEN_DASHBOARD_WIDGETS];
   if (role === 'proxy') return [...PROXY_ROLE_HIDDEN_DASHBOARD_WIDGETS];
   return [];
 }

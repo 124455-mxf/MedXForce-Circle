@@ -16,11 +16,15 @@ export const DROP_IN_LIVE_DOC_ID = 'live';
 export const DROP_IN_INVITE_TTL_MS = 5 * 60 * 1000;
 /** Circle caregiver waits this long for accept/decline before auto-closing the invite. */
 export const DROP_IN_CIRCLE_RESPONSE_TIMEOUT_MS = 30 * 1000;
+/** Patient waits this long for a Circle member to accept a patient-initiated drop-in. */
+export const DROP_IN_PATIENT_INITIATED_RESPONSE_TIMEOUT_MS = 3 * 60 * 1000;
 export const DROP_IN_MESSAGE_MAX_LENGTH = 2000;
 
 export type DropInSessionStatus = 'pending' | 'active' | 'declined' | 'ended' | 'expired';
 
 export type DropInEndedByRole = 'patient' | 'caregiver';
+
+export type DropInInitiatedBy = 'patient' | 'caregiver';
 
 export interface DropInSession {
   patientId: string;
@@ -31,6 +35,10 @@ export interface DropInSession {
   requestedByUid: string;
   requestedByName: string;
   requestedByRole?: string;
+  initiatedBy?: DropInInitiatedBy;
+  targetUid?: string;
+  targetName?: string;
+  acceptedByUid?: string;
   startedAt?: number;
   endedAt?: number;
   endedByUid?: string;
@@ -60,6 +68,26 @@ export function newDropInSessionId(): string {
   return `dropin_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function readDropInFirestoreMs(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value > 0 && value < 1_000_000_000_000 ? value * 1000 : value;
+  }
+  if (
+    value &&
+    typeof value === 'object' &&
+    'toMillis' in value &&
+    typeof (value as { toMillis: () => unknown }).toMillis === 'function'
+  ) {
+    const ms = (value as { toMillis: () => number }).toMillis();
+    return typeof ms === 'number' && Number.isFinite(ms) ? ms : 0;
+  }
+  if (value && typeof value === 'object' && 'seconds' in value) {
+    const seconds = (value as { seconds: unknown }).seconds;
+    if (typeof seconds === 'number' && Number.isFinite(seconds)) return seconds * 1000;
+  }
+  return 0;
+}
+
 export function parseDropInSession(
   patientId: string,
   data: Record<string, unknown> | undefined,
@@ -76,9 +104,24 @@ export function parseDropInSession(
     return null;
   }
   const sessionId = typeof data.sessionId === 'string' ? data.sessionId : '';
-  const requestedAt = typeof data.requestedAt === 'number' ? data.requestedAt : 0;
-  const expiresAt = typeof data.expiresAt === 'number' ? data.expiresAt : 0;
+  const requestedAt = readDropInFirestoreMs(data.requestedAt);
+  const expiresAt = readDropInFirestoreMs(data.expiresAt);
+  const requestedByUid = String(data.requestedByUid ?? '');
   if (!sessionId || !requestedAt) return null;
+
+  let initiatedBy: DropInInitiatedBy | undefined =
+    data.initiatedBy === 'patient' || data.initiatedBy === 'caregiver'
+      ? data.initiatedBy
+      : undefined;
+  if (
+    !initiatedBy &&
+    status === 'pending' &&
+    typeof data.targetUid === 'string' &&
+    data.targetUid &&
+    requestedByUid === patientId
+  ) {
+    initiatedBy = 'patient';
+  }
 
   return {
     patientId,
@@ -86,12 +129,16 @@ export function parseDropInSession(
     status,
     requestedAt,
     expiresAt,
-    requestedByUid: String(data.requestedByUid ?? ''),
+    requestedByUid,
     requestedByName: String(data.requestedByName ?? 'Care team'),
     requestedByRole:
       typeof data.requestedByRole === 'string' ? data.requestedByRole : undefined,
-    startedAt: typeof data.startedAt === 'number' ? data.startedAt : undefined,
-    endedAt: typeof data.endedAt === 'number' ? data.endedAt : undefined,
+    initiatedBy,
+    targetUid: typeof data.targetUid === 'string' ? data.targetUid : undefined,
+    targetName: typeof data.targetName === 'string' ? data.targetName : undefined,
+    acceptedByUid: typeof data.acceptedByUid === 'string' ? data.acceptedByUid : undefined,
+    startedAt: readDropInFirestoreMs(data.startedAt) || undefined,
+    endedAt: readDropInFirestoreMs(data.endedAt) || undefined,
     endedByUid: typeof data.endedByUid === 'string' ? data.endedByUid : undefined,
     endedByRole:
       data.endedByRole === 'patient' || data.endedByRole === 'caregiver'
@@ -124,11 +171,55 @@ export function parseDropInMessage(
   };
 }
 
+export function isDropInPatientInitiated(session: DropInSession | null | undefined): boolean {
+  return session?.initiatedBy === 'patient';
+}
+
+export function dropInPendingResponseDeadlineMs(session: DropInSession, now = Date.now()): number {
+  const timeoutMs = isDropInPatientInitiated(session)
+    ? DROP_IN_PATIENT_INITIATED_RESPONSE_TIMEOUT_MS
+    : DROP_IN_CIRCLE_RESPONSE_TIMEOUT_MS;
+  return Math.min(session.requestedAt + timeoutMs, session.expiresAt);
+}
+
 export function isDropInInvitePending(session: DropInSession | null, now = Date.now()): boolean {
   if (!session) return false;
   if (session.status !== 'pending') return false;
+  if (isDropInPatientInitiated(session)) return false;
   if (session.requestedAt + DROP_IN_CIRCLE_RESPONSE_TIMEOUT_MS <= now) return false;
   return session.expiresAt > now;
+}
+
+export function isDropInPatientRequestPending(session: DropInSession | null, now = Date.now()): boolean {
+  if (!session) return false;
+  if (session.status !== 'pending') return false;
+  if (!isDropInPatientInitiated(session)) return false;
+  if (session.requestedAt + DROP_IN_PATIENT_INITIATED_RESPONSE_TIMEOUT_MS <= now) return false;
+  return session.expiresAt > now;
+}
+
+export function dropInPatientRequestSecondsRemaining(
+  session: DropInSession | null,
+  now = Date.now(),
+): number | null {
+  if (!session || !isDropInPatientRequestPending(session, now)) return null;
+  return Math.max(
+    0,
+    Math.ceil(
+      (session.requestedAt + DROP_IN_PATIENT_INITIATED_RESPONSE_TIMEOUT_MS - now) / 1000,
+    ),
+  );
+}
+
+export function isDropInPendingForCaregiver(
+  session: DropInSession | null,
+  caregiverUid: string | undefined,
+  now = Date.now(),
+): boolean {
+  if (!session || !caregiverUid) return false;
+  if (!isDropInPatientRequestPending(session, now)) return false;
+  const targetUid = session.targetUid?.trim() || '';
+  return targetUid.length > 0 && targetUid === caregiverUid.trim();
 }
 
 export function isDropInSessionActive(session: DropInSession | null): boolean {
@@ -138,11 +229,31 @@ export function isDropInSessionActive(session: DropInSession | null): boolean {
 export function isDropInSessionBlocking(session: DropInSession | null, now = Date.now()): boolean {
   if (!session) return false;
   if (session.status === 'active') return true;
-  if (session.status === 'pending' && session.requestedAt + DROP_IN_CIRCLE_RESPONSE_TIMEOUT_MS <= now) {
-    return false;
+  if (session.status !== 'pending') return false;
+  const timeoutMs = isDropInPatientInitiated(session)
+    ? DROP_IN_PATIENT_INITIATED_RESPONSE_TIMEOUT_MS
+    : DROP_IN_CIRCLE_RESPONSE_TIMEOUT_MS;
+  if (session.requestedAt + timeoutMs <= now) return false;
+  return session.expiresAt > now;
+}
+
+export function dropInChatPartnerNameForPatient(session: DropInSession | null | undefined): string {
+  if (!session) return 'Care team';
+  if (isDropInPatientInitiated(session)) {
+    return session.targetName?.trim() || 'Care team';
   }
-  if (session.status === 'pending' && session.expiresAt > now) return true;
-  return false;
+  return session.requestedByName?.trim() || 'Care team';
+}
+
+export function isDropInCaregiverParticipant(
+  session: DropInSession | null | undefined,
+  caregiverUid: string | undefined,
+): boolean {
+  if (!session || !caregiverUid) return false;
+  if (isDropInPatientInitiated(session)) {
+    return session.targetUid === caregiverUid || session.acceptedByUid === caregiverUid;
+  }
+  return session.requestedByUid === caregiverUid;
 }
 
 export function dropInPatientInviteBannerText(session: DropInSession): string {
@@ -297,6 +408,101 @@ export function formatDropInTranscriptForCareCoordination(
   return lines.join('\n').trim();
 }
 
+export const DROP_IN_PATIENT_TRANSCRIPT_MAX_LENGTH = 50_000;
+
+export function dropInPatientTranscriptMessageId(sessionId: string): string {
+  return `dropin_${sessionId}`.slice(0, 128);
+}
+
+export function dropInParticipantUid(session: DropInSession): string {
+  if (isDropInPatientInitiated(session)) {
+    return session.targetUid?.trim() || '';
+  }
+  return session.requestedByUid.trim();
+}
+
+export async function resolveDropInParticipantRole(
+  db: Firestore,
+  patientId: string,
+  session: DropInSession,
+): Promise<string | undefined> {
+  const uid = dropInParticipantUid(session);
+  if (!uid) return undefined;
+  try {
+    const snap = await getDoc(doc(db, 'patients', patientId, 'members', uid));
+    if (!snap.exists()) return session.requestedByRole;
+    const role = snap.data()?.role;
+    return typeof role === 'string' && role.trim() ? role.trim() : session.requestedByRole;
+  } catch {
+    return session.requestedByRole;
+  }
+}
+
+/** Save a shared drop-in transcript into the patient Messages inbox (In/Out). */
+export async function shareDropInTranscriptWithPatient(
+  db: Firestore,
+  params: {
+    session: DropInSession;
+    messages: DropInMessage[];
+    patientDisplayName: string;
+    sharedByUid: string;
+    sharedByName: string;
+    circleMemberUids?: string[];
+    translations?: { language: string; text: string; isAuto?: boolean }[];
+    options?: FormatDropInTranscriptOptions;
+  },
+): Promise<void> {
+  if (!isDropInPatientInitiated(params.session)) return;
+
+  const patientId = params.session.patientId;
+  const participantUid = dropInParticipantUid(params.session);
+  const audienceUids = [
+    ...new Set(
+      [...(params.circleMemberUids ?? []), participantUid, params.sharedByUid].filter(Boolean),
+    ),
+  ];
+  const text = formatDropInTranscriptForCareCoordination(
+    params.session,
+    params.messages,
+    params.patientDisplayName,
+    params.options,
+  );
+  const truncatedText =
+    text.length > DROP_IN_PATIENT_TRANSCRIPT_MAX_LENGTH
+      ? `${text.slice(0, DROP_IN_PATIENT_TRANSCRIPT_MAX_LENGTH - 3)}...`
+      : text;
+  const subjectLine = truncatedText.split('\n')[0]?.trim() || 'Drop-in conversation';
+  const messageId = dropInPatientTranscriptMessageId(params.session.sessionId);
+  const now = Date.now();
+
+  await setDoc(
+    doc(db, 'patients', patientId, 'messages', messageId),
+    {
+      id: messageId,
+      subject: subjectLine.slice(0, 500),
+      text: truncatedText,
+      senderUid: patientId,
+      senderName: params.patientDisplayName.trim() || 'Patient',
+      status: 'sent',
+      type: 'message',
+      postKind: 'drop_in',
+      dropInSessionId: params.session.sessionId,
+      initiatedByPatient: true,
+      sharedByUid: params.sharedByUid,
+      sharedByName: params.sharedByName.trim() || 'Care team',
+      recipientEmails: [],
+      recipientContactIds: [],
+      circleMemberUids: audienceUids,
+      translations: params.translations ?? [],
+      hasNewReply: false,
+      createdAt: params.session.startedAt || params.session.requestedAt || now,
+      updatedAt: now,
+      summaryEntries: [],
+    },
+    { merge: true },
+  );
+}
+
 /** Care coordination posts shared from a drop-in chat (title line varies by language). */
 export function isDropInThreadPost(post: { text: string; postKind?: string }): boolean {
   if (post.postKind === 'drop_in') return true;
@@ -343,6 +549,91 @@ export async function startDropInSession(
   return session;
 }
 
+function formatDropInWriteError(err: unknown): string {
+  const code =
+    err && typeof err === 'object' && 'code' in err
+      ? String((err as { code: string }).code)
+      : '';
+  if (code === 'permission-denied') {
+    return 'Drop-in request was blocked by Firestore rules. Republish firestore.rules and try again.';
+  }
+  return err instanceof Error ? err.message : 'Could not send drop-in request.';
+}
+
+export async function startPatientDropInSession(
+  db: Firestore,
+  params: {
+    patientId: string;
+    patientUid: string;
+    patientDisplayName: string;
+    targetUid: string;
+    targetName: string;
+  },
+): Promise<DropInSession> {
+  const ref = dropInSessionDocRef(db, params.patientId);
+  const existing = await getDoc(ref);
+  if (existing.exists()) {
+    const parsed = parseDropInSession(params.patientId, existing.data() as Record<string, unknown>);
+    if (isDropInSessionBlocking(parsed)) {
+      throw new Error('A drop-in is already in progress or waiting for a response.');
+    }
+  }
+
+  const now = Date.now();
+  const targetUid = params.targetUid.trim();
+  if (!targetUid) {
+    throw new Error('Choose someone from your Circle who is online.');
+  }
+  const targetName = params.targetName.trim() || 'Care team';
+  const session: DropInSession = {
+    patientId: params.patientId,
+    sessionId: newDropInSessionId(),
+    status: 'pending',
+    requestedAt: now,
+    expiresAt: now + DROP_IN_PATIENT_INITIATED_RESPONSE_TIMEOUT_MS,
+    requestedByUid: params.patientUid,
+    requestedByName: params.patientDisplayName.trim() || 'Patient',
+    initiatedBy: 'patient',
+    targetUid,
+    targetName,
+  };
+  const payload = {
+    patientId: session.patientId,
+    sessionId: session.sessionId,
+    status: session.status,
+    requestedAt: session.requestedAt,
+    expiresAt: session.expiresAt,
+    requestedByUid: session.requestedByUid,
+    requestedByName: session.requestedByName,
+    initiatedBy: session.initiatedBy,
+    targetUid: session.targetUid,
+    targetName: session.targetName,
+  };
+
+  try {
+    await setDoc(ref, payload);
+  } catch (err) {
+    throw new Error(formatDropInWriteError(err));
+  }
+
+  const verified = await getDoc(ref);
+  if (!verified.exists()) {
+    throw new Error('Drop-in request did not save. Check your connection and try again.');
+  }
+  const saved = parseDropInSession(params.patientId, verified.data() as Record<string, unknown>);
+  if (
+    !saved ||
+    saved.sessionId !== session.sessionId ||
+    saved.status !== 'pending' ||
+    saved.initiatedBy !== 'patient' ||
+    saved.targetUid?.trim() !== targetUid
+  ) {
+    throw new Error('Drop-in request did not save correctly. Please try again.');
+  }
+
+  return saved;
+}
+
 export async function respondToDropInInvite(
   db: Firestore,
   session: DropInSession,
@@ -363,6 +654,43 @@ export async function respondToDropInInvite(
   await updateDoc(dropInSessionDocRef(db, session.patientId), {
     status: 'active',
     startedAt: now,
+  });
+}
+
+export async function respondToPatientDropInInvite(
+  db: Firestore,
+  session: DropInSession,
+  response: 'accepted' | 'declined',
+  caregiverUid: string,
+): Promise<void> {
+  const now = Date.now();
+  if (response === 'declined') {
+    await updateDoc(dropInSessionDocRef(db, session.patientId), {
+      status: 'declined',
+      endedAt: now,
+      endedByUid: caregiverUid,
+      endedByRole: 'caregiver',
+    });
+    return;
+  }
+
+  await updateDoc(dropInSessionDocRef(db, session.patientId), {
+    status: 'active',
+    startedAt: now,
+    acceptedByUid: caregiverUid,
+  });
+}
+
+export async function cancelPatientDropInRequest(
+  db: Firestore,
+  session: DropInSession,
+  patientUid: string,
+): Promise<void> {
+  await updateDoc(dropInSessionDocRef(db, session.patientId), {
+    status: 'expired',
+    endedAt: Date.now(),
+    endedByUid: patientUid,
+    endedByRole: 'patient',
   });
 }
 

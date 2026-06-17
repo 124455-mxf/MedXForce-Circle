@@ -5,6 +5,7 @@ import {
   type CirclePatientInsightKey,
   type CirclePatientProfileSnapshot,
   type PatientRemoteSettingsDoc,
+  type TeamCoverageGap,
 } from '@medxforce/shared';
 import { formatPatientOnlineDurationMinutes } from '../hooks/usePatientOnlinePresence';
 import type { CircleTranslator } from './circleI18nContext';
@@ -439,10 +440,15 @@ export function localizePreviewCareAssessmentReminder(t: CircleTranslator): Loca
 export function localizeCareProfileReminder(
   t: CircleTranslator,
   patientName: string,
+  canOpenPatientProfile: boolean,
 ): LocalizedReminderCopy {
   return {
     headline: t('dashboard.reminders.careProfileHeadline', { name: patientName }),
-    body: t('dashboard.reminders.careProfileBody'),
+    body: t(
+      canOpenPatientProfile
+        ? 'dashboard.reminders.careProfileBody'
+        : 'dashboard.reminders.careProfileBodyCaregiver',
+    ),
   };
 }
 
@@ -453,6 +459,38 @@ export function localizePreviewCareProfileReminder(
   return {
     headline: t('dashboard.reminders.previewCareProfileHeadline', { name: patientName }),
     body: t('dashboard.reminders.previewCareProfileBody'),
+  };
+}
+
+function teamCoverageBodyKey(gaps: TeamCoverageGap[], canManageTeam: boolean): string {
+  const missingBackup = gaps.includes('backupProxy');
+  const missingCaregivers = gaps.includes('otherCaregivers');
+  const audience = canManageTeam ? 'Proxy' : 'Caregiver';
+
+  if (missingBackup && missingCaregivers) {
+    return `dashboard.reminders.careTeamCoverageBodyBoth${audience}`;
+  }
+  if (missingBackup) {
+    return `dashboard.reminders.careTeamCoverageBodyBackup${audience}`;
+  }
+  return `dashboard.reminders.careTeamCoverageBodyCaregivers${audience}`;
+}
+
+export function localizeTeamCoverageReminder(
+  t: CircleTranslator,
+  gaps: TeamCoverageGap[],
+  canManageTeam: boolean,
+): LocalizedReminderCopy {
+  return {
+    headline: t('dashboard.reminders.careTeamCoverageHeadline'),
+    body: t(teamCoverageBodyKey(gaps, canManageTeam)),
+  };
+}
+
+export function localizePreviewTeamCoverageReminder(t: CircleTranslator): LocalizedReminderCopy {
+  return {
+    headline: t('dashboard.reminders.previewCareTeamCoverageHeadline'),
+    body: t('dashboard.reminders.previewCareTeamCoverageBody'),
   };
 }
 

@@ -5,7 +5,6 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
   Bell,
   Camera,
-  Check,
   ChevronLeft,
   ChevronRight,
   Globe,
@@ -16,6 +15,7 @@ import {
   MessageSquare,
   Settings,
   User as UserIcon,
+  UserPlus,
   Users,
   X,
 } from 'lucide-react';
@@ -42,6 +42,7 @@ import {
   canInviteMembers,
   type PatientProvisionRecord,
 } from '@medxforce/shared';
+import { CirclePatientSwitchList } from './CirclePatientSwitchList';
 import { CircleAddPatientPanel } from './CircleAddPatientPanel';
 import { cn } from '../lib/utils';
 import { usePatientOnlinePresence } from '../hooks/usePatientOnlinePresence';
@@ -61,6 +62,8 @@ interface CircleProfileDrawerProps {
   open: boolean;
   onClose: () => void;
   onSelectPatient: (patient: CirclePatientSummary) => void;
+  startupPatientId?: string | null;
+  onSetStartupPatient?: (patient: CirclePatientSummary) => void;
   onSignOut: () => void;
   onLeftCircle: () => void | Promise<void>;
   onProvisionCreated?: (provision: PatientProvisionRecord) => void;
@@ -75,6 +78,8 @@ export function CircleProfileDrawer({
   open,
   onClose,
   onSelectPatient,
+  startupPatientId = null,
+  onSetStartupPatient,
   onSignOut,
   onLeftCircle,
   onProvisionCreated,
@@ -97,6 +102,7 @@ export function CircleProfileDrawer({
     | 'myContact'
     | 'customizeDashboard'
     | 'switchPatient'
+    | 'addPatient'
   >('account');
 
   const proxyCanManageUsers = canInviteMembers(patient?.capabilities);
@@ -106,7 +112,7 @@ export function CircleProfileDrawer({
     user,
     patient,
   );
-  const canSwitchPatient = patients.length > 1;
+  const canSwitchPatient = patients.length >= 1;
 
   useEffect(() => {
     if (!open) {
@@ -117,7 +123,10 @@ export function CircleProfileDrawer({
   }, [open]);
 
   useEffect(() => {
-    if (!open || !user.uid) return;
+    if (!open || !user.uid) {
+      setProfile(null);
+      return;
+    }
     let active = true;
     void getCircleUserProfile(db, user.uid)
       .then((p) => {
@@ -205,7 +214,8 @@ export function CircleProfileDrawer({
       drawerView === 'localeDisplay' ||
       drawerView === 'careRelationship' ||
       drawerView === 'userManagement' ||
-      drawerView === 'switchPatient'
+      drawerView === 'switchPatient' ||
+      drawerView === 'addPatient'
     ) {
       setDrawerView('settings');
       return;
@@ -276,6 +286,7 @@ export function CircleProfileDrawer({
             {drawerView === 'myContact' && t('drawer.myContact')}
             {drawerView === 'customizeDashboard' && t('drawer.customizeDashboard')}
             {drawerView === 'switchPatient' && t('drawer.switchPatient')}
+            {drawerView === 'addPatient' && t('provision.addPatientTitle')}
           </h2>
           <button
             type="button"
@@ -288,6 +299,20 @@ export function CircleProfileDrawer({
 
         {drawerView === 'settings' && (
           <div className="flex-1 overflow-y-auto p-2">
+            {onProvisionCreated && (
+              <button
+                type="button"
+                onClick={() => setDrawerView('addPatient')}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 mb-1"
+              >
+                <UserPlus size={20} className="text-blue-600" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-slate-800 text-sm">{t('provision.addPatient')}</p>
+                  <p className="text-xs text-slate-400">{t('provision.addPatientHint')}</p>
+                </div>
+                <ChevronRight size={16} className="text-slate-300 shrink-0" />
+              </button>
+            )}
             {canSwitchPatient && (
               <button
                 type="button"
@@ -401,45 +426,21 @@ export function CircleProfileDrawer({
             <p className="text-sm text-slate-500 px-2 pb-1 leading-relaxed">
               {t('drawer.switchPatientHint')}
             </p>
-            <ul className="space-y-1">
-              {patients.map((row) => {
-                const isActive = row.patientId === patient?.patientId;
-                return (
-                  <li key={row.patientId}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onSelectPatient(row);
-                        setDrawerView('settings');
-                      }}
-                      className={cn(
-                        'w-full flex items-center gap-3 p-4 rounded-2xl text-left transition-colors',
-                        isActive
-                          ? 'bg-blue-50 border border-blue-200'
-                          : 'hover:bg-slate-50 border border-transparent',
-                      )}
-                    >
-                      <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
-                        {row.photoUrl ? (
-                          <img src={row.photoUrl} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <HeartHandshake size={18} className="text-blue-600" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-slate-800 truncate">{row.displayName}</p>
-                        <p className="text-xs text-slate-500">
-                          {row.isPendingProvision
-                            ? t('provision.waitingForIpad')
-                            : translateCircleMemberAccessLabel(t, row.role, row.proxyTier)}
-                        </p>
-                      </div>
-                      {isActive && <Check size={20} className="text-blue-600 shrink-0" />}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+            {patients.length > 1 && onSetStartupPatient ? (
+              <p className="text-xs text-slate-500 px-2 pb-1 leading-relaxed">
+                {t('drawer.setStartupPatientHint')}
+              </p>
+            ) : null}
+            <CirclePatientSwitchList
+              patients={patients}
+              selectedPatientId={patient?.patientId ?? ''}
+              startupPatientId={startupPatientId}
+              onSelect={(row) => {
+                onSelectPatient(row);
+                setDrawerView('settings');
+              }}
+              onSetStartupPatient={onSetStartupPatient}
+            />
             {onProvisionCreated && (
               <div className="pt-2 px-2">
                 <CircleAddPatientPanel
@@ -453,6 +454,19 @@ export function CircleProfileDrawer({
                 />
               </div>
             )}
+          </div>
+        )}
+
+        {drawerView === 'addPatient' && onProvisionCreated && (
+          <div className="flex-1 overflow-y-auto p-3">
+            <CircleAddPatientPanel
+              user={user}
+              db={db}
+              onCreated={(provision) => {
+                onProvisionCreated(provision);
+                onClose();
+              }}
+            />
           </div>
         )}
 

@@ -14,6 +14,7 @@ import { MedXForceBrandLogo } from './components/MedXForceBrandLogo';
 import {
   acceptPendingCircleInvites,
   ensureMemberCapabilitiesForUser,
+  repairOrphanAcceptedInvitesForUser,
   reconcileAcceptedMemberRolesForUser,
   isFirestoreQuotaError,
   listCirclePatientsAndProvisionsForUser,
@@ -24,13 +25,29 @@ import {
 import { CircleMainShell } from './components/CircleMainShell';
 import { CircleAddPatientPanel } from './components/CircleAddPatientPanel';
 import { CirclePendingProvisionPanel } from './components/CirclePendingProvisionPanel';
+import { CircleSettingsUserManagementPanel } from './components/CircleSettingsUserManagementPanel';
+import { CircleAppHeader } from './components/CircleAppHeader';
 import { CircleProfileDrawer } from './components/CircleProfileDrawer';
+import { CirclePatientsAttentionProvider } from './context/CirclePatientsAttentionContext';
 import { CircleStartupSequence } from './components/CircleStartupSequence';
 import { useCircleStartupSequence } from './hooks/useCircleStartupSequence';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { consumeAuthRedirectOnce, firebase } from './lib/firebaseClient';
+import { sendWelcomeEmailsForAcceptedInvites } from './services/circleWelcomeEmailApi';
 import { useCircleI18n } from './hooks/useCircleI18n';
 import { CircleI18nProvider } from './lib/circleI18nContext';
+import { CirclePatientSwitcher } from './components/CirclePatientSwitcher';
+import {
+  firstActivePatient,
+  hasActivePatientBesides,
+  pickStartupPatientId,
+} from './lib/circlePatientSelection';
+import { useCircleAccountPhoto } from './hooks/useCircleAccountPhoto';
+import { clearCircleActiveSessionStorage } from './lib/circleSessionStorage';
+import {
+  readStartupPatientId,
+  writeStartupPatientId,
+} from './lib/circleStartupPatient';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -40,9 +57,12 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [googleSigningIn, setGoogleSigningIn] = useState(false);
   const [patients, setPatients] = useState<CirclePatientSummary[]>([]);
+  const [patientsHydrating, setPatientsHydrating] = useState(false);
   const [refreshingPatients, setRefreshingPatients] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [pendingSwitcherOpen, setPendingSwitcherOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const [startupPatientId, setStartupPatientId] = useState<string | null>(null);
   const { language, t, setLanguage } = useCircleI18n(firebase.db, user);
 
   const selectedPatientForSettings = useMemo(() => {
@@ -55,25 +75,49 @@ export default function App() {
   }, [patients, selectedPatientId]);
 
   useEffect(() => {
+    if (!user?.uid) {
+      setStartupPatientId(null);
+      return;
+    }
+    setStartupPatientId(readStartupPatientId(user.uid));
+  }, [user?.uid]);
+
+  useEffect(() => {
     if (patients.length === 0) {
       setSelectedPatientId(null);
       return;
     }
     if (!selectedPatientId || !patients.some((p) => p.patientId === selectedPatientId)) {
-      setSelectedPatientId(patients[0].patientId);
+      setSelectedPatientId(pickStartupPatientId(patients, user?.uid));
     }
-  }, [patients, selectedPatientId]);
+  }, [patients, selectedPatientId, user?.uid]);
+
+  const handleSetStartupPatient = (patient: CirclePatientSummary) => {
+    if (!user?.uid) return;
+    writeStartupPatientId(user.uid, patient.patientId);
+    setStartupPatientId(patient.patientId);
+  };
+
+  const handleDismissPendingSetup = () => {
+    const next = firstActivePatient(patients);
+    if (next) setSelectedPatientId(next.patientId);
+  };
 
   const handleSelectPatient = (patient: CirclePatientSummary) => {
     setSelectedPatientId(patient.patientId);
+    setPendingSwitcherOpen(false);
   };
 
   const refreshPatients = async (currentUser: User) => {
     const accepted = await acceptPendingCircleInvites(firebase.db, currentUser);
+    await repairOrphanAcceptedInvitesForUser(firebase.db, currentUser.uid);
     await reconcileAcceptedMemberRolesForUser(firebase.db, currentUser.uid);
     await ensureMemberCapabilitiesForUser(firebase.db, currentUser.uid);
     const list = await listCirclePatientsAndProvisionsForUser(firebase.db, currentUser.uid);
     setPatients(list);
+    void sendWelcomeEmailsForAcceptedInvites(currentUser, accepted, list).catch((err) => {
+      console.warn('[Circle] Welcome email dispatch failed:', err);
+    });
     return { list, accepted };
   };
 
@@ -130,6 +174,7 @@ export default function App() {
       setAuthLoading(false);
       setGoogleSigningIn(false);
       if (nextUser) {
+        setPatientsHydrating(true);
         try {
           await refreshPatients(nextUser);
         } catch (err) {
@@ -141,9 +186,12 @@ export default function App() {
           } else {
             setAuthError(err instanceof Error ? err.message : 'Could not load your circle patients.');
           }
+        } finally {
+          setPatientsHydrating(false);
         }
       } else {
         setPatients([]);
+        setPatientsHydrating(false);
       }
     });
 
@@ -223,8 +271,14 @@ export default function App() {
     }
   };
 
-  const startup = useCircleStartupSequence(!authLoading);
-  const accountPhotoUrl = user?.photoURL || undefined;
+  const appReady = !authLoading && (!user || !patientsHydrating);
+  const startup = useCircleStartupSequence(appReady);
+  const accountPhotoUrl = useCircleAccountPhoto(firebase.db, user);
+
+  const handleSignOut = async () => {
+    clearCircleActiveSessionStorage();
+    await signOut(firebase.auth);
+  };
 
   const appBody = startup.visible ? (
     <CircleStartupSequence
@@ -336,7 +390,7 @@ export default function App() {
             />
             <button
               type="button"
-              onClick={() => signOut(firebase.auth)}
+              onClick={() => void handleSignOut()}
               className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-blue-600"
             >
               <LogOut size={16} />
@@ -346,58 +400,120 @@ export default function App() {
         </>
       ) : selectedPatientForSettings?.isPendingProvision ? (
         <>
-          <div className="flex items-center gap-3 shrink-0 mb-4">
-            <div className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shrink-0">
-              <MedXForceBrandLogo />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-bold text-slate-800">{t('auth.title')}</h1>
-              <p className="text-xs text-slate-500 truncate">{selectedPatientForSettings.displayName}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => signOut(firebase.auth)}
-              className="text-sm font-semibold text-slate-500 hover:text-blue-600"
-            >
-              {t('common.signOut')}
-            </button>
-          </div>
-          <CirclePendingProvisionPanel patient={selectedPatientForSettings} />
-        </>
-      ) : (
-        <>
-          <div className="flex flex-col flex-1 min-h-0">
-            <CircleMainShell
+          <CirclePatientsAttentionProvider
+            db={firebase.db}
+            user={user}
+            patients={patients}
+            selectedPatientId={selectedPatientId}
+          >
+            <CircleAppHeader
+              variant="compact"
               user={user}
               accountPhotoUrl={accountPhotoUrl}
               onOpenProfile={() => setProfileOpen(true)}
+              selectedPatient={selectedPatientForSettings}
+              memberDisplayName={user.displayName || user.email || t('dashboard.sectionYou')}
+              onOpenPatientSwitcher={
+                patients.length > 1 ? () => setPendingSwitcherOpen(true) : undefined
+              }
+            />
+            <CirclePatientSwitcher
+              variant="modal-only"
               patients={patients}
+              selected={selectedPatientForSettings}
+              open={pendingSwitcherOpen}
+              onOpenChange={setPendingSwitcherOpen}
+              onSelect={handleSelectPatient}
+              startupPatientId={startupPatientId}
+              onSetStartupPatient={patients.length > 1 ? handleSetStartupPatient : undefined}
+              memberDisplayName={user.displayName || user.email || t('dashboard.sectionYou')}
+            />
+            <div className="flex flex-col flex-1 min-h-0 overflow-y-auto gap-4 pb-2">
+              <CirclePendingProvisionPanel
+                patient={selectedPatientForSettings}
+                canDismiss={hasActivePatientBesides(
+                  patients,
+                  selectedPatientForSettings.patientId,
+                )}
+                onDismiss={handleDismissPendingSetup}
+                onSwitchPatient={() => setPendingSwitcherOpen(true)}
+              />
+              <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+                <CircleSettingsUserManagementPanel
+                  user={user}
+                  db={firebase.db}
+                  patient={selectedPatientForSettings}
+                />
+              </div>
+            </div>
+            <CircleProfileDrawer
+              user={user}
               db={firebase.db}
               storage={firebase.storage}
-              inviteError={authError}
-              selectedPatientId={selectedPatientId}
+              patients={patients}
+              patient={selectedPatientForSettings}
+              open={profileOpen}
+              onClose={() => setProfileOpen(false)}
               onSelectPatient={handleSelectPatient}
+              startupPatientId={startupPatientId}
+              onSetStartupPatient={patients.length > 1 ? handleSetStartupPatient : undefined}
+              onSignOut={() => void handleSignOut()}
+              onLeftCircle={async () => {
+                if (!user) return;
+                await refreshPatients(user);
+              }}
+              onProvisionCreated={(provision) => {
+                setPatients((prev) => [...prev, pendingProvisionToCircleSummary(provision)]);
+                setSelectedPatientId(provision.provisionId);
+              }}
             />
-          </div>
-          <CircleProfileDrawer
-            user={user}
+          </CirclePatientsAttentionProvider>
+        </>
+      ) : (
+        <>
+          <CirclePatientsAttentionProvider
             db={firebase.db}
-            storage={firebase.storage}
+            user={user}
             patients={patients}
-            patient={selectedPatientForSettings}
-            open={profileOpen}
-            onClose={() => setProfileOpen(false)}
-            onSelectPatient={handleSelectPatient}
-            onSignOut={() => signOut(firebase.auth)}
-            onLeftCircle={async () => {
-              if (!user) return;
-              await refreshPatients(user);
-            }}
-            onProvisionCreated={(provision) => {
-              setPatients((prev) => [...prev, pendingProvisionToCircleSummary(provision)]);
-              setSelectedPatientId(provision.provisionId);
-            }}
-          />
+            selectedPatientId={selectedPatientId}
+          >
+            <div className="flex flex-col flex-1 min-h-0">
+              <CircleMainShell
+                user={user}
+                accountPhotoUrl={accountPhotoUrl}
+                onOpenProfile={() => setProfileOpen(true)}
+                patients={patients}
+                db={firebase.db}
+                storage={firebase.storage}
+                inviteError={authError}
+                selectedPatientId={selectedPatientId}
+                onSelectPatient={handleSelectPatient}
+                startupPatientId={startupPatientId}
+                onSetStartupPatient={patients.length > 1 ? handleSetStartupPatient : undefined}
+              />
+            </div>
+            <CircleProfileDrawer
+              user={user}
+              db={firebase.db}
+              storage={firebase.storage}
+              patients={patients}
+              patient={selectedPatientForSettings}
+              open={profileOpen}
+              onClose={() => setProfileOpen(false)}
+              onSelectPatient={handleSelectPatient}
+              startupPatientId={startupPatientId}
+              onSetStartupPatient={patients.length > 1 ? handleSetStartupPatient : undefined}
+              onSignOut={() => void handleSignOut()}
+              onLeftCircle={async () => {
+                if (!user) return;
+                await refreshPatients(user);
+              }}
+              onProvisionCreated={(provision) => {
+                setPatients((prev) => [...prev, pendingProvisionToCircleSummary(provision)]);
+                setSelectedPatientId(provision.provisionId);
+              }}
+            />
+          </CirclePatientsAttentionProvider>
         </>
       )}
     </div>

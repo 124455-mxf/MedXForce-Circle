@@ -7,6 +7,7 @@ import type { FirebaseStorage } from 'firebase/storage';
 import { Camera, ClipboardList, Loader2, UserRound } from 'lucide-react';
 import {
   displayProfileName,
+  EMPTY_CIRCLE_PROFILE_SNAPSHOT,
   isAcceptedProfilePhotoFile,
   normalizeProfilePhotoFile,
   parseCircleProfileMeta,
@@ -22,7 +23,13 @@ import { dataUrlToBlob } from '../lib/imageCrop';
 import { isFirestoreQuotaError, pauseFirestoreBackgroundWrites } from '../lib/firestoreQuota';
 import { useCircleT } from '../lib/circleI18nContext';
 
-type EditableSection = 'identity' | 'extended' | 'engagement' | 'lifestyle' | 'clinical';
+type EditableSection =
+  | 'identity'
+  | 'extended'
+  | 'engagement'
+  | 'lifestyle'
+  | 'functional'
+  | 'clinical';
 
 interface CirclePatientProfilePanelProps {
   user: User;
@@ -31,6 +38,20 @@ interface CirclePatientProfilePanelProps {
   patient: CirclePatientSummary;
   /** Admin embed: hide section icon/title (shown on collapsible summary instead). */
   compact?: boolean;
+}
+
+function buildInitialProfileSnapshot(patient: CirclePatientSummary): CirclePatientProfileSnapshot {
+  const parts = patient.displayName.trim().split(/\s+/).filter(Boolean);
+  const firstName = parts[0] || '';
+  const lastName = parts.slice(1).join(' ') || '';
+  return {
+    ...EMPTY_CIRCLE_PROFILE_SNAPSHOT,
+    identity: {
+      ...EMPTY_CIRCLE_PROFILE_SNAPSHOT.identity,
+      firstName,
+      lastName,
+    },
+  };
 }
 
 export function CirclePatientProfilePanel({
@@ -43,7 +64,14 @@ export function CirclePatientProfilePanel({
   const t = useCircleT();
   const fileRef = useRef<HTMLInputElement>(null);
   const [snapshot, setSnapshot] = useState<CirclePatientProfileSnapshot | null>(null);
+  const [draftSnapshot, setDraftSnapshot] = useState<CirclePatientProfileSnapshot | null>(null);
   const [metaSummary, setMetaSummary] = useState<string | null>(null);
+  const [accountInfo, setAccountInfo] = useState<{
+    claimedLoginEmail?: string;
+    claimedAt?: number;
+    createdByProvisionId?: string;
+    provisioningPath?: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -53,6 +81,17 @@ export function CirclePatientProfilePanel({
 
   const canEdit = !!patient.capabilities.remoteSettings;
   const showClinical = !!patient.capabilities.viewClinicalData;
+  const workingSnapshot = snapshot ?? draftSnapshot;
+
+  useEffect(() => {
+    if (loading) return;
+    if (snapshot) {
+      setDraftSnapshot(null);
+      return;
+    }
+    if (!canEdit) return;
+    setDraftSnapshot((current) => current ?? buildInitialProfileSnapshot(patient));
+  }, [canEdit, loading, patient, snapshot]);
 
   useEffect(() => {
     setLoading(true);
@@ -62,12 +101,22 @@ export function CirclePatientProfilePanel({
         if (!snap.exists()) {
           setSnapshot(null);
           setMetaSummary(null);
+          setAccountInfo(null);
           setLoading(false);
           return;
         }
         const data = snap.data();
         setSnapshot(parseCircleProfileSnapshot(data.profileSnapshot));
         setMetaSummary(parseCircleProfileMeta(data.profileMeta)?.summary || null);
+        setAccountInfo({
+          claimedLoginEmail:
+            typeof data.claimedLoginEmail === 'string' ? data.claimedLoginEmail : undefined,
+          claimedAt: typeof data.claimedAt === 'number' ? data.claimedAt : undefined,
+          createdByProvisionId:
+            typeof data.createdByProvisionId === 'string' ? data.createdByProvisionId : undefined,
+          provisioningPath:
+            typeof data.provisioningPath === 'string' ? data.provisioningPath : undefined,
+        });
         setLoading(false);
       },
       (err) => {
@@ -90,6 +139,7 @@ export function CirclePatientProfilePanel({
           user.uid,
           patient.displayName,
         );
+        setDraftSnapshot(null);
         setEditSection(null);
       } catch (err) {
         console.warn('[CirclePatientProfilePanel] save', err);
@@ -107,13 +157,14 @@ export function CirclePatientProfilePanel({
   );
 
   const handleEditSection = (sectionId: string) => {
-    if (!canEdit || !snapshot) return;
+    if (!canEdit || !workingSnapshot) return;
     if (sectionId === 'clinical' && !showClinical) return;
     if (
       sectionId === 'identity' ||
       sectionId === 'extended' ||
       sectionId === 'engagement' ||
       sectionId === 'lifestyle' ||
+      sectionId === 'functional' ||
       sectionId === 'clinical'
     ) {
       setEditSection(sectionId);
@@ -121,7 +172,7 @@ export function CirclePatientProfilePanel({
   };
 
   const handlePhotoChange = async (file: File) => {
-    if (!canEdit || !snapshot) return;
+    if (!canEdit || !workingSnapshot) return;
     if (!isAcceptedProfilePhotoFile(file)) {
       setError(t('admin.profile.imageTypeError'));
       return;
@@ -143,7 +194,7 @@ export function CirclePatientProfilePanel({
   };
 
   const uploadCroppedPhoto = async (croppedDataUrl: string) => {
-    if (!snapshot) {
+    if (!workingSnapshot) {
       throw new Error(t('admin.profile.profileNotLoaded'));
     }
     setUploadingPhoto(true);
@@ -156,8 +207,8 @@ export function CirclePatientProfilePanel({
       await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
       const url = await getDownloadURL(storageRef);
       const next: CirclePatientProfileSnapshot = {
-        ...snapshot,
-        identity: { ...snapshot.identity, profilePicture: url },
+        ...workingSnapshot,
+        identity: { ...workingSnapshot.identity, profilePicture: url },
       };
       await updateCirclePatientProfileFromProxy(
         db,
@@ -166,6 +217,7 @@ export function CirclePatientProfilePanel({
         user.uid,
         patient.displayName,
       );
+      setDraftSnapshot(null);
       setFileToCrop(null);
     } catch (err) {
       console.warn('[CirclePatientProfilePanel] photo', err);
@@ -186,7 +238,16 @@ export function CirclePatientProfilePanel({
   };
 
   const photoUrl =
-    snapshot?.identity.profilePicture?.trim() || patient.photoUrl?.trim() || '';
+    workingSnapshot?.identity.profilePicture?.trim() || patient.photoUrl?.trim() || '';
+
+  const formatClaimedAt = (timestamp?: number) => {
+    if (!timestamp) return null;
+    try {
+      return new Date(timestamp).toLocaleString();
+    } catch {
+      return null;
+    }
+  };
 
   return (
     <div className={compact ? 'p-4 space-y-4' : 'space-y-4'}>
@@ -206,13 +267,66 @@ export function CirclePatientProfilePanel({
         <p className="text-xs text-slate-500 leading-relaxed">{t('admin.profile.hint')}</p>
       )}
 
+      {!patient.isPendingProvision && (
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 space-y-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-blue-900">
+            {t('admin.profile.accountTitle')}
+          </p>
+          <div className="grid gap-2 text-sm">
+            <div className="flex justify-between gap-3">
+              <span className="text-slate-600 shrink-0">{t('admin.profile.accountLoginEmail')}</span>
+              <span className="font-semibold text-slate-900 text-right break-all">
+                {accountInfo?.claimedLoginEmail || t('admin.profile.emptyValue')}
+              </span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span className="text-slate-600 shrink-0">{t('admin.profile.accountUid')}</span>
+              <span className="font-mono text-xs text-slate-800 text-right break-all">
+                {patient.patientId}
+              </span>
+            </div>
+            {accountInfo?.claimedAt ? (
+              <div className="flex justify-between gap-3">
+                <span className="text-slate-600 shrink-0">{t('admin.profile.accountClaimedAt')}</span>
+                <span className="font-medium text-slate-800 text-right">
+                  {formatClaimedAt(accountInfo.claimedAt)}
+                </span>
+              </div>
+            ) : null}
+            {accountInfo?.createdByProvisionId ? (
+              <div className="flex justify-between gap-3">
+                <span className="text-slate-600 shrink-0">{t('admin.profile.accountProvisionId')}</span>
+                <span className="font-mono text-xs text-slate-800 text-right break-all">
+                  {accountInfo.createdByProvisionId}
+                </span>
+              </div>
+            ) : accountInfo?.provisioningPath === 'proxy_led' ? (
+              <p className="text-xs text-slate-600 leading-relaxed">{t('admin.profile.accountSelfSetup')}</p>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {patient.isPendingProvision && (
+        <div className="rounded-2xl border border-amber-100 bg-amber-50/80 p-4">
+          <p className="text-sm text-amber-900 leading-relaxed">{t('admin.profile.accountPendingSetup')}</p>
+          {patient.intendedEmail ? (
+            <p className="text-xs text-amber-800 mt-2 break-all">
+              {t('provision.intendedEmailLabel')}: {patient.intendedEmail}
+            </p>
+          ) : null}
+        </div>
+      )}
+
       {loading ? (
         <div className="py-10 flex justify-center text-slate-400">
           <Loader2 size={24} className="animate-spin" />
         </div>
-      ) : !snapshot ? (
-        <div className="p-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500 leading-relaxed">
-          {t('admin.profile.noProfileSynced', { save: t('admin.profile.saveWord') })}
+      ) : !workingSnapshot ? (
+        <div className="p-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50">
+          <p className="text-sm text-slate-500 leading-relaxed">
+            {t('admin.profile.noProfileSynced', { save: t('admin.profile.saveWord') })}
+          </p>
         </div>
       ) : (
         <>
@@ -256,17 +370,17 @@ export function CirclePatientProfilePanel({
             </div>
             <div className="min-w-0 flex-1 space-y-1">
               <p className="text-lg font-bold text-slate-800">
-                {displayProfileName(snapshot, patient.displayName)}
+                {displayProfileName(workingSnapshot, patient.displayName)}
               </p>
-              {snapshot.identity.email && (
-                <p className="text-sm text-slate-500 truncate">{snapshot.identity.email}</p>
+              {workingSnapshot.identity.email && (
+                <p className="text-sm text-slate-500 truncate">{workingSnapshot.identity.email}</p>
               )}
               {metaSummary && <p className="text-xs text-slate-500">{metaSummary}</p>}
             </div>
           </div>
 
           <CirclePatientProfileReview
-            snapshot={snapshot}
+            snapshot={workingSnapshot}
             showClinical={showClinical}
             canEdit={canEdit}
             onEditSection={handleEditSection}
@@ -276,8 +390,7 @@ export function CirclePatientProfilePanel({
             <p className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 leading-relaxed">
               {t('admin.profile.editableNote', {
                 clinical: showClinical ? t('admin.profile.editableClinicalSuffix') : '',
-              })}{' '}
-              {t('admin.profile.readOnlyFunctional')}
+              })}
             </p>
           )}
 
@@ -296,12 +409,12 @@ export function CirclePatientProfilePanel({
         </p>
       )}
 
-      {snapshot && editSection && (
+      {workingSnapshot && editSection && (
         <CirclePatientProfileEditorModal
           open
           section={editSection}
-          snapshot={snapshot}
-          patientDisplayName={displayProfileName(snapshot, patient.displayName)}
+          snapshot={workingSnapshot}
+          patientDisplayName={displayProfileName(workingSnapshot, patient.displayName)}
           saving={saving}
           onClose={() => setEditSection(null)}
           onSave={handleSaveSection}

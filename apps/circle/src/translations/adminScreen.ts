@@ -17,12 +17,21 @@ const profileEnglish = {
   changePhotoAria: 'Change profile photo',
   noProfileSynced:
     'No profile synced yet. In the Patient app, open profile, change something, and tap {{save}} — you should see a green "Circle will show the update" toast. Then refresh this page.',
+  noProfileSyncedProxy:
+    'No profile synced from the patient app yet. As proxy you can fill in key details here now, or wait until the patient saves their profile on the iPad.',
+  startProfileButton: 'Fill in profile',
   saveWord: 'Save',
   editableNote:
-    'Editable: profile photo (camera on avatar), and sections with a pencil — Identity, Extended, Engagement, Lifestyle{{clinical}}.',
+    'Editable: profile photo (camera on avatar), and sections with a pencil — Identity, Extended, Engagement, Lifestyle, Functional{{clinical}}.',
   editableClinicalSuffix: ', Clinical',
-  readOnlyFunctional: 'Read-only here: Functional (change in the Patient app).',
   readOnlyLimited: 'Profile editing is limited to proxies with remote settings access.',
+  accountTitle: 'Patient app account',
+  accountLoginEmail: 'Login email (Firebase)',
+  accountUid: 'Account ID (UID)',
+  accountClaimedAt: 'Linked on iPad',
+  accountProvisionId: 'Setup provision ID',
+  accountSelfSetup: 'Self setup — no proxy setup code was used.',
+  accountPendingSetup: 'Not linked yet — waiting for iPad setup code.',
   editSectionAria: 'Edit {{section}}',
   emptyValue: '—',
   yes: 'Yes',
@@ -83,7 +92,16 @@ const profileEnglish = {
   editExtended: 'Edit extended',
   editEngagement: 'Edit engagement',
   editLifestyle: 'Edit lifestyle',
+  editFunctional: 'Edit functional',
   editClinical: 'Edit clinical',
+  functionalVisualHelp:
+    'Vision — corrective lenses, field cuts or neglect, light sensitivity, or other notes for the care team.',
+  functionalHearingHelp:
+    'Hearing — aids, implants, frequency deficits, or communication needs.',
+  functionalCognitiveHelp:
+    'Cognition — education level, pre-injury literacy, or how to tailor language complexity.',
+  functionalFineMotorHelp:
+    'Fine motor — typing or touch-screen accuracy, hand dominance issues, or iPad interaction notes.',
   notProvided: 'Not provided',
 };
 
@@ -257,12 +275,21 @@ const profileGerman = {
   changePhotoAria: 'Profilfoto ändern',
   noProfileSynced:
     'Noch kein Profil synchronisiert. Öffnen Sie in der Patienten-App das Profil, ändern Sie etwas und tippen Sie auf {{save}} — Sie sollten einen grünen Hinweis „Circle zeigt die Aktualisierung“ sehen. Aktualisieren Sie dann diese Seite.',
+  noProfileSyncedProxy:
+    'Noch kein Profil aus der Patienten-App synchronisiert. Als Vertreter können Sie hier jetzt wichtige Angaben eintragen oder warten, bis der Patient das Profil auf dem iPad speichert.',
+  startProfileButton: 'Profil ausfüllen',
   saveWord: 'Speichern',
   editableNote:
-    'Bearbeitbar: Profilfoto (Kamera am Avatar) und Bereiche mit Stift — Identität, Erweitert, Engagement, Lebensstil{{clinical}}.',
+    'Bearbeitbar: Profilfoto (Kamera am Avatar) und Bereiche mit Stift — Identität, Erweitert, Engagement, Lebensstil, Funktional{{clinical}}.',
   editableClinicalSuffix: ', Klinisch',
-  readOnlyFunctional: 'Hier schreibgeschützt: Funktional (in der Patienten-App ändern).',
   readOnlyLimited: 'Profilbearbeitung ist auf Vertreter mit Remote-Einstellungszugriff beschränkt.',
+  accountTitle: 'Patienten-App-Konto',
+  accountLoginEmail: 'Anmelde-E-Mail (Firebase)',
+  accountUid: 'Konto-ID (UID)',
+  accountClaimedAt: 'Am iPad verknüpft',
+  accountProvisionId: 'Setup-Provision-ID',
+  accountSelfSetup: 'Selbst eingerichtet — kein Proxy-Setup-Code.',
+  accountPendingSetup: 'Noch nicht verknüpft — wartet auf iPad-Setup-Code.',
   editSectionAria: '{{section}} bearbeiten',
   emptyValue: '—',
   yes: 'Ja',
@@ -323,7 +350,16 @@ const profileGerman = {
   editExtended: 'Erweitert bearbeiten',
   editEngagement: 'Engagement bearbeiten',
   editLifestyle: 'Lebensstil bearbeiten',
+  editFunctional: 'Funktional bearbeiten',
   editClinical: 'Klinisch bearbeiten',
+  functionalVisualHelp:
+    'Sehen — Korrekturgläser, Gesichtsfeldausfälle/Neglect, Lichtempfindlichkeit oder andere Hinweise.',
+  functionalHearingHelp:
+    'Hören — Hörgeräte, Implantate, Frequenzdefizite oder Kommunikationsbedarf.',
+  functionalCognitiveHelp:
+    'Kognition — Bildungsstand, Alphabetisierung vor der Verletzung oder Sprachkomplexität.',
+  functionalFineMotorHelp:
+    'Feinmotorik — Tippen/Touch-Genauigkeit, Handprobleme oder iPad-Hinweise.',
   notProvided: 'Nicht angegeben',
 };
 
@@ -504,12 +540,21 @@ const profileSpanish = {
   changePhotoAria: 'Cambiar foto de perfil',
   noProfileSynced:
     'Aún no hay perfil sincronizado. En la app del paciente, abra el perfil, cambie algo y pulse {{save}} — debería ver un aviso verde «Circle mostrará la actualización». Luego actualice esta página.',
+  noProfileSyncedProxy:
+    'Aún no hay perfil sincronizado desde la app del paciente. Como representante puede completar datos clave aquí ahora, o esperar a que el paciente guarde su perfil en el iPad.',
+  startProfileButton: 'Completar perfil',
   saveWord: 'Guardar',
   editableNote:
-    'Editable: foto de perfil (cámara en el avatar) y secciones con lápiz — Identidad, Extendido, Compromiso, Estilo de vida{{clinical}}.',
+    'Editable: foto de perfil (cámara en el avatar) y secciones con lápiz — Identidad, Extendido, Compromiso, Estilo de vida, Funcional{{clinical}}.',
   editableClinicalSuffix: ', Clínico',
-  readOnlyFunctional: 'Solo lectura aquí: Funcional (cámbielo en la app del paciente).',
   readOnlyLimited: 'La edición del perfil está limitada a representantes con acceso a ajustes remotos.',
+  accountTitle: 'Cuenta de la app del paciente',
+  accountLoginEmail: 'Correo de acceso (Firebase)',
+  accountUid: 'ID de cuenta (UID)',
+  accountClaimedAt: 'Vinculado en iPad',
+  accountProvisionId: 'ID de provisión de configuración',
+  accountSelfSetup: 'Configuración propia — no se usó código del proxy.',
+  accountPendingSetup: 'Aún no vinculado — esperando código en el iPad.',
   editSectionAria: 'Editar {{section}}',
   emptyValue: '—',
   yes: 'Sí',
@@ -570,7 +615,16 @@ const profileSpanish = {
   editExtended: 'Editar extendido',
   editEngagement: 'Editar compromiso',
   editLifestyle: 'Editar estilo de vida',
+  editFunctional: 'Editar funcional',
   editClinical: 'Editar clínico',
+  functionalVisualHelp:
+    'Visión — lentes, cortes de campo/neglect, sensibilidad a la luz u otras notas.',
+  functionalHearingHelp:
+    'Audición — audífonos, implantes, déficits de frecuencia o necesidades de comunicación.',
+  functionalCognitiveHelp:
+    'Cognición — educación, alfabetización previa a la lesión o complejidad del lenguaje.',
+  functionalFineMotorHelp:
+    'Motricidad fina — precisión táctil, problemas de mano o notas para el iPad.',
   notProvided: 'No indicado',
 };
 
@@ -751,12 +805,21 @@ const profilePolish = {
   changePhotoAria: 'Zmień zdjęcie profilowe',
   noProfileSynced:
     'Brak zsynchronizowanego profilu. W aplikacji pacjenta otwórz profil, coś zmień i naciśnij {{save}} — powinien pojawić się zielony komunikat „Circle pokaże aktualizację”. Odśwież tę stronę.',
+  noProfileSyncedProxy:
+    'Brak profilu zsynchronizowanego z aplikacji pacjenta. Jako pełnomocnik możesz uzupełnić kluczowe dane tutaj teraz lub poczekać, aż pacjent zapisze profil na iPadzie.',
+  startProfileButton: 'Uzupełnij profil',
   saveWord: 'Zapisz',
   editableNote:
-    'Edytowalne: zdjęcie profilowe (aparat na awatarze) i sekcje z ołówkiem — Tożsamość, Rozszerzone, Zaangażowanie, Styl życia{{clinical}}.',
+    'Edytowalne: zdjęcie profilowe (aparat na awatarze) i sekcje z ołówkiem — Tożsamość, Rozszerzone, Zaangażowanie, Styl życia, Funkcjonalne{{clinical}}.',
   editableClinicalSuffix: ', Kliniczne',
-  readOnlyFunctional: 'Tylko do odczytu tutaj: Funkcjonalne (zmień w aplikacji pacjenta).',
   readOnlyLimited: 'Edycja profilu jest ograniczona do pełnomocników z dostępem do ustawień zdalnych.',
+  accountTitle: 'Konto aplikacji pacjenta',
+  accountLoginEmail: 'E-mail logowania (Firebase)',
+  accountUid: 'ID konta (UID)',
+  accountClaimedAt: 'Połączono na iPadzie',
+  accountProvisionId: 'ID provizji konfiguracji',
+  accountSelfSetup: 'Samodzielna konfiguracja — bez kodu proxy.',
+  accountPendingSetup: 'Jeszcze nie połączono — oczekiwanie na kod na iPadzie.',
   editSectionAria: 'Edytuj {{section}}',
   emptyValue: '—',
   yes: 'Tak',
@@ -817,7 +880,16 @@ const profilePolish = {
   editExtended: 'Edytuj rozszerzone',
   editEngagement: 'Edytuj zaangażowanie',
   editLifestyle: 'Edytuj styl życia',
+  editFunctional: 'Edytuj funkcjonalne',
   editClinical: 'Edytuj kliniczne',
+  functionalVisualHelp:
+    'Wzrok — soczewki, ubytki pola widzenia/neglect, nadwrażliwość na światło lub inne uwagi.',
+  functionalHearingHelp:
+    'Słuch — aparaty, implanty, deficyty częstotliwości lub potrzeby komunikacyjne.',
+  functionalCognitiveHelp:
+    'Poznanie — wykształcenie, umiejętności przed urazem lub złożoność języka.',
+  functionalFineMotorHelp:
+    'Motoryka mała — dokładność dotyku, problemy z dłonią lub uwagi dotyczące iPada.',
   notProvided: 'Nie podano',
 };
 

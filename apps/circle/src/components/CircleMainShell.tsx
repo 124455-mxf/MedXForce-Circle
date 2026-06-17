@@ -54,6 +54,8 @@ import { CircleDropInConfirmModal } from './CircleDropInConfirmModal';
 import { CircleDropInChatModal } from './CircleDropInChatModal';
 import { CircleDropInShareModal } from './CircleDropInShareModal';
 import { CircleDropInResponseModal } from './CircleDropInResponseModal';
+import { CircleDropInPatientRequestModal } from './CircleDropInPatientRequestModal';
+import { CircleDropInPatientRequestBanner } from './CircleDropInPatientRequestBanner';
 import { useCircleDropIn } from '../hooks/useCircleDropIn';
 import { useCircleDropInResponseNotice } from '../hooks/useCircleDropInResponseNotice';
 import { useCirclePatientMemberLanguages } from '../hooks/useCirclePatientMemberLanguages';
@@ -72,6 +74,8 @@ interface CircleMainShellProps {
   onSignOut?: () => void;
   selectedPatientId: string | null;
   onSelectPatient: (patient: CirclePatientSummary) => void;
+  startupPatientId?: string | null;
+  onSetStartupPatient?: (patient: CirclePatientSummary) => void;
 }
 
 export function CircleMainShell({
@@ -84,6 +88,8 @@ export function CircleMainShell({
   inviteError,
   selectedPatientId,
   onSelectPatient,
+  startupPatientId = null,
+  onSetStartupPatient,
 }: CircleMainShellProps) {
   const [activeTab, setActiveTab] = useState<CircleMainTab>('dashboard');
   const [initialAnalyticsMetricId, setInitialAnalyticsMetricId] =
@@ -126,6 +132,8 @@ export function CircleMainShell({
     [activeTab, guardedNavigate],
   );
 
+  const handleGoToTab = handleTabChange;
+
   const handleBackToDashboard = useCallback(() => {
     guardedNavigate(() => setActiveTab('dashboard'));
   }, [guardedNavigate]);
@@ -159,6 +167,7 @@ export function CircleMainShell({
   const showVisitCapture = !!selectedPatient && canStartVisitCapture(memberRole);
   const canReceiveRemoteCommandResponses =
     !!selectedPatient && canSendPatientRemoteCommands(selectedPatient.role);
+  const circleDropInEnabled = !!selectedPatient;
 
   const handleVisitCapturePublished = useCallback(() => {
     setVisitCaptureOpen(false);
@@ -204,11 +213,12 @@ export function CircleMainShell({
     caregiverDisplayName,
     memberRole,
     selectedPatient?.displayName ?? 'Patient',
-    canReceiveRemoteCommandResponses,
+    circleDropInEnabled,
     patientPresence.online,
     language,
     t,
     memberLanguages.byUid,
+    patientLanguage,
   );
 
   const openDropInConfirmModal = useCallback(() => {
@@ -397,6 +407,8 @@ export function CircleMainShell({
             open={switcherOpen}
             onOpenChange={setSwitcherOpen}
             onSelect={handleSelectPatient}
+            startupPatientId={startupPatientId}
+            onSetStartupPatient={onSetStartupPatient}
             patientOnline={patientPresence.online}
           />
         ) : (
@@ -408,6 +420,8 @@ export function CircleMainShell({
               open={switcherOpen}
               onOpenChange={setSwitcherOpen}
               onSelect={handleSelectPatient}
+              startupPatientId={startupPatientId}
+              onSetStartupPatient={onSetStartupPatient}
               memberDisplayName={memberDisplayName}
               patientOnline={patientPresence.online}
               patientLastSeen={patientPresence.lastSeen}
@@ -464,7 +478,7 @@ export function CircleMainShell({
               mediaCountsLoading={galleryCounts.loading}
               urgentAlertAttention={alertAttention.urgentItems}
               subduedAlertAttention={alertAttention.subduedItems}
-              onGoToTab={handleTabChange}
+              onGoToTab={handleGoToTab}
               onOpenCircleFolder={handleOpenCircleFolder}
               onOpenAnalyticsDetail={handleOpenAnalyticsDetail}
               onOpenVisitCapture={
@@ -626,9 +640,33 @@ export function CircleMainShell({
             <CircleDropInShareModal
               open={circleDropIn.sharePrompt != null}
               patientName={selectedPatient.displayName}
-              onShare={() => void circleDropIn.shareToCareCoordination()}
+              patientInitiated={
+                circleDropIn.sharePrompt?.session.initiatedBy === 'patient'
+              }
+              shareDestination={circleDropIn.shareDestination}
+              showCareTeamNotifyOption={circleDropIn.showCareTeamNotifyOption}
+              onShare={(alsoNotifyCareTeam) =>
+                void circleDropIn.shareToCareCoordination(alsoNotifyCareTeam)
+              }
               onDismiss={circleDropIn.dismissSharePrompt}
               sharing={circleDropIn.busy}
+              error={circleDropIn.error}
+            />
+            {circleDropIn.pendingPatientRequest ? (
+              <CircleDropInPatientRequestBanner
+                patientName={selectedPatient.displayName}
+                onAccept={() => void circleDropIn.acceptPatientDropIn()}
+                onDecline={() => void circleDropIn.declinePatientDropIn()}
+                busy={circleDropIn.busy}
+              />
+            ) : null}
+            <CircleDropInPatientRequestModal
+              open={circleDropIn.pendingPatientRequest != null}
+              patientName={selectedPatient.displayName}
+              onAccept={() => void circleDropIn.acceptPatientDropIn()}
+              onDecline={() => void circleDropIn.declinePatientDropIn()}
+              busy={circleDropIn.busy}
+              secondsRemaining={circleDropIn.patientRequestSecondsRemaining}
               error={circleDropIn.error}
             />
             <CircleDropInResponseModal

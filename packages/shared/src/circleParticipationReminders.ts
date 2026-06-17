@@ -3,11 +3,22 @@ import { doc, getDoc, setDoc, type Firestore } from 'firebase/firestore';
 /** Inactivity window before nudging circle members to participate. */
 export const PARTICIPATION_REMINDER_WINDOW_MS = 28 * 24 * 60 * 60 * 1000;
 
+/** Care-team and profile reminders resurface sooner — proxy action is time-sensitive. */
+export const CARE_ACTION_REMINDER_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
+
 export type CircleParticipationReminderKind =
   | 'galleryUpload'
   | 'diaryEntry'
   | 'assessmentAfterFirstComm'
-  | 'profileIncomplete';
+  | 'profileIncomplete'
+  | 'teamCoverage';
+
+export function reminderSnoozeDurationMs(kind: CircleParticipationReminderKind): number {
+  if (kind === 'teamCoverage' || kind === 'profileIncomplete') {
+    return CARE_ACTION_REMINDER_SNOOZE_MS;
+  }
+  return PARTICIPATION_REMINDER_WINDOW_MS;
+}
 
 export type CircleParticipationReminderSnoozes = Partial<
   Record<CircleParticipationReminderKind, number>
@@ -31,6 +42,9 @@ export function parseMemberReminderSnoozes(
   }
   if (typeof map.profileIncomplete === 'number' && map.profileIncomplete > 0) {
     next.profileIncomplete = map.profileIncomplete;
+  }
+  if (typeof map.teamCoverage === 'number' && map.teamCoverage > 0) {
+    next.teamCoverage = map.teamCoverage;
   }
   return next;
 }
@@ -98,7 +112,7 @@ export async function snoozeParticipationReminder(
 ): Promise<CircleParticipationReminderSnoozes> {
   const next: CircleParticipationReminderSnoozes = {
     ...existing,
-    [kind]: now + PARTICIPATION_REMINDER_WINDOW_MS,
+    [kind]: now + reminderSnoozeDurationMs(kind),
   };
   await setDoc(
     memberParticipationSnoozeRef(db, patientId, memberUid),

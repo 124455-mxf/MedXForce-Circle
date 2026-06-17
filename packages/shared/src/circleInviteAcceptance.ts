@@ -35,11 +35,19 @@ function memberDocNeedsCapabilityRepair(
   return merged.messaging === true;
 }
 
+export type AcceptedCircleInviteSummary = {
+  patientId: string;
+  role: string;
+  proxyTier?: 'primary' | 'backup';
+  invitedEmail: string;
+  contactDisplayName?: string;
+};
+
 /** After sign-in: link pending invites to members/{uid} for upload rules. */
 export async function acceptPendingCircleInvites(
   db: Firestore,
   user: User,
-): Promise<string[]> {
+): Promise<AcceptedCircleInviteSummary[]> {
   const email = user.email ? normalizeInviteEmail(user.email) : '';
   if (!email) return [];
 
@@ -51,36 +59,96 @@ export async function acceptPendingCircleInvites(
   const snap = await getDocs(pending);
   if (snap.empty) return [];
 
-  const batch = writeBatch(db);
-  const patientIds: string[] = [];
+  const accepted: AcceptedCircleInviteSummary[] = [];
 
-  snap.forEach((inviteDoc) => {
+  for (const inviteDoc of snap.docs) {
     const invite = inviteDoc.data() as CircleInviteRecord;
-    patientIds.push(invite.patientId);
+    const memberRef = doc(db, 'patients', invite.patientId, 'members', user.uid);
+    const memberSnap = await getDoc(memberRef);
 
-    batch.set(doc(db, 'patients', invite.patientId, 'members', user.uid), {
-      ...memberRecordFromInvite(invite, user.uid),
-      inviteRef: inviteDoc.id,
-    });
+    const batch = writeBatch(db);
+    if (!memberSnap.exists()) {
+      batch.set(
+        memberRef,
+        {
+          ...memberRecordFromInvite(invite, user.uid),
+          inviteRef: inviteDoc.id,
+        },
+        { merge: true },
+      );
+    }
 
     batch.update(inviteDoc.ref, {
       status: 'accepted',
       acceptedByUid: user.uid,
       updatedAt: Date.now(),
     });
-  });
 
-  try {
-    await batch.commit();
-  } catch (err) {
-    if (isFirestoreQuotaError(err)) {
-      console.warn('[Circle] Invite acceptance skipped — Firestore daily write quota exceeded.');
-      return [];
+    try {
+      await batch.commit();
+      accepted.push({
+        patientId: invite.patientId,
+        role: invite.role,
+        proxyTier: invite.proxyTier,
+        invitedEmail: invite.invitedEmail,
+        contactDisplayName: invite.displayName,
+      });
+    } catch (err) {
+      if (isFirestoreQuotaError(err)) {
+        console.warn('[Circle] Invite acceptance skipped — Firestore daily write quota exceeded.');
+        break;
+      }
+      console.warn('[Circle] Could not accept invite for patient', invite.patientId, err);
     }
-    throw err;
   }
 
-  return patientIds;
+  return accepted;
+}
+
+/** Repair accepted invites that never got a members/{uid} doc (legacy / partial writes). */
+export async function repairOrphanAcceptedInvitesForUser(
+  db: Firestore,
+  uid: string,
+): Promise<number> {
+  const invitesSnap = await getDocs(
+    query(
+      collection(db, 'circle_invites'),
+      where('acceptedByUid', '==', uid),
+      where('status', '==', 'accepted'),
+    ),
+  );
+  if (invitesSnap.empty) return 0;
+
+  let repairs = 0;
+
+  for (const inviteDoc of invitesSnap.docs) {
+    const invite = inviteDoc.data() as CircleInviteRecord;
+    const memberRef = doc(db, 'patients', invite.patientId, 'members', uid);
+    const memberSnap = await getDoc(memberRef);
+    if (memberSnap.exists()) continue;
+
+    try {
+      const batch = writeBatch(db);
+      batch.set(
+        memberRef,
+        {
+          ...memberRecordFromInvite(invite, uid),
+          inviteRef: inviteDoc.id,
+        },
+        { merge: true },
+      );
+      await batch.commit();
+      repairs += 1;
+    } catch (err) {
+      if (isFirestoreQuotaError(err)) {
+        console.warn('[Circle] Orphan invite repair skipped — Firestore daily write quota exceeded.');
+        break;
+      }
+      console.warn('[Circle] Could not repair orphan invite for patient', invite.patientId, err);
+    }
+  }
+
+  return repairs;
 }
 
 /**
@@ -112,9 +180,9 @@ export async function ensureMemberCapabilitiesForUser(
     const invite = inviteDoc.data() as CircleInviteRecord;
     const memberRef = doc(db, 'patients', invite.patientId, 'members', uid);
     const memberSnap = await getDoc(memberRef);
-    const stored = memberSnap.exists()
-      ? (memberSnap.data()?.capabilities as Partial<PatientCapabilities> | undefined)
-      : undefined;
+    if (!memberSnap.exists()) continue;
+
+    const stored = memberSnap.data()?.capabilities as Partial<PatientCapabilities> | undefined;
 
     if (!memberDocNeedsCapabilityRepair(stored, invite.role, invite.capabilities)) {
       continue;
@@ -149,7 +217,7 @@ export async function ensureMemberCapabilitiesForUser(
       );
       return;
     }
-    throw err;
+    console.warn('[Circle] Capability backfill skipped —', err);
   }
 }
 
@@ -190,8 +258,18 @@ export async function reconcileAcceptedMemberRolesForUser(
 
   for (const inviteDoc of invitesSnap.docs) {
     const invite = inviteDoc.data() as CircleInviteRecord;
-    const patientSnap = await getDoc(doc(db, 'patients', invite.patientId));
-    const patientData = patientSnap.exists() ? patientSnap.data() : null;
+    const memberRef = doc(db, 'patients', invite.patientId, 'members', uid);
+    const memberSnap = await getDoc(memberRef);
+    if (!memberSnap.exists()) continue;
+
+    let patientData: Record<string, unknown> | null = null;
+    try {
+      const patientSnap = await getDoc(doc(db, 'patients', invite.patientId));
+      patientData = patientSnap.exists() ? patientSnap.data() : null;
+    } catch (err) {
+      console.warn('[Circle] Patient read skipped during role reconcile —', err);
+      continue;
+    }
 
     try {
       await publishCircleAccessIndexFromPatientDoc(
@@ -208,10 +286,6 @@ export async function reconcileAcceptedMemberRolesForUser(
         console.warn('[Circle] Access index publish skipped —', err);
       }
     }
-
-    const memberRef = doc(db, 'patients', invite.patientId, 'members', uid);
-    const memberSnap = await getDoc(memberRef);
-    if (!memberSnap.exists()) continue;
 
     const memberData = memberSnap.data();
     const memberCaps = memberData?.capabilities as Partial<PatientCapabilities> | undefined;

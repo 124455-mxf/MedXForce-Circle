@@ -15,7 +15,13 @@ import { CirclePatientLanguageConfirmModal } from './CirclePatientLanguageConfir
 import { useCircleT } from '../lib/circleI18nContext';
 import { profileEditorSectionTitleI18n } from '../lib/adminScreenI18n';
 
-type EditableSection = 'identity' | 'extended' | 'engagement' | 'lifestyle' | 'clinical';
+type EditableSection =
+  | 'identity'
+  | 'extended'
+  | 'engagement'
+  | 'lifestyle'
+  | 'functional'
+  | 'clinical';
 
 interface CirclePatientProfileEditorModalProps {
   open: boolean;
@@ -832,6 +838,83 @@ export function CirclePatientProfileEditorModal({
                     setDraft({
                       ...draft,
                       clinical: { ...draft.clinical, allergies: e.target.value },
+                    })
+                  }
+                />
+              </label>
+            </>
+          )}
+
+          {section === 'functional' && (
+            <>
+              <label className="block space-y-1">
+                <span className="text-xs font-bold text-slate-500 uppercase">
+                  {t('admin.profile.fieldVisualStatus')}
+                </span>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  {t('admin.profile.functionalVisualHelp')}
+                </p>
+                <textarea
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 min-h-[88px]"
+                  value={draft.functional.visualStatus}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      functional: { ...draft.functional, visualStatus: e.target.value },
+                    })
+                  }
+                />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-bold text-slate-500 uppercase">
+                  {t('admin.profile.fieldHearingProfile')}
+                </span>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  {t('admin.profile.functionalHearingHelp')}
+                </p>
+                <textarea
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 min-h-[88px]"
+                  value={draft.functional.hearingProfile}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      functional: { ...draft.functional, hearingProfile: e.target.value },
+                    })
+                  }
+                />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-bold text-slate-500 uppercase">
+                  {t('admin.profile.fieldCognitiveBaseline')}
+                </span>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  {t('admin.profile.functionalCognitiveHelp')}
+                </p>
+                <textarea
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 min-h-[88px]"
+                  value={draft.functional.cognitiveBaseline}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      functional: { ...draft.functional, cognitiveBaseline: e.target.value },
+                    })
+                  }
+                />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-bold text-slate-500 uppercase">
+                  {t('admin.profile.fieldFineMotorBaseline')}
+                </span>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  {t('admin.profile.functionalFineMotorHelp')}
+                </p>
+                <textarea
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 min-h-[88px]"
+                  value={draft.functional.fineMotorBaseline}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      functional: { ...draft.functional, fineMotorBaseline: e.target.value },
                     })
                   }
                 />

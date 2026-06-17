@@ -51,13 +51,13 @@ export function CircleDashboardPatientLocaleWidget({
   const viewerTimeZone = getBrowserTimeZone();
   const [, setTick] = useState(0);
 
+  const hasLocationSource = !!(city || previewReminders);
+
   useEffect(() => {
     if (!locale.timezoneId) return;
     const interval = window.setInterval(() => setTick((value) => value + 1), 30_000);
     return () => window.clearInterval(interval);
   }, [locale.timezoneId]);
-
-  if (!city && !previewReminders) return null;
 
   const liveTime =
     locale.timezoneId && !locale.error
@@ -72,16 +72,24 @@ export function CircleDashboardPatientLocaleWidget({
       ? formatPatientViewerTimeDifferenceT(t, locale.timezoneId, viewerTimeZone)
       : null;
 
-  const showLocaleContent = !locale.loading && !locale.error;
-  const displayCityLabel = locale.cityLabel || (previewReminders ? 'San Diego, USA' : '');
-  const displayTimezone = locale.timezone || (previewReminders ? 'PDT' : '');
-  const displayLiveTime =
-    liveTime || (previewReminders ? formatPatientLocaleTime('America/Los_Angeles', timeFormat) : '');
+  const showLocaleContent = hasLocationSource && !locale.loading && !locale.error;
+  const showEmptyState = !hasLocationSource;
+  const displayCityLabel = showEmptyState
+    ? t('dashboard.localeLocationUnknown')
+    : locale.cityLabel || (previewReminders ? 'San Diego, USA' : '');
+  const displayTimezone = showEmptyState ? '' : locale.timezone || (previewReminders ? 'PDT' : '');
+  const displayLiveTime = showEmptyState
+    ? '—'
+    : liveTime || (previewReminders ? formatPatientLocaleTime('America/Los_Angeles', timeFormat) : '—');
   const previewTempF = 73;
-  const displayTemperature = previewReminders
-    ? formatPatientLocaleTemperature(previewTempF, temperatureUnit)
-    : formatPatientLocaleTemperature(locale.temperatureF, temperatureUnit);
-  const displayWeather = locale.weatherLabel || (previewReminders ? 'Mainly clear' : '');
+  const displayTemperature = showEmptyState
+    ? '—'
+    : previewReminders
+      ? formatPatientLocaleTemperature(previewTempF, temperatureUnit)
+      : formatPatientLocaleTemperature(locale.temperatureF, temperatureUnit);
+  const displayWeather = showEmptyState
+    ? t('dashboard.localeUnavailable')
+    : locale.weatherLabel || (previewReminders ? 'Mainly clear' : t('dashboard.localeUnavailable'));
   const isDeviceSynced = !!deviceLocale || previewReminders;
   const deviceSyncHint = isDeviceSynced
     ? t('dashboard.localeDeviceSyncedHint')
@@ -106,7 +114,7 @@ export function CircleDashboardPatientLocaleWidget({
           {t('dashboard.localeWeather')}
         </div>
 
-        {locale.loading && !previewReminders ? (
+        {locale.loading && hasLocationSource && !previewReminders ? (
           <>
             <Loader2
               size={18}
@@ -119,13 +127,13 @@ export function CircleDashboardPatientLocaleWidget({
               aria-hidden
             />
           </>
-        ) : locale.error && !previewReminders ? (
+        ) : locale.error && hasLocationSource && !previewReminders ? (
           <>
             <p className="col-start-1 row-start-2 col-span-2 text-sm text-slate-500 leading-snug">
               {locale.cityLabel}
             </p>
           </>
-        ) : showLocaleContent || previewReminders ? (
+        ) : showLocaleContent || showEmptyState || previewReminders ? (
           <>
             <div className="col-start-1 row-start-2 flex min-w-0 flex-nowrap items-end gap-x-2 self-end">
               <span className="text-2xl font-bold text-slate-800 tabular-nums leading-none shrink-0">

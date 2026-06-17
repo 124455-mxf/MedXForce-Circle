@@ -6,11 +6,18 @@ type CircleCollapsibleSectionProps = {
   title: string;
   children: ReactNode;
   className?: string;
+  defaultOpen?: boolean;
 };
 
-export function CircleCollapsibleSection({ title, children, className }: CircleCollapsibleSectionProps) {
+export function CircleCollapsibleSection({
+  title,
+  children,
+  className,
+  defaultOpen = false,
+}: CircleCollapsibleSectionProps) {
   return (
     <details
+      open={defaultOpen || undefined}
       className={cn(
         'rounded-2xl border border-slate-100 bg-white shadow-sm group',
         className,

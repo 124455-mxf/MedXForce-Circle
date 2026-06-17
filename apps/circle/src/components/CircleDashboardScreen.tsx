@@ -37,6 +37,7 @@ import {
 import type { CircleMainTab } from './CircleBottomNav';
 
 import { CircleProfileChangeBanner } from './CircleProfileChangeBanner';
+import { CircleDashboardWelcomeSection } from './CircleDashboardWelcomeSection';
 import { CirclePatientInsightsSection } from './CirclePatientInsightsSection';
 import { CircleDashboardCelebrationSection } from './CircleDashboardCelebrationSection';
 import { CircleDashboardAttentionTiles } from './CircleDashboardAttentionTiles';
@@ -935,6 +936,8 @@ export function CircleDashboardScreen({
       />
 
       <CircleProfileChangeBanner user={user} db={db} patient={patient} />
+
+      <CircleDashboardWelcomeSection user={user} db={db} patient={patient} />
 
       <CirclePatientCommandConfirmModal
         open={confirmCommandType != null}

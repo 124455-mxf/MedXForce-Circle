@@ -21,6 +21,7 @@ import {
   type PatientMemberRecord,
 } from './patientPermissions';
 import type { CirclePatientSummary } from './circlePatients';
+import { buildCircleAccessByEmailIndex } from './circleMemberRoles';
 
 export type PatientProvisionStatus = 'pending' | 'claimed';
 
@@ -73,19 +74,40 @@ function generateSetupCode(length = 8): string {
   return out;
 }
 
+function cleanProfileDraft(
+  draft?: PatientProvisionProfileDraft,
+): PatientProvisionProfileDraft | undefined {
+  if (!draft) return undefined;
+  const cleaned: PatientProvisionProfileDraft = {};
+  const firstName = draft.firstName?.trim();
+  const lastName = draft.lastName?.trim();
+  const dob = draft.dob?.trim();
+  const language = draft.language?.trim();
+  const sex = draft.sex?.trim();
+  if (firstName) cleaned.firstName = firstName;
+  if (lastName) cleaned.lastName = lastName;
+  if (dob) cleaned.dob = dob;
+  if (language) cleaned.language = language;
+  if (sex) cleaned.sex = sex;
+  return Object.keys(cleaned).length > 0 ? cleaned : undefined;
+}
+
 function provisionMemberRecord(
   proxyUser: User,
   proxyDisplayName: string,
 ): PatientMemberRecord {
-  return {
+  const record: PatientMemberRecord = {
     role: 'proxy',
     capabilities: capabilitiesForRole('proxy'),
     status: 'active',
     displayName: proxyDisplayName.trim() || proxyUser.displayName || 'Proxy',
-    invitedEmail: proxyUser.email ? normalizeInviteEmail(proxyUser.email) : undefined,
     proxyTier: 'primary',
     updatedAt: Date.now(),
   };
+  if (proxyUser.email) {
+    record.invitedEmail = normalizeInviteEmail(proxyUser.email);
+  }
+  return record;
 }
 
 export async function checkPatientEmailAvailability(
@@ -103,15 +125,14 @@ export async function checkPatientEmailAvailability(
     }
   }
 
-  const pendingSnap = await getDocs(
-    query(
-      collection(db, 'patient_provisions'),
-      where('intendedEmail', '==', email),
-      where('status', '==', 'pending'),
-    ),
+  const pendingIndexSnap = await getDoc(
+    doc(db, 'patient_pending_email_index', normalizePatientEmailKey(email)),
   );
-  if (!pendingSnap.empty) {
-    return { available: false, pendingProvisionId: pendingSnap.docs[0].id };
+  if (pendingIndexSnap.exists()) {
+    const provisionId = String(pendingIndexSnap.data()?.provisionId || '').trim();
+    if (provisionId) {
+      return { available: false, pendingProvisionId: provisionId };
+    }
   }
 
   return { available: true };
@@ -167,21 +188,37 @@ export async function createPatientProvisionForProxy(
     updatedAt: now,
   };
   if (intendedEmail) record.intendedEmail = intendedEmail;
-  if (input.profileDraft && Object.keys(input.profileDraft).length > 0) {
-    record.profileDraft = input.profileDraft;
-  }
+  const profileDraft = cleanProfileDraft(input.profileDraft);
+  if (profileDraft) record.profileDraft = profileDraft;
 
   const batch = writeBatch(db);
-  batch.set(provisionRef, record);
-  batch.set(doc(db, 'patient_setup_codes', setupCode), {
+  batch.set(provisionRef, {
+    ...record,
+    caregivers: [],
+    friendsAndFamily: [],
+    contacts: [],
+    circleAccessByEmail: {},
+  });
+  await batch.commit();
+
+  const linkBatch = writeBatch(db);
+  linkBatch.set(doc(db, 'patient_setup_codes', setupCode), {
     provisionId: provisionRef.id,
     createdAt: now,
   });
-  batch.set(
+  linkBatch.set(
     doc(db, 'patient_provisions', provisionRef.id, 'members', proxyUser.uid),
     provisionMemberRecord(proxyUser, input.proxyDisplayName || proxyUser.displayName || 'Proxy'),
   );
-  await batch.commit();
+  if (intendedEmail) {
+    linkBatch.set(doc(db, 'patient_pending_email_index', normalizePatientEmailKey(intendedEmail)), {
+      provisionId: provisionRef.id,
+      createdByUid: proxyUser.uid,
+      email: intendedEmail,
+      createdAt: now,
+    });
+  }
+  await linkBatch.commit();
   return record;
 }
 
@@ -213,16 +250,20 @@ export async function lookupPendingProvisionByEmail(
   const email = normalizeInviteEmail(emailRaw);
   if (!email) return null;
 
-  const snap = await getDocs(
-    query(
-      collection(db, 'patient_provisions'),
-      where('intendedEmail', '==', email),
-      where('status', '==', 'pending'),
-    ),
+  const indexSnap = await getDoc(
+    doc(db, 'patient_pending_email_index', normalizePatientEmailKey(email)),
   );
-  if (snap.empty) return null;
-  const docSnap = snap.docs[0];
-  return { ...(docSnap.data() as PatientProvisionRecord), provisionId: docSnap.id };
+  if (!indexSnap.exists()) return null;
+
+  const provisionId = String(indexSnap.data()?.provisionId || '').trim();
+  if (!provisionId) return null;
+
+  const provisionSnap = await getDoc(doc(db, 'patient_provisions', provisionId));
+  if (!provisionSnap.exists()) return null;
+
+  const data = provisionSnap.data() as PatientProvisionRecord;
+  if (data.status !== 'pending') return null;
+  return { ...data, provisionId: provisionSnap.id };
 }
 
 export async function listPendingProvisionsForProxy(
@@ -252,6 +293,7 @@ export function pendingProvisionToCircleSummary(
     capabilities: caps,
     provisionStatus: 'pending',
     setupCode: provision.setupCode,
+    intendedEmail: provision.intendedEmail,
     isPendingProvision: true,
   };
 }
@@ -290,60 +332,76 @@ async function finalizePatientProvisionClaim(
     throw new Error('This account is already linked to a patient profile.');
   }
 
+  const provisionSnap = await getDoc(doc(db, 'patient_provisions', provision.provisionId));
+  const provisionData = provisionSnap.data() || {};
+
   const membersSnap = await getDocs(
     collection(db, 'patient_provisions', provision.provisionId, 'members'),
   );
+  const draftInvitesSnap = await getDocs(
+    collection(db, 'patient_provisions', provision.provisionId, 'draft_invites'),
+  );
+
+  const caregivers: Record<string, unknown>[] = Array.isArray(provisionData.caregivers)
+    ? [...provisionData.caregivers]
+    : [];
+  const friendsAndFamily: Record<string, unknown>[] = Array.isArray(provisionData.friendsAndFamily)
+    ? [...provisionData.friendsAndFamily]
+    : [];
+  const contacts: Record<string, unknown>[] = Array.isArray(provisionData.contacts)
+    ? [...provisionData.contacts]
+    : [];
+
+  const upsertCaregiverByEmail = (entry: Record<string, unknown>) => {
+    const email = normalizeInviteEmail(String(entry.email || ''));
+    if (!email) return;
+    const idx = caregivers.findIndex(
+      (row) => normalizeInviteEmail(String(row.email || '')) === email,
+    );
+    if (idx >= 0) {
+      caregivers[idx] = { ...caregivers[idx], ...entry, id: caregivers[idx].id || entry.id };
+    } else {
+      caregivers.push(entry);
+    }
+  };
 
   const batch = writeBatch(db);
-
-  batch.set(doc(db, 'patients', patientId), {
-    patientId,
-    displayName: provision.displayName,
-    provisioningPath: provision.provisioningPath,
-    createdByRole: 'proxy',
-    createdByProvisionId: provision.provisionId,
-    caregivers: [],
-    friendsAndFamily: [],
-    contacts: [],
-    circleAccessByEmail: {},
-    updatedAt: now,
-  });
-
-  const caregivers: Record<string, unknown>[] = [];
+  const acceptedInviteEmails = new Set<string>();
 
   membersSnap.forEach((memberDoc) => {
     const member = memberDoc.data() as PatientMemberRecord;
-    batch.set(doc(db, 'patients', patientId, 'members', memberDoc.id), {
-      ...member,
-      status: 'active',
-      updatedAt: now,
-    });
 
     if (member.role === 'proxy' && member.invitedEmail) {
+      const email = normalizeInviteEmail(member.invitedEmail);
+      acceptedInviteEmails.add(email);
+
       const invite: CircleInviteRecord = buildCircleInviteRecord({
         patientId,
-        invitedEmail: member.invitedEmail,
+        invitedEmail: email,
         role: 'proxy',
         capabilities: member.capabilities,
         displayName: member.displayName,
         proxyTier: member.proxyTier === 'backup' ? 'backup' : 'primary',
       });
-      const inviteId = circleInviteDocId(patientId, member.invitedEmail);
+      const inviteId = circleInviteDocId(patientId, email);
       batch.set(doc(db, 'circle_invites', inviteId), {
         ...invite,
         status: 'accepted',
         acceptedByUid: memberDoc.id,
         updatedAt: now,
       });
-      batch.update(doc(db, 'patients', patientId, 'members', memberDoc.id), {
+      batch.set(doc(db, 'patients', patientId, 'members', memberDoc.id), {
+        ...member,
+        status: 'active',
         inviteRef: inviteId,
+        updatedAt: now,
       });
 
-      caregivers.push({
+      upsertCaregiverByEmail({
         id: member.contactId || memberDoc.id.slice(0, 8),
         name: member.displayName || 'Proxy',
-        email: member.invitedEmail,
-        emailVerify: member.invitedEmail,
+        email,
+        emailVerify: email,
         isEmailVerified: true,
         phone: '',
         mobile: '',
@@ -362,21 +420,50 @@ async function finalizePatientProvisionClaim(
     }
   });
 
-  if (caregivers.length > 0) {
-    const accessMap: Record<string, { role: string; proxyTier?: string }> = {};
-    for (const c of caregivers) {
-      const email = normalizeInviteEmail(String(c.email || ''));
-      if (!email) continue;
-      accessMap[email] = {
-        role: 'proxy',
-        proxyTier: c.proxyTier === 'backup' ? 'backup' : 'primary',
-      };
-    }
-    batch.update(doc(db, 'patients', patientId), {
-      caregivers,
-      circleAccessByEmail: accessMap,
+  draftInvitesSnap.forEach((draftDoc) => {
+    const draft = draftDoc.data() as Partial<CircleInviteRecord>;
+    const status = draft.status || 'pending';
+    if (status === 'revoked') return;
+
+    const email = normalizeInviteEmail(String(draft.invitedEmail || ''));
+    if (!email || acceptedInviteEmails.has(email)) return;
+
+    const inviteId = circleInviteDocId(patientId, email);
+    const invite = buildCircleInviteRecord({
+      patientId,
+      invitedEmail: email,
+      role: draft.role || 'member',
+      capabilities: draft.capabilities || capabilitiesForRole(draft.role || 'member'),
+      displayName: draft.displayName,
+      contactId: draft.contactId,
+      proxyTier:
+        draft.proxyTier === 'backup' || draft.proxyTier === 'primary'
+          ? draft.proxyTier
+          : undefined,
     });
-  }
+    batch.set(doc(db, 'circle_invites', inviteId), {
+      ...invite,
+      status: 'pending',
+      updatedAt: now,
+    });
+  });
+
+  const circleAccessByEmail = buildCircleAccessByEmailIndex({ caregivers, friendsAndFamily });
+
+  batch.set(doc(db, 'patients', patientId), {
+    patientId,
+    displayName: provision.displayName,
+    provisioningPath: provision.provisioningPath,
+    createdByRole: 'proxy',
+    createdByProvisionId: provision.provisionId,
+    claimedLoginEmail: user.email ? normalizeInviteEmail(user.email) : null,
+    claimedAt: now,
+    caregivers,
+    friendsAndFamily,
+    contacts,
+    circleAccessByEmail,
+    updatedAt: now,
+  });
 
   batch.update(doc(db, 'patient_provisions', provision.provisionId), {
     status: 'claimed',
@@ -394,6 +481,12 @@ async function finalizePatientProvisionClaim(
   }
 
   batch.delete(doc(db, 'patient_setup_codes', provision.setupCode));
+
+  if (provision.intendedEmail) {
+    batch.delete(
+      doc(db, 'patient_pending_email_index', normalizePatientEmailKey(provision.intendedEmail)),
+    );
+  }
 
   await batch.commit();
 

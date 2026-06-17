@@ -7,6 +7,7 @@ import {
   normalizeCircleUiLanguage,
   type CircleUiLanguage,
 } from '../lib/circleLanguages';
+import { circleUiLanguageKeyForUid } from '../lib/circleSessionStorage';
 import { createCircleTranslator } from '../translations';
 
 function readStoredLanguage(): CircleUiLanguage {
@@ -22,28 +23,53 @@ export function useCircleI18n(db: Firestore, user: User | null) {
   const [language, setLanguage] = useState<CircleUiLanguage>(readStoredLanguage);
 
   useEffect(() => {
-    if (!user) return;
-    return onSnapshot(doc(db, 'circle_profiles', user.uid), (snap) => {
+    if (!user?.uid) return;
+    const uid = user.uid;
+    return onSnapshot(doc(db, 'circle_profiles', uid), (snap) => {
       const raw = snap.exists() ? (snap.data().language as string | undefined) : undefined;
       if (!raw) return;
       const next = normalizeCircleUiLanguage(raw);
       setLanguage(next);
       try {
-        localStorage.setItem(CIRCLE_UI_LANGUAGE_STORAGE_KEY, next);
+        localStorage.setItem(circleUiLanguageKeyForUid(uid), next);
+        localStorage.removeItem(CIRCLE_UI_LANGUAGE_STORAGE_KEY);
       } catch {
         /* ignore */
       }
     });
-  }, [db, user]);
+  }, [db, user?.uid]);
 
-  const setUiLanguage = useCallback((next: CircleUiLanguage) => {
-    setLanguage(next);
+  const setUiLanguage = useCallback(
+    (next: CircleUiLanguage) => {
+      setLanguage(next);
+      try {
+        if (user?.uid) {
+          localStorage.setItem(circleUiLanguageKeyForUid(user.uid), next);
+          localStorage.removeItem(CIRCLE_UI_LANGUAGE_STORAGE_KEY);
+        } else {
+          localStorage.setItem(CIRCLE_UI_LANGUAGE_STORAGE_KEY, next);
+        }
+      } catch {
+        /* ignore */
+      }
+    },
+    [user?.uid],
+  );
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setLanguage(readStoredLanguage());
+      return;
+    }
     try {
-      localStorage.setItem(CIRCLE_UI_LANGUAGE_STORAGE_KEY, next);
+      const perUid = localStorage.getItem(circleUiLanguageKeyForUid(user.uid));
+      if (perUid) {
+        setLanguage(normalizeCircleUiLanguage(perUid));
+      }
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [user?.uid]);
 
   const t = useMemo(() => createCircleTranslator(language), [language]);
 
