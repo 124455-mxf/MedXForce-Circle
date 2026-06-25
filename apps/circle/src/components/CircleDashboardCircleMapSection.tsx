@@ -5,7 +5,7 @@ import {
   type CircleMemberRole,
   normalizeMemberRole,
 } from '@medxforce/shared';
-import { useCircleTeamCoverage } from '../hooks/useCircleTeamCoverage';
+import { useCircleTeamCoverageFromDashboard } from '../context/CircleTeamCoverageContext';
 import { useCircleMapMemberPhotos } from '../hooks/useCircleMapMemberPhotos';
 import type { CircleThreadMessage, CircleThreadReply } from '../hooks/useCirclePatientThreads';
 import { useCirclePatientThreadsContext } from '../context/CirclePatientThreadsContext';
@@ -102,7 +102,7 @@ export function CircleDashboardCircleMapSection({
   const role = normalizeMemberRole(memberRole);
   const active = enabled && role !== 'friend';
 
-  const { contacts, loading: contactsLoading } = useCircleTeamCoverage(db, patientId);
+  const { contacts, loading: contactsLoading } = useCircleTeamCoverageFromDashboard();
   const { photosByEmail, photosByContactId } = useCircleMapMemberPhotos(db, patientId, active);
   const { rawMessages, repliesByMessageId } = useCirclePatientThreadsContext();
 

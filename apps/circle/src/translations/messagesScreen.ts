@@ -93,6 +93,7 @@ export const messagesScreenEnglish = {
   translating: 'Translating…',
   patientLanguagePillTitle: 'Patient app language',
   familyMemberFallback: 'Family member',
+  showMoreInbox: 'Show {{remaining}} more',
 };
 
 export const messagesScreenGerman = {
@@ -199,6 +200,7 @@ export const messagesScreenGerman = {
   translating: 'Übersetze…',
   patientLanguagePillTitle: 'Patienten-App-Sprache',
   familyMemberFallback: 'Familienmitglied',
+  showMoreInbox: '{{remaining}} weitere anzeigen',
 };
 
 export const messagesScreenSpanish = {
@@ -304,6 +306,7 @@ export const messagesScreenSpanish = {
   translating: 'Traduciendo…',
   patientLanguagePillTitle: 'Idioma de la app del paciente',
   familyMemberFallback: 'Familiar',
+  showMoreInbox: 'Mostrar {{remaining}} más',
 };
 
 export const messagesScreenPolish = {
@@ -408,4 +411,5 @@ export const messagesScreenPolish = {
   translating: 'Tłumaczenie…',
   patientLanguagePillTitle: 'Język aplikacji pacjenta',
   familyMemberFallback: 'Członek rodziny',
+  showMoreInbox: 'Pokaż jeszcze {{remaining}}',
 };

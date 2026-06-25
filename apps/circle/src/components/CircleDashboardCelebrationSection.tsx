@@ -40,7 +40,7 @@ import {
 import { cn } from '../lib/utils';
 import type { CircleMainTab } from './CircleBottomNav';
 import { useCircleParticipationReminderSnoozes } from '../hooks/useCircleParticipationReminderSnoozes';
-import { useCircleTeamCoverage } from '../hooks/useCircleTeamCoverage';
+import { useCircleTeamCoverageFromDashboard } from '../context/CircleTeamCoverageContext';
 
 type CelebrationTileTone = 'birthday' | 'milestone' | 'participation' | 'care';
 
@@ -191,11 +191,7 @@ export function CircleDashboardCelebrationSection({
     patient.patientId,
     user.uid,
   );
-  const { analysis: teamCoverage, loading: teamCoverageLoading } = useCircleTeamCoverage(
-    db,
-    patient.patientId,
-    patient.isPendingProvision === true,
-  );
+  const { analysis: teamCoverage, loading: teamCoverageLoading } = useCircleTeamCoverageFromDashboard();
   const canManageTeam = patient.capabilities.inviteMembers === true;
 
   const friendlyName = patientFriendlyDisplayName(snapshot, patient.displayName);

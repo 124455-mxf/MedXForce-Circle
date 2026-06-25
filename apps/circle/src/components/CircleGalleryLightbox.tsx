@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
 import type { User } from 'firebase/auth';
 import { ChevronLeft, ChevronRight, ImageIcon, Pause, Play, X } from 'lucide-react';
 import type { Firestore } from 'firebase/firestore';
@@ -336,7 +336,7 @@ export function CircleGalleryLightbox({
   );
 }
 
-export function GalleryThumb({
+export const GalleryThumb = memo(function GalleryThumb({
   item,
   className,
   unseen,
@@ -393,4 +393,4 @@ export function GalleryThumb({
       )}
     </div>
   );
-}
+});

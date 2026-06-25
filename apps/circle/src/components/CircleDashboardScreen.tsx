@@ -56,11 +56,17 @@ import { CircleAlertAttentionBanner } from './CircleAlertAttentionBanner';
 import type { CircleAlertAttentionItem } from '../hooks/useCircleAlertAttentionState';
 
 import { useCircleAnalyticsSummaries } from '../hooks/useCircleAnalyticsSummaries';
+import { useCircleTeamCoverage } from '../hooks/useCircleTeamCoverage';
+import { CircleTeamCoverageProvider } from '../context/CircleTeamCoverageContext';
 
 import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfileSnapshot';
 
-import { useFamilyGalleryDashboard } from '../hooks/useFamilyGalleryDashboard';
 import { useCircleDashboardLayout } from '../hooks/useCircleDashboardLayout';
+import {
+  useCircleGalleryDashboardFromShell,
+  useCirclePatientPresenceFromShell,
+  useCircleRemoteSettingsFromShell,
+} from '../context/CircleSelectedPatientContext';
 import {
   buildPreviewPatientOfflineAlert,
   canSeePatientOfflineAlert,
@@ -73,10 +79,6 @@ import {
 import { useMemberDiaryActivity } from '../hooks/useMemberDiaryActivity';
 import { usePatientFirstEngagementAt } from '../hooks/usePatientFirstEngagementAt';
 import type { CirclePatientRemoteCommandAwaiting } from '../hooks/useCirclePatientRemoteCommand';
-import {
-  useCirclePatientPresenceFromShell,
-  useCircleRemoteSettingsFromShell,
-} from '../context/CircleSelectedPatientContext';
 
 import {
   isCircleProfileDataComplete,
@@ -135,9 +137,6 @@ interface CircleDashboardScreenProps {
   circleVisitCapturesOpenUnreadCount: number;
   circleVisitCapturesRestrictedUnreadCount: number;
   circlePostCount: number;
-  totalMediaCount: number;
-  myMediaUploadCount: number;
-  mediaCountsLoading?: boolean;
   urgentAlertAttention: CircleAlertAttentionItem[];
   subduedAlertAttention: CircleAlertAttentionItem[];
   onGoToTab: (tab: CircleMainTab) => void;
@@ -430,6 +429,13 @@ export function CircleDashboardScreen({
   const showCircleMap = memberRole !== 'friend' && isWidgetVisible('circle-map');
   const canOpenFullProfile = memberRole === 'proxy';
 
+  const teamCoverageState = useCircleTeamCoverage(
+    db,
+    patient.patientId,
+    patient.isPendingProvision === true,
+  );
+  const galleryDashboard = useCircleGalleryDashboardFromShell();
+
   const showRemotePrompts =
     canSendPatientRemoteCommands(patient.role) &&
     showRemoteSettings &&
@@ -458,14 +464,6 @@ export function CircleDashboardScreen({
   const { snapshot: profileSnapshot, loading: profileLoading } = useCirclePatientProfileSnapshot(
     db,
     patient.patientId,
-  );
-
-  const galleryDashboard = useFamilyGalleryDashboard(
-    db,
-    patient.patientId,
-    user.uid,
-    caps,
-    DASHBOARD_STATS_DAYS,
   );
 
   const diaryPreview = useDiaryDashboardPreview(db, patient.patientId, user, DASHBOARD_STATS_DAYS);
@@ -941,6 +939,7 @@ export function CircleDashboardScreen({
   };
 
   return (
+    <CircleTeamCoverageProvider value={teamCoverageState}>
     <div className="space-y-4">
       <CircleAlertAttentionBanner
         urgentItems={urgentAlertAttention}
@@ -1153,5 +1152,6 @@ export function CircleDashboardScreen({
         ) : null}
       </div>
     </div>
+    </CircleTeamCoverageProvider>
   );
 }

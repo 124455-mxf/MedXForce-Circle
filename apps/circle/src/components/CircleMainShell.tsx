@@ -48,7 +48,8 @@ import { useCircleOwnManagedContact } from '../hooks/useCircleOwnManagedContact'
 import { useCircleOnlineVisibility } from '../hooks/useCircleOnlineVisibility';
 import { startCircleMemberPresenceHeartbeat } from '../services/circleMemberPresenceService';
 import { useCircleAlertAttentionState } from '../hooks/useCircleAlertAttentionState';
-import { useCircleGalleryMediaCounts } from '../hooks/useCircleGalleryMediaCounts';
+import { useFamilyGalleryDashboard } from '../hooks/useFamilyGalleryDashboard';
+import { DASHBOARD_STATS_DAYS } from '../lib/circleDashboardStats';
 import { useCircleMemberThreadUnread } from '../hooks/useCircleMemberThreadUnread';
 import { useCirclePatientThreads } from '../hooks/useCirclePatientThreads';
 import { CirclePatientThreadsProvider } from '../context/CirclePatientThreadsContext';
@@ -367,11 +368,12 @@ export function CircleMainShell({
     selectedPatient?.role ?? '',
   );
 
-  const galleryCounts = useCircleGalleryMediaCounts(
+  const galleryDashboard = useFamilyGalleryDashboard(
     db,
     selectedPatient?.patientId,
     user.uid,
     selectedPatient?.capabilities,
+    DASHBOARD_STATS_DAYS,
   );
 
   useEffect(() => {
@@ -422,6 +424,7 @@ export function CircleMainShell({
     <CircleSelectedPatientProvider
       patientPresence={patientPresence}
       remoteSettings={remoteSettingsState}
+      galleryDashboard={galleryDashboard}
     >
     <CircleChromeProvider compact={compactChrome} onBackToDashboard={handleBackToDashboard}>
       <div
@@ -520,9 +523,6 @@ export function CircleMainShell({
                 circleThreadUnread.visitCapturesRestrictedUnreadCount
               }
               circlePostCount={circleThreadUnread.circlePostCount}
-              totalMediaCount={galleryCounts.totalCount}
-              myMediaUploadCount={galleryCounts.myUploadCount}
-              mediaCountsLoading={galleryCounts.loading}
               urgentAlertAttention={alertAttention.urgentItems}
               subduedAlertAttention={alertAttention.subduedItems}
               onGoToTab={handleGoToTab}

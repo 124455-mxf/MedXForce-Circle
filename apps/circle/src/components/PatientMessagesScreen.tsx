@@ -299,6 +299,8 @@ function CircleReplyCard({
   );
 }
 
+const INBOX_LIST_STEP = 50;
+
 export function PatientMessagesScreen({
   user,
   patient,
@@ -759,6 +761,19 @@ export function PatientMessagesScreen({
     });
   }, [bucketDirectMessages, patient.patientId, repliesByMessageId, readTick]);
 
+  const [visibleInboxLimit, setVisibleInboxLimit] = useState(INBOX_LIST_STEP);
+
+  useEffect(() => {
+    setVisibleInboxLimit(INBOX_LIST_STEP);
+  }, [inboxView, patient.patientId]);
+
+  const pagedDirectMessages = useMemo(
+    () => sortedDirectMessages.slice(0, visibleInboxLimit),
+    [sortedDirectMessages, visibleInboxLimit],
+  );
+
+  const hasMoreInboxMessages = sortedDirectMessages.length > visibleInboxLimit;
+
   const latestPatientReplyId = useMemo(() => {
     for (let i = visibleReplies.length - 1; i >= 0; i--) {
       if (visibleReplies[i].isPatient) return visibleReplies[i].id;
@@ -1208,8 +1223,21 @@ export function PatientMessagesScreen({
                 </div>
               ) : null}
               <ul className="divide-y divide-slate-200 bg-white">
-                {sortedDirectMessages.map((msg) => renderInboxRow(msg))}
+                {pagedDirectMessages.map((msg) => renderInboxRow(msg))}
               </ul>
+              {hasMoreInboxMessages ? (
+                <div className="px-3 py-2 bg-white border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setVisibleInboxLimit((count) => count + INBOX_LIST_STEP)}
+                    className="w-full rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                  >
+                    {t('messages.showMoreInbox', {
+                      remaining: sortedDirectMessages.length - visibleInboxLimit,
+                    })}
+                  </button>
+                </div>
+              ) : null}
             </>
           ) : (
             <div className="p-8 text-center text-sm text-slate-500">

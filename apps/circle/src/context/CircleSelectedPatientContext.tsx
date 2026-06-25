@@ -2,6 +2,7 @@ import { createContext, useContext, type ReactNode } from 'react';
 import type { PatientRemoteSettingsDoc } from '@medxforce/shared';
 import type { PatientPresenceState } from '../hooks/usePatientOnlinePresence';
 import type { useCircleRemoteSettings } from '../hooks/useCircleRemoteSettings';
+import type { FamilyGalleryDashboardStats } from '../hooks/useFamilyGalleryDashboard';
 
 export type CircleRemoteSettingsContextValue = {
   settings: PatientRemoteSettingsDoc | null;
@@ -17,6 +18,7 @@ export type CircleRemoteSettingsContextValue = {
 type CircleSelectedPatientContextValue = {
   patientPresence: PatientPresenceState;
   remoteSettings: CircleRemoteSettingsContextValue;
+  galleryDashboard: FamilyGalleryDashboardStats;
 };
 
 const CircleSelectedPatientContext = createContext<CircleSelectedPatientContextValue | null>(null);
@@ -24,10 +26,13 @@ const CircleSelectedPatientContext = createContext<CircleSelectedPatientContextV
 export function CircleSelectedPatientProvider({
   patientPresence,
   remoteSettings,
+  galleryDashboard,
   children,
 }: CircleSelectedPatientContextValue & { children: ReactNode }) {
   return (
-    <CircleSelectedPatientContext.Provider value={{ patientPresence, remoteSettings }}>
+    <CircleSelectedPatientContext.Provider
+      value={{ patientPresence, remoteSettings, galleryDashboard }}
+    >
       {children}
     </CircleSelectedPatientContext.Provider>
   );
@@ -47,4 +52,8 @@ export function useCirclePatientPresenceFromShell(): PatientPresenceState {
 
 export function useCircleRemoteSettingsFromShell(): CircleRemoteSettingsContextValue {
   return useCircleSelectedPatientContext().remoteSettings;
+}
+
+export function useCircleGalleryDashboardFromShell(): FamilyGalleryDashboardStats {
+  return useCircleSelectedPatientContext().galleryDashboard;
 }
