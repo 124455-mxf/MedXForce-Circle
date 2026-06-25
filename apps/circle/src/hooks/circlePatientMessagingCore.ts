@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { User } from 'firebase/auth';
 import {
   collection,
-  collectionGroup,
   onSnapshot,
+  orderBy,
   query,
   where,
 } from 'firebase/firestore';
@@ -26,6 +26,20 @@ import {
 } from '../lib/circleAlertAttentionUrgency';
 import type { CircleThreadMessage, CircleThreadReply } from './circlePatientMessagingTypes';
 
+/** Cap reply listeners — collectionGroup is blocked by Firestore rules for Circle members. */
+export const MAX_PATIENT_REPLY_LISTENERS = 25;
+
+function selectMessagesForReplyListeners(
+  rawMessages: CircleThreadMessage[],
+): CircleThreadMessage[] {
+  return [...rawMessages]
+    .filter((msg) => msg.type !== 'icu_daily_summary')
+    .sort((a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt))
+    .slice(0, MAX_PATIENT_REPLY_LISTENERS);
+}
+
+export type { CircleThreadMessage, CircleThreadReply } from './circlePatientMessagingTypes';
+
 function parseThreadMessage(
   id: string,
   data: Omit<CircleThreadMessage, 'id'>,
@@ -37,24 +51,6 @@ function sortThreadMessages(items: CircleThreadMessage[]): CircleThreadMessage[]
   return [...items].sort(
     (a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt),
   );
-}
-
-function groupRepliesByMessageId(
-  docs: Array<{ id: string; data: () => unknown }>,
-): Record<string, CircleThreadReply[]> {
-  const grouped: Record<string, CircleThreadReply[]> = {};
-  for (const docSnap of docs) {
-    const data = docSnap.data() as Omit<CircleThreadReply, 'id'>;
-    const reply: CircleThreadReply = { id: docSnap.id, ...data };
-    const messageId = reply.messageId;
-    if (!messageId) continue;
-    if (!grouped[messageId]) grouped[messageId] = [];
-    grouped[messageId].push(reply);
-  }
-  for (const messageId of Object.keys(grouped)) {
-    grouped[messageId].sort((a, b) => a.timestamp - b.timestamp);
-  }
-  return grouped;
 }
 
 export function useCirclePatientRawMessages(
@@ -187,37 +183,58 @@ export function useCirclePatientHiddenInbox(
   return hiddenAtByMessageId;
 }
 
-/** One collectionGroup listener replaces per-message reply subscriptions. */
+/** Per-message reply listeners (rules-safe path under patients/.../messages/.../replies). */
 export function useCirclePatientRepliesByMessageId(
   db: Firestore,
   patientId: string,
+  rawMessages: CircleThreadMessage[],
 ) {
   const [repliesByMessageId, setRepliesByMessageId] = useState<
     Record<string, CircleThreadReply[]>
   >({});
 
+  const listenedMessages = useMemo(
+    () => selectMessagesForReplyListeners(rawMessages),
+    [rawMessages],
+  );
+
   useEffect(() => {
-    if (!patientId) {
+    if (!patientId || listenedMessages.length === 0) {
       setRepliesByMessageId({});
       return;
     }
 
-    const q = query(
-      collectionGroup(db, 'replies'),
-      where('patientId', '==', patientId),
-    );
+    const listenedIds = new Set(listenedMessages.map((msg) => msg.id));
 
-    return onSnapshot(
-      q,
-      (snap) => {
-        setRepliesByMessageId(groupRepliesByMessageId(snap.docs));
-      },
-      (err) => {
-        console.warn('[circlePatientMessagingCore] replies collectionGroup', err);
-        setRepliesByMessageId({});
-      },
-    );
-  }, [db, patientId]);
+    const unsubs = listenedMessages.map((msg) => {
+      const q = query(
+        collection(db, 'patients', patientId, 'messages', msg.id, 'replies'),
+        orderBy('timestamp', 'asc'),
+      );
+      return onSnapshot(
+        q,
+        (snap) => {
+          const replies = snap.docs.map(
+            (d) => d.data() as CircleThreadReply,
+          );
+          setRepliesByMessageId((prev) => {
+            const next = { ...prev, [msg.id]: replies };
+            for (const messageId of Object.keys(next)) {
+              if (!listenedIds.has(messageId)) {
+                delete next[messageId];
+              }
+            }
+            return next;
+          });
+        },
+        (err) => {
+          console.warn('[circlePatientMessagingCore] replies', msg.id, err);
+        },
+      );
+    });
+
+    return () => unsubs.forEach((u) => u());
+  }, [db, listenedMessages, patientId]);
 
   return repliesByMessageId;
 }

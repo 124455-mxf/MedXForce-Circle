@@ -32,7 +32,11 @@ export function usePatientAttentionBadge(
     user,
   );
   const hiddenAtByMessageId = useCirclePatientHiddenInbox(db, patient.patientId, user.uid);
-  const repliesByMessageId = useCirclePatientRepliesByMessageId(db, patient.patientId);
+  const repliesByMessageId = useCirclePatientRepliesByMessageId(
+    db,
+    patient.patientId,
+    rawMessages,
+  );
 
   const circleUnread = useCircleMemberThreadUnread(
     db,

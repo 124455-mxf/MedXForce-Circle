@@ -35,7 +35,7 @@ export function useCirclePatientThreads(
     user,
   );
   const hiddenAtByMessageId = useCirclePatientHiddenInbox(db, patientId, user.uid);
-  const repliesByMessageId = useCirclePatientRepliesByMessageId(db, patientId);
+  const repliesByMessageId = useCirclePatientRepliesByMessageId(db, patientId, rawMessages);
 
   const messages = useMemo(
     () =>

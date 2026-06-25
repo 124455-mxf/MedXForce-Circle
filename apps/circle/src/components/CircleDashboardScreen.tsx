@@ -79,6 +79,7 @@ import {
 import { useMemberDiaryActivity } from '../hooks/useMemberDiaryActivity';
 import { usePatientFirstEngagementAt } from '../hooks/usePatientFirstEngagementAt';
 import type { CirclePatientRemoteCommandAwaiting } from '../hooks/useCirclePatientRemoteCommand';
+import { useCirclePatientThreadsContext } from '../context/CirclePatientThreadsContext';
 
 import {
   isCircleProfileDataComplete,
@@ -435,6 +436,17 @@ export function CircleDashboardScreen({
     patient.isPendingProvision === true,
   );
   const galleryDashboard = useCircleGalleryDashboardFromShell();
+  const {
+    rawMessages: threadRawMessages,
+    repliesByMessageId: threadRepliesByMessageId,
+    loading: threadsLoading,
+  } = useCirclePatientThreadsContext();
+  const { firstEngagementAt, loading: firstEngagementLoading } = usePatientFirstEngagementAt(
+    threadRawMessages,
+    threadRepliesByMessageId,
+    patient.patientId,
+    threadsLoading,
+  );
 
   const showRemotePrompts =
     canSendPatientRemoteCommands(patient.role) &&
@@ -473,10 +485,6 @@ export function CircleDashboardScreen({
     isWidgetVisible('reminder-gallery-upload') && caps.richMediaUpload === true;
   const diaryReminderEnabled = isWidgetVisible('reminder-diary-entry');
   const careRemindersEnabled = canSeeCareTeamDashboardReminders(memberRole);
-  const { firstEngagementAt, loading: firstEngagementLoading } = usePatientFirstEngagementAt(
-    db,
-    patient.patientId,
-  );
 
   const dailyCheckIn = byMetricId.get('daily-check-in');
   const dailyDetail =
