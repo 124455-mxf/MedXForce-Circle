@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import {
   type CircleManagedContact,
@@ -8,11 +7,8 @@ import {
 } from '@medxforce/shared';
 import { useCircleTeamCoverage } from '../hooks/useCircleTeamCoverage';
 import { useCircleMapMemberPhotos } from '../hooks/useCircleMapMemberPhotos';
-import {
-  useCirclePatientThreads,
-  type CircleThreadMessage,
-  type CircleThreadReply,
-} from '../hooks/useCirclePatientThreads';
+import type { CircleThreadMessage, CircleThreadReply } from '../hooks/useCirclePatientThreads';
+import { useCirclePatientThreadsContext } from '../context/CirclePatientThreadsContext';
 import type { FamilyGalleryPreviewPhoto } from '../hooks/useFamilyGalleryDashboard';
 import type { CircleMapGalleryPhoto } from '../lib/circleMapModel';
 import { useCircleT } from '../lib/circleI18nContext';
@@ -79,7 +75,6 @@ function mapGalleryPhotos(photos: FamilyGalleryPreviewPhoto[]): CircleMapGallery
 }
 
 type CircleDashboardCircleMapSectionProps = {
-  user: User;
   db: Firestore;
   patientId: string;
   memberRole: CircleMemberRole;
@@ -92,7 +87,6 @@ type CircleDashboardCircleMapSectionProps = {
 };
 
 export function CircleDashboardCircleMapSection({
-  user,
   db,
   patientId,
   memberRole,
@@ -110,7 +104,7 @@ export function CircleDashboardCircleMapSection({
 
   const { contacts, loading: contactsLoading } = useCircleTeamCoverage(db, patientId);
   const { photosByEmail, photosByContactId } = useCircleMapMemberPhotos(db, patientId, active);
-  const { rawMessages, repliesByMessageId } = useCirclePatientThreads(db, patientId, user, role);
+  const { rawMessages, repliesByMessageId } = useCirclePatientThreadsContext();
 
   const preferences = useMemo(
     () => contactsToPreferences(contacts, patientDisplayName, patientNickName),

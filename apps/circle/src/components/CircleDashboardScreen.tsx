@@ -1100,7 +1100,6 @@ export function CircleDashboardScreen({
               ) : null}
               {showCircleMap ? (
                 <CircleDashboardCircleMapSection
-                  user={user}
                   db={db}
                   patientId={patient.patientId}
                   memberRole={memberRole}

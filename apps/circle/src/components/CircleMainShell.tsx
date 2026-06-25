@@ -42,6 +42,7 @@ import { useCircleAlertAttentionState } from '../hooks/useCircleAlertAttentionSt
 import { useCircleGalleryMediaCounts } from '../hooks/useCircleGalleryMediaCounts';
 import { useCircleMemberThreadUnread } from '../hooks/useCircleMemberThreadUnread';
 import { useCirclePatientThreads } from '../hooks/useCirclePatientThreads';
+import { CirclePatientThreadsProvider } from '../context/CirclePatientThreadsContext';
 import { useCircleToast } from '../hooks/useCircleToast';
 import {
   isPatientDoNotDisturbSection,
@@ -390,6 +391,7 @@ export function CircleMainShell({
   };
 
   return (
+    <CirclePatientThreadsProvider value={threadState}>
     <CircleChromeProvider compact={compactChrome} onBackToDashboard={handleBackToDashboard}>
       <div
         className={cn(
@@ -692,5 +694,6 @@ export function CircleMainShell({
         ) : null}
       </div>
     </CircleChromeProvider>
+    </CirclePatientThreadsProvider>
   );
 }
