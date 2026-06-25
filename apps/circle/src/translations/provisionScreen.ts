@@ -30,6 +30,13 @@ export const provisionScreenEnglish = {
   continueOtherPatients: 'Continue with another patient',
   continueOtherPatientsHint:
     'This setup stays saved — switch back anytime from your patient list.',
+  cancelPending: 'Remove',
+  cancelPendingAria: 'Remove unfinished setup for {{name}}',
+  cancelPendingTitle: 'Remove unfinished setup?',
+  cancelPendingBody:
+    '{{name}} has not linked an iPad yet. The setup code will stop working and any draft Circle invites for this setup will be removed.',
+  cancelPendingConfirm: 'Remove setup',
+  cancelPendingFailed: 'Could not remove unfinished setup.',
 };
 
 export const provisionScreenGerman = {
@@ -64,6 +71,13 @@ export const provisionScreenGerman = {
   continueOtherPatients: 'Mit anderem Patienten fortfahren',
   continueOtherPatientsHint:
     'Dieses Setup bleibt gespeichert — jederzeit über die Patientenliste zurück.',
+  cancelPending: 'Entfernen',
+  cancelPendingAria: 'Unfertiges Setup für {{name}} entfernen',
+  cancelPendingTitle: 'Unfertiges Setup entfernen?',
+  cancelPendingBody:
+    '{{name}} hat noch kein iPad verknüpft. Der Setup-Code funktioniert danach nicht mehr; Entwürfe für Circle-Einladungen werden gelöscht.',
+  cancelPendingConfirm: 'Setup entfernen',
+  cancelPendingFailed: 'Unfertiges Setup konnte nicht entfernt werden.',
 };
 
 export const provisionScreenSpanish = {
@@ -98,6 +112,13 @@ export const provisionScreenSpanish = {
   continueOtherPatients: 'Continuar con otro paciente',
   continueOtherPatientsHint:
     'Esta configuración se guarda — vuelva cuando quiera desde la lista de pacientes.',
+  cancelPending: 'Quitar',
+  cancelPendingAria: 'Quitar configuración sin terminar de {{name}}',
+  cancelPendingTitle: '¿Quitar configuración sin terminar?',
+  cancelPendingBody:
+    '{{name}} aún no ha vinculado un iPad. El código dejará de funcionar y se eliminarán las invitaciones Circle en borrador.',
+  cancelPendingConfirm: 'Quitar configuración',
+  cancelPendingFailed: 'No se pudo quitar la configuración sin terminar.',
 };
 
 export const provisionScreenPolish = {
@@ -132,4 +153,11 @@ export const provisionScreenPolish = {
   continueOtherPatients: 'Kontynuuj z innym pacjentem',
   continueOtherPatientsHint:
     'Ta konfiguracja zostaje zapisana — wróć w dowolnym momencie z listy pacjentów.',
+  cancelPending: 'Usuń',
+  cancelPendingAria: 'Usuń niedokończoną konfigurację dla {{name}}',
+  cancelPendingTitle: 'Usunąć niedokończoną konfigurację?',
+  cancelPendingBody:
+    '{{name}} nie powiązał jeszcze iPada. Kod przestanie działać, a szkice zaproszeń Circle zostaną usunięte.',
+  cancelPendingConfirm: 'Usuń konfigurację',
+  cancelPendingFailed: 'Nie udało się usunąć niedokończonej konfiguracji.',
 };

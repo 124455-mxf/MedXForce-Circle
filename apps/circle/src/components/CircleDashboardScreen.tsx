@@ -45,6 +45,9 @@ import { CircleDashboardPatientOfflineTile } from './CircleDashboardPatientOffli
 import type { CircleInboxFolder } from './CircleDashboardAttentionTiles';
 import { CircleDashboardPatientLocaleWidget } from './CircleDashboardPatientLocaleWidget';
 import { CircleGalleryRotatingPreviewWidget } from './CircleGalleryRotatingPreviewWidget';
+import { CircleDashboardCircleMapSection } from './CircleDashboardCircleMapSection';
+import { CircleDashboardCheckInWellnessSection } from './CircleDashboardCheckInWellnessSection';
+import { CircleDashboardAssessmentScheduleSection } from './CircleDashboardAssessmentScheduleSection';
 
 import { CirclePatientCommandConfirmModal } from './CirclePatientCommandConfirmModal';
 
@@ -87,6 +90,7 @@ import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import { analyticsSummaryFooterText } from '../lib/circleAnalyticsI18n';
 import {
   assistiveDevicesLabelT,
+  circlePatientFirstName,
   dashboardPlural,
   formatDashboardApplicationModeLineT,
   formatDashboardLastLine,
@@ -417,6 +421,7 @@ export function CircleDashboardScreen({
   const showEngagementStats = caps.viewEngagementTrends !== false;
   const showRemoteSettings = canViewRemoteSettingsTab(caps);
   const showLiveTile = memberRole !== 'friend';
+  const showCircleMap = memberRole !== 'friend' && isWidgetVisible('circle-map');
   const canOpenFullProfile = memberRole === 'proxy';
 
   const patientPresence = usePatientOnlinePresence(db, patient.patientId);
@@ -452,7 +457,7 @@ export function CircleDashboardScreen({
 
   const { byMetricId, loading: analyticsLoading } = useCircleAnalyticsSummaries(db, patient);
 
-  const { settings: remoteSettings, loading: remoteSettingsLoading } = useCircleRemoteSettings(
+  const { settings: remoteSettings, fromFirestore: remoteSettingsFromFirestore, loading: remoteSettingsLoading } = useCircleRemoteSettings(
     db,
     showRemoteSettings ? patient : null,
     user,
@@ -516,13 +521,30 @@ export function CircleDashboardScreen({
   const communicationStats = sumMessagesLast7(speechDetail?.timeline);
   const companionLast7 = sumCompanionLast7ExcludingDetected(companionDetail?.timeline);
   const checkInStats = resolveDailyCheckInLast7Stats(dailyDetail);
+  const dailyCheckInEnabled =
+    !remoteSettingsLoading &&
+    remoteSettingsFromFirestore &&
+    remoteSettings?.dailyCheckIn?.enabled === true &&
+    dailyCheckIn?.summaryText !== 'Daily check-in off';
+  const showCheckInWellnessRing =
+    memberRole !== 'friend' &&
+    showEngagementStats &&
+    isWidgetVisible('check-in-wellness-ring');
+  const showAssessmentScheduleCalendar =
+    memberRole !== 'friend' &&
+    showEngagementStats &&
+    isWidgetVisible('assessment-schedule-calendar') &&
+    remoteSettings?.featuresVisibility?.healthAssessments !== false;
+  const dailyCheckInsCompletedForDisplay = dailyCheckInEnabled
+    ? checkInStats.completed
+    : 0;
   const dailyCheckInLatestAt =
     dailyDetail?.latestCompletedAt ?? dailyCheckIn?.latestAt ?? null;
   const dailyCheckInRecencyTint = getDailyCheckInRecencyUrgency({
-    completedInWindow: checkInStats.completed,
-    skippedInWindow: checkInStats.skipped,
-    latestCompletedAt: dailyCheckInLatestAt,
-    hasHistory: !!(dailyDetail || dailyCheckIn?.latestAt),
+    completedInWindow: dailyCheckInsCompletedForDisplay,
+    skippedInWindow: dailyCheckInEnabled ? checkInStats.skipped : 0,
+    latestCompletedAt: dailyCheckInEnabled ? dailyCheckInLatestAt : null,
+    hasHistory: dailyCheckInEnabled && !!(dailyDetail || dailyCheckIn?.latestAt),
   });
   const vitalityGamesLast7 = sumVitalityGamesLast7(vitalityDetail?.timeline);
   const assessmentsLast7 = sumAssessmentsLast7(byMetricId);
@@ -578,43 +600,45 @@ export function CircleDashboardScreen({
       onClick: () => onOpenAnalyticsDetail('alert-attention'),
     });
 
-    lastSevenDayWidgets.push({
-      key: 'daily-check-in',
-      title: t('dashboard.dailyCheckIn'),
-      icon: Calendar,
-      ...(analyticsLoading
-        ? loadingRows(t('common.loading'))
-        : {
-            ...(dailyDetail
-              ? checkInStats.total > 0
-                ? {
-                    row1: dashboardPlural(t, 'completed', checkInStats.completed),
-                    row2: dashboardPlural(t, 'skipped', checkInStats.skipped),
-                    row3: lastLine(dailyCheckInLatestAt),
-                  }
+    if (dailyCheckInEnabled) {
+      lastSevenDayWidgets.push({
+        key: 'daily-check-in',
+        title: t('dashboard.dailyCheckIn'),
+        icon: Calendar,
+        ...(analyticsLoading
+          ? loadingRows(t('common.loading'))
+          : {
+              ...(dailyDetail
+                ? checkInStats.total > 0
+                  ? {
+                      row1: dashboardPlural(t, 'completed', checkInStats.completed),
+                      row2: dashboardPlural(t, 'skipped', checkInStats.skipped),
+                      row3: lastLine(dailyCheckInLatestAt),
+                    }
+                  : {
+                      row1: t('dashboard.skipRate', { rate: dailyDetail.skipRate }),
+                      row2: t('dashboard.lastFilled', {
+                        when: formatDashboardTimestamp(t, language, dailyCheckIn?.latestAt),
+                      }),
+                      row3: lastLine(dailyCheckInLatestAt),
+                    }
                 : {
-                    row1: t('dashboard.skipRate', { rate: dailyDetail.skipRate }),
-                    row2: t('dashboard.lastFilled', {
-                      when: formatDashboardTimestamp(t, language, dailyCheckIn?.latestAt),
-                    }),
-                    row3: lastLine(dailyCheckInLatestAt),
-                  }
-              : {
-                  row1: dailyCheckIn
-                    ? analyticsSummaryFooterText(t, dailyCheckIn, language)
-                    : t('dashboard.noCheckInsYet'),
-                  row2: t('common.last7Days'),
-                  row3: lastLine(dailyCheckIn?.latestAt),
-                }),
-            recencyTint: getDailyCheckInRecencyUrgency({
-              completedInWindow: checkInStats.completed,
-              skippedInWindow: checkInStats.skipped,
-              latestCompletedAt: dailyCheckInLatestAt,
-              hasHistory: !!(dailyDetail || dailyCheckIn?.latestAt),
+                    row1: dailyCheckIn
+                      ? analyticsSummaryFooterText(t, dailyCheckIn, language)
+                      : t('dashboard.noCheckInsYet'),
+                    row2: t('common.last7Days'),
+                    row3: lastLine(dailyCheckIn?.latestAt),
+                  }),
+              recencyTint: getDailyCheckInRecencyUrgency({
+                completedInWindow: checkInStats.completed,
+                skippedInWindow: checkInStats.skipped,
+                latestCompletedAt: dailyCheckInLatestAt,
+                hasHistory: !!(dailyDetail || dailyCheckIn?.latestAt),
+              }),
             }),
-          }),
-      onClick: () => onOpenAnalyticsDetail('daily-check-in'),
-    });
+        onClick: () => onOpenAnalyticsDetail('daily-check-in'),
+      });
+    }
 
     lastSevenDayWidgets.push({
       key: 'messages',
@@ -743,10 +767,7 @@ export function CircleDashboardScreen({
   const canSeeGallery =
     caps.viewCircleMedia !== false || caps.richMediaUpload !== false;
   if (canSeeGallery) {
-    const patientFirstName =
-      profileSnapshot?.identity.firstName?.trim() ||
-      patient.displayName.trim().split(/\s+/)[0] ||
-      'Patient';
+    const patientFirstName = circlePatientFirstName(profileSnapshot, patient.displayName);
 
     youWidgets.push({
       key: 'gallery-engagement',
@@ -1011,7 +1032,7 @@ export function CircleDashboardScreen({
           visitCapturesUnreadCount={circleVisitCapturesUnreadCount}
           visitCapturesOpenUnreadCount={circleVisitCapturesOpenUnreadCount}
           visitCapturesRestrictedUnreadCount={circleVisitCapturesRestrictedUnreadCount}
-          dailyCheckInsCompletedCount={checkInStats.completed}
+          dailyCheckInsCompletedCount={dailyCheckInsCompletedForDisplay}
           dailyCheckInsRecencyTint={dailyCheckInRecencyTint}
           richMediaReactionsCount={richMediaReactionsCount}
           richMediaReactionsFromPatient={richMediaReactionsFromPatient}
@@ -1038,7 +1059,6 @@ export function CircleDashboardScreen({
           firstEngagementLoading={firstEngagementLoading}
           analyticsByMetricId={byMetricId}
           analyticsLoading={analyticsLoading}
-          profileLoading={profileLoading}
           canOpenPatientProfile={canOpenFullProfile}
           onGoToTab={onGoToTab}
         />
@@ -1060,20 +1080,65 @@ export function CircleDashboardScreen({
           />
         ) : null}
 
-        {familyGalleryWidget ? (
+        {familyGalleryWidget || showCircleMap || showCheckInWellnessRing || showAssessmentScheduleCalendar ? (
           <section className="space-y-2">
             <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionStayConnected')}</h3>
             <div className="grid grid-cols-2 gap-3">
-              <div className={DASHBOARD_WIDGET_CELL_CLASS}>
-                <DashboardWidget spec={familyGalleryWidget} />
-              </div>
-              <div className={DASHBOARD_WIDGET_CELL_CLASS}>
-                <CircleGalleryRotatingPreviewWidget
-                  photos={galleryDashboard.previewPhotos}
-                  loading={galleryDashboard.loading}
-                  onOpenGallery={() => onGoToTab('media')}
+              {familyGalleryWidget ? (
+                <>
+                  <div className={DASHBOARD_WIDGET_CELL_CLASS}>
+                    <DashboardWidget spec={familyGalleryWidget} />
+                  </div>
+                  <div className={DASHBOARD_WIDGET_CELL_CLASS}>
+                    <CircleGalleryRotatingPreviewWidget
+                      photos={galleryDashboard.previewPhotos}
+                      loading={galleryDashboard.loading}
+                      onOpenGallery={() => onGoToTab('media')}
+                    />
+                  </div>
+                </>
+              ) : null}
+              {showCircleMap ? (
+                <CircleDashboardCircleMapSection
+                  user={user}
+                  db={db}
+                  patientId={patient.patientId}
+                  memberRole={memberRole}
+                  patientDisplayName={patient.displayName}
+                  patientPhotoUrl={
+                    profileSnapshot?.identity.profilePicture?.trim() || patient.photoUrl?.trim()
+                  }
+                  patientNickName={profileSnapshot?.identity.nickName?.trim()}
+                  galleryPhotos={galleryDashboard.previewPhotos}
+                  enabled={showCircleMap}
+                  onManageContacts={
+                    memberRole === 'proxy' || memberRole === 'caregiver'
+                      ? () => onGoToTab('admin')
+                      : undefined
+                  }
                 />
-              </div>
+              ) : null}
+              {showCheckInWellnessRing ? (
+                <CircleDashboardCheckInWellnessSection
+                  memberRole={memberRole}
+                  answerTrend={dailyDetail?.answerTrend}
+                  enabled={showCheckInWellnessRing}
+                  onOpenDetails={() => onOpenAnalyticsDetail('daily-check-in')}
+                />
+              ) : null}
+              {showAssessmentScheduleCalendar ? (
+                <CircleDashboardAssessmentScheduleSection
+                  memberRole={memberRole}
+                  byMetricId={byMetricId}
+                  treatmentPhase={profileSnapshot?.clinical?.treatmentPhase}
+                  appMode={remoteSettings?.appMode}
+                  healthAssessmentsEnabled={remoteSettings?.featuresVisibility?.healthAssessments}
+                  remoteAssessmentSchedule={remoteSettings?.assessmentSchedule}
+                  enabled={showAssessmentScheduleCalendar}
+                  t={t}
+                  onOpenAssessment={onOpenAnalyticsDetail}
+                />
+              ) : null}
             </div>
           </section>
         ) : null}

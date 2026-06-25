@@ -138,6 +138,7 @@ const usersEnglish = {
   nameRequired: 'Name is required.',
   emailRequired: 'Email is required for caregivers, family, and friends.',
   invalidEmail: 'Enter a valid email address (e.g. name@example.com).',
+  duplicateEmail: '{{email}} is already used by {{name}}. Edit that person instead of adding a duplicate.',
   staleBeforeSave: 'Load the latest version before saving.',
   revokeModalTitle: 'Revoke access?',
   revokeModalDescription: '{{name}} will no longer sign in for this circle.',
@@ -150,7 +151,32 @@ const usersEnglish = {
   inviteConfirmRevokeTitle: 'Remove Circle access for {{name}}?',
   inviteConfirmUpdateTitle: 'Update Circle access?',
   inviteConfirmInviteDescription:
-    'After you confirm, this person can sign in to MedXForce Circle with the email below. Share the Circle app link with them. Check the address carefully.',
+    'After you confirm, this person can sign in to MedXForce Circle with the email below. We send one introduction email to verified addresses. You can also copy the Circle app link. Check the address carefully.',
+  inviteConfirmIntroEmailNote:
+    'A short introduction email is sent to the address above when you confirm.',
+  inviteConfirmUnverifiedWarning:
+    'This email is not verified in the patient app yet — an introduction email will still be sent. Double-check the address, or copy the Circle link below to share in person.',
+  inviteConfirmCopyCircleLink: 'Copy Circle app link',
+  inviteConfirmLinkCopied: 'Link copied',
+  sendInviteEmailAgain: 'Send invite email again',
+  sendInviteEmailAgainAria: 'Send Circle introduction email again',
+  resendEmailModalTitle: 'Send introduction email?',
+  resendEmailModalDescription:
+    'A short introduction email will be sent to {{email}} explaining how to sign in to MedXForce Circle.',
+  resendEmailConfirm: 'Send email',
+  accessSendInviteEmail: 'Send email',
+  inviteEmailSent: 'Introduction email sent.',
+  inviteEmailFailed: 'Could not send introduction email.',
+  inviteEmailSkippedUnverified:
+    'No introduction email sent — verify this email in the patient app first.',
+  contactAddedEmailModalTitle: 'Send contact notification email?',
+  contactAddedEmailModalDescription:
+    'An email will be sent to {{email}} letting them know they may receive messages from {{patient}} through MedXForce. No app or Circle account is required.',
+  contactAddedEmailConfirm: 'Send email',
+  contactAddedEmailSent: 'Contact notification email sent.',
+  contactAddedEmailFailed: 'Could not send contact notification email.',
+  sendContactAddedEmailAgain: 'Send contact email again',
+  sendContactAddedEmailAgainAria: 'Send contact notification email again',
   inviteConfirmRevokeDescription:
     'This will revoke Circle sign-in for the email below. They will no longer access this circle. Check the address carefully before continuing.',
   inviteConfirmMixedDescription:
@@ -175,6 +201,16 @@ const contactEnglish = {
   circleAccess: 'Circle access',
   circleAccessHint:
     'Sign-in role for the Circle app. Person type above is how they are grouped in the care list.',
+  circleAccessDescPrimaryProxy:
+    'Full Circle admin for this patient — user management, profile, and remote settings.',
+  circleAccessDescBackupProxy:
+    'Steps in if the primary proxy is unavailable. Same admin powers when active.',
+  circleAccessDescCaregiver:
+    'Clinical and care-team access without full proxy admin.',
+  circleAccessDescFamily:
+    'Family member Circle access — messaging, media, and updates.',
+  circleAccessDescFriend:
+    'Friend with Circle messaging and shared updates.',
   userInfo: 'User information',
   contactDetails: 'Contact details',
   notifyMe: 'Notify me',
@@ -399,6 +435,8 @@ const usersGerman = {
   nameRequired: 'Name ist erforderlich.',
   emailRequired: 'E-Mail ist für Betreuende, Familie und Freunde erforderlich.',
   invalidEmail: 'Geben Sie eine gültige E-Mail-Adresse ein (z. B. name@beispiel.de).',
+  duplicateEmail:
+    '{{email}} wird bereits von {{name}} verwendet. Bearbeiten Sie diese Person statt ein Duplikat hinzuzufügen.',
   staleBeforeSave: 'Laden Sie die neueste Version, bevor Sie speichern.',
   revokeModalTitle: 'Zugang entziehen?',
   revokeModalDescription: '{{name}} kann sich für diesen Circle nicht mehr anmelden.',
@@ -411,7 +449,32 @@ const usersGerman = {
   inviteConfirmRevokeTitle: 'Circle-Zugang für {{name}} entfernen?',
   inviteConfirmUpdateTitle: 'Circle-Zugang aktualisieren?',
   inviteConfirmInviteDescription:
-    'Nach Bestätigung kann sich diese Person mit der unten stehenden E-Mail bei MedXForce Circle anmelden. Teilen Sie den Circle-App-Link. Prüfen Sie die Adresse sorgfältig.',
+    'Nach Bestätigung kann sich diese Person mit der unten stehenden E-Mail bei MedXForce Circle anmelden. An verifizierte Adressen senden wir eine Einführungs-E-Mail. Sie können auch den Circle-App-Link kopieren. Prüfen Sie die Adresse sorgfältig.',
+  inviteConfirmIntroEmailNote:
+    'An die obige Adresse wird beim Bestätigen eine kurze Einführungs-E-Mail gesendet.',
+  inviteConfirmUnverifiedWarning:
+    'Diese E-Mail ist in der Patienten-App noch nicht verifiziert — eine Einführungs-E-Mail wird trotzdem gesendet. Prüfen Sie die Adresse oder kopieren Sie den Circle-Link unten.',
+  inviteConfirmCopyCircleLink: 'Circle-App-Link kopieren',
+  inviteConfirmLinkCopied: 'Link kopiert',
+  sendInviteEmailAgain: 'Einladungs-E-Mail erneut senden',
+  sendInviteEmailAgainAria: 'Circle-Einführungs-E-Mail erneut senden',
+  resendEmailModalTitle: 'Einführungs-E-Mail senden?',
+  resendEmailModalDescription:
+    'Eine kurze Einführungs-E-Mail wird an {{email}} gesendet — mit Hinweisen zur Anmeldung bei MedXForce Circle.',
+  resendEmailConfirm: 'E-Mail senden',
+  accessSendInviteEmail: 'E-Mail senden',
+  inviteEmailSent: 'Einführungs-E-Mail gesendet.',
+  inviteEmailFailed: 'Einführungs-E-Mail konnte nicht gesendet werden.',
+  inviteEmailSkippedUnverified:
+    'Keine Einführungs-E-Mail gesendet — verifizieren Sie diese E-Mail zuerst in der Patienten-App.',
+  contactAddedEmailModalTitle: 'Kontakt-Benachrichtigung senden?',
+  contactAddedEmailModalDescription:
+    'An {{email}} wird eine E-Mail gesendet, dass Nachrichten von {{patient}} über MedXForce eingehen können. Keine App oder Circle-Konto nötig.',
+  contactAddedEmailConfirm: 'E-Mail senden',
+  contactAddedEmailSent: 'Kontakt-Benachrichtigung gesendet.',
+  contactAddedEmailFailed: 'Kontakt-Benachrichtigung konnte nicht gesendet werden.',
+  sendContactAddedEmailAgain: 'Kontakt-E-Mail erneut senden',
+  sendContactAddedEmailAgainAria: 'Kontakt-Benachrichtigung erneut senden',
   inviteConfirmRevokeDescription:
     'Dies entzieht die Circle-Anmeldung für die unten stehende E-Mail. Sie haben keinen Zugang mehr zu diesem Circle. Prüfen Sie die Adresse sorgfältig.',
   inviteConfirmMixedDescription:
@@ -436,6 +499,16 @@ const contactGerman = {
   circleAccess: 'Circle-Zugang',
   circleAccessHint:
     'Anmelderolle für die Circle-App. Der Personentyp oben bestimmt die Gruppierung in der Betreuungsliste.',
+  circleAccessDescPrimaryProxy:
+    'Voller Circle-Admin für diesen Patienten — Benutzerverwaltung, Profil und Remote-Einstellungen.',
+  circleAccessDescBackupProxy:
+    'Springt ein, wenn der primäre Vertreter nicht verfügbar ist. Gleiche Admin-Rechte wenn aktiv.',
+  circleAccessDescCaregiver:
+    'Klinischer und pflegerischer Zugang ohne volle Vertreter-Administration.',
+  circleAccessDescFamily:
+    'Familienzugang — Nachrichten, Medien und Updates.',
+  circleAccessDescFriend:
+    'Freund mit Circle-Nachrichten und geteilten Updates.',
   userInfo: 'Benutzerinformationen',
   contactDetails: 'Kontaktdaten',
   notifyMe: 'Benachrichtigen',
@@ -664,6 +737,8 @@ const usersSpanish = {
   nameRequired: 'El nombre es obligatorio.',
   emailRequired: 'El correo es obligatorio para cuidadores, familia y amigos.',
   invalidEmail: 'Introduzca un correo válido (p. ej. nombre@ejemplo.com).',
+  duplicateEmail:
+    '{{email}} ya está en uso por {{name}}. Edite a esa persona en lugar de añadir un duplicado.',
   staleBeforeSave: 'Cargue la versión más reciente antes de guardar.',
   revokeModalTitle: '¿Revocar acceso?',
   revokeModalDescription: '{{name}} ya no podrá iniciar sesión en este circle.',
@@ -676,7 +751,32 @@ const usersSpanish = {
   inviteConfirmRevokeTitle: '¿Quitar acceso al Circle de {{name}}?',
   inviteConfirmUpdateTitle: '¿Actualizar acceso al Circle?',
   inviteConfirmInviteDescription:
-    'Tras confirmar, esta persona podrá iniciar sesión en MedXForce Circle con el correo indicado abajo. Comparta el enlace de la app Circle. Compruebe la dirección con cuidado.',
+    'Tras confirmar, esta persona podrá iniciar sesión en MedXForce Circle con el correo indicado abajo. Enviamos un correo de presentación a direcciones verificadas. También puede copiar el enlace de la app Circle. Compruebe la dirección con cuidado.',
+  inviteConfirmIntroEmailNote:
+    'Al confirmar se envía un correo breve de presentación a la dirección indicada.',
+  inviteConfirmUnverifiedWarning:
+    'Este correo aún no está verificado en la app del paciente — se enviará un correo de presentación de todos modos. Compruebe la dirección o copie el enlace de Circle abajo.',
+  inviteConfirmCopyCircleLink: 'Copiar enlace de la app Circle',
+  inviteConfirmLinkCopied: 'Enlace copiado',
+  sendInviteEmailAgain: 'Enviar correo de invitación de nuevo',
+  sendInviteEmailAgainAria: 'Reenviar correo de presentación de Circle',
+  resendEmailModalTitle: '¿Enviar correo de presentación?',
+  resendEmailModalDescription:
+    'Se enviará un correo breve a {{email}} explicando cómo iniciar sesión en MedXForce Circle.',
+  resendEmailConfirm: 'Enviar correo',
+  accessSendInviteEmail: 'Enviar correo',
+  inviteEmailSent: 'Correo de presentación enviado.',
+  inviteEmailFailed: 'No se pudo enviar el correo de presentación.',
+  inviteEmailSkippedUnverified:
+    'No se envió correo de presentación — verifique este correo primero en la app del paciente.',
+  contactAddedEmailModalTitle: '¿Enviar notificación de contacto?',
+  contactAddedEmailModalDescription:
+    'Se enviará un correo a {{email}} informando que puede recibir mensajes de {{patient}} por MedXForce. No se requiere app ni cuenta Circle.',
+  contactAddedEmailConfirm: 'Enviar correo',
+  contactAddedEmailSent: 'Notificación de contacto enviada.',
+  contactAddedEmailFailed: 'No se pudo enviar la notificación de contacto.',
+  sendContactAddedEmailAgain: 'Enviar correo de contacto de nuevo',
+  sendContactAddedEmailAgainAria: 'Enviar notificación de contacto de nuevo',
   inviteConfirmRevokeDescription:
     'Esto revocará el inicio de sesión en Circle para el correo indicado abajo. Ya no tendrá acceso a este circle. Compruebe la dirección con cuidado.',
   inviteConfirmMixedDescription:
@@ -701,6 +801,16 @@ const contactSpanish = {
   circleAccess: 'Acceso al Circle',
   circleAccessHint:
     'Rol de inicio de sesión en la app Circle. El tipo de persona arriba indica cómo se agrupa en la lista de cuidado.',
+  circleAccessDescPrimaryProxy:
+    'Administración completa de Circle — usuarios, perfil y ajustes remotos.',
+  circleAccessDescBackupProxy:
+    'Actúa si el proxy principal no está disponible. Mismos permisos de admin.',
+  circleAccessDescCaregiver:
+    'Acceso clínico y de cuidados sin administración completa de proxy.',
+  circleAccessDescFamily:
+    'Acceso Circle para familia — mensajes, medios y actualizaciones.',
+  circleAccessDescFriend:
+    'Amigo con mensajería Circle y actualizaciones compartidas.',
   userInfo: 'Información del usuario',
   contactDetails: 'Datos de contacto',
   notifyMe: 'Notificarme',
@@ -929,6 +1039,8 @@ const usersPolish = {
   nameRequired: 'Imię jest wymagane.',
   emailRequired: 'E-mail jest wymagany dla opiekunów, rodziny i przyjaciół.',
   invalidEmail: 'Wprowadź prawidłowy adres e-mail (np. imie@example.com).',
+  duplicateEmail:
+    '{{email}} jest już używany przez {{name}}. Edytuj tę osobę zamiast dodawać duplikat.',
   staleBeforeSave: 'Wczytaj najnowszą wersję przed zapisem.',
   revokeModalTitle: 'Cofnąć dostęp?',
   revokeModalDescription: '{{name}} nie będzie już mógł/mogła logować się do tego circle.',
@@ -941,7 +1053,32 @@ const usersPolish = {
   inviteConfirmRevokeTitle: 'Usunąć dostęp do Circle dla {{name}}?',
   inviteConfirmUpdateTitle: 'Zaktualizować dostęp do Circle?',
   inviteConfirmInviteDescription:
-    'Po potwierdzeniu ta osoba będzie mogła logować się do MedXForce Circle z poniższym e-mailem. Udostępnij link do aplikacji Circle. Sprawdź adres dokładnie.',
+    'Po potwierdzeniu ta osoba będzie mogła logować się do MedXForce Circle z poniższym e-mailem. Wysyłamy jeden e-mail wprowadzający na zweryfikowane adresy. Możesz też skopiować link do aplikacji Circle. Sprawdź adres dokładnie.',
+  inviteConfirmIntroEmailNote:
+    'Po potwierdzeniu na podany adres zostanie wysłany krótki e-mail wprowadzający.',
+  inviteConfirmUnverifiedWarning:
+    'Ten e-mail nie jest jeszcze zweryfikowany w aplikacji pacjenta — e-mail wprowadzający i tak zostanie wysłany. Sprawdź adres lub skopiuj link Circle poniżej.',
+  inviteConfirmCopyCircleLink: 'Kopiuj link do aplikacji Circle',
+  inviteConfirmLinkCopied: 'Link skopiowany',
+  sendInviteEmailAgain: 'Wyślij e-mail zaproszenia ponownie',
+  sendInviteEmailAgainAria: 'Wyślij ponownie e-mail wprowadzający Circle',
+  resendEmailModalTitle: 'Wysłać e-mail wprowadzający?',
+  resendEmailModalDescription:
+    'Krótki e-mail wprowadzający zostanie wysłany na {{email}} — z informacją o logowaniu do MedXForce Circle.',
+  resendEmailConfirm: 'Wyślij e-mail',
+  accessSendInviteEmail: 'Wyślij e-mail',
+  inviteEmailSent: 'E-mail wprowadzający wysłany.',
+  inviteEmailFailed: 'Nie udało się wysłać e-maila wprowadzającego.',
+  inviteEmailSkippedUnverified:
+    'Nie wysłano e-maila wprowadzającego — najpierw zweryfikuj ten e-mail w aplikacji pacjenta.',
+  contactAddedEmailModalTitle: 'Wysłać powiadomienie kontaktu?',
+  contactAddedEmailModalDescription:
+    'E-mail zostanie wysłany na {{email}}, informując, że mogą otrzymywać wiadomości od {{patient}} przez MedXForce. Nie trzeba konta Circle ani aplikacji.',
+  contactAddedEmailConfirm: 'Wyślij e-mail',
+  contactAddedEmailSent: 'Powiadomienie kontaktu wysłane.',
+  contactAddedEmailFailed: 'Nie udało się wysłać powiadomienia kontaktu.',
+  sendContactAddedEmailAgain: 'Wyślij e-mail kontaktu ponownie',
+  sendContactAddedEmailAgainAria: 'Wyślij powiadomienie kontaktu ponownie',
   inviteConfirmRevokeDescription:
     'To cofnie logowanie do Circle dla poniższego e-maila. Nie będzie już miała dostępu do tego circle. Sprawdź adres dokładnie.',
   inviteConfirmMixedDescription:
@@ -966,6 +1103,16 @@ const contactPolish = {
   circleAccess: 'Dostęp do Circle',
   circleAccessHint:
     'Rola logowania w aplikacji Circle. Typ osoby powyżej określa grupowanie na liście opieki.',
+  circleAccessDescPrimaryProxy:
+    'Pełny admin Circle — użytkownicy, profil i ustawienia zdalne.',
+  circleAccessDescBackupProxy:
+    'Wchodzi, gdy główny pełnomocnik jest niedostępny. Te same uprawnienia admina.',
+  circleAccessDescCaregiver:
+    'Dostęp opiekuńczy i kliniczny bez pełnej administracji pełnomocnika.',
+  circleAccessDescFamily:
+    'Dostęp rodziny — wiadomości, media i aktualizacje.',
+  circleAccessDescFriend:
+    'Przyjaciel z wiadomościami Circle i wspólnymi aktualizacjami.',
   userInfo: 'Informacje o użytkowniku',
   contactDetails: 'Dane kontaktowe',
   notifyMe: 'Powiadom mnie',

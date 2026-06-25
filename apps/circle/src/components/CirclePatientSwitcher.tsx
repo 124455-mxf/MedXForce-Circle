@@ -19,6 +19,7 @@ interface CirclePatientSwitcherProps {
   onSelect: (patient: CirclePatientSummary) => void;
   startupPatientId?: string | null;
   onSetStartupPatient?: (patient: CirclePatientSummary) => void;
+  onCancelPending?: (patient: CirclePatientSummary) => Promise<void>;
   /** Card row with photo (dashboard). Modal-only for settings / embedded switcher. */
   variant?: 'card' | 'modal-only';
   patientOnline?: boolean;
@@ -34,6 +35,7 @@ export function CirclePatientSwitcher({
   onSelect,
   startupPatientId = null,
   onSetStartupPatient,
+  onCancelPending,
   variant = 'card',
   patientOnline = false,
   patientLastSeen = 0,
@@ -156,6 +158,7 @@ export function CirclePatientSwitcher({
                   onOpenChange(false);
                 }}
                 onSetStartupPatient={onSetStartupPatient}
+                onCancelPending={onCancelPending}
               />
             </div>
           </div>

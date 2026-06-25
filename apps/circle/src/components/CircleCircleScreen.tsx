@@ -219,7 +219,7 @@ export function CircleCircleScreen({
   const { language: viewerLanguage } = useCircleI18nContext();
   const { settings: remoteSettings } = useCircleRemoteSettings(db, patient, user);
   const patientLanguage = normalizeCircleUiLanguage(remoteSettings?.primaryLanguage);
-  const memberLanguages = useCirclePatientMemberLanguages(db, patient.patientId);
+  const memberLanguages = useCirclePatientMemberLanguages(db, patient.patientId, user.uid);
   const memberRole = patient.role as CircleMemberRole;
   const ownRoleLabel = translateCircleMemberRole(t, memberRole);
   const isProxy = patient.role === 'proxy' && !!patient.capabilities.inviteMembers;

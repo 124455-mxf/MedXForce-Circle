@@ -7,6 +7,8 @@ import {
   canSendPatientRemoteCommands,
   canStartVisitCapture,
   normalizeMemberRole,
+  repairInactiveAcceptedMemberDocsForUser,
+  repairOrphanAcceptedInvitesForUser,
   visitCapturePublishThreadKind,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
@@ -76,6 +78,7 @@ interface CircleMainShellProps {
   onSelectPatient: (patient: CirclePatientSummary) => void;
   startupPatientId?: string | null;
   onSetStartupPatient?: (patient: CirclePatientSummary) => void;
+  onCancelPending?: (patient: CirclePatientSummary) => Promise<void>;
 }
 
 export function CircleMainShell({
@@ -90,6 +93,7 @@ export function CircleMainShell({
   onSelectPatient,
   startupPatientId = null,
   onSetStartupPatient,
+  onCancelPending,
 }: CircleMainShellProps) {
   const [activeTab, setActiveTab] = useState<CircleMainTab>('dashboard');
   const [initialAnalyticsMetricId, setInitialAnalyticsMetricId] =
@@ -163,11 +167,19 @@ export function CircleMainShell({
     return patients[0];
   }, [patients, selectedPatientId]);
 
+  useEffect(() => {
+    if (!selectedPatient?.patientId || !user.uid) return;
+    void (async () => {
+      await repairOrphanAcceptedInvitesForUser(db, user.uid);
+      await repairInactiveAcceptedMemberDocsForUser(db, user.uid);
+    })();
+  }, [db, selectedPatient?.patientId, user.uid]);
+
   const memberRole = selectedPatient ? normalizeMemberRole(selectedPatient.role) : 'friend';
   const showVisitCapture = !!selectedPatient && canStartVisitCapture(memberRole);
   const canReceiveRemoteCommandResponses =
     !!selectedPatient && canSendPatientRemoteCommands(selectedPatient.role);
-  const circleDropInEnabled = !!selectedPatient;
+  const circleDropInEnabled = !!selectedPatient?.capabilities.remoteSettings;
 
   const handleVisitCapturePublished = useCallback(() => {
     setVisitCaptureOpen(false);
@@ -202,7 +214,7 @@ export function CircleMainShell({
 
   const patientPresence = usePatientOnlinePresence(db, selectedPatient?.patientId);
 
-  const memberLanguages = useCirclePatientMemberLanguages(db, selectedPatient?.patientId);
+  const memberLanguages = useCirclePatientMemberLanguages(db, selectedPatient?.patientId, user.uid);
   const { settings: remoteSettings } = useCircleRemoteSettings(db, selectedPatient, user);
   const patientLanguage = normalizeCircleUiLanguage(remoteSettings?.primaryLanguage);
 
@@ -409,6 +421,7 @@ export function CircleMainShell({
             onSelect={handleSelectPatient}
             startupPatientId={startupPatientId}
             onSetStartupPatient={onSetStartupPatient}
+            onCancelPending={onCancelPending}
             patientOnline={patientPresence.online}
           />
         ) : (
@@ -422,6 +435,7 @@ export function CircleMainShell({
               onSelect={handleSelectPatient}
               startupPatientId={startupPatientId}
               onSetStartupPatient={onSetStartupPatient}
+              onCancelPending={onCancelPending}
               memberDisplayName={memberDisplayName}
               patientOnline={patientPresence.online}
               patientLastSeen={patientPresence.lastSeen}

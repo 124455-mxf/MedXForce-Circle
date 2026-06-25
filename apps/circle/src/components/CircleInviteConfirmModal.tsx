@@ -1,6 +1,9 @@
-import { Mail, Shield, UserMinus, Users } from 'lucide-react';
-import type { CircleInvitePreviewItem } from '@medxforce/shared';
+import { useState } from 'react';
+import { AlertTriangle, Copy, Mail, Shield, UserMinus, Users } from 'lucide-react';
+import type { CircleInvitePreviewItem, CircleManagedContact } from '@medxforce/shared';
+import { normalizeInviteEmail } from '@medxforce/shared';
 import { useCircleT } from '../lib/circleI18nContext';
+import { circleAppPublicUrl } from '../services/circleContactIntroductionEmailApi';
 
 type CircleInviteConfirmModalProps = {
   open: boolean;
@@ -9,6 +12,8 @@ type CircleInviteConfirmModalProps = {
   onCancel: () => void;
   isSubmitting?: boolean;
   confirmLabel?: string;
+  contacts?: CircleManagedContact[];
+  draftEmail?: string;
 };
 
 function inviteItems(items: CircleInvitePreviewItem[]) {
@@ -19,6 +24,20 @@ function revokeItems(items: CircleInvitePreviewItem[]) {
   return items.filter((item) => item.action === 'revoke');
 }
 
+function isInviteEmailVerified(
+  email: string,
+  contacts: CircleManagedContact[],
+  draftEmail?: string,
+): boolean {
+  const normalized = normalizeInviteEmail(email);
+  if (!normalized) return false;
+  const stored = contacts.find((contact) => normalizeInviteEmail(contact.email) === normalized);
+  if (draftEmail && normalizeInviteEmail(draftEmail) !== normalized) {
+    return stored?.isEmailVerified === true;
+  }
+  return stored?.isEmailVerified === true;
+}
+
 export function CircleInviteConfirmModal({
   open,
   items,
@@ -26,14 +45,21 @@ export function CircleInviteConfirmModal({
   onCancel,
   isSubmitting = false,
   confirmLabel,
+  contacts = [],
+  draftEmail,
 }: CircleInviteConfirmModalProps) {
   const t = useCircleT();
+  const [linkCopied, setLinkCopied] = useState(false);
   if (!open) return null;
 
   const invites = inviteItems(items);
   const revokes = revokeItems(items);
   const singleInvite = invites.length === 1 && revokes.length === 0;
   const singleRevoke = revokes.length === 1 && invites.length === 0;
+  const circleLink = circleAppPublicUrl();
+  const hasUnverifiedInvites = invites.some(
+    (item) => !isInviteEmailVerified(item.email, contacts, draftEmail),
+  );
 
   const title = singleInvite
     ? t('admin.users.inviteConfirmInviteTitle', { name: invites[0].name })
@@ -44,6 +70,16 @@ export function CircleInviteConfirmModal({
   const defaultConfirm = singleRevoke
     ? t('admin.users.removeAccess')
     : t('admin.users.inviteConfirmConfirm');
+
+  const copyCircleLink = async () => {
+    try {
+      await navigator.clipboard.writeText(circleLink);
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      setLinkCopied(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[140] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
@@ -80,6 +116,36 @@ export function CircleInviteConfirmModal({
         </div>
 
         {invites.length > 0 && (
+          <>
+            <p className="text-xs text-slate-500 leading-relaxed text-center px-1">
+              {t('admin.users.inviteConfirmIntroEmailNote')}
+            </p>
+            {hasUnverifiedInvites && (
+              <div className="flex gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-left">
+                <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" aria-hidden />
+                <p className="text-xs text-amber-900 leading-relaxed">
+                  {t('admin.users.inviteConfirmUnverifiedWarning')}
+                </p>
+              </div>
+            )}
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3 space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 px-1">
+                {t('admin.users.inviteConfirmCopyCircleLink')}
+              </p>
+              <p className="text-xs font-mono text-slate-600 break-all px-1">{circleLink}</p>
+              <button
+                type="button"
+                onClick={() => void copyCircleLink()}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-bold hover:bg-slate-100 transition-colors"
+              >
+                <Copy size={16} />
+                {linkCopied ? t('admin.users.inviteConfirmLinkCopied') : t('admin.users.inviteConfirmCopyCircleLink')}
+              </button>
+            </div>
+          </>
+        )}
+
+        {invites.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
               {t('admin.users.inviteConfirmGrantAccess')}
@@ -91,10 +157,17 @@ export function CircleInviteConfirmModal({
                   className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100"
                 >
                   <Shield size={18} className="text-blue-500 shrink-0" />
-                  <div className="min-w-0 text-left">
+                  <div className="min-w-0 text-left flex-1">
                     <p className="font-bold text-slate-800 truncate">{item.name}</p>
                     <p className="text-sm font-semibold text-red-600 break-all">{item.email}</p>
                   </div>
+                  {!isInviteEmailVerified(item.email, contacts, draftEmail) && (
+                    <AlertTriangle
+                      size={16}
+                      className="text-amber-500 shrink-0"
+                      aria-label={t('admin.users.inviteConfirmUnverifiedWarning')}
+                    />
+                  )}
                 </li>
               ))}
             </ul>

@@ -245,10 +245,21 @@ export function patientFriendlyDisplayName(
   snapshot: CirclePatientProfileSnapshot | null,
   patientDisplayName: string,
 ): string {
+  const circleName = patientDisplayName.trim();
+  if (circleName) return circleName;
   const nick = snapshot?.identity.nickName?.trim();
   if (nick) return nick;
-  if (snapshot) return displayProfileName(snapshot, patientDisplayName);
-  return patientDisplayName.trim() || 'Patient';
+  if (snapshot) return displayProfileName(snapshot, 'Patient');
+  return 'Patient';
+}
+
+/** First name for copy like "{{name}} reacted" — matches switcher/header naming. */
+export function circlePatientFirstName(
+  snapshot: CirclePatientProfileSnapshot | null,
+  patientDisplayName: string,
+): string {
+  const friendly = patientFriendlyDisplayName(snapshot, patientDisplayName);
+  return friendly.split(/\s+/)[0] || 'Patient';
 }
 
 export function localizeBirthdayReminder(
@@ -268,7 +279,7 @@ export function localizeBirthdayReminder(
 
   if (delta < -3 || delta > 7) return null;
 
-  const name = displayProfileName(snapshot, patientDisplayName);
+  const name = patientFriendlyDisplayName(snapshot, patientDisplayName);
   const ageOnBirthday = thisYearBirthday.getFullYear() - dob.getFullYear();
   const birthdayLabel = formatMonthDay(language, thisYearBirthday);
 

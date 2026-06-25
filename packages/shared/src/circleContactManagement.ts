@@ -40,6 +40,10 @@ export interface CircleManagedContact {
   sms: boolean;
   alert: boolean;
   attention: boolean;
+  /** Set when the patient app verifies the contact email (OTP). */
+  isEmailVerified?: boolean;
+  /** Set when a messaging-only contact notification email was sent. */
+  contactAddedEmailSentAt?: number;
 }
 
 interface PatientContactsDocShape {
@@ -53,6 +57,22 @@ export class ContactConflictError extends Error {
   constructor(message = 'This person was updated elsewhere. Refresh and try again.') {
     super(message);
     this.name = 'ContactConflictError';
+  }
+}
+
+export class DuplicateContactEmailError extends Error {
+  readonly existingContactName: string;
+  readonly email: string;
+
+  constructor(existingContactName: string, email: string) {
+    super(
+      existingContactName.trim()
+        ? `This email is already used by ${existingContactName.trim()}. Edit that person instead.`
+        : `This email is already on another contact (${email}). Edit that person instead.`,
+    );
+    this.name = 'DuplicateContactEmailError';
+    this.existingContactName = existingContactName.trim();
+    this.email = email;
   }
 }
 
@@ -145,6 +165,15 @@ function legacyKeyFromManagedContact(contact: CircleManagedContact): string {
   ]);
 }
 
+function readEmailVerified(contact: Record<string, unknown>): boolean {
+  return contact.isEmailVerified === true;
+}
+
+function readContactAddedEmailSentAt(contact: Record<string, unknown>): number | undefined {
+  const value = contact.contactAddedEmailSentAt;
+  return typeof value === 'number' && value > 0 ? value : undefined;
+}
+
 function readOptionalBool(contact: Record<string, unknown>, key: string): boolean | undefined {
   const value = contact[key];
   if (typeof value === 'boolean') return value;
@@ -209,6 +238,7 @@ function mapCaregiver(contact: Record<string, unknown>): CircleManagedContact {
     sms: readOptionalBool(contact, 'sms') ?? defaults.sms,
     alert: readOptionalBool(contact, 'alert') ?? defaults.alert,
     attention: readOptionalBool(contact, 'attention') ?? defaults.attention,
+    isEmailVerified: readEmailVerified(contact),
   };
 }
 
@@ -233,6 +263,7 @@ function mapFriendsFamily(contact: Record<string, unknown>): CircleManagedContac
     sms: readOptionalBool(contact, 'sms') ?? defaults.sms,
     alert: readOptionalBool(contact, 'alert') ?? defaults.alert,
     attention: readOptionalBool(contact, 'attention') ?? defaults.attention,
+    isEmailVerified: readEmailVerified(contact),
   };
 }
 
@@ -251,6 +282,8 @@ function mapSimpleContact(contact: Record<string, unknown>): CircleManagedContac
     sms: readOptionalBool(contact, 'sms') ?? defaults.sms,
     alert: readOptionalBool(contact, 'alert') ?? defaults.alert,
     attention: readOptionalBool(contact, 'attention') ?? defaults.attention,
+    isEmailVerified: readEmailVerified(contact),
+    contactAddedEmailSentAt: readContactAddedEmailSentAt(contact),
   };
 }
 
@@ -268,6 +301,8 @@ function toCaregiverRecord(contact: CircleManagedContact): Record<string, unknow
     id: contact.id,
     name: contact.name,
     email: contact.email,
+    emailVerify: contact.email,
+    isEmailVerified: contact.isEmailVerified === true,
     mobile: contact.mobile,
     relationship: contact.relationship || 'Other',
     circleRole,
@@ -287,6 +322,8 @@ function toFriendsFamilyRecord(contact: CircleManagedContact): Record<string, un
     id: contact.id,
     name: contact.name,
     email: contact.email,
+    emailVerify: contact.email,
+    isEmailVerified: contact.isEmailVerified === true,
     mobile: contact.mobile,
     relationship: contact.relationship || (isFriend ? 'Friend' : 'Family'),
     type: isFriend ? 'Friend' : 'Family',
@@ -311,6 +348,10 @@ function toSimpleContactRecord(contact: CircleManagedContact): Record<string, un
     attention: !!contact.attention,
     message: !!contact.message,
     sms: !!contact.sms,
+    ...(contact.isEmailVerified ? { isEmailVerified: true } : {}),
+    ...(contact.contactAddedEmailSentAt
+      ? { contactAddedEmailSentAt: contact.contactAddedEmailSentAt }
+      : {}),
   };
 }
 
@@ -497,6 +538,17 @@ export async function upsertPatientManagedContact(
 
   const id = (input.id && input.id.trim()) || `ct_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   const normalizedEmail = normalizeInviteEmail(input.email || '');
+  const requestedId = (input.id && input.id.trim()) || '';
+
+  if (normalizedEmail) {
+    const emailOwner = parsePatientManagedContacts(data).find(
+      (contact) => normalizeInviteEmail(contact.email) === normalizedEmail,
+    );
+    if (emailOwner && emailOwner.id !== requestedId) {
+      throw new DuplicateContactEmailError(emailOwner.name, normalizedEmail);
+    }
+  }
+
   const inputLegacyKey = legacyKeyFromManagedContact({
     id,
     name: input.name,
@@ -543,7 +595,25 @@ export async function upsertPatientManagedContact(
   const nextContacts = removeFromList(contacts, 'contact');
 
   const circleRole = input.circleRole ?? existingManaged?.circleRole;
-  const proxyTier = input.proxyTier ?? existingManaged?.proxyTier;
+  const proxyTier =
+    circleRole === 'proxy'
+      ? input.proxyTier ?? existingManaged?.proxyTier ?? 'primary'
+      : undefined;
+
+  const existingRaw = [...caregivers, ...friendsAndFamily, ...contacts].find((item) => {
+    const itemId = readString(item, 'id');
+    if (id && itemId === id) return true;
+    return normalizedEmail && normalizeInviteEmail(readString(item, 'email')) === normalizedEmail;
+  });
+  const emailUnchanged =
+    !!existingRaw &&
+    normalizeInviteEmail(readString(existingRaw, 'email')) === normalizedEmail;
+  const isEmailVerified = emailUnchanged && readEmailVerified(existingRaw ?? {});
+  const contactAddedEmailSentAt = emailUnchanged
+    ? (input.contactAddedEmailSentAt ??
+      existingManaged?.contactAddedEmailSentAt ??
+      readContactAddedEmailSentAt(existingRaw ?? {}))
+    : input.contactAddedEmailSentAt;
 
   const next: CircleManagedContact = {
     id,
@@ -557,6 +627,8 @@ export async function upsertPatientManagedContact(
     sms: !!input.sms,
     alert: !!input.alert,
     attention: !!input.attention,
+    isEmailVerified,
+    ...(contactAddedEmailSentAt ? { contactAddedEmailSentAt } : {}),
     ...(circleRole ? { circleRole } : {}),
     ...(proxyTier ? { proxyTier } : {}),
   };

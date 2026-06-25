@@ -17,7 +17,7 @@ function hasText(value: string | undefined | null): boolean {
 }
 
 /** Minimum fields needed to operate well with the patient. */
-function isCoreProfileComplete(snapshot: CirclePatientProfileSnapshot): boolean {
+export function isCoreCircleProfileComplete(snapshot: CirclePatientProfileSnapshot): boolean {
   const { firstName, lastName, dob, language } = snapshot.identity;
   return (
     hasText(firstName) &&
@@ -29,7 +29,7 @@ function isCoreProfileComplete(snapshot: CirclePatientProfileSnapshot): boolean 
 }
 
 function isIdentityComplete(snapshot: CirclePatientProfileSnapshot): boolean {
-  return isCoreProfileComplete(snapshot);
+  return isCoreCircleProfileComplete(snapshot);
 }
 
 function hasNeutralProfileExtras(snapshot: CirclePatientProfileSnapshot): boolean {
@@ -55,7 +55,7 @@ export function getUserProfileRecencyUrgency(
   snapshot: CirclePatientProfileSnapshot | null,
 ): AlertAttentionRecencyUrgency {
   if (!snapshot) return 'neutral';
-  if (!isCoreProfileComplete(snapshot)) return 'red';
+  if (!isCoreCircleProfileComplete(snapshot)) return 'red';
   if (hasGreenProfileExtras(snapshot)) return 'green';
   if (hasNeutralProfileExtras(snapshot)) return 'neutral';
   return 'orange';

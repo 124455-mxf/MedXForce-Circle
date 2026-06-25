@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
@@ -14,11 +14,13 @@ import { MedXForceBrandLogo } from './components/MedXForceBrandLogo';
 import {
   acceptPendingCircleInvites,
   ensureMemberCapabilitiesForUser,
+  repairInactiveAcceptedMemberDocsForUser,
   repairOrphanAcceptedInvitesForUser,
   reconcileAcceptedMemberRolesForUser,
   isFirestoreQuotaError,
   listCirclePatientsAndProvisionsForUser,
   pendingProvisionToCircleSummary,
+  cancelPendingPatientProvisionForProxy,
   normalizeInviteEmail,
   type CirclePatientSummary,
 } from '@medxforce/shared';
@@ -40,6 +42,7 @@ import { CirclePatientSwitcher } from './components/CirclePatientSwitcher';
 import {
   firstActivePatient,
   hasActivePatientBesides,
+  pickPreferredPatientId,
   pickStartupPatientId,
 } from './lib/circlePatientSelection';
 import { useCircleAccountPhoto } from './hooks/useCircleAccountPhoto';
@@ -108,9 +111,37 @@ export default function App() {
     setPendingSwitcherOpen(false);
   };
 
+  const handleCancelPendingProvision = useCallback(
+    async (patient: CirclePatientSummary) => {
+      if (!user || patient.isPendingProvision !== true) return;
+
+      await cancelPendingPatientProvisionForProxy(firebase.db, user.uid, patient.patientId);
+
+      const remaining = patients.filter((p) => p.patientId !== patient.patientId);
+      setPatients(remaining);
+      setPendingSwitcherOpen(false);
+
+      if (selectedPatientId === patient.patientId) {
+        setSelectedPatientId(pickStartupPatientId(remaining, user.uid));
+      }
+
+      if (startupPatientId === patient.patientId) {
+        const nextStartup = pickPreferredPatientId(remaining);
+        if (nextStartup) {
+          writeStartupPatientId(user.uid, nextStartup);
+          setStartupPatientId(nextStartup);
+        } else {
+          setStartupPatientId(null);
+        }
+      }
+    },
+    [patients, selectedPatientId, startupPatientId, user],
+  );
+
   const refreshPatients = async (currentUser: User) => {
     const accepted = await acceptPendingCircleInvites(firebase.db, currentUser);
     await repairOrphanAcceptedInvitesForUser(firebase.db, currentUser.uid);
+    await repairInactiveAcceptedMemberDocsForUser(firebase.db, currentUser.uid);
     await reconcileAcceptedMemberRolesForUser(firebase.db, currentUser.uid);
     await ensureMemberCapabilitiesForUser(firebase.db, currentUser.uid);
     const list = await listCirclePatientsAndProvisionsForUser(firebase.db, currentUser.uid);
@@ -426,6 +457,7 @@ export default function App() {
               onSelect={handleSelectPatient}
               startupPatientId={startupPatientId}
               onSetStartupPatient={patients.length > 1 ? handleSetStartupPatient : undefined}
+              onCancelPending={handleCancelPendingProvision}
               memberDisplayName={user.displayName || user.email || t('dashboard.sectionYou')}
             />
             <div className="flex flex-col flex-1 min-h-0 overflow-y-auto gap-4 pb-2">
@@ -437,6 +469,7 @@ export default function App() {
                 )}
                 onDismiss={handleDismissPendingSetup}
                 onSwitchPatient={() => setPendingSwitcherOpen(true)}
+                onCancelPending={handleCancelPendingProvision}
               />
               <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
                 <CircleSettingsUserManagementPanel
@@ -466,6 +499,7 @@ export default function App() {
                 setPatients((prev) => [...prev, pendingProvisionToCircleSummary(provision)]);
                 setSelectedPatientId(provision.provisionId);
               }}
+              onCancelPending={handleCancelPendingProvision}
             />
           </CirclePatientsAttentionProvider>
         </>
@@ -490,6 +524,7 @@ export default function App() {
                 onSelectPatient={handleSelectPatient}
                 startupPatientId={startupPatientId}
                 onSetStartupPatient={patients.length > 1 ? handleSetStartupPatient : undefined}
+                onCancelPending={handleCancelPendingProvision}
               />
             </div>
             <CircleProfileDrawer
@@ -512,6 +547,7 @@ export default function App() {
                 setPatients((prev) => [...prev, pendingProvisionToCircleSummary(provision)]);
                 setSelectedPatientId(provision.provisionId);
               }}
+              onCancelPending={handleCancelPendingProvision}
             />
           </CirclePatientsAttentionProvider>
         </>

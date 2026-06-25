@@ -90,7 +90,12 @@ function DashboardSectionToggles({
   onToggle: (key: CircleDashboardWidgetKey, visible: boolean) => void;
 }) {
   const t = useCircleT();
-  const keys = CIRCLE_DASHBOARD_WIDGET_SECTIONS[section];
+  const keys = CIRCLE_DASHBOARD_WIDGET_SECTIONS[section].filter((key) => {
+    if (key === 'circle-map' && normalizeMemberRole(patient.role) === 'friend') return false;
+    if (key === 'check-in-wellness-ring' && normalizeMemberRole(patient.role) === 'friend') return false;
+    if (key === 'assessment-schedule-calendar' && normalizeMemberRole(patient.role) === 'friend') return false;
+    return true;
+  });
 
   return (
     <section className="space-y-2">

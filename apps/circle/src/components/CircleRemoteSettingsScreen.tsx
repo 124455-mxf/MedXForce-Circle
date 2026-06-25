@@ -44,6 +44,9 @@ import {
 } from '../lib/remoteSettingsScreenI18n';
 import { CircleCollapsibleSection } from './CircleCollapsibleSection';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
+import { CircleAssessmentSchedulePanel } from './CircleAssessmentSchedulePanel';
+import { CircleDailyCheckInQuestionsPanel } from './CircleDailyCheckInQuestionsPanel';
+import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfileSnapshot';
 
 function ToggleRow({
   label,
@@ -159,6 +162,8 @@ export function CircleRemoteSettingsScreen({
   const compactChrome = useCircleCompactChrome();
   const t = useCircleT();
   const [pendingMode, setPendingMode] = useState<RemoteAppMode | null>(null);
+  const { snapshot: profileSnapshot } = useCirclePatientProfileSnapshot(db, patient.patientId);
+  const treatmentPhase = profileSnapshot?.clinical?.treatmentPhase;
 
   const patch = (next: PatientRemoteSettingsDoc) => {
     persist({ ...next, patientId: patient.patientId });
@@ -394,6 +399,18 @@ export function CircleRemoteSettingsScreen({
                     </label>
                   </div>
                 )}
+                <CircleDailyCheckInQuestionsPanel settings={settings} patch={patch} t={t} />
+              </div>
+            </CircleCollapsibleSection>
+
+            <CircleCollapsibleSection title={t('remoteSettings.sections.assessmentSchedule')}>
+              <div className="p-4">
+                <CircleAssessmentSchedulePanel
+                  settings={settings}
+                  treatmentPhase={treatmentPhase}
+                  patch={patch}
+                  t={t}
+                />
               </div>
             </CircleCollapsibleSection>
 

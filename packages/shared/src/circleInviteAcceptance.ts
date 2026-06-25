@@ -4,6 +4,7 @@ import {
   getDoc,
   getDocs,
   query,
+  setDoc,
   where,
   writeBatch,
   type Firestore,
@@ -145,6 +146,54 @@ export async function repairOrphanAcceptedInvitesForUser(
         break;
       }
       console.warn('[Circle] Could not repair orphan invite for patient', invite.patientId, err);
+    }
+  }
+
+  return repairs;
+}
+
+/** Reactivate member docs stuck on a non-active status despite an accepted invite. */
+export async function repairInactiveAcceptedMemberDocsForUser(
+  db: Firestore,
+  uid: string,
+): Promise<number> {
+  const invitesSnap = await getDocs(
+    query(
+      collection(db, 'circle_invites'),
+      where('acceptedByUid', '==', uid),
+      where('status', '==', 'accepted'),
+    ),
+  );
+  if (invitesSnap.empty) return 0;
+
+  let repairs = 0;
+
+  for (const inviteDoc of invitesSnap.docs) {
+    const invite = inviteDoc.data() as CircleInviteRecord;
+    const memberRef = doc(db, 'patients', invite.patientId, 'members', uid);
+    const memberSnap = await getDoc(memberRef);
+    if (!memberSnap.exists()) continue;
+
+    const status = String(memberSnap.data()?.status ?? 'active');
+    if (status === 'active') continue;
+
+    try {
+      await setDoc(
+        memberRef,
+        {
+          status: 'active',
+          inviteRef: inviteDoc.id,
+          updatedAt: Date.now(),
+        },
+        { merge: true },
+      );
+      repairs += 1;
+    } catch (err) {
+      if (isFirestoreQuotaError(err)) {
+        console.warn('[Circle] Inactive member repair skipped — Firestore daily write quota exceeded.');
+        break;
+      }
+      console.warn('[Circle] Could not reactivate member doc for patient', invite.patientId, err);
     }
   }
 

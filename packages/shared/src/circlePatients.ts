@@ -16,6 +16,7 @@ import {
   type PatientCapabilities,
 } from './patientPermissions';
 import { resolveCircleAccessForInviteEmail } from './circleMemberRoles';
+import { parseCircleProfileSnapshot } from './circlePatientProfile';
 import { listPendingProvisionsForProxy, pendingProvisionToCircleSummary } from './patientProvisions';
 
 export interface CirclePatientSummary {
@@ -104,9 +105,17 @@ export async function listCirclePatientsForUser(
         invite.capabilities,
     );
 
-    const photoUrl = patientData
-      ? String(patientData.photoUrl || '').trim() || undefined
-      : undefined;
+    const snapshot = patientData
+      ? parseCircleProfileSnapshot(patientData.profileSnapshot)
+      : null;
+    let photoUrl: string | undefined;
+    if (snapshot) {
+      photoUrl = snapshot.identity.profilePicture?.trim() || undefined;
+    } else {
+      photoUrl = patientData
+        ? String(patientData.photoUrl || '').trim() || undefined
+        : undefined;
+    }
     const claimedLoginEmail = patientData
       ? String(patientData.claimedLoginEmail || '').trim() || undefined
       : undefined;

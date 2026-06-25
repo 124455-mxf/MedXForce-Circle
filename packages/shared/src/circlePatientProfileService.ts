@@ -15,6 +15,8 @@ import {
   parseCircleProfileMeta,
   parseCircleProfileSnapshot,
   profileNotificationDocId,
+  profileSnapshotFingerprint,
+  sanitizeProfileSnapshotForFirestore,
   type CirclePatientProfileMeta,
   type CirclePatientProfileSnapshot,
   type CircleProfileNotification,
@@ -51,7 +53,28 @@ export async function updateCirclePatientProfileFromProxy(
     ? parseCircleProfileSnapshot(existingSnap.data()?.profileSnapshot)
     : null;
 
+  if (
+    previousSnapshot &&
+    profileSnapshotFingerprint(previousSnapshot) === profileSnapshotFingerprint(snapshot)
+  ) {
+    return;
+  }
+
   const changedLabels = describeProfileSnapshotChanges(previousSnapshot, snapshot);
+  const meaningfulChanges = meaningfulProfileChangedLabels(changedLabels);
+  const firestoreSnapshot = sanitizeProfileSnapshotForFirestore(snapshot);
+  if (meaningfulChanges.length === 0) {
+    await setDoc(
+      patientRef,
+      {
+        profileSnapshot: firestoreSnapshot,
+        updatedAt: Date.now(),
+      },
+      { merge: true },
+    );
+    return;
+  }
+
   const meta: CirclePatientProfileMeta = {
     updatedAt: Date.now(),
     updatedBy: 'proxy',
@@ -64,7 +87,7 @@ export async function updateCirclePatientProfileFromProxy(
   await setDoc(
     patientRef,
     {
-      profileSnapshot: snapshot,
+      profileSnapshot: firestoreSnapshot,
       profileMeta: meta,
       updatedAt: meta.updatedAt,
       photoUrl: profilePicture ? profilePicture : deleteField(),
@@ -72,7 +95,6 @@ export async function updateCirclePatientProfileFromProxy(
     { merge: true },
   );
 
-  const meaningfulChanges = meaningfulProfileChangedLabels(changedLabels);
   if (meaningfulChanges.length > 0) {
     const notificationId = profileNotificationDocId('patient_edit', changedLabels);
     try {

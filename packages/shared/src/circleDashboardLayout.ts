@@ -12,6 +12,9 @@ export type CircleDashboardWidgetKey =
   | 'assessments'
   | 'diary'
   | 'circle'
+  | 'circle-map'
+  | 'check-in-wellness-ring'
+  | 'assessment-schedule-calendar'
   | 'gallery-engagement'
   | 'remote-settings'
   | 'user-profile'
@@ -25,6 +28,7 @@ export type CircleDashboardLayoutSection =
   | 'reminders'
   | 'last7days'
   | 'you'
+  | 'stayConnected'
   | 'patientApp';
 
 export type CircleDashboardLayout = {
@@ -40,6 +44,9 @@ export const ALL_CUSTOMIZABLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
   'assessments',
   'diary',
   'circle',
+  'circle-map',
+  'check-in-wellness-ring',
+  'assessment-schedule-calendar',
   'gallery-engagement',
   'remote-settings',
   'user-profile',
@@ -61,8 +68,14 @@ export const PROXY_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
 export const FAMILY_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
   'vitality',
   'assessments',
+  'assessment-schedule-calendar',
   'gallery-engagement',
   'user-profile',
+];
+
+/** Widgets friends must never see, even if a saved layout marks them visible. */
+export const FRIEND_NEVER_VISIBLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
+  'assessment-schedule-calendar',
 ];
 
 /** Optional tiles hidden for friends until they opt in (locale + insights stay on). */
@@ -75,6 +88,9 @@ export const FRIEND_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = 
   'assessments',
   'diary',
   'circle',
+  'circle-map',
+  'check-in-wellness-ring',
+  'assessment-schedule-calendar',
   'gallery-engagement',
   'remote-settings',
   'user-profile',
@@ -95,6 +111,7 @@ export const CIRCLE_DASHBOARD_WIDGET_SECTIONS: Record<
     'assessments',
   ],
   you: ['diary', 'circle', 'gallery-engagement'],
+  stayConnected: ['circle-map', 'check-in-wellness-ring', 'assessment-schedule-calendar'],
   patientApp: ['remote-settings', 'user-profile'],
 };
 
@@ -216,6 +233,10 @@ export function isCircleDashboardWidgetAvailable(
       return caps?.viewEngagementTrends !== false;
     case 'circle':
       return true;
+    case 'circle-map':
+    case 'check-in-wellness-ring':
+    case 'assessment-schedule-calendar':
+      return true;
     case 'gallery-engagement':
       return caps?.viewCircleMedia !== false || caps?.richMediaUpload !== false;
     case 'remote-settings':
@@ -239,4 +260,15 @@ export function isCircleDashboardWidgetVisible(
   hiddenWidgets: ReadonlySet<CircleDashboardWidgetKey>,
 ): boolean {
   return !hiddenWidgets.has(key);
+}
+
+export function isCircleDashboardWidgetVisibleForRole(
+  key: CircleDashboardWidgetKey,
+  hiddenWidgets: ReadonlySet<CircleDashboardWidgetKey>,
+  role: CircleMemberRole,
+): boolean {
+  if (role === 'friend' && FRIEND_NEVER_VISIBLE_DASHBOARD_WIDGETS.includes(key)) {
+    return false;
+  }
+  return isCircleDashboardWidgetVisible(key, hiddenWidgets);
 }

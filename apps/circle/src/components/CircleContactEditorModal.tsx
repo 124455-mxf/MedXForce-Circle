@@ -1,9 +1,16 @@
 import { Loader2, Pencil, X } from 'lucide-react';
-import type { CircleContactKind } from '@medxforce/shared';
+import type { CircleContactKind, CircleManagedContact } from '@medxforce/shared';
 import { CIRCLE_UI_LANGUAGES } from '../lib/circleLanguages';
 import { cn } from '../lib/utils';
 import { useCircleT, type CircleTranslator } from '../lib/circleI18nContext';
 import { contactKindLabelI18n, relationshipLabelI18n } from '../lib/adminScreenI18n';
+import {
+  circleAccessOptionDescriptionKey,
+  circleAccessOptionLabelKey,
+  circleAccessOptionsForDraft,
+  defaultCircleAccessOptionForKind,
+  type CircleAccessOptionId,
+} from '../lib/circleContactAccessOptions';
 import {
   CircleContactNotifyGrid,
   notifyKeysForContactKind,
@@ -22,6 +29,7 @@ export type ContactEditorDraft = {
   sms: boolean;
   alert: boolean;
   attention: boolean;
+  circleAccessOption: CircleAccessOptionId;
 };
 
 export type ContactEditorMode = 'view' | 'edit' | 'create';
@@ -152,6 +160,8 @@ type CircleContactEditorModalProps = {
   /** Circle sign-in role (e.g. Backup proxy), distinct from person type. */
   circleAccessLabel?: string;
   circleAccessBadgeClass?: string;
+  /** Existing contacts — used to offer primary/backup proxy roles. */
+  rosterContacts?: CircleManagedContact[];
 };
 
 export function CircleContactEditorModal({
@@ -170,12 +180,18 @@ export function CircleContactEditorModal({
   lockSmsNotify = false,
   circleAccessLabel,
   circleAccessBadgeClass,
+  rosterContacts = [],
 }: CircleContactEditorModalProps) {
   const t = useCircleT();
   if (!open) return null;
 
   const kinds = kindOptions(t);
   const empty = t('admin.profile.emptyValue');
+  const accessOptions = circleAccessOptionsForDraft(rosterContacts, draft);
+  const showCircleAccess = draft.kind !== 'contact' && accessOptions.length > 0;
+  const selectedAccessOption = accessOptions.includes(draft.circleAccessOption)
+    ? draft.circleAccessOption
+    : accessOptions[0] ?? draft.circleAccessOption;
 
   const isView = mode === 'view';
   const isCreate = mode === 'create';
@@ -262,6 +278,7 @@ export function CircleContactEditorModal({
                         onChange({
                           kind: option.id,
                           relationship: defaultRelationshipForKind(option.id),
+                          circleAccessOption: defaultCircleAccessOptionForKind(option.id),
                           ...defaultNotifyForKind(option.id),
                         })
                       }
@@ -288,7 +305,47 @@ export function CircleContactEditorModal({
             )}
           </section>
 
-          {circleAccessLabel && (isView || mode === 'edit') && (
+          {showCircleAccess && (
+            <section className="space-y-3">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                {t('admin.contact.circleAccess')}
+              </h4>
+              {isView ? (
+                <span
+                  className={cn(
+                    'inline-flex px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wide border',
+                    circleAccessBadgeClass ?? 'bg-indigo-50 text-indigo-700 border-indigo-100',
+                  )}
+                >
+                  {circleAccessLabel ?? t(circleAccessOptionLabelKey(selectedAccessOption))}
+                </span>
+              ) : (
+                <>
+                  <select
+                    value={selectedAccessOption}
+                    onChange={(e) =>
+                      onChange({ circleAccessOption: e.target.value as CircleAccessOptionId })
+                    }
+                    className={fieldClass}
+                  >
+                    {accessOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {t(circleAccessOptionLabelKey(option))}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="p-3 rounded-xl border border-violet-100 bg-violet-50/60">
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      {t(circleAccessOptionDescriptionKey(selectedAccessOption))}
+                    </p>
+                  </div>
+                </>
+              )}
+              <p className="text-[11px] text-slate-400 leading-snug">{t('admin.contact.circleAccessHint')}</p>
+            </section>
+          )}
+
+          {circleAccessLabel && isView && !showCircleAccess && (
             <section className="space-y-3">
               <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 {t('admin.contact.circleAccess')}
@@ -301,7 +358,6 @@ export function CircleContactEditorModal({
               >
                 {circleAccessLabel}
               </span>
-              <p className="text-[11px] text-slate-400 leading-snug">{t('admin.contact.circleAccessHint')}</p>
             </section>
           )}
 

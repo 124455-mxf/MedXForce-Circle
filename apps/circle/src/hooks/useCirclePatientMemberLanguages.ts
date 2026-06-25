@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Firestore, QuerySnapshot } from 'firebase/firestore';
 import { collection, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import {
-  listCircleInvitesForPatient,
   listPatientManagedContacts,
   normalizeInviteEmail,
   parseMemberContactProfile,
+  repairInactiveAcceptedMemberDocsForUser,
+  repairOrphanAcceptedInvitesForUser,
 } from '@medxforce/shared';
 import { normalizeCircleUiLanguage, type CircleUiLanguage } from '../lib/circleLanguages';
 
@@ -18,8 +19,15 @@ export type CircleMemberLanguageMaps = {
 export function useCirclePatientMemberLanguages(
   db: Firestore,
   patientId: string | undefined,
+  userId?: string,
 ): CircleMemberLanguageMaps {
   const [maps, setMaps] = useState<CircleMemberLanguageMaps>({ byUid: {}, byEmail: {} });
+  const [listenerKey, setListenerKey] = useState(0);
+  const repairAttemptedRef = useRef(false);
+
+  useEffect(() => {
+    repairAttemptedRef.current = false;
+  }, [patientId, userId]);
 
   useEffect(() => {
     if (!patientId) {
@@ -29,35 +37,27 @@ export function useCirclePatientMemberLanguages(
 
     let active = true;
     let contactsByEmail = new Map<string, CircleUiLanguage>();
-    let emailByUid = new Map<string, string>();
     let contactsReady = false;
     let pendingMembers: QuerySnapshot | null = null;
 
-    const loadContactsAndInvites = async () => {
-      const [invites, contacts] = await Promise.all([
-        listCircleInvitesForPatient(db, patientId),
-        listPatientManagedContacts(db, patientId),
-      ]);
-      if (!active) return;
+    const loadContacts = async () => {
+      try {
+        const contacts = await listPatientManagedContacts(db, patientId);
+        if (!active) return;
 
-      contactsByEmail = new Map(
-        contacts.map((contact) => [
-          normalizeInviteEmail(contact.email),
-          normalizeCircleUiLanguage(contact.language),
-        ]),
-      );
+        contactsByEmail = new Map(
+          contacts.map((contact) => [
+            normalizeInviteEmail(contact.email),
+            normalizeCircleUiLanguage(contact.language),
+          ]),
+        );
 
-      emailByUid = new Map();
-      for (const invite of invites) {
-        if (invite.status !== 'accepted' || !invite.acceptedByUid) continue;
-        const uid = invite.acceptedByUid.trim();
-        const email = normalizeInviteEmail(invite.invitedEmail);
-        if (email) emailByUid.set(uid, email);
-      }
-
-      contactsReady = true;
-      if (pendingMembers) {
-        await rebuildFromMembers(pendingMembers);
+        contactsReady = true;
+        if (pendingMembers) {
+          await rebuildFromMembers(pendingMembers);
+        }
+      } catch (err) {
+        console.warn('[useCirclePatientMemberLanguages] contacts load failed', err);
       }
     };
 
@@ -65,19 +65,12 @@ export function useCirclePatientMemberLanguages(
       const byUid: Record<string, CircleUiLanguage> = {};
       const byEmail: Record<string, CircleUiLanguage> = {};
 
-      for (const [uid, email] of emailByUid) {
-        const base = contactsByEmail.get(email) ?? 'English';
-        byUid[uid] = base;
-        byEmail[email] = base;
-      }
-
       await Promise.all(
         snap.docs.map(async (memberDoc) => {
           const uid = memberDoc.id;
           const data = memberDoc.data() as Record<string, unknown>;
           const profile = parseMemberContactProfile(data);
-          const email =
-            normalizeInviteEmail(String(data.invitedEmail ?? '')) || emailByUid.get(uid) || '';
+          const email = normalizeInviteEmail(String(data.invitedEmail ?? ''));
 
           let lang: CircleUiLanguage = email
             ? (contactsByEmail.get(email) ?? 'English')
@@ -85,12 +78,16 @@ export function useCirclePatientMemberLanguages(
 
           if (profile?.language) {
             lang = normalizeCircleUiLanguage(profile.language);
-            const circleSnap = await getDoc(doc(db, 'circle_profiles', uid));
-            if (circleSnap.data()?.languageSource === 'circle') {
-              const circleLang = circleSnap.data()?.language;
-              lang = normalizeCircleUiLanguage(
-                typeof circleLang === 'string' ? circleLang : profile.language,
-              );
+            try {
+              const circleSnap = await getDoc(doc(db, 'circle_profiles', uid));
+              if (circleSnap.data()?.languageSource === 'circle') {
+                const circleLang = circleSnap.data()?.language;
+                lang = normalizeCircleUiLanguage(
+                  typeof circleLang === 'string' ? circleLang : profile.language,
+                );
+              }
+            } catch (err) {
+              console.warn('[useCirclePatientMemberLanguages] circle_profiles read failed', err);
             }
           }
 
@@ -107,15 +104,34 @@ export function useCirclePatientMemberLanguages(
       await rebuildFromMembers(pendingMembers);
     };
 
-    void loadContactsAndInvites();
+    void loadContacts();
 
-    const unsub = onSnapshot(collection(db, 'patients', patientId, 'members'), (snap) => {
-      pendingMembers = snap;
-      void maybeRebuild();
-    });
+    const unsub = onSnapshot(
+      collection(db, 'patients', patientId, 'members'),
+      (snap) => {
+        pendingMembers = snap;
+        void maybeRebuild();
+      },
+      (err) => {
+        console.warn('[useCirclePatientMemberLanguages] members listener', err);
+        const code = (err as { code?: string }).code;
+        if (
+          userId
+          && code === 'permission-denied'
+          && !repairAttemptedRef.current
+        ) {
+          repairAttemptedRef.current = true;
+          void (async () => {
+            await repairOrphanAcceptedInvitesForUser(db, userId);
+            await repairInactiveAcceptedMemberDocsForUser(db, userId);
+            if (active) setListenerKey((key) => key + 1);
+          })();
+        }
+      },
+    );
 
     const interval = window.setInterval(() => {
-      void loadContactsAndInvites();
+      void loadContacts();
     }, 60_000);
 
     return () => {
@@ -123,7 +139,7 @@ export function useCirclePatientMemberLanguages(
       unsub();
       window.clearInterval(interval);
     };
-  }, [db, patientId]);
+  }, [db, patientId, userId, listenerKey]);
 
   return maps;
 }

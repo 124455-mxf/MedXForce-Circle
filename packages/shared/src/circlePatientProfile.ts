@@ -312,19 +312,35 @@ export function buildCircleProfileSnapshot(
       dailyRituals: strList(engagement.dailyRituals),
       personalGoals: strList(engagement.personalGoals),
     },
-    metadata: {
-      discoveredFields: strList(metadata.discoveredFields),
-      discoveredItems:
-        metadata.discoveredItems && typeof metadata.discoveredItems === 'object'
-          ? (metadata.discoveredItems as Record<string, string[]>)
-          : undefined,
-    },
   };
 
-  return {
-    ...snapshot,
-    metadata: pruneDiscoveryMetadata(snapshot),
-  };
+  const discoveredItems =
+    metadata.discoveredItems && typeof metadata.discoveredItems === 'object'
+      ? (metadata.discoveredItems as Record<string, string[]>)
+      : null;
+  const discoveredFields = strList(metadata.discoveredFields);
+  const metadataSeed =
+    discoveredFields.length || discoveredItems
+      ? {
+          discoveredFields,
+          ...(discoveredItems ? { discoveredItems } : {}),
+        }
+      : undefined;
+
+  const snapshotWithMeta: CirclePatientProfileSnapshot = metadataSeed
+    ? { ...snapshot, metadata: metadataSeed }
+    : snapshot;
+
+  const prunedMetadata = pruneDiscoveryMetadata(snapshotWithMeta);
+  if (!prunedMetadata) return snapshot;
+  return { ...snapshot, metadata: prunedMetadata };
+}
+
+/** Firestore rejects `undefined` anywhere in a document — strip recursively. */
+export function sanitizeProfileSnapshotForFirestore(
+  snapshot: CirclePatientProfileSnapshot,
+): CirclePatientProfileSnapshot {
+  return JSON.parse(JSON.stringify(snapshot)) as CirclePatientProfileSnapshot;
 }
 
 const DISCOVERY_LIST_KEYS = new Set([

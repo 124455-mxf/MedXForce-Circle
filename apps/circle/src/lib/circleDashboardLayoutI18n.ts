@@ -9,6 +9,9 @@ export const DASHBOARD_WIDGET_TITLE_KEYS: Record<CircleDashboardWidgetKey, strin
   assessments: 'dashboard.assessments',
   diary: 'dashboard.diary',
   circle: 'dashboard.circleMessages',
+  'circle-map': 'dashboard.circleMap.tileTitle',
+  'check-in-wellness-ring': 'dashboard.checkInWellnessRing.title',
+  'assessment-schedule-calendar': 'dashboard.assessmentScheduleCalendar.title',
   'gallery-engagement': 'dashboard.yourPhotos',
   'remote-settings': 'dashboard.remoteSettings',
   'user-profile': 'dashboard.userProfile',
@@ -26,5 +29,6 @@ export const DASHBOARD_LAYOUT_SECTION_TITLE_KEYS: Record<
   reminders: 'dashboard.sectionParticipationReminders',
   last7days: 'dashboard.sectionLast7Days',
   you: 'dashboard.sectionYou',
+  stayConnected: 'dashboard.sectionStayConnected',
   patientApp: 'dashboard.sectionPatientApp',
 };

@@ -15,6 +15,7 @@ export function useCircleRemoteSettings(
   user: User | null,
 ) {
   const [settings, setSettings] = useState<PatientRemoteSettingsDoc | null>(null);
+  const [fromFirestore, setFromFirestore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,6 +27,7 @@ export function useCircleRemoteSettings(
   useEffect(() => {
     if (!patientId) {
       setSettings(null);
+      setFromFirestore(false);
       setLoading(false);
       return;
     }
@@ -37,6 +39,7 @@ export function useCircleRemoteSettings(
       db,
       patientId,
       (remote) => {
+        setFromFirestore(remote != null);
         setSettings(remote ?? createDefaultRemoteSettings(patientId));
         setLoading(false);
       },
@@ -84,5 +87,5 @@ export function useCircleRemoteSettings(
     [],
   );
 
-  return { settings, loading, saving, error, savedAt, persist, setSettings };
+  return { settings, fromFirestore, loading, saving, error, savedAt, persist, setSettings };
 }

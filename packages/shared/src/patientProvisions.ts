@@ -222,6 +222,51 @@ export async function createPatientProvisionForProxy(
   return record;
 }
 
+/** Remove a pending proxy-led setup the creator no longer needs. */
+export async function cancelPendingPatientProvisionForProxy(
+  db: Firestore,
+  proxyUid: string,
+  provisionId: string,
+): Promise<void> {
+  const trimmedId = provisionId.trim();
+  if (!trimmedId) throw new Error('Setup record not found.');
+
+  const provisionRef = doc(db, 'patient_provisions', trimmedId);
+  const provisionSnap = await getDoc(provisionRef);
+  if (!provisionSnap.exists()) return;
+
+  const data = provisionSnap.data() as PatientProvisionRecord;
+  if (data.status !== 'pending') {
+    throw new Error('Only unfinished patient setups can be removed.');
+  }
+  if (data.createdByUid !== proxyUid) {
+    throw new Error('Only the proxy who created this setup can remove it.');
+  }
+
+  const [draftInvitesSnap, membersSnap] = await Promise.all([
+    getDocs(collection(db, 'patient_provisions', trimmedId, 'draft_invites')),
+    getDocs(collection(db, 'patient_provisions', trimmedId, 'members')),
+  ]);
+
+  const batch = writeBatch(db);
+  for (const inviteDoc of draftInvitesSnap.docs) {
+    batch.delete(inviteDoc.ref);
+  }
+  for (const memberDoc of membersSnap.docs) {
+    batch.delete(memberDoc.ref);
+  }
+  if (data.setupCode) {
+    batch.delete(doc(db, 'patient_setup_codes', data.setupCode));
+  }
+  if (data.intendedEmail) {
+    batch.delete(
+      doc(db, 'patient_pending_email_index', normalizePatientEmailKey(data.intendedEmail)),
+    );
+  }
+  batch.delete(provisionRef);
+  await batch.commit();
+}
+
 export async function lookupPendingProvisionBySetupCode(
   db: Firestore,
   setupCodeRaw: string,

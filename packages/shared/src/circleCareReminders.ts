@@ -119,6 +119,7 @@ export function shouldShowAssessmentAfterFirstCommReminder(input: {
 
 export function shouldShowProfileIncompleteReminder(input: {
   enabled: boolean;
+  /** True when core profile fields (name, DOB, language, sex) are filled. */
   profileComplete: boolean;
   snoozedUntil: number | undefined;
   now?: number;

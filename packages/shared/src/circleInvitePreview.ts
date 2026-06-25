@@ -31,7 +31,7 @@ function roleFromManagedContact(
 export async function previewManagedContactInviteChange(
   db: Firestore,
   patientId: string,
-  contact: Pick<CircleManagedContact, 'id' | 'name' | 'email' | 'kind'>,
+  contact: Pick<CircleManagedContact, 'id' | 'name' | 'email' | 'kind' | 'circleRole' | 'proxyTier'>,
   options: { previousEmail?: string } = {},
 ): Promise<CircleInvitePreviewItem[]> {
   const items: CircleInvitePreviewItem[] = [];

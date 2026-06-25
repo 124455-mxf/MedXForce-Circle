@@ -4,7 +4,7 @@ import type {
   CircleMemberRole,
   ProxyTier,
 } from '@medxforce/shared';
-import { ContactConflictError } from '@medxforce/shared';
+import { ContactConflictError, DuplicateContactEmailError } from '@medxforce/shared';
 import type { CircleTranslator } from './circleI18nContext';
 import { translateCircleMemberRole } from './circleScreenI18n';
 
@@ -93,6 +93,12 @@ export function yesNoLabelI18n(t: CircleTranslator, value: string): string {
 
 export function formatContactSaveErrorI18n(t: CircleTranslator, err: unknown): string {
   if (err instanceof ContactConflictError) return err.message;
+  if (err instanceof DuplicateContactEmailError) {
+    return t('admin.users.duplicateEmail', {
+      name: err.existingContactName || t('admin.users.thisPerson'),
+      email: err.email,
+    });
+  }
   const code =
     err && typeof err === 'object' && 'code' in err
       ? String((err as { code: string }).code)

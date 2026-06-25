@@ -21,7 +21,7 @@ export const circleScreenEnglish = {
   tabAnnouncement: 'Announcement',
   tabDropIns: 'Drop-ins',
   tabVisitCaptures: 'Visit captures',
-  tabHidden: 'Hidden',
+  tabHidden: 'Removed from view',
   inboxTabBucketsAria: 'Circle post folders',
   inboxSubtitleDiscussion: 'Tap a post to read and reply. Type below to post to everyone.',
   inboxSubtitleAnnouncement:
@@ -44,7 +44,7 @@ export const circleScreenEnglish = {
   folderActionDropInDndHint: 'Try again when the patient is available.',
   folderActionRecordVisit: 'Record a visit',
   folderActionRecordVisitHint: 'Capture audio, get a summary, and share it in this folder.',
-  inboxEmptyHidden: 'Nothing hidden from your view.',
+  inboxEmptyHidden: 'Nothing removed from your view.',
   inboxSnippetYouPosted: 'You posted',
   inboxSnippetYouReplied: 'You replied',
   inboxSnippetReplied: '{{name}} replied',
@@ -135,7 +135,7 @@ export const circleScreenGerman = {
   tabAnnouncement: 'Ankündigung',
   tabDropIns: 'Drop-ins',
   tabVisitCaptures: 'Besuchsaufzeichnungen',
-  tabHidden: 'Ausgeblendet',
+  tabHidden: 'Aus Ansicht entfernt',
   inboxTabBucketsAria: 'Circle-Beitragsordner',
   inboxSubtitleDiscussion:
     'Tippen Sie auf einen Beitrag zum Lesen. Unten tippen, um an alle zu posten.',
@@ -165,7 +165,7 @@ export const circleScreenGerman = {
   folderActionRecordVisit: 'Besuch aufzeichnen',
   folderActionRecordVisitHint:
     'Audio aufnehmen, Zusammenfassung erhalten und in diesem Ordner teilen.',
-  inboxEmptyHidden: 'Nichts in Ihrer Ansicht ausgeblendet.',
+  inboxEmptyHidden: 'Nichts aus Ihrer Ansicht entfernt.',
   inboxSnippetYouPosted: 'Sie haben gepostet',
   inboxSnippetYouReplied: 'Sie haben geantwortet',
   inboxSnippetReplied: '{{name}} hat geantwortet',
@@ -257,7 +257,7 @@ export const circleScreenSpanish = {
   tabAnnouncement: 'Anuncio',
   tabDropIns: 'Drop-ins',
   tabVisitCaptures: 'Capturas de visita',
-  tabHidden: 'Ocultos',
+  tabHidden: 'Quitados de la vista',
   inboxTabBucketsAria: 'Carpetas de publicaciones Circle',
   inboxSubtitleDiscussion:
     'Toque una publicación para leer. Escriba abajo para publicar a todos.',
@@ -287,7 +287,7 @@ export const circleScreenSpanish = {
   folderActionRecordVisit: 'Registrar una visita',
   folderActionRecordVisitHint:
     'Capture audio, obtenga un resumen y compártalo en esta carpeta.',
-  inboxEmptyHidden: 'Nada oculto de su vista.',
+  inboxEmptyHidden: 'Nada quitado de su vista.',
   inboxSnippetYouPosted: 'Usted publicó',
   inboxSnippetYouReplied: 'Usted respondió',
   inboxSnippetReplied: '{{name}} respondió',
@@ -379,7 +379,7 @@ export const circleScreenPolish = {
   tabAnnouncement: 'Ogłoszenie',
   tabDropIns: 'Drop-iny',
   tabVisitCaptures: 'Nagrania wizyt',
-  tabHidden: 'Ukryte',
+  tabHidden: 'Usunięte z widoku',
   inboxTabBucketsAria: 'Foldery postów Circle',
   inboxSubtitleDiscussion:
     'Dotknij posta, aby przeczytać. Wpisz poniżej, aby opublikować dla wszystkich.',
@@ -409,7 +409,7 @@ export const circleScreenPolish = {
   folderActionRecordVisit: 'Nagraj wizytę',
   folderActionRecordVisitHint:
     'Nagraj audio, uzyskaj podsumowanie i udostępnij w tym folderze.',
-  inboxEmptyHidden: 'Nic nie ukryto w Twoim widoku.',
+  inboxEmptyHidden: 'Nic nie usunięto z Twojego widoku.',
   inboxSnippetYouPosted: 'Opublikowałeś',
   inboxSnippetYouReplied: 'Odpowiedziałeś',
   inboxSnippetReplied: '{{name}} odpowiedział',

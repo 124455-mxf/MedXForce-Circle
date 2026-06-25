@@ -46,3 +46,5 @@ export * from './visitCaptureExport';
 export * from './patientRemoteCommands';
 export * from './dropIn';
 export * from './patientMessageLifecycle';
+export * from './assessmentSchedule';
+export * from './dailyCheckIn';

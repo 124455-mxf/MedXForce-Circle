@@ -16,6 +16,7 @@ import type { CircleInviteListItem } from './circleMemberManagement';
 import { buildCircleAccessByEmailIndex, circleMemberRoleFromManagedContact } from './circleMemberRoles';
 import {
   ContactConflictError,
+  DuplicateContactEmailError,
   managedContactRecordFingerprint,
   parsePatientManagedContacts,
   readPatientDocUpdatedAt,
@@ -168,11 +169,32 @@ export async function upsertProvisionManagedContact(
 
   const listed = parsePatientManagedContacts(data);
   const normalizedEmail = normalizeInviteEmail(input.email || '');
+  const requestedId = (input.id && input.id.trim()) || '';
+  if (normalizedEmail) {
+    const emailOwner = listed.find(
+      (contact) => normalizeInviteEmail(contact.email) === normalizedEmail,
+    );
+    if (emailOwner && emailOwner.id !== requestedId) {
+      throw new DuplicateContactEmailError(emailOwner.name, normalizedEmail);
+    }
+  }
   const withoutTarget = listed.filter((contact) => {
     if (contact.id === id) return false;
     if (normalizedEmail && normalizeInviteEmail(contact.email) === normalizedEmail) return false;
     return true;
   });
+
+  const existingManaged = listed.find((contact) => {
+    if (id && contact.id === id) return true;
+    return normalizedEmail && normalizeInviteEmail(contact.email) === normalizedEmail;
+  });
+  const emailUnchanged =
+    !!existingManaged &&
+    normalizeInviteEmail(existingManaged.email) === normalizedEmail;
+  const isEmailVerified = emailUnchanged && existingManaged?.isEmailVerified === true;
+  const contactAddedEmailSentAt = emailUnchanged
+    ? (input.contactAddedEmailSentAt ?? existingManaged?.contactAddedEmailSentAt)
+    : input.contactAddedEmailSentAt;
 
   const next: CircleManagedContact = {
     id,
@@ -186,6 +208,8 @@ export async function upsertProvisionManagedContact(
     sms: !!input.sms,
     alert: !!input.alert,
     attention: !!input.attention,
+    isEmailVerified,
+    ...(contactAddedEmailSentAt ? { contactAddedEmailSentAt } : {}),
     ...(input.circleRole ? { circleRole: input.circleRole } : {}),
     ...(input.proxyTier ? { proxyTier: input.proxyTier } : {}),
   };
@@ -281,6 +305,7 @@ function toStoredCaregiver(contact: CircleManagedContact): Record<string, unknow
     name: contact.name,
     email: contact.email,
     emailVerify: contact.email,
+    isEmailVerified: contact.isEmailVerified === true,
     mobile: contact.mobile,
     mobileVerify: contact.mobile,
     relationship: contact.relationship || 'Other',
@@ -303,6 +328,7 @@ function toStoredFriendsFamily(contact: CircleManagedContact): Record<string, un
     name: contact.name,
     email: contact.email,
     emailVerify: contact.email,
+    isEmailVerified: contact.isEmailVerified === true,
     mobile: contact.mobile,
     mobileVerify: contact.mobile,
     relationship: contact.relationship || (contact.kind === 'friend' ? 'Friend' : 'Family'),
@@ -327,6 +353,10 @@ function toStoredSimpleContact(contact: CircleManagedContact): Record<string, un
     attention: contact.attention,
     message: contact.message,
     sms: contact.sms,
+    ...(contact.isEmailVerified ? { isEmailVerified: true } : {}),
+    ...(contact.contactAddedEmailSentAt
+      ? { contactAddedEmailSentAt: contact.contactAddedEmailSentAt }
+      : {}),
   };
 }
 

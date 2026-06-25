@@ -28,6 +28,7 @@ import {
   buildPlaceholderAnalyticsSummary,
   canReadAnalyticsAudience,
   isSameCalendarDay,
+  subscribeRemoteSettings,
   type AnalyticsMetricId,
   type CirclePatientSummary,
   type PatientAnalyticsSummary,
@@ -210,12 +211,34 @@ export function CircleAnalyticsScreen({
   onInitialMetricConsumed?: () => void;
 }) {
   const [detailSummary, setDetailSummary] = useState<PatientAnalyticsSummary | null>(null);
+  const [remoteSettingsLoading, setRemoteSettingsLoading] = useState(true);
+  const [remoteSettingsFromFirestore, setRemoteSettingsFromFirestore] = useState(false);
+  const [dailyCheckInEnabled, setDailyCheckInEnabled] = useState(false);
   const compactChrome = useCircleCompactChrome();
   const { t, language } = useCircleI18nContext();
   const { byMetricId, totalFromServer, loading, error } = useCircleAnalyticsSummaries(
     firebase.db,
     patient,
   );
+
+  useEffect(() => {
+    setRemoteSettingsLoading(true);
+    return subscribeRemoteSettings(
+      firebase.db,
+      patient.patientId,
+      (remote) => {
+        setRemoteSettingsFromFirestore(remote != null);
+        const enabled = remote?.dailyCheckIn?.enabled === true;
+        setDailyCheckInEnabled(enabled);
+        setRemoteSettingsLoading(false);
+      },
+      () => {
+        setRemoteSettingsFromFirestore(false);
+        setDailyCheckInEnabled(false);
+        setRemoteSettingsLoading(false);
+      },
+    );
+  }, [patient.patientId]);
 
   useEffect(() => {
     if (!initialMetricId || loading) return;
@@ -254,7 +277,16 @@ export function CircleAnalyticsScreen({
             ANALYTICS_SECTIONS.map((section) => {
               const cards = section.itemIds
                 .map((id) => {
+                  if (
+                    id === 'daily-check-in' &&
+                    (!dailyCheckInEnabled || !remoteSettingsFromFirestore || remoteSettingsLoading)
+                  ) {
+                    return null;
+                  }
                   const synced = byMetricId.get(id);
+                  if (id === 'daily-check-in' && synced?.summaryText === 'Daily check-in off') {
+                    return null;
+                  }
                   if (synced) return synced;
                   if (!ANALYTICS_METRIC_DEFINITIONS[id]) return null;
                   if (

@@ -5,6 +5,15 @@ import {
   type Firestore,
   type Unsubscribe,
 } from 'firebase/firestore';
+import {
+  sanitizeRemoteAssessmentSchedule,
+  type RemoteAssessmentSchedule,
+} from './assessmentSchedule';
+import {
+  mergeDailyCheckInQuestions,
+  sanitizeDailyCheckInQuestions,
+  type DailyCheckInQuestion,
+} from './dailyCheckIn';
 
 /** Single live doc: patients/{patientId}/remote_settings/live */
 export const REMOTE_SETTINGS_DOC_ID = 'live';
@@ -30,6 +39,7 @@ export type RemoteDailyCheckInSettings = {
     start: string;
     end: string;
   };
+  questions?: DailyCheckInQuestion[];
 };
 
 export type RemoteFeaturesVisibility = {
@@ -76,6 +86,7 @@ export type RemoteSettingsPayload = {
   visibleAreas?: RemoteVisibleAreas;
   quickAreasOrder?: string[];
   shareLocationWithCircle?: boolean;
+  assessmentSchedule?: RemoteAssessmentSchedule;
 };
 
 export type RemoteSettingsSource = 'patient' | 'circle';
@@ -254,9 +265,13 @@ function parseDailyCheckIn(raw: unknown): RemoteDailyCheckInSettings | undefined
           end: asString((qhRaw as Record<string, unknown>).end) ?? '06:00',
         }
       : { enabled: false, start: '22:00', end: '06:00' };
+  const questions = Array.isArray(d.questions)
+    ? sanitizeDailyCheckInQuestions(d.questions)
+    : undefined;
   return {
     enabled: asBool(d.enabled) ?? false,
     quietHours,
+    ...(questions ? { questions } : {}),
   };
 }
 
@@ -340,6 +355,7 @@ export function parsePatientRemoteSettings(
       ? data.quickAreasOrder.filter((x): x is string => typeof x === 'string')
       : undefined,
     shareLocationWithCircle: asBool(data.shareLocationWithCircle),
+    assessmentSchedule: sanitizeRemoteAssessmentSchedule(data.assessmentSchedule),
     updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : 0,
     updatedByUid: asString(data.updatedByUid) ?? '',
     updatedByName: asString(data.updatedByName) ?? '',
@@ -404,6 +420,13 @@ export function extractRemoteSettingsFromPreferences(
         start: asString(quietRaw?.start) ?? '22:00',
         end: asString(quietRaw?.end) ?? '06:00',
       },
+      ...(Array.isArray(dailyRaw?.questions)
+        ? {
+            questions: mergeDailyCheckInQuestions(
+              dailyRaw?.questions as DailyCheckInQuestion[],
+            ),
+          }
+        : {}),
     },
     betterVisibleCursor: !!preferences.betterVisibleCursor,
     showAiSuggestions: preferences.showAiSuggestions !== false,
@@ -784,6 +807,10 @@ export function setRemoteDailyCheckIn(
       ...current,
       ...patch,
       quietHours: { ...current.quietHours, ...patch.quietHours },
+      questions:
+        patch.questions !== undefined
+          ? sanitizeDailyCheckInQuestions(patch.questions)
+          : current.questions,
     },
   };
 }
@@ -815,4 +842,14 @@ export function setRemoteContentFontSize(
   contentFontSize: 'small' | 'medium' | 'large',
 ): PatientRemoteSettingsDoc {
   return { ...doc, contentFontSize };
+}
+
+export function setRemoteAssessmentSchedule(
+  doc: PatientRemoteSettingsDoc,
+  schedule: RemoteAssessmentSchedule,
+): PatientRemoteSettingsDoc {
+  return {
+    ...doc,
+    assessmentSchedule: schedule,
+  };
 }

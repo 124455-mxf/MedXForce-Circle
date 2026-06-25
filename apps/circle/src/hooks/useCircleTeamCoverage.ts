@@ -18,7 +18,7 @@ export function useCircleTeamCoverage(
   db: Firestore,
   patientId: string | undefined,
   isPendingProvision = false,
-): { analysis: TeamCoverageAnalysis; loading: boolean } {
+): { analysis: TeamCoverageAnalysis; contacts: CircleManagedContact[]; loading: boolean } {
   const [contacts, setContacts] = useState<CircleManagedContact[]>([]);
   const [invites, setInvites] = useState<CircleInviteListItem[]>([]);
   const [contactsReady, setContactsReady] = useState(false);
@@ -129,6 +129,7 @@ export function useCircleTeamCoverage(
 
   return {
     analysis,
+    contacts,
     loading: !patientId || !contactsReady || !invitesReady,
   };
 }

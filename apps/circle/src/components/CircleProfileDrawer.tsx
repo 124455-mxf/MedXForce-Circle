@@ -67,6 +67,7 @@ interface CircleProfileDrawerProps {
   onSignOut: () => void;
   onLeftCircle: () => void | Promise<void>;
   onProvisionCreated?: (provision: PatientProvisionRecord) => void;
+  onCancelPending?: (patient: CirclePatientSummary) => Promise<void>;
 }
 
 export function CircleProfileDrawer({
@@ -83,6 +84,7 @@ export function CircleProfileDrawer({
   onSignOut,
   onLeftCircle,
   onProvisionCreated,
+  onCancelPending,
 }: CircleProfileDrawerProps) {
   const t = useCircleT();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -440,6 +442,7 @@ export function CircleProfileDrawer({
                 setDrawerView('settings');
               }}
               onSetStartupPatient={onSetStartupPatient}
+              onCancelPending={onCancelPending}
             />
             {onProvisionCreated && (
               <div className="pt-2 px-2">

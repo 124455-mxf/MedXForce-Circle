@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import { collection, doc, onSnapshot, type Firestore } from 'firebase/firestore';
+import { collection, doc, onSnapshot, type Firestore, type QuerySnapshot } from 'firebase/firestore';
 import {
-  listCircleInvitesForPatient,
   listPatientManagedContacts,
   normalizeInviteEmail,
   parseMemberContactProfile,
@@ -28,10 +27,12 @@ export function useCirclePatientMemberDisplayNames(
 
     let active = true;
     let latestContacts: Awaited<ReturnType<typeof listPatientManagedContacts>> = [];
-    let latestInvites: Awaited<ReturnType<typeof listCircleInvitesForPatient>> = [];
     let profileByEmail = new Map<string, string>();
+    let pendingMembers: QuerySnapshot | null = null;
 
-    const rebuild = () => {
+    const rebuild = (memberSnap?: QuerySnapshot) => {
+      if (memberSnap) pendingMembers = memberSnap;
+      const snap = memberSnap ?? pendingMembers;
       if (!active) return;
 
       const nameByEmail = new Map(
@@ -48,15 +49,22 @@ export function useCirclePatientMemberDisplayNames(
       const byUid: Record<string, string> = {};
       const byEmail: Record<string, string> = {};
 
-      for (const invite of latestInvites) {
-        if (invite.status !== 'accepted' || !invite.acceptedByUid) continue;
-        const uid = invite.acceptedByUid.trim();
-        const email = normalizeInviteEmail(invite.invitedEmail);
-        const fromContact = email ? nameByEmail.get(email) : undefined;
-        const name = (fromContact || invite.displayName || '').trim();
-        if (!name) continue;
-        byUid[uid] = name;
-        if (email) byEmail[email] = name;
+      if (snap) {
+        snap.forEach((memberDoc) => {
+          const uid = memberDoc.id;
+          const data = memberDoc.data() as Record<string, unknown>;
+          const email = normalizeInviteEmail(String(data.invitedEmail ?? ''));
+          const profile = parseMemberContactProfile(data);
+          const fromContact = email ? nameByEmail.get(email) : undefined;
+          const name = (
+            profile?.name ||
+            fromContact ||
+            (typeof data.displayName === 'string' ? data.displayName : '')
+          ).trim();
+          if (!name) return;
+          byUid[uid] = name;
+          if (email) byEmail[email] = name;
+        });
       }
 
       setMaps({ byUid, byEmail });
@@ -64,12 +72,8 @@ export function useCirclePatientMemberDisplayNames(
 
     const loadStatic = async () => {
       try {
-        const [invites, contacts] = await Promise.all([
-          listCircleInvitesForPatient(db, patientId),
-          listPatientManagedContacts(db, patientId),
-        ]);
+        const contacts = await listPatientManagedContacts(db, patientId);
         if (!active) return;
-        latestInvites = invites;
         latestContacts = contacts;
         rebuild();
       } catch (err) {
@@ -80,11 +84,17 @@ export function useCirclePatientMemberDisplayNames(
 
     void loadStatic();
 
-    const unsubPatient = onSnapshot(doc(db, 'patients', patientId), (snap) => {
-      if (!snap.exists()) return;
-      latestContacts = parsePatientManagedContacts(snap.data() as Record<string, unknown>);
-      rebuild();
-    });
+    const unsubPatient = onSnapshot(
+      doc(db, 'patients', patientId),
+      (snap) => {
+        if (!snap.exists()) return;
+        latestContacts = parsePatientManagedContacts(snap.data() as Record<string, unknown>);
+        rebuild();
+      },
+      (err) => {
+        console.warn('[useCirclePatientMemberDisplayNames] patient listener', err);
+      },
+    );
 
     const unsubMembers = onSnapshot(
       collection(db, 'patients', patientId, 'members'),
@@ -98,7 +108,7 @@ export function useCirclePatientMemberDisplayNames(
           if (profile?.name) next.set(email, profile.name);
         });
         profileByEmail = next;
-        rebuild();
+        rebuild(snap);
       },
       (err) => {
         console.warn('[useCirclePatientMemberDisplayNames] members listener', err);

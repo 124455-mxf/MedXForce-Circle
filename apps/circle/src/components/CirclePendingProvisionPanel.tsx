@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Copy, KeyRound, Stethoscope, X } from 'lucide-react';
+import { Check, Copy, KeyRound, Loader2, Stethoscope, Trash2, X } from 'lucide-react';
 import type { CirclePatientSummary } from '@medxforce/shared';
 import { useCircleT } from '../lib/circleI18nContext';
 
@@ -9,6 +9,7 @@ type CirclePendingProvisionPanelProps = {
   canDismiss?: boolean;
   onDismiss?: () => void;
   onSwitchPatient?: () => void;
+  onCancelPending?: (patient: CirclePatientSummary) => Promise<void>;
 };
 
 export function CirclePendingProvisionPanel({
@@ -16,9 +17,13 @@ export function CirclePendingProvisionPanel({
   canDismiss = false,
   onDismiss,
   onSwitchPatient,
+  onCancelPending,
 }: CirclePendingProvisionPanelProps) {
   const t = useCircleT();
   const [copied, setCopied] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [canceling, setCanceling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const setupCode = patient.setupCode || '--------';
 
   const copyCode = async () => {
@@ -109,7 +114,69 @@ export function CirclePendingProvisionPanel({
             </p>
           </div>
         ) : null}
+
+        {onCancelPending ? (
+          <div className="pt-2 border-t border-slate-100 space-y-2">
+            <button
+              type="button"
+              onClick={() => {
+                setCancelError(null);
+                setConfirmCancel(true);
+              }}
+              disabled={canceling}
+              className="w-full py-3 rounded-2xl border border-red-200 text-red-700 font-semibold hover:bg-red-50 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {canceling ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+              {t('provision.cancelPendingConfirm')}
+            </button>
+            {cancelError ? <p className="text-sm text-red-600 text-center">{cancelError}</p> : null}
+          </div>
+        ) : null}
       </div>
+
+      {confirmCancel && onCancelPending ? (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white p-6 rounded-[28px] shadow-2xl max-w-sm w-full space-y-5 border border-slate-100">
+            <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center text-red-500 mx-auto">
+              <Trash2 size={24} />
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-bold text-slate-900">{t('provision.cancelPendingTitle')}</h3>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                {t('provision.cancelPendingBody', { name: patient.displayName })}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmCancel(false)}
+                disabled={canceling}
+                className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-bold disabled:opacity-50"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCanceling(true);
+                  setCancelError(null);
+                  void onCancelPending(patient)
+                    .then(() => setConfirmCancel(false))
+                    .catch((err) => {
+                      console.warn('[CirclePendingProvisionPanel] cancel', err);
+                      setCancelError(t('provision.cancelPendingFailed'));
+                    })
+                    .finally(() => setCanceling(false));
+                }}
+                disabled={canceling}
+                className="flex-1 py-3 bg-red-600 text-white rounded-2xl font-bold disabled:opacity-50"
+              >
+                {t('provision.cancelPendingConfirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

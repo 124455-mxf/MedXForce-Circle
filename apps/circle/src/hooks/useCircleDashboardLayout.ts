@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { onSnapshot, type Firestore } from 'firebase/firestore';
 import {
   defaultHiddenDashboardWidgetsForRole,
+  FRIEND_NEVER_VISIBLE_DASHBOARD_WIDGETS,
   isCircleDashboardWidgetKey,
-  isCircleDashboardWidgetVisible,
+  isCircleDashboardWidgetVisibleForRole,
   memberDashboardLayoutRef,
   parseMemberDashboardLayout,
   resolveEffectiveHiddenDashboardWidgets,
@@ -54,16 +55,23 @@ export function useCircleDashboardLayout(
   const loading = patientId != null && memberUid != null && parsed === null;
 
   const isWidgetVisible = useCallback(
-    (key: string) =>
-      isCircleDashboardWidgetKey(key)
-        ? isCircleDashboardWidgetVisible(key, hiddenWidgets)
-        : true,
-    [hiddenWidgets],
+    (key: string) => {
+      if (!isCircleDashboardWidgetKey(key)) return true;
+      return isCircleDashboardWidgetVisibleForRole(key, hiddenWidgets, memberRole);
+    },
+    [hiddenWidgets, memberRole],
   );
 
   const setWidgetVisible = useCallback(
     async (key: CircleDashboardWidgetKey, visible: boolean) => {
       if (!patientId || !memberUid) return;
+      if (
+        memberRole === 'friend' &&
+        FRIEND_NEVER_VISIBLE_DASHBOARD_WIDGETS.includes(key) &&
+        visible
+      ) {
+        return;
+      }
 
       const current = resolveEffectiveHiddenDashboardWidgets(
         parsed ?? { layout: null, hasStoredLayout: false },

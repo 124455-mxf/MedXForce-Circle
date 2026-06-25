@@ -17,7 +17,7 @@ import {
   type CirclePatientSummary,
   type PatientAnalyticsSummary,
 } from '@medxforce/shared';
-import { isCircleProfileDataComplete } from '../lib/circleProfileDashboard';
+import { isCoreCircleProfileComplete } from '../lib/circleProfileDashboard';
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import {
   localizeBirthdayReminder,
@@ -110,7 +110,10 @@ function CelebrationCard({
       <button
         type="button"
         disabled={!interactive}
-        onClick={onOpen}
+        onClick={(event) => {
+          event.stopPropagation();
+          onOpen?.();
+        }}
         className={cn('flex h-full w-full flex-col gap-2.5 text-left', !interactive && 'cursor-default')}
       >
         <div
@@ -160,7 +163,6 @@ export function CircleDashboardCelebrationSection({
   firstEngagementLoading,
   analyticsByMetricId,
   analyticsLoading,
-  profileLoading,
   canOpenPatientProfile,
   onGoToTab,
 }: {
@@ -178,7 +180,6 @@ export function CircleDashboardCelebrationSection({
   firstEngagementLoading: boolean;
   analyticsByMetricId: Map<string, PatientAnalyticsSummary>;
   analyticsLoading: boolean;
-  profileLoading: boolean;
   canOpenPatientProfile: boolean;
   onGoToTab: (tab: CircleMainTab) => void;
 }) {
@@ -230,8 +231,8 @@ export function CircleDashboardCelebrationSection({
       ? localizeParticipationDiaryReminder(t, 'never')
       : localizeParticipationDiaryReminder(t, 'stale');
 
-  const profileComplete =
-    !profileLoading && snapshot != null && isCircleProfileDataComplete(snapshot);
+  const profileMeetsMinimum =
+    snapshot != null && isCoreCircleProfileComplete(snapshot);
   const assessmentWindowEnd =
     firstEngagementAt != null ? firstEngagementAt + ASSESSMENT_AFTER_FIRST_COMMUNICATION_MS : null;
   const hasAssessmentInInitialWindow =
@@ -252,11 +253,10 @@ export function CircleDashboardCelebrationSection({
     });
   const showProfileReminder =
     careRemindersEnabled &&
-    !profileLoading &&
     !snoozeLoading &&
     shouldShowProfileIncompleteReminder({
       enabled: true,
-      profileComplete,
+      profileComplete: profileMeetsMinimum,
       snoozedUntil: snoozes.profileIncomplete,
     });
   const showTeamCoverageReminder =

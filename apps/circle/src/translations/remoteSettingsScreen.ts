@@ -33,6 +33,7 @@ const remoteSettingsEnglish = {
     language: 'Language',
     featuresVisibility: 'Features & visibility',
     engagement: '3 minute engagement',
+    assessmentSchedule: 'Assessment schedule',
     quickSettings: 'Quick settings',
     alerts: 'Alerts & Attention',
     communication: 'Communication',
@@ -108,6 +109,65 @@ const remoteSettingsEnglish = {
     pictures: 'Pictures',
     unicode: 'Unicode',
   },
+  assessmentSchedule: {
+    title: 'Assessment schedule',
+    description:
+      'Set how often each assessment should be done on the patient tablet. Lock a schedule to prevent the patient from changing it.',
+    lock: 'Lock',
+    unlock: 'Unlock',
+    lockedForPatient: 'Locked for patient',
+    sectionSummary: '{{enabled}} of {{total}} enabled',
+    dayOfMonth: 'Day of month',
+    sections: {
+      physical: 'Physical assessments',
+      visionHearing: 'Vision and hearing',
+      neurologicalPhysiological: 'Neurological and physiological',
+    },
+    items: {
+      impact: 'Impact',
+      physical: 'Pain',
+      'strength-reflex': 'Strength & reflex',
+      mobility: 'Mobility',
+      numbness: 'Numbness',
+      temperature: 'Temperature',
+      balance: 'Balance',
+      vision: 'Vision',
+      hearing: 'Hearing',
+      neurological: 'Neurological',
+      physiological: 'Physiological',
+      psychological: 'Psychological',
+    },
+    kind: {
+      daily: 'Daily',
+      weekdays: 'Selected days',
+      weekly: 'Weekly',
+      monthly: 'Monthly',
+    },
+    recurrence: {
+      daily: 'Every day',
+      weekly: 'Every {{day}}',
+      monthly: 'Day {{day}} of each month',
+      weekdays: '{{days}}',
+    },
+    weekday: {
+      '0': 'Sunday',
+      '1': 'Monday',
+      '2': 'Tuesday',
+      '3': 'Wednesday',
+      '4': 'Thursday',
+      '5': 'Friday',
+      '6': 'Saturday',
+    },
+    weekdayShort: {
+      '0': 'Su',
+      '1': 'Mo',
+      '2': 'Tu',
+      '3': 'We',
+      '4': 'Th',
+      '5': 'Fr',
+      '6': 'Sa',
+    },
+  },
 };
 
 const remoteSettingsGerman = {
@@ -145,6 +205,7 @@ const remoteSettingsGerman = {
     language: 'Sprache',
     featuresVisibility: 'Funktionen & Sichtbarkeit',
     engagement: '3-Minuten-Engagement',
+    assessmentSchedule: 'Assessment-Zeitplan',
     quickSettings: 'Schnelleinstellungen',
     alerts: 'Alarm & Aufmerksamkeit',
     communication: 'Kommunikation',
@@ -220,6 +281,65 @@ const remoteSettingsGerman = {
     pictures: 'Bilder',
     unicode: 'Unicode',
   },
+  assessmentSchedule: {
+    title: 'Assessment-Zeitplan',
+    description:
+      'Legen Sie fest, wie oft jedes Assessment auf dem Patienten-Tablet durchgeführt werden soll. Sperren Sie einen Zeitplan, damit der Patient ihn nicht ändern kann.',
+    lock: 'Sperren',
+    unlock: 'Entsperren',
+    lockedForPatient: 'Für Patient gesperrt',
+    sectionSummary: '{{enabled}} von {{total}} aktiviert',
+    dayOfMonth: 'Tag im Monat',
+    sections: {
+      physical: 'Körperliche Assessments',
+      visionHearing: 'Sehen und Hören',
+      neurologicalPhysiological: 'Neurologisch und physiologisch',
+    },
+    items: {
+      impact: 'Auswirkung',
+      physical: 'Schmerz',
+      'strength-reflex': 'Kraft & Reflex',
+      mobility: 'Mobilität',
+      numbness: 'Taubheit',
+      temperature: 'Temperatur',
+      balance: 'Gleichgewicht',
+      vision: 'Sehen',
+      hearing: 'Hören',
+      neurological: 'Neurologisch',
+      physiological: 'Physiologisch',
+      psychological: 'Psychologisch',
+    },
+    kind: {
+      daily: 'Täglich',
+      weekdays: 'Ausgewählte Tage',
+      weekly: 'Wöchentlich',
+      monthly: 'Monatlich',
+    },
+    recurrence: {
+      daily: 'Jeden Tag',
+      weekly: 'Jeden {{day}}',
+      monthly: 'Tag {{day}} jedes Monats',
+      weekdays: '{{days}}',
+    },
+    weekday: {
+      '0': 'Sonntag',
+      '1': 'Montag',
+      '2': 'Dienstag',
+      '3': 'Mittwoch',
+      '4': 'Donnerstag',
+      '5': 'Freitag',
+      '6': 'Samstag',
+    },
+    weekdayShort: {
+      '0': 'So',
+      '1': 'Mo',
+      '2': 'Di',
+      '3': 'Mi',
+      '4': 'Do',
+      '5': 'Fr',
+      '6': 'Sa',
+    },
+  },
 };
 
 const remoteSettingsSpanish = {
@@ -256,6 +376,7 @@ const remoteSettingsSpanish = {
     language: 'Idioma',
     featuresVisibility: 'Funciones y visibilidad',
     engagement: 'Compromiso de 3 minutos',
+    assessmentSchedule: 'Calendario de evaluaciones',
     quickSettings: 'Ajustes rápidos',
     alerts: 'Alerta y atención',
     communication: 'Comunicación',
@@ -278,6 +399,7 @@ const remoteSettingsSpanish = {
     pictures: 'Imágenes',
     unicode: 'Unicode',
   },
+  assessmentSchedule: remoteSettingsEnglish.assessmentSchedule,
 };
 
 const remoteSettingsPolish = {
@@ -314,6 +436,7 @@ const remoteSettingsPolish = {
     language: 'Język',
     featuresVisibility: 'Funkcje i widoczność',
     engagement: 'Zaangażowanie 3 minuty',
+    assessmentSchedule: 'Harmonogram ocen',
     quickSettings: 'Szybkie ustawienia',
     alerts: 'Alarm i uwaga',
     communication: 'Komunikacja',
@@ -336,6 +459,7 @@ const remoteSettingsPolish = {
     pictures: 'Obrazy',
     unicode: 'Unicode',
   },
+  assessmentSchedule: remoteSettingsEnglish.assessmentSchedule,
 };
 
 export const remoteSettingsScreenEnglish = remoteSettingsEnglish;
