@@ -28,6 +28,8 @@ import {
 
   formatDropInTranscriptForCareCoordination,
 
+  hasCircleNotifiedDropInResponse,
+
   isDropInCaregiverParticipant,
 
   isDropInPatientInitiated,
@@ -39,6 +41,8 @@ import {
   isDropInSessionBlocking,
 
   primaryDropInShareDestination,
+
+  readCircleAwaitingDropInResponse,
 
   resolveCircleThreadAudienceUids,
 
@@ -59,6 +63,8 @@ import {
   subscribeDropInSession,
 
   writeCircleAwaitingDropInResponse,
+
+  writeCircleNotifiedDropInResponse,
 
   DROP_IN_PATIENT_INITIATED_RESPONSE_TIMEOUT_MS,
   type DropInMessage,
@@ -91,6 +97,26 @@ export type CircleDropInSharePrompt = {
 
 };
 
+export type CircleDropInDeclineNotice = {
+  sessionId: string;
+};
+
+function shouldNotifyDropInDecline(
+  session: DropInSession,
+  userId: string,
+  prev: DropInSession | null,
+): boolean {
+  if (session.requestedByUid !== userId) return false;
+  if (session.status !== 'declined') return false;
+  if (hasCircleNotifiedDropInResponse(session.patientId, session.sessionId, 'declined')) {
+    return false;
+  }
+
+  const sawPendingTransition = prev?.sessionId === session.sessionId && prev.status === 'pending';
+  const awaitingSessionId = readCircleAwaitingDropInResponse(session.patientId);
+  return sawPendingTransition || awaitingSessionId === session.sessionId;
+}
+
 
 
 export function useCircleDropIn(
@@ -119,6 +145,8 @@ export function useCircleDropIn(
 
   patientLanguage: CircleUiLanguage,
 
+  declineNoticeEnabled: boolean = enabled,
+
 ) {
 
   const [session, setSession] = useState<DropInSession | null>(null);
@@ -136,6 +164,8 @@ export function useCircleDropIn(
 
   const [error, setError] = useState<string | null>(null);
 
+  const [declineNotice, setDeclineNotice] = useState<CircleDropInDeclineNotice | null>(null);
+
   const [nowTick, setNowTick] = useState(() => Date.now());
 
   const endedSessionRef = useRef<string | null>(null);
@@ -143,6 +173,8 @@ export function useCircleDropIn(
   const offlineAbortRef = useRef<string | null>(null);
 
   const expiredAwaitingRef = useRef<string | null>(null);
+
+  const prevSessionRef = useRef<DropInSession | null>(null);
 
 
 
@@ -212,15 +244,30 @@ export function useCircleDropIn(
 
   useEffect(() => {
 
-    if (!enabled || !patientId) {
+    if (!patientId || (!enabled && !declineNoticeEnabled)) {
 
       setSession(null);
+      prevSessionRef.current = null;
+      setDeclineNotice(null);
 
       return;
 
     }
 
     return subscribeDropInSession(db, patientId, (nextSession) => {
+      const prev = prevSessionRef.current;
+      prevSessionRef.current = nextSession;
+
+      if (
+        declineNoticeEnabled &&
+        nextSession &&
+        userId &&
+        shouldNotifyDropInDecline(nextSession, userId, prev)
+      ) {
+        setDeclineNotice({ sessionId: nextSession.sessionId });
+        clearCircleAwaitingDropInResponse(nextSession.patientId);
+      }
+
       setSession(nextSession);
       if (
         nextSession &&
@@ -234,7 +281,7 @@ export function useCircleDropIn(
       setError(msg);
     });
 
-  }, [db, enabled, patientId]);
+  }, [db, declineNoticeEnabled, enabled, patientId, userId]);
 
 
 
@@ -785,6 +832,18 @@ export function useCircleDropIn(
 
 
 
+  const dismissDeclineNotice = useCallback(() => {
+    if (!declineNotice || !patientId) {
+      setDeclineNotice(null);
+      return;
+    }
+    writeCircleNotifiedDropInResponse(patientId, declineNotice.sessionId, 'declined');
+    clearCircleAwaitingDropInResponse(patientId);
+    setDeclineNotice(null);
+  }, [declineNotice, patientId]);
+
+
+
   return {
 
     session,
@@ -834,6 +893,10 @@ export function useCircleDropIn(
     closeChat,
 
     resumeChat,
+
+    declineNotice,
+
+    dismissDeclineNotice,
 
   };
 

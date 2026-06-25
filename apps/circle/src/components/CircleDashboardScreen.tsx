@@ -57,8 +57,6 @@ import type { CircleAlertAttentionItem } from '../hooks/useCircleAlertAttentionS
 
 import { useCircleAnalyticsSummaries } from '../hooks/useCircleAnalyticsSummaries';
 
-import { useCircleRemoteSettings } from '../hooks/useCircleRemoteSettings';
-
 import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfileSnapshot';
 
 import { useFamilyGalleryDashboard } from '../hooks/useFamilyGalleryDashboard';
@@ -74,19 +72,19 @@ import {
 } from '../hooks/useDiaryDashboardPreview';
 import { useMemberDiaryActivity } from '../hooks/useMemberDiaryActivity';
 import { usePatientFirstEngagementAt } from '../hooks/usePatientFirstEngagementAt';
-import { useCirclePatientRemoteCommandAwaiting } from '../hooks/useCirclePatientRemoteCommandAwaiting';
+import type { CirclePatientRemoteCommandAwaiting } from '../hooks/useCirclePatientRemoteCommand';
+import {
+  useCirclePatientPresenceFromShell,
+  useCircleRemoteSettingsFromShell,
+} from '../context/CircleSelectedPatientContext';
 
 import {
   isCircleProfileDataComplete,
   getUserProfileRecencyUrgency,
 } from '../lib/circleProfileDashboard';
 
-import {
-  isPatientDoNotDisturbSection,
-  usePatientOnlinePresence,
-} from '../hooks/usePatientOnlinePresence';
-
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
+import { isPatientDoNotDisturbSection } from '../hooks/usePatientOnlinePresence';
 import { analyticsSummaryFooterText } from '../lib/circleAnalyticsI18n';
 import {
   assistiveDevicesLabelT,
@@ -150,6 +148,7 @@ interface CircleDashboardScreenProps {
   onResumeDropIn?: () => void;
   dropInActive?: boolean;
   dropInChatOpen?: boolean;
+  remoteCommandAwaiting: CirclePatientRemoteCommandAwaiting;
 }
 
 const DASHBOARD_WIDGET_BASE_CLASS =
@@ -407,9 +406,16 @@ export function CircleDashboardScreen({
   onResumeDropIn,
   dropInActive,
   dropInChatOpen,
+  remoteCommandAwaiting,
 }: CircleDashboardScreenProps) {
   const t = useCircleT();
   const { language } = useCircleI18nContext();
+  const patientPresence = useCirclePatientPresenceFromShell();
+  const {
+    settings: remoteSettings,
+    fromFirestore: remoteSettingsFromFirestore,
+    loading: remoteSettingsLoading,
+  } = useCircleRemoteSettingsFromShell();
   const caps = patient.capabilities;
   const memberRole = normalizeMemberRole(patient.role);
   const { isWidgetVisible } = useCircleDashboardLayout(
@@ -424,7 +430,6 @@ export function CircleDashboardScreen({
   const showCircleMap = memberRole !== 'friend' && isWidgetVisible('circle-map');
   const canOpenFullProfile = memberRole === 'proxy';
 
-  const patientPresence = usePatientOnlinePresence(db, patient.patientId);
   const showRemotePrompts =
     canSendPatientRemoteCommands(patient.role) &&
     showRemoteSettings &&
@@ -435,13 +440,6 @@ export function CircleDashboardScreen({
     useState<PatientRemoteCommandType | null>(null);
   const [sentCommandThisOpen, setSentCommandThisOpen] = useState(false);
   const [, setLiveTick] = useState(0);
-
-  const remoteCommandAwaiting = useCirclePatientRemoteCommandAwaiting(
-    db,
-    patient.patientId,
-    user.uid,
-    showRemotePrompts,
-  );
 
   useEffect(() => {
     if (!sentCommandThisOpen || remoteCommandAwaiting.awaitingPatientResponse) return;
@@ -456,12 +454,6 @@ export function CircleDashboardScreen({
   }, [patientPresence.online]);
 
   const { byMetricId, loading: analyticsLoading } = useCircleAnalyticsSummaries(db, patient);
-
-  const { settings: remoteSettings, fromFirestore: remoteSettingsFromFirestore, loading: remoteSettingsLoading } = useCircleRemoteSettings(
-    db,
-    showRemoteSettings ? patient : null,
-    user,
-  );
 
   const { snapshot: profileSnapshot, loading: profileLoading } = useCirclePatientProfileSnapshot(
     db,

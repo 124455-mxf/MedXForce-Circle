@@ -23,7 +23,7 @@ import { CircleStoredTranslationMessage } from './CircleStoredTranslationMessage
 import { CircleMessageExpandOverlay } from './CircleMessageExpandOverlay';
 import { CirclePatientLanguagePill } from './CirclePatientLanguagePill';
 import { useCirclePatientMemberDisplayNames } from '../hooks/useCirclePatientMemberDisplayNames';
-import { useCircleRemoteSettings } from '../hooks/useCircleRemoteSettings';
+import { useCircleRemoteSettingsFromShell } from '../context/CircleSelectedPatientContext';
 import { normalizeCircleUiLanguage } from '../lib/circleLanguages';
 import { resolveCircleReplySenderLabel } from '../lib/circleReplySenderDisplay';
 
@@ -324,7 +324,7 @@ export function PatientMessagesScreen({
 }) {
   const t = useCircleT();
   const { language } = useCircleI18nContext();
-  const { settings: remoteSettings } = useCircleRemoteSettings(db, patient, user);
+  const { settings: remoteSettings } = useCircleRemoteSettingsFromShell();
   const patientLanguage = normalizeCircleUiLanguage(remoteSettings?.primaryLanguage);
   const [threadExpandedOpen, setThreadExpandedOpen] = useState(false);
   const normalizedEmail = useMemo(

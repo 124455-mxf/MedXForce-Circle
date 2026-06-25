@@ -30,7 +30,7 @@ import {
   circleWorkTabHeaderClass,
   circleWorkTabPanelClass,
 } from '../lib/circleSectionStyles';
-import { useCircleRemoteSettings } from '../hooks/useCircleRemoteSettings';
+import { useCircleRemoteSettingsFromShell } from '../context/CircleSelectedPatientContext';
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
 import { useCircleT } from '../lib/circleI18nContext';
 import {
@@ -154,11 +154,7 @@ export function CircleRemoteSettingsScreen({
   user: User;
   patient: CirclePatientSummary;
 }) {
-  const { settings, loading, saving, error, savedAt, persist } = useCircleRemoteSettings(
-    db,
-    patient,
-    user,
-  );
+  const { settings, loading, saving, error, savedAt, persist } = useCircleRemoteSettingsFromShell();
   const compactChrome = useCircleCompactChrome();
   const t = useCircleT();
   const [pendingMode, setPendingMode] = useState<RemoteAppMode | null>(null);

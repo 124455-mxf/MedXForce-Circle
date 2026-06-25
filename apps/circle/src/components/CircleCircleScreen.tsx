@@ -74,7 +74,7 @@ import { CircleExpandableMessageComposer } from './CircleExpandableMessageCompos
 import { CircleMessageDeleteConfirmModal } from './CircleMessageDeleteConfirmModal';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 import { CirclePostDetailView } from './CirclePostDetailView';
-import { useCircleRemoteSettings } from '../hooks/useCircleRemoteSettings';
+import { useCircleRemoteSettingsFromShell } from '../context/CircleSelectedPatientContext';
 import { normalizeCircleUiLanguage } from '../lib/circleLanguages';
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
 import { ResponsiveTabLabel } from './ResponsiveTabLabel';
@@ -217,7 +217,7 @@ export function CircleCircleScreen({
 }: CircleCircleScreenProps) {
   const t = useCircleT();
   const { language: viewerLanguage } = useCircleI18nContext();
-  const { settings: remoteSettings } = useCircleRemoteSettings(db, patient, user);
+  const { settings: remoteSettings } = useCircleRemoteSettingsFromShell();
   const patientLanguage = normalizeCircleUiLanguage(remoteSettings?.primaryLanguage);
   const memberLanguages = useCirclePatientMemberLanguages(db, patient.patientId, user.uid);
   const memberRole = patient.role as CircleMemberRole;

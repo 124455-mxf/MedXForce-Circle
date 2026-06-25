@@ -10,6 +10,18 @@ export default defineConfig({
       '@medxforce/shared': path.resolve(__dirname, '../../packages/shared/src/index.ts'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('firebase')) return 'firebase';
+          if (id.includes('recharts')) return 'recharts';
+          if (id.includes('/motion/') || id.includes('node_modules/motion')) return 'motion';
+        },
+      },
+    },
+  },
   server: {
     port: 5174,
     proxy: {
