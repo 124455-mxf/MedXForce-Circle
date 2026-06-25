@@ -12,6 +12,7 @@ import {
   REMOTE_VISIBLE_AREA_TOGGLES,
   getRemoteSettingValue,
   isRemoteSettingsCustomized,
+  resolveEffectiveRemoteDashboardPreset,
   setRemoteAppMode,
   setRemoteDashboardPreset,
   setRemoteContentFontSize,
@@ -177,10 +178,10 @@ export function CircleRemoteSettingsScreen({
   };
 
   const customized = settings ? isRemoteSettingsCustomized(settings) : false;
+  const effectiveDashboardPreset = resolveEffectiveRemoteDashboardPreset(settings);
   const storedDashboardPreset =
-    settings?.dashboardLayout?.preset && settings.dashboardLayout.preset !== 'custom'
-      ? settings.dashboardLayout.preset
-      : 'balanced';
+    effectiveDashboardPreset === 'custom' ? null : effectiveDashboardPreset;
+  const patientSetDashboardLayout = settings?.source === 'patient';
 
   if (loading || !settings) {
     return (
@@ -277,7 +278,14 @@ export function CircleRemoteSettingsScreen({
           </section>
 
           <section className="space-y-2">
-            <SectionLabel>{t('remoteSettings.dashboardView')}</SectionLabel>
+            <div className="flex items-center justify-between gap-2 px-0.5">
+              <SectionLabel>{t('remoteSettings.dashboardView')}</SectionLabel>
+              {patientSetDashboardLayout && storedDashboardPreset ? (
+                <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
+                  {t('remoteSettings.dashboardSetOnTablet')}
+                </span>
+              ) : null}
+            </div>
             <div className="space-y-2">
               {REMOTE_DASHBOARD_PRESETS.map((preset) => {
                 const active = storedDashboardPreset === preset.key;
@@ -286,7 +294,6 @@ export function CircleRemoteSettingsScreen({
                     key={preset.key}
                     type="button"
                     onClick={() => {
-                      if (active) return;
                       patch(setRemoteDashboardPreset(settings, preset.key as RemoteDashboardPreset));
                     }}
                     className={cn(

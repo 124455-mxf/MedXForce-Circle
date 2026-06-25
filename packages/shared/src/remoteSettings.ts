@@ -14,6 +14,7 @@ import {
   sanitizeDailyCheckInQuestions,
   type DailyCheckInQuestion,
 } from './dailyCheckIn';
+import { stripUndefinedDeep } from './firestoreSanitize';
 
 /** Single live doc: patients/{patientId}/remote_settings/live */
 export const REMOTE_SETTINGS_DOC_ID = 'live';
@@ -321,16 +322,16 @@ function parseRemoteDashboardLayout(raw: unknown): RemoteDashboardLayout | undef
   const temperatureUnit =
     temp === 'celsius' || temp === 'fahrenheit' ? temp : undefined;
   const use24HourClock = asBool(d.use24HourClock);
-  if (!hiddenWidgets && !preset && !clockStyle && !temperatureUnit && use24HourClock === undefined) {
+  if (!hiddenWidgets?.length && !preset && !clockStyle && !temperatureUnit && use24HourClock === undefined) {
     return undefined;
   }
-  return {
+  return stripUndefinedDeep({
     preset,
-    hiddenWidgets,
+    hiddenWidgets: hiddenWidgets?.length ? hiddenWidgets : undefined,
     clockStyle,
     temperatureUnit,
     use24HourClock: use24HourClock === true ? true : undefined,
-  };
+  });
 }
 
 function parseDailyCheckIn(raw: unknown): RemoteDailyCheckInSettings | undefined {
@@ -649,7 +650,11 @@ export async function writeRemoteSettings(
   db: Firestore,
   settings: PatientRemoteSettingsDoc,
 ): Promise<void> {
-  await setDoc(remoteSettingsDocRef(db, settings.patientId), settings, { merge: true });
+  await setDoc(
+    remoteSettingsDocRef(db, settings.patientId),
+    stripUndefinedDeep(settings),
+    { merge: true },
+  );
 }
 
 export function canViewRemoteSettingsTab(

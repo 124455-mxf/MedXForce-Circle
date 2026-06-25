@@ -39,6 +39,10 @@ export function useCircleRemoteSettings(
       db,
       patientId,
       (remote) => {
+        if (saveTimerRef.current) {
+          window.clearTimeout(saveTimerRef.current);
+          saveTimerRef.current = null;
+        }
         setFromFirestore(remote != null);
         setSettings(remote ?? createDefaultRemoteSettings(patientId));
         setLoading(false);
