@@ -33,7 +33,7 @@ import { CircleProfileDrawer } from './components/CircleProfileDrawer';
 import { CirclePatientsAttentionProvider } from './context/CirclePatientsAttentionContext';
 import { CircleStartupSequence } from './components/CircleStartupSequence';
 import { useCircleStartupSequence } from './hooks/useCircleStartupSequence';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import { consumeAuthRedirectOnce, firebase } from './lib/firebaseClient';
 import { sendWelcomeEmailsForAcceptedInvites } from './services/circleWelcomeEmailApi';
 import { useCircleI18n } from './hooks/useCircleI18n';
@@ -244,6 +244,40 @@ export default function App() {
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    let debounce = 0;
+    const scheduleRefresh = () => {
+      window.clearTimeout(debounce);
+      debounce = window.setTimeout(() => {
+        void refreshPatients(user);
+      }, 500);
+    };
+
+    const unsubProvisions = onSnapshot(
+      query(
+        collection(firebase.db, 'patient_provisions'),
+        where('createdByUid', '==', user.uid),
+      ),
+      scheduleRefresh,
+      (err) => console.warn('[Circle] provision listener:', err),
+    );
+    const unsubInvites = onSnapshot(
+      query(
+        collection(firebase.db, 'circle_invites'),
+        where('acceptedByUid', '==', user.uid),
+      ),
+      scheduleRefresh,
+      (err) => console.warn('[Circle] invite listener:', err),
+    );
+
+    return () => {
+      unsubProvisions();
+      unsubInvites();
+      window.clearTimeout(debounce);
+    };
   }, [user]);
 
   const handleSignIn = async () => {
@@ -459,6 +493,7 @@ export default function App() {
               onSetStartupPatient={patients.length > 1 ? handleSetStartupPatient : undefined}
               onCancelPending={handleCancelPendingProvision}
               memberDisplayName={user.displayName || user.email || t('dashboard.sectionYou')}
+              db={firebase.db}
             />
             <div className="flex flex-col flex-1 min-h-0 overflow-y-auto gap-4 pb-2">
               <CirclePendingProvisionPanel

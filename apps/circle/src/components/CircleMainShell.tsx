@@ -459,6 +459,7 @@ export function CircleMainShell({
             onSetStartupPatient={onSetStartupPatient}
             onCancelPending={onCancelPending}
             patientOnline={patientPresence.online}
+            db={db}
           />
         ) : (
           <header className="mb-1 shrink-0 rounded-2xl bg-slate-50 border border-slate-100 px-2 py-2 shadow-sm [@media(max-height:740px)]:mb-1 [@media(max-height:740px)]:py-1.5">
@@ -475,6 +476,7 @@ export function CircleMainShell({
               memberDisplayName={memberDisplayName}
               patientOnline={patientPresence.online}
               patientLastSeen={patientPresence.lastSeen}
+              db={db}
             />
           </header>
         )}

@@ -1,6 +1,7 @@
 import { ChevronDown, HeartHandshake, X } from 'lucide-react';
 
 import { cn, type CirclePatientSummary } from '@medxforce/shared';
+import type { Firestore } from 'firebase/firestore';
 
 import {
   PatientAvatarPresenceRing,
@@ -9,6 +10,7 @@ import {
 import { CirclePatientSwitchList } from './CirclePatientSwitchList';
 import { useCirclePatientsAttention } from '../context/CirclePatientsAttentionContext';
 import { useCircleT } from '../lib/circleI18nContext';
+import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfileSnapshot';
 import { formatCircleBadgeCount } from './CircleCountBadge';
 
 interface CirclePatientSwitcherProps {
@@ -25,6 +27,8 @@ interface CirclePatientSwitcherProps {
   patientOnline?: boolean;
   patientLastSeen?: number;
   memberDisplayName?: string;
+  /** Live profile photo from patients/{id} (overrides stale list photoUrl). */
+  db: Firestore;
 }
 
 export function CirclePatientSwitcher({
@@ -40,12 +44,19 @@ export function CirclePatientSwitcher({
   patientOnline = false,
   patientLastSeen = 0,
   memberDisplayName,
+  db,
 }: CirclePatientSwitcherProps) {
   const t = useCircleT();
   const { otherPatientsSummary } = useCirclePatientsAttention();
+  const { snapshot: profileSnapshot } = useCirclePatientProfileSnapshot(db, selected.patientId);
 
   const selectedFromList =
     patients.find((p) => p.patientId === selected.patientId) ?? selected;
+
+  const patientPhotoUrl =
+    profileSnapshot?.identity.profilePicture?.trim() ||
+    selectedFromList.photoUrl?.trim() ||
+    undefined;
 
   const cardTitle = memberDisplayName
     ? t('common.memberForPatientTitle', {
@@ -79,9 +90,9 @@ export function CirclePatientSwitcher({
               className="w-11 h-11 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden"
               aria-hidden
             >
-              {selectedFromList.photoUrl ? (
+              {patientPhotoUrl ? (
                 <img
-                  src={selectedFromList.photoUrl}
+                  src={patientPhotoUrl}
                   alt=""
                   className="w-full h-full object-cover"
                 />
