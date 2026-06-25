@@ -43,7 +43,51 @@ const dailyCheckInGerman = {
   },
 };
 
+const dailyCheckInSpanish = {
+  settingsQuestionsDesc:
+    'Configure hasta 5 preguntas. Edite el texto, el tipo de respuesta o desactive preguntas individuales.',
+  questionLabel: 'Pregunta {{number}}',
+  conditionalVitality: 'se muestra cuando juegos, Vitalidad o galería están activos',
+  customQuestionText: 'Texto de la pregunta (opcional)',
+  answerType: 'Tipo de respuesta',
+  answerTypes: {
+    mood: 'Ánimo (Bien / OK / Mal)',
+    scale: 'Escala (1–10)',
+    yesNo: 'Sí / No',
+    sleep: 'Sueño (Bien / OK / Mal)',
+  },
+  defaultQuestions: {
+    feelToday: '¿Cómo se siente hoy?',
+    painToday: '¿Cómo está su nivel de dolor hoy?',
+    sleep: '¿Cómo durmió anoche?',
+    vitalityOffer: '¿Quiere jugar, hacer ejercicios o ver fotos?',
+    custom: 'Pregunta personalizada',
+  },
+};
+
+const dailyCheckInPolish = {
+  settingsQuestionsDesc:
+    'Skonfiguruj do 5 pytań. Edytuj treść, typ odpowiedzi lub wyłącz poszczególne pytania.',
+  questionLabel: 'Pytanie {{number}}',
+  conditionalVitality: 'widoczne, gdy włączone są gry, Vitality lub galeria',
+  customQuestionText: 'Treść pytania (opcjonalna)',
+  answerType: 'Typ odpowiedzi',
+  answerTypes: {
+    mood: 'Nastrój (Dobry / OK / Słaby)',
+    scale: 'Skala (1–10)',
+    yesNo: 'Tak / Nie',
+    sleep: 'Sen (Dobry / OK / Słaby)',
+  },
+  defaultQuestions: {
+    feelToday: 'Jak się dziś czujesz?',
+    painToday: 'Jaki jest dziś poziom bólu?',
+    sleep: 'Jak spałeś/aś ostatniej nocy?',
+    vitalityOffer: 'Czy chcesz pograć, ćwiczyć lub oglądać zdjęcia?',
+    custom: 'Własne pytanie',
+  },
+};
+
 export const dailyCheckInScreenEnglish = dailyCheckInEnglish;
 export const dailyCheckInScreenGerman = dailyCheckInGerman;
-export const dailyCheckInScreenSpanish = dailyCheckInEnglish;
-export const dailyCheckInScreenPolish = dailyCheckInEnglish;
+export const dailyCheckInScreenSpanish = dailyCheckInSpanish;
+export const dailyCheckInScreenPolish = dailyCheckInPolish;
