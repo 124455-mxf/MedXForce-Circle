@@ -87,6 +87,16 @@ export const remotePromptsModalEnglish = {
     '{{name}} accepted your request to open doctor visit capture on their tablet.',
   remoteDeclinedDoctorVisit:
     '{{name}} declined your request to open doctor visit capture on their tablet.',
+  remoteQuickAnswersConfirmTitle: 'Open Quick Answers on patient tablet?',
+  remoteQuickAnswersConfirmBody:
+    'The patient will see a prompt to open Quick Answers on their tablet. They can accept or dismiss it.',
+  remoteQuickAnswersAwaitingBody:
+    'The patient will see a prompt to open Quick Answers. This request closes automatically if there is no response.',
+  remoteLabelQuickAnswers: 'Quick Answers',
+  remoteAcceptedQuickAnswers:
+    '{{name}} accepted your request to open Quick Answers on their tablet.',
+  remoteDeclinedQuickAnswers:
+    '{{name}} declined your request to open Quick Answers on their tablet.',
 };
 
 export const remotePromptsModalGerman = {
@@ -176,6 +186,16 @@ export const remotePromptsModalGerman = {
     '{{name}} hat Ihre Anfrage angenommen, die Arztbesuch-Aufzeichnung auf dem Tablet zu öffnen.',
   remoteDeclinedDoctorVisit:
     '{{name}} hat Ihre Anfrage abgelehnt, die Arztbesuch-Aufzeichnung auf dem Tablet zu öffnen.',
+  remoteQuickAnswersConfirmTitle: 'Schnellantworten auf dem Patienten-Tablet öffnen?',
+  remoteQuickAnswersConfirmBody:
+    'Der Patient sieht eine Aufforderung, Schnellantworten auf seinem Tablet zu öffnen. Er kann annehmen oder ablehnen.',
+  remoteQuickAnswersAwaitingBody:
+    'Der Patient sieht eine Aufforderung zum Öffnen von Schnellantworten. Diese Anfrage schließt sich automatisch, wenn keine Antwort erfolgt.',
+  remoteLabelQuickAnswers: 'Schnellantworten',
+  remoteAcceptedQuickAnswers:
+    '{{name}} hat Ihre Anfrage angenommen, Schnellantworten auf dem Tablet zu öffnen.',
+  remoteDeclinedQuickAnswers:
+    '{{name}} hat Ihre Anfrage abgelehnt, Schnellantworten auf dem Tablet zu öffnen.',
 };
 
 export const remotePromptsModalSpanish = {
@@ -265,6 +285,16 @@ export const remotePromptsModalSpanish = {
     '{{name}} aceptó su solicitud para abrir la captura de visita médica en su tableta.',
   remoteDeclinedDoctorVisit:
     '{{name}} rechazó su solicitud para abrir la captura de visita médica en su tableta.',
+  remoteQuickAnswersConfirmTitle: '¿Abrir Respuestas rápidas en la tableta del paciente?',
+  remoteQuickAnswersConfirmBody:
+    'El paciente verá un aviso para abrir Respuestas rápidas en su tableta. Puede aceptar o descartarlo.',
+  remoteQuickAnswersAwaitingBody:
+    'El paciente verá un aviso para abrir Respuestas rápidas. Esta solicitud se cierra automáticamente si no hay respuesta.',
+  remoteLabelQuickAnswers: 'Respuestas rápidas',
+  remoteAcceptedQuickAnswers:
+    '{{name}} aceptó su solicitud para abrir Respuestas rápidas en su tableta.',
+  remoteDeclinedQuickAnswers:
+    '{{name}} rechazó su solicitud para abrir Respuestas rápidas en su tableta.',
 };
 
 export const remotePromptsModalPolish = {
@@ -354,4 +384,14 @@ export const remotePromptsModalPolish = {
     '{{name}} zaakceptował(a) Twoją prośbę o otwarcie nagrania wizyty u lekarza na tablecie.',
   remoteDeclinedDoctorVisit:
     '{{name}} odrzucił(a) Twoją prośbę o otwarcie nagrania wizyty u lekarza na tablecie.',
+  remoteQuickAnswersConfirmTitle: 'Otworzyć Szybkie odpowiedzi na tablecie pacjenta?',
+  remoteQuickAnswersConfirmBody:
+    'Pacjent zobaczy prośbę o otwarcie Szybkich odpowiedzi na tablecie. Może zaakceptować lub odrzucić.',
+  remoteQuickAnswersAwaitingBody:
+    'Pacjent zobaczy prośbę o otwarcie Szybkich odpowiedzi. Prośba zamknie się automatycznie, jeśli nie będzie odpowiedzi.',
+  remoteLabelQuickAnswers: 'Szybkie odpowiedzi',
+  remoteAcceptedQuickAnswers:
+    '{{name}} zaakceptował(a) Twoją prośbę o otwarcie Szybkich odpowiedzi na tablecie.',
+  remoteDeclinedQuickAnswers:
+    '{{name}} odrzucił(a) Twoją prośbę o otwarcie Szybkich odpowiedzi na tablecie.',
 };

@@ -15,36 +15,56 @@ export function remoteCommandConfirmTitleI18n(
   t: CircleTranslator,
   type: PatientRemoteCommandType,
 ): string {
-  return type === 'open_doctor_visit'
-    ? t('remotePromptsModal.remoteDoctorVisitConfirmTitle')
-    : t('remotePromptsModal.remoteCheckInConfirmTitle');
+  switch (type) {
+    case 'open_doctor_visit':
+      return t('remotePromptsModal.remoteDoctorVisitConfirmTitle');
+    case 'open_quick_answers':
+      return t('remotePromptsModal.remoteQuickAnswersConfirmTitle');
+    default:
+      return t('remotePromptsModal.remoteCheckInConfirmTitle');
+  }
 }
 
 export function remoteCommandConfirmBodyI18n(
   t: CircleTranslator,
   type: PatientRemoteCommandType,
 ): string {
-  return type === 'open_doctor_visit'
-    ? t('remotePromptsModal.remoteDoctorVisitConfirmBody')
-    : t('remotePromptsModal.remoteCheckInConfirmBody');
+  switch (type) {
+    case 'open_doctor_visit':
+      return t('remotePromptsModal.remoteDoctorVisitConfirmBody');
+    case 'open_quick_answers':
+      return t('remotePromptsModal.remoteQuickAnswersConfirmBody');
+    default:
+      return t('remotePromptsModal.remoteCheckInConfirmBody');
+  }
 }
 
 export function remoteCommandAwaitingBodyI18n(
   t: CircleTranslator,
   type: PatientRemoteCommandType,
 ): string {
-  return type === 'open_doctor_visit'
-    ? t('remotePromptsModal.remoteDoctorVisitAwaitingBody')
-    : t('remotePromptsModal.remoteCheckInAwaitingBody');
+  switch (type) {
+    case 'open_doctor_visit':
+      return t('remotePromptsModal.remoteDoctorVisitAwaitingBody');
+    case 'open_quick_answers':
+      return t('remotePromptsModal.remoteQuickAnswersAwaitingBody');
+    default:
+      return t('remotePromptsModal.remoteCheckInAwaitingBody');
+  }
 }
 
 export function remoteCommandLabelI18n(
   t: CircleTranslator,
   type: PatientRemoteCommandType,
 ): string {
-  return type === 'open_doctor_visit'
-    ? t('remotePromptsModal.remoteLabelDoctorVisit')
-    : t('remotePromptsModal.remoteLabelDailyCheckIn');
+  switch (type) {
+    case 'open_doctor_visit':
+      return t('remotePromptsModal.remoteLabelDoctorVisit');
+    case 'open_quick_answers':
+      return t('remotePromptsModal.remoteLabelQuickAnswers');
+    default:
+      return t('remotePromptsModal.remoteLabelDailyCheckIn');
+  }
 }
 
 export function remoteCommandResponseBodyI18n(
@@ -57,6 +77,11 @@ export function remoteCommandResponseBodyI18n(
     return status === 'acknowledged'
       ? t('remotePromptsModal.remoteAcceptedDoctorVisit', { name: patientName })
       : t('remotePromptsModal.remoteDeclinedDoctorVisit', { name: patientName });
+  }
+  if (type === 'open_quick_answers') {
+    return status === 'acknowledged'
+      ? t('remotePromptsModal.remoteAcceptedQuickAnswers', { name: patientName })
+      : t('remotePromptsModal.remoteDeclinedQuickAnswers', { name: patientName });
   }
   return status === 'acknowledged'
     ? t('remotePromptsModal.remoteAcceptedCheckIn', { name: patientName })

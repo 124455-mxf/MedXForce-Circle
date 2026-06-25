@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { Calendar, Loader2, Radio, Stethoscope, X } from 'lucide-react';
+import { Calendar, ClipboardList, Loader2, Radio, Stethoscope, X } from 'lucide-react';
 import type { PatientRemoteCommandType } from '@medxforce/shared';
 import { useCircleT } from '../lib/circleI18nContext';
 import {
@@ -39,7 +39,12 @@ export function CirclePatientCommandConfirmModal({
   const lockDismiss = sending || awaiting;
   const countdown =
     awaiting && secondsRemaining != null ? Math.max(0, secondsRemaining) : null;
-  const Icon = type === 'open_doctor_visit' ? Stethoscope : Calendar;
+  const Icon =
+    type === 'open_doctor_visit'
+      ? Stethoscope
+      : type === 'open_quick_answers'
+        ? ClipboardList
+        : Calendar;
 
   return createPortal(
     <div

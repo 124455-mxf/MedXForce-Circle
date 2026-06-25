@@ -17,7 +17,10 @@ export const PATIENT_REMOTE_COMMAND_RESPONSE_TIMEOUT_MS = 120 * 1000;
 /** @deprecated Use PATIENT_REMOTE_COMMAND_RESPONSE_TIMEOUT_MS */
 export const PATIENT_REMOTE_COMMAND_TTL_MS = PATIENT_REMOTE_COMMAND_RESPONSE_TIMEOUT_MS;
 
-export type PatientRemoteCommandType = 'open_daily_check_in' | 'open_doctor_visit';
+export type PatientRemoteCommandType =
+  | 'open_daily_check_in'
+  | 'open_doctor_visit'
+  | 'open_quick_answers';
 
 export type PatientRemoteCommandStatus = 'pending' | 'acknowledged' | 'declined' | 'expired';
 
@@ -59,7 +62,13 @@ export function parsePatientRemoteCommand(
 ): PatientRemoteCommandDoc | null {
   if (!data) return null;
   const type = data.type;
-  if (type !== 'open_daily_check_in' && type !== 'open_doctor_visit') return null;
+  if (
+    type !== 'open_daily_check_in' &&
+    type !== 'open_doctor_visit' &&
+    type !== 'open_quick_answers'
+  ) {
+    return null;
+  }
   const status = data.status;
   if (
     status !== 'pending' &&
@@ -120,6 +129,8 @@ export function patientRemoteCommandCircleAwaitingBody(
       return 'The patient will see a prompt to open daily check-in. This request closes automatically if there is no response.';
     case 'open_doctor_visit':
       return 'The patient will see a prompt to start doctor visit capture. This request closes automatically if there is no response.';
+    case 'open_quick_answers':
+      return 'The patient will see a prompt to open Quick Answers. This request closes automatically if there is no response.';
     default:
       return 'The patient will see a prompt on their tablet. This request closes automatically if there is no response.';
   }
@@ -146,6 +157,8 @@ export function patientRemoteCommandLabel(type: PatientRemoteCommandType): strin
       return 'Daily check-in';
     case 'open_doctor_visit':
       return 'Doctor visit capture';
+    case 'open_quick_answers':
+      return 'Quick Answers';
     default:
       return 'Patient app action';
   }
@@ -157,6 +170,8 @@ export function patientRemoteCommandCircleConfirmTitle(type: PatientRemoteComman
       return 'Prompt daily check-in on patient tablet?';
     case 'open_doctor_visit':
       return 'Open doctor visit capture on patient tablet?';
+    case 'open_quick_answers':
+      return 'Open Quick Answers on patient tablet?';
     default:
       return 'Send command to patient app?';
   }
@@ -168,6 +183,8 @@ export function patientRemoteCommandCircleConfirmBody(type: PatientRemoteCommand
       return 'The patient will see a prompt on their tablet to open the daily check-in. They can accept or dismiss it.';
     case 'open_doctor_visit':
       return 'The patient will see a prompt to start doctor visit recording on their tablet. They can accept or dismiss it.';
+    case 'open_quick_answers':
+      return 'The patient will see a prompt to open Quick Answers on their tablet. They can accept or dismiss it.';
     default:
       return 'This sends a one-time prompt to the patient app while they are online.';
   }
@@ -182,6 +199,8 @@ export function patientRemoteCommandPatientBannerText(
       return `${who} is asking you to complete your daily check-in.`;
     case 'open_doctor_visit':
       return `${who} is asking you to start doctor visit capture.`;
+    case 'open_quick_answers':
+      return `${who} is asking you to open Quick Answers.`;
     default:
       return `${who} sent a request to your tablet.`;
   }

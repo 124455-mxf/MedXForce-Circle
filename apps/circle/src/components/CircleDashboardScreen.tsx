@@ -206,6 +206,7 @@ function LivePatientWidget({
   compact = false,
   onPromptCheckIn,
   onPromptDoctorVisit,
+  onPromptQuickAnswers,
   onDropIn,
   onResumeDropIn,
   dropInActive = false,
@@ -218,6 +219,7 @@ function LivePatientWidget({
   compact?: boolean;
   onPromptCheckIn: () => void;
   onPromptDoctorVisit: () => void;
+  onPromptQuickAnswers: () => void;
   onDropIn?: () => void;
   onResumeDropIn?: () => void;
   dropInActive?: boolean;
@@ -273,33 +275,41 @@ function LivePatientWidget({
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               {t('dashboard.remotePrompts')}
             </p>
-            <div className="mt-3.5 flex flex-col gap-2 flex-1 justify-center min-h-0 pb-1.5">
+            <div className="mt-3 flex flex-col gap-1.5 flex-1 justify-center min-h-0 pb-1">
               <button
                 type="button"
                 onClick={onPromptCheckIn}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-blue-200 text-blue-800 text-xs font-bold hover:bg-blue-50"
+                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-blue-200 text-blue-800 text-xs font-bold hover:bg-blue-50"
               >
                 <Calendar size={14} className="shrink-0" aria-hidden />
                 {t('dashboard.checkIn')}
               </button>
               <button
                 type="button"
-                onClick={onPromptDoctorVisit}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-blue-200 text-blue-800 text-xs font-bold hover:bg-blue-50"
+                onClick={onPromptQuickAnswers}
+                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-blue-200 text-blue-800 text-xs font-bold hover:bg-blue-50"
               >
-                <Stethoscope size={14} className="shrink-0" aria-hidden />
-                {t('dashboard.doctorVisit')}
+                <ClipboardList size={14} className="shrink-0" aria-hidden />
+                {t('dashboard.quickAnswers')}
               </button>
               {onDropIn ? (
                 <button
                   type="button"
                   onClick={onDropIn}
-                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-indigo-200 text-indigo-800 text-xs font-bold hover:bg-indigo-50"
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-indigo-200 text-indigo-800 text-xs font-bold hover:bg-indigo-50"
                 >
                   <MessageCircle size={14} className="shrink-0" aria-hidden />
                   {t('dashboard.dropIn')}
                 </button>
               ) : null}
+              <button
+                type="button"
+                onClick={onPromptDoctorVisit}
+                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-blue-200 text-blue-800 text-xs font-bold hover:bg-blue-50"
+              >
+                <Stethoscope size={14} className="shrink-0" aria-hidden />
+                {t('dashboard.doctorVisit')}
+              </button>
             </div>
           </div>
         ) : null}
@@ -985,7 +995,7 @@ export function CircleDashboardScreen({
             <div
               className={cn(
                 'col-span-2',
-                memberRole === 'family' ? null : 'h-[10.75rem] sm:h-[11.25rem]',
+                memberRole === 'family' ? null : 'h-[12.75rem] sm:h-[13.25rem]',
                 dropInActive && !dropInChatOpen && onResumeDropIn ? 'mb-6' : null,
               )}
             >
@@ -1002,6 +1012,10 @@ export function CircleDashboardScreen({
                 onPromptDoctorVisit={() => {
                   setSentCommandThisOpen(false);
                   setConfirmCommandType('open_doctor_visit');
+                }}
+                onPromptQuickAnswers={() => {
+                  setSentCommandThisOpen(false);
+                  setConfirmCommandType('open_quick_answers');
                 }}
                 onDropIn={showRemotePrompts ? onRequestDropIn : undefined}
                 onResumeDropIn={onResumeDropIn}
