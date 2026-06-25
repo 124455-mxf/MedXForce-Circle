@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Loader2, Shield, SlidersHorizontal } from 'lucide-react';
+import { Loader2, LayoutDashboard, Shield, SlidersHorizontal } from 'lucide-react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import {
   REMOTE_APP_MODES,
+  REMOTE_DASHBOARD_PRESETS,
   REMOTE_FEATURE_TOGGLES,
   REMOTE_PRIMARY_LANGUAGE_OPTIONS,
   REMOTE_PROXY_SECTIONS,
@@ -12,6 +13,7 @@ import {
   getRemoteSettingValue,
   isRemoteSettingsCustomized,
   setRemoteAppMode,
+  setRemoteDashboardPreset,
   setRemoteContentFontSize,
   setRemoteDailyCheckIn,
   setRemotePrimaryLanguage,
@@ -20,6 +22,7 @@ import {
   type CirclePatientSummary,
   type PatientRemoteSettingsDoc,
   type RemoteAppMode,
+  type RemoteDashboardPreset,
   type RemotePrimaryLanguage,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
@@ -36,6 +39,8 @@ import { useCircleT } from '../lib/circleI18nContext';
 import {
   remoteSettingsAppModeDescription,
   remoteSettingsAppModeLabel,
+  remoteSettingsDashboardPresetDescription,
+  remoteSettingsDashboardPresetLabel,
   remoteSettingsFontSizeLabel,
   remoteSettingsProxySectionTitle,
   remoteSettingsToggleDescription,
@@ -172,6 +177,10 @@ export function CircleRemoteSettingsScreen({
   };
 
   const customized = settings ? isRemoteSettingsCustomized(settings) : false;
+  const storedDashboardPreset =
+    settings?.dashboardLayout?.preset && settings.dashboardLayout.preset !== 'custom'
+      ? settings.dashboardLayout.preset
+      : 'balanced';
 
   if (loading || !settings) {
     return (
@@ -260,6 +269,49 @@ export function CircleRemoteSettingsScreen({
                     </div>
                     <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                       {remoteSettingsAppModeDescription(t, mode.key)}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="space-y-2">
+            <SectionLabel>{t('remoteSettings.dashboardView')}</SectionLabel>
+            <div className="space-y-2">
+              {REMOTE_DASHBOARD_PRESETS.map((preset) => {
+                const active = storedDashboardPreset === preset.key;
+                return (
+                  <button
+                    key={preset.key}
+                    type="button"
+                    onClick={() => {
+                      if (active) return;
+                      patch(setRemoteDashboardPreset(settings, preset.key as RemoteDashboardPreset));
+                    }}
+                    className={cn(
+                      'w-full text-left p-4 rounded-2xl border transition-colors',
+                      active
+                        ? 'border-violet-300 bg-violet-50/70'
+                        : 'border-slate-100 bg-white hover:border-slate-200',
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <LayoutDashboard
+                        size={16}
+                        className={active ? 'text-violet-600' : 'text-slate-400'}
+                      />
+                      <p className="text-sm font-normal text-slate-800">
+                        {remoteSettingsDashboardPresetLabel(t, preset.key)}
+                      </p>
+                      {active && (
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full">
+                          {t('remoteSettings.current')}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      {remoteSettingsDashboardPresetDescription(t, preset.key)}
                     </p>
                   </button>
                 );

@@ -1,4 +1,4 @@
-import type { RemoteAppMode } from '@medxforce/shared';
+import type { RemoteAppMode, RemoteDashboardPreset } from '@medxforce/shared';
 import type { CircleTranslator } from './circleI18nContext';
 
 const PROXY_SECTION_KEYS: Record<string, string> = {
@@ -18,6 +18,21 @@ const APP_MODE_DESC_KEYS: Record<RemoteAppMode, string> = {
   intensive_care: 'remoteSettings.modes.intensiveCareDesc',
   hospital: 'remoteSettings.modes.hospitalDesc',
   user: 'remoteSettings.modes.userDesc',
+};
+
+const DASHBOARD_PRESET_LABEL_KEYS: Record<RemoteDashboardPreset | 'custom', string> = {
+  minimal: 'remoteSettings.dashboardPresets.minimal',
+  balanced: 'remoteSettings.dashboardPresets.balanced',
+  insights: 'remoteSettings.dashboardPresets.insights',
+  spark: 'remoteSettings.dashboardPresets.spark',
+  custom: 'remoteSettings.dashboardPresets.custom',
+};
+
+const DASHBOARD_PRESET_DESC_KEYS: Record<RemoteDashboardPreset, string> = {
+  minimal: 'remoteSettings.dashboardPresets.minimalDesc',
+  balanced: 'remoteSettings.dashboardPresets.balancedDesc',
+  insights: 'remoteSettings.dashboardPresets.insightsDesc',
+  spark: 'remoteSettings.dashboardPresets.sparkDesc',
 };
 
 const TOGGLE_LABEL_KEYS: Record<string, string> = {
@@ -98,6 +113,20 @@ export function remoteSettingsAppModeLabel(t: CircleTranslator, mode: RemoteAppM
 
 export function remoteSettingsAppModeDescription(t: CircleTranslator, mode: RemoteAppMode): string {
   return t(APP_MODE_DESC_KEYS[mode]);
+}
+
+export function remoteSettingsDashboardPresetLabel(
+  t: CircleTranslator,
+  preset: RemoteDashboardPreset | 'custom',
+): string {
+  return t(DASHBOARD_PRESET_LABEL_KEYS[preset]);
+}
+
+export function remoteSettingsDashboardPresetDescription(
+  t: CircleTranslator,
+  preset: RemoteDashboardPreset,
+): string {
+  return t(DASHBOARD_PRESET_DESC_KEYS[preset]);
 }
 
 export function remoteSettingsToggleLabel(

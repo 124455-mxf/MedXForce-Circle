@@ -501,6 +501,10 @@ export const appShellEnglish = {
     modeLoading: 'Mode: …',
     modeCustom: 'Mode: custom',
     modePreset: 'Mode: {{label}}',
+    dashboardViewLoading: 'View: …',
+    dashboardViewUnknown: 'View: unknown',
+    dashboardViewCustom: 'View: custom (device)',
+    dashboardViewPreset: 'View: {{label}}',
     appModes: {
       intensive_care: 'Intensive Care',
       hospital: 'Hospital',
@@ -1238,6 +1242,10 @@ export const appShellGerman = {
     modeLoading: 'Modus: …',
     modeCustom: 'Modus: individuell',
     modePreset: 'Modus: {{label}}',
+    dashboardViewLoading: 'Ansicht: …',
+    dashboardViewUnknown: 'Ansicht: unbekannt',
+    dashboardViewCustom: 'Ansicht: individuell (Gerät)',
+    dashboardViewPreset: 'Ansicht: {{label}}',
     appModes: {
       intensive_care: 'Intensivpflege',
       hospital: 'Krankenhaus',
@@ -1975,6 +1983,10 @@ export const appShellSpanish = {
     modeLoading: 'Modo: …',
     modeCustom: 'Modo: personalizado',
     modePreset: 'Modo: {{label}}',
+    dashboardViewLoading: 'Vista: …',
+    dashboardViewUnknown: 'Vista: desconocida',
+    dashboardViewCustom: 'Vista: personalizada (dispositivo)',
+    dashboardViewPreset: 'Vista: {{label}}',
     appModes: {
       intensive_care: 'Cuidados intensivos',
       hospital: 'Hospital',
@@ -2712,6 +2724,10 @@ export const appShellPolish = {
     modeLoading: 'Tryb: …',
     modeCustom: 'Tryb: niestandardowy',
     modePreset: 'Tryb: {{label}}',
+    dashboardViewLoading: 'Widok: …',
+    dashboardViewUnknown: 'Widok: nieznany',
+    dashboardViewCustom: 'Widok: własny (urządzenie)',
+    dashboardViewPreset: 'Widok: {{label}}',
     appModes: {
       intensive_care: 'Intensywna opieka',
       hospital: 'Szpital',

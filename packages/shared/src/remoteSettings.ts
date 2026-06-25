@@ -60,6 +60,59 @@ export type RemoteVisibleAreas = {
   unicode?: boolean;
 };
 
+/** Patient dashboard layout presets Circle may set remotely (not device-local custom). */
+export type RemoteDashboardPreset = 'minimal' | 'balanced' | 'insights' | 'spark';
+
+export type RemoteDashboardLayout = {
+  preset?: RemoteDashboardPreset | 'custom';
+  hiddenWidgets?: string[];
+  clockStyle?: 'digital' | 'analog';
+  temperatureUnit?: 'celsius' | 'fahrenheit';
+  use24HourClock?: boolean;
+};
+
+export const REMOTE_DASHBOARD_PRESETS: {
+  key: RemoteDashboardPreset;
+  label: string;
+  description: string;
+}[] = [
+  {
+    key: 'minimal',
+    label: 'Essentials',
+    description: 'Communication, check-in, and time — a calm, focused dashboard.',
+  },
+  {
+    key: 'balanced',
+    label: 'Balanced',
+    description: 'Everyday mix of tasks, gallery, wellness tiles, and light insights.',
+  },
+  {
+    key: 'insights',
+    label: 'Insights',
+    description: 'Highlights progress, mood and sleep trends, and the care circle.',
+  },
+  {
+    key: 'spark',
+    label: 'Spark',
+    description: 'Gallery, journal, games, and uplifting moments for more engagement.',
+  },
+];
+
+export function sanitizeRemoteDashboardPreset(
+  raw: unknown,
+): RemoteDashboardPreset | 'custom' | undefined {
+  if (
+    raw === 'minimal' ||
+    raw === 'balanced' ||
+    raw === 'insights' ||
+    raw === 'spark' ||
+    raw === 'custom'
+  ) {
+    return raw;
+  }
+  return undefined;
+}
+
 /** Whitelisted keys Circle may read/write in Phase 1. */
 export type RemoteSettingsPayload = {
   appMode?: RemoteAppMode;
@@ -86,6 +139,7 @@ export type RemoteSettingsPayload = {
   visibleAreas?: RemoteVisibleAreas;
   quickAreasOrder?: string[];
   shareLocationWithCircle?: boolean;
+  dashboardLayout?: RemoteDashboardLayout;
   assessmentSchedule?: RemoteAssessmentSchedule;
 };
 
@@ -253,6 +307,32 @@ function parsePrimaryLanguage(value: unknown): RemotePrimaryLanguage | undefined
     : undefined;
 }
 
+function parseRemoteDashboardLayout(raw: unknown): RemoteDashboardLayout | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const d = raw as Record<string, unknown>;
+  const clock = asString(d.clockStyle);
+  const clockStyle: RemoteDashboardLayout['clockStyle'] =
+    clock === 'digital' || clock === 'analog' ? clock : undefined;
+  const hiddenWidgets = Array.isArray(d.hiddenWidgets)
+    ? d.hiddenWidgets.filter((x): x is string => typeof x === 'string')
+    : undefined;
+  const preset = sanitizeRemoteDashboardPreset(d.preset);
+  const temp = asString(d.temperatureUnit);
+  const temperatureUnit =
+    temp === 'celsius' || temp === 'fahrenheit' ? temp : undefined;
+  const use24HourClock = asBool(d.use24HourClock);
+  if (!hiddenWidgets && !preset && !clockStyle && !temperatureUnit && use24HourClock === undefined) {
+    return undefined;
+  }
+  return {
+    preset,
+    hiddenWidgets,
+    clockStyle,
+    temperatureUnit,
+    use24HourClock: use24HourClock === true ? true : undefined,
+  };
+}
+
 function parseDailyCheckIn(raw: unknown): RemoteDailyCheckInSettings | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
   const d = raw as Record<string, unknown>;
@@ -355,6 +435,7 @@ export function parsePatientRemoteSettings(
       ? data.quickAreasOrder.filter((x): x is string => typeof x === 'string')
       : undefined,
     shareLocationWithCircle: asBool(data.shareLocationWithCircle),
+    dashboardLayout: parseRemoteDashboardLayout(data.dashboardLayout),
     assessmentSchedule: sanitizeRemoteAssessmentSchedule(data.assessmentSchedule),
     updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : 0,
     updatedByUid: asString(data.updatedByUid) ?? '',
@@ -385,6 +466,7 @@ export function extractRemoteSettingsFromPreferences(
   const quietRaw = dailyRaw?.quietHours as Record<string, unknown> | undefined;
   const visibleAreas = (preferences.visibleAreas ?? {}) as Record<string, unknown>;
   const journeyDiary = preferences.journeyDiary as Record<string, unknown> | undefined;
+  const dashboardLayoutRaw = preferences.dashboardLayout as Record<string, unknown> | undefined;
 
   return {
     patientId,
@@ -444,6 +526,24 @@ export function extractRemoteSettingsFromPreferences(
       ? (preferences.quickAreasOrder as string[])
       : ['phrases', 'categories', 'emojis', 'unicode'],
     shareLocationWithCircle: !!preferences.shareLocationWithCircle,
+    dashboardLayout: dashboardLayoutRaw
+      ? {
+          preset: sanitizeRemoteDashboardPreset(dashboardLayoutRaw.preset),
+          hiddenWidgets: Array.isArray(dashboardLayoutRaw.hiddenWidgets)
+            ? dashboardLayoutRaw.hiddenWidgets.filter((x): x is string => typeof x === 'string')
+            : undefined,
+          clockStyle:
+            dashboardLayoutRaw.clockStyle === 'analog' || dashboardLayoutRaw.clockStyle === 'digital'
+              ? dashboardLayoutRaw.clockStyle
+              : undefined,
+          temperatureUnit:
+            dashboardLayoutRaw.temperatureUnit === 'celsius' ||
+            dashboardLayoutRaw.temperatureUnit === 'fahrenheit'
+              ? dashboardLayoutRaw.temperatureUnit
+              : undefined,
+          use24HourClock: dashboardLayoutRaw.use24HourClock === true ? true : undefined,
+        }
+      : undefined,
     updatedAt: Date.now(),
     updatedByUid: meta.uid,
     updatedByName: meta.displayName,
@@ -820,7 +920,7 @@ export function setRemoteAppMode(
   appMode: RemoteAppMode,
 ): PatientRemoteSettingsDoc {
   const preset = remotePresetPayloadForMode(appMode);
-  return {
+  const next: PatientRemoteSettingsDoc = {
     ...doc,
     ...preset,
     appMode,
@@ -828,6 +928,43 @@ export function setRemoteAppMode(
     primaryLanguage: doc.primaryLanguage,
     quickAreasOrder: preset.quickAreasOrder ?? doc.quickAreasOrder,
   };
+  if (appMode === 'intensive_care') {
+    next.dashboardLayout = { ...doc.dashboardLayout, preset: 'minimal' };
+  }
+  return next;
+}
+
+export function setRemoteDashboardPreset(
+  doc: PatientRemoteSettingsDoc,
+  preset: RemoteDashboardPreset,
+): PatientRemoteSettingsDoc {
+  return {
+    ...doc,
+    dashboardLayout: {
+      ...doc.dashboardLayout,
+      preset,
+    },
+  };
+}
+
+/** Effective patient dashboard preset for Circle display (ICU + dashboard tab → Essentials). */
+export function resolveEffectiveRemoteDashboardPreset(
+  doc: PatientRemoteSettingsDoc | null | undefined,
+): RemoteDashboardPreset | 'custom' {
+  if (doc?.appMode === 'intensive_care' && doc.featuresVisibility?.dashboard) {
+    return 'minimal';
+  }
+  const preset = doc?.dashboardLayout?.preset;
+  if (
+    preset === 'minimal' ||
+    preset === 'balanced' ||
+    preset === 'insights' ||
+    preset === 'spark'
+  ) {
+    return preset;
+  }
+  if (preset === 'custom') return 'custom';
+  return 'balanced';
 }
 
 export function setRemotePrimaryLanguage(

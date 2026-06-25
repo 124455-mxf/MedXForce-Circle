@@ -1,6 +1,7 @@
 import {
   displayProfileName,
   isRemoteSettingsCustomized,
+  resolveEffectiveRemoteDashboardPreset,
   type CirclePatientInsightItem,
   type CirclePatientInsightKey,
   type CirclePatientProfileSnapshot,
@@ -182,6 +183,25 @@ export function formatDashboardApplicationModeLineT(
   const label = t(labelPath);
   const modeLabel = label === labelPath ? t('dashboard.appModes.custom') : label;
   return t('dashboard.modePreset', { label: modeLabel });
+}
+
+export function formatDashboardPatientDashboardViewLineT(
+  t: CircleTranslator,
+  doc: PatientRemoteSettingsDoc | null | undefined,
+  loading = false,
+): string {
+  if (loading) return t('dashboard.dashboardViewLoading');
+  if (!doc) return t('dashboard.dashboardViewUnknown');
+
+  const preset = resolveEffectiveRemoteDashboardPreset(doc);
+  if (preset === 'custom') {
+    return t('dashboard.dashboardViewCustom');
+  }
+
+  const labelPath = `remoteSettings.dashboardPresets.${preset}`;
+  const label = t(labelPath);
+  const viewLabel = label === labelPath ? preset : label;
+  return t('dashboard.dashboardViewPreset', { label: viewLabel });
 }
 
 function startOfDay(date: Date): Date {

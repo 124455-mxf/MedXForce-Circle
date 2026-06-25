@@ -94,6 +94,7 @@ import {
   circlePatientFirstName,
   dashboardPlural,
   formatDashboardApplicationModeLineT,
+  formatDashboardPatientDashboardViewLineT,
   formatDashboardLastLine,
   formatDashboardTimestamp,
   formatPatientActiveSectionT,
@@ -882,7 +883,8 @@ export function CircleDashboardScreen({
       title: t('dashboard.remoteSettings'),
       icon: SlidersHorizontal,
       row1: formatDashboardApplicationModeLineT(t, remoteSettings, remoteSettingsLoading),
-      row2: remoteSettingsLoading ? '' : checkInLabel,
+      row2: formatDashboardPatientDashboardViewLineT(t, remoteSettings, remoteSettingsLoading),
+      row3: remoteSettingsLoading ? '' : checkInLabel,
       onClick: () => onGoToTab('remote-settings'),
     });
   }
