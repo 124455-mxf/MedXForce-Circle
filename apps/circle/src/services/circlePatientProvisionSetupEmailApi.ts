@@ -6,11 +6,6 @@ function patientApiBaseUrl(): string | null {
   return explicit ? explicit.replace(/\/$/, '') : null;
 }
 
-function patientAppUrlOverride(): string | undefined {
-  const explicit = (import.meta.env.VITE_MEDXFORCE_API_URL as string | undefined)?.trim();
-  return explicit ? explicit.replace(/\/$/, '') : undefined;
-}
-
 export type PatientProvisionSetupEmailResult = {
   success: boolean;
   message?: string;
@@ -53,7 +48,6 @@ export async function sendPatientProvisionSetupEmails(params: {
         intendedEmail: intendedEmail || undefined,
         proxyEmail: proxyEmail || undefined,
         proxyName: params.proxyUser.displayName?.trim() || undefined,
-        patientAppUrl: patientAppUrlOverride(),
       }),
     });
 
@@ -69,9 +63,16 @@ export async function sendPatientProvisionSetupEmails(params: {
     }
     return data;
   } catch (err) {
+    const message = err instanceof Error ? err.message : 'Could not reach patient API.';
+    const unreachable =
+      message.includes('Failed to fetch') ||
+      message.includes('NetworkError') ||
+      message.includes('ERR_CONNECTION_REFUSED');
     return {
       success: false,
-      message: err instanceof Error ? err.message : 'Could not reach patient API.',
+      message: unreachable
+        ? 'Patient API is not reachable. Start the patient app (npm run dev on port 3000) or set VITE_MEDXFORCE_API_URL to the deployed API.'
+        : message,
     };
   }
 }
