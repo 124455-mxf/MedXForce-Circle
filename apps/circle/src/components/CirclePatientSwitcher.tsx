@@ -1,6 +1,6 @@
 import { ChevronDown, HeartHandshake, X } from 'lucide-react';
 
-import { cn, type CirclePatientSummary } from '@medxforce/shared';
+import { cn, type CirclePatientSummary, resolveCirclePatientPhotoUrl } from '@medxforce/shared';
 import type { Firestore } from 'firebase/firestore';
 
 import {
@@ -48,15 +48,19 @@ export function CirclePatientSwitcher({
 }: CirclePatientSwitcherProps) {
   const t = useCircleT();
   const { otherPatientsSummary } = useCirclePatientsAttention();
-  const { snapshot: profileSnapshot } = useCirclePatientProfileSnapshot(db, selected.patientId);
+  const { snapshot: profileSnapshot, photoUrl: livePatientPhotoUrl } = useCirclePatientProfileSnapshot(
+    db,
+    selected.patientId,
+  );
 
   const selectedFromList =
     patients.find((p) => p.patientId === selected.patientId) ?? selected;
 
-  const patientPhotoUrl =
-    profileSnapshot?.identity.profilePicture?.trim() ||
-    selectedFromList.photoUrl?.trim() ||
-    undefined;
+  const patientPhotoUrl = resolveCirclePatientPhotoUrl(
+    livePatientPhotoUrl,
+    profileSnapshot?.identity.profilePicture,
+    selectedFromList.photoUrl,
+  );
 
   const cardTitle = memberDisplayName
     ? t('common.memberForPatientTitle', {

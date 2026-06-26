@@ -43,7 +43,7 @@ export function CircleDashboardAssessmentScheduleSection({
   if (!enabled || normalizeMemberRole(memberRole) === 'friend') return null;
 
   return (
-    <div className="col-span-2 h-[22rem] sm:h-[23rem]">
+    <div className="col-span-2 h-[24rem] sm:h-[25rem] min-h-0">
       <CircleAssessmentScheduleCalendar
         schedule={schedule}
         t={t}

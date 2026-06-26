@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Check, HeartHandshake, Home, Trash2 } from 'lucide-react';
 import type { CirclePatientSummary } from '@medxforce/shared';
+import { resolveCirclePatientPhotoUrl } from '@medxforce/shared';
 import { useCircleT } from '../lib/circleI18nContext';
 import { translateCircleMemberAccessLabel } from '../lib/adminScreenI18n';
 import { cn } from '../lib/utils';
@@ -22,6 +23,29 @@ type CirclePatientSwitchListProps = {
   onSetStartupPatient?: (patient: CirclePatientSummary) => void;
   onCancelPending?: (patient: CirclePatientSummary) => Promise<void>;
 };
+
+function PatientSwitchAvatar({ photoUrl }: { photoUrl?: string }) {
+  const [broken, setBroken] = useState(false);
+  const src = !broken ? resolveCirclePatientPhotoUrl(photoUrl) : undefined;
+
+  return (
+    <div
+      className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden"
+      aria-hidden
+    >
+      {src ? (
+        <img
+          src={src}
+          alt=""
+          className="w-full h-full object-cover"
+          onError={() => setBroken(true)}
+        />
+      ) : (
+        <HeartHandshake size={18} className="text-blue-600" />
+      )}
+    </div>
+  );
+}
 
 export function CirclePatientSwitchList({
   patients,
@@ -81,16 +105,7 @@ export function CirclePatientSwitchList({
                   onClick={() => onSelect(patient)}
                   className="flex min-w-0 flex-1 items-center gap-3 text-left"
                 >
-                  <div
-                    className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 overflow-hidden"
-                    aria-hidden
-                  >
-                    {patient.photoUrl ? (
-                      <img src={patient.photoUrl} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <HeartHandshake size={18} className="text-blue-600" />
-                    )}
-                  </div>
+                  <PatientSwitchAvatar photoUrl={patient.photoUrl} />
 
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-slate-800 truncate">{patient.displayName}</p>

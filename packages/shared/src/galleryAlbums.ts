@@ -6,6 +6,8 @@ export interface GalleryAlbum {
   updatedAt: number;
   createdByUid: string;
   isDefault?: boolean;
+  /** System album listing media that received emoji reactions. */
+  isReactions?: boolean;
 }
 
 export interface GalleryAlbumMedia {

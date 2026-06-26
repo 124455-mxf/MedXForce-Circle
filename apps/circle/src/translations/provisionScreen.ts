@@ -2,7 +2,7 @@ export const provisionScreenEnglish = {
   addPatient: 'Add patient',
   addPatientTitle: 'Start patient setup',
   addPatientHint:
-    'For ICU or when the patient cannot set up themselves. You get a setup code to share verbally with hospital staff — no email or SMS.',
+    'For ICU or when the patient cannot set up themselves. You receive a setup code by email; if you enter a patient sign-in email, they get app instructions without the code.',
   displayNameRequired: 'Enter a patient name.',
   displayNamePlaceholder: 'Patient display name',
   firstNamePlaceholder: 'First name (optional)',
@@ -14,7 +14,7 @@ export const provisionScreenEnglish = {
   createSetup: 'Create setup',
   waitingForIpad: 'Waiting for patient iPad setup',
   waitingBody:
-    'Share the setup code below with whoever is configuring the patient iPad. They sign in with a dedicated patient account (Google or email) in Safari, then enter this code.',
+    'Share the setup code with whoever configures the patient iPad, or use Send setup emails below. They sign in with a dedicated patient account (Google or email) in Safari, then enter the code.',
   setupCodeLabel: 'Setup code',
   copyCode: 'Copy code',
   copied: 'Copied',
@@ -37,13 +37,22 @@ export const provisionScreenEnglish = {
     '{{name}} has not linked an iPad yet. The setup code will stop working and any draft Circle invites for this setup will be removed.',
   cancelPendingConfirm: 'Remove setup',
   cancelPendingFailed: 'Could not remove unfinished setup.',
+  sendSetupEmails: 'Send setup emails',
+  sendSetupEmailsHint:
+    'Emails the patient app link to the intended patient email (no code) and the setup code to your proxy email.',
+  sendingSetupEmails: 'Sending…',
+  setupEmailsSent: 'Setup emails sent.',
+  setupEmailsSentBoth: 'Setup emails sent to you and the patient.',
+  setupEmailSentPatient: 'Setup instructions sent to the patient email.',
+  setupEmailSentProxy: 'Setup code emailed to you.',
+  setupEmailsFailed: 'Could not send setup emails.',
 };
 
 export const provisionScreenGerman = {
   addPatient: 'Patient hinzufügen',
   addPatientTitle: 'Patienten-Setup starten',
   addPatientHint:
-    'Für Intensivstation oder wenn der Patient sich nicht selbst einrichten kann. Sie erhalten einen Setup-Code für das Pflegepersonal — ohne E-Mail oder SMS.',
+    'Für Intensivstation oder wenn der Patient sich nicht selbst einrichten kann. Sie erhalten den Setup-Code per E-Mail; mit Patienten-E-Mail erhalten sie App-Anweisungen ohne Code.',
   displayNameRequired: 'Bitte einen Patientennamen eingeben.',
   displayNamePlaceholder: 'Anzeigename des Patienten',
   firstNamePlaceholder: 'Vorname (optional)',
@@ -78,13 +87,22 @@ export const provisionScreenGerman = {
     '{{name}} hat noch kein iPad verknüpft. Der Setup-Code funktioniert danach nicht mehr; Entwürfe für Circle-Einladungen werden gelöscht.',
   cancelPendingConfirm: 'Setup entfernen',
   cancelPendingFailed: 'Unfertiges Setup konnte nicht entfernt werden.',
+  sendSetupEmails: 'Setup-E-Mails senden',
+  sendSetupEmailsHint:
+    'Sendet den Patienten-App-Link an die vorgesehene Patienten-E-Mail (ohne Code) und den Setup-Code an Ihre Proxy-E-Mail.',
+  sendingSetupEmails: 'Wird gesendet…',
+  setupEmailsSent: 'Setup-E-Mails gesendet.',
+  setupEmailsSentBoth: 'Setup-E-Mails an Sie und den Patienten gesendet.',
+  setupEmailSentPatient: 'Anweisungen an die Patienten-E-Mail gesendet.',
+  setupEmailSentProxy: 'Setup-Code an Sie per E-Mail gesendet.',
+  setupEmailsFailed: 'Setup-E-Mails konnten nicht gesendet werden.',
 };
 
 export const provisionScreenSpanish = {
   addPatient: 'Añadir paciente',
   addPatientTitle: 'Iniciar configuración del paciente',
   addPatientHint:
-    'Para UCI o cuando el paciente no puede configurarse solo. Recibe un código para compartir verbalmente con el personal — sin correo ni SMS.',
+    'Para UCI o cuando el paciente no puede configurarse solo. Recibe el código por correo; si indica el correo del paciente, recibirá instrucciones sin el código.',
   displayNameRequired: 'Introduzca un nombre de paciente.',
   displayNamePlaceholder: 'Nombre para mostrar del paciente',
   firstNamePlaceholder: 'Nombre (opcional)',
@@ -119,13 +137,22 @@ export const provisionScreenSpanish = {
     '{{name}} aún no ha vinculado un iPad. El código dejará de funcionar y se eliminarán las invitaciones Circle en borrador.',
   cancelPendingConfirm: 'Quitar configuración',
   cancelPendingFailed: 'No se pudo quitar la configuración sin terminar.',
+  sendSetupEmails: 'Enviar correos de configuración',
+  sendSetupEmailsHint:
+    'Envía el enlace de la app al correo del paciente (sin código) y el código de configuración a su correo de proxy.',
+  sendingSetupEmails: 'Enviando…',
+  setupEmailsSent: 'Correos de configuración enviados.',
+  setupEmailsSentBoth: 'Correos enviados a usted y al paciente.',
+  setupEmailSentPatient: 'Instrucciones enviadas al correo del paciente.',
+  setupEmailSentProxy: 'Código de configuración enviado a su correo.',
+  setupEmailsFailed: 'No se pudieron enviar los correos de configuración.',
 };
 
 export const provisionScreenPolish = {
   addPatient: 'Dodaj pacjenta',
   addPatientTitle: 'Rozpocznij konfigurację pacjenta',
   addPatientHint:
-    'Dla OIT lub gdy pacjent nie może skonfigurować się sam. Otrzymasz kod do przekazania słownie personelowi — bez e-maila ani SMS.',
+    'Dla OIT lub gdy pacjent nie może skonfigurować się sam. Kod otrzymasz e-mailem; jeśli podasz e-mail pacjenta, dostanie instrukcje bez kodu.',
   displayNameRequired: 'Wprowadź nazwę pacjenta.',
   displayNamePlaceholder: 'Wyświetlana nazwa pacjenta',
   firstNamePlaceholder: 'Imię (opcjonalnie)',
@@ -160,4 +187,13 @@ export const provisionScreenPolish = {
     '{{name}} nie powiązał jeszcze iPada. Kod przestanie działać, a szkice zaproszeń Circle zostaną usunięte.',
   cancelPendingConfirm: 'Usuń konfigurację',
   cancelPendingFailed: 'Nie udało się usunąć niedokończonej konfiguracji.',
+  sendSetupEmails: 'Wyślij e-maile konfiguracji',
+  sendSetupEmailsHint:
+    'Wysyła link do aplikacji pacjenta na wskazany e-mail (bez kodu) oraz kod konfiguracji na Twój e-mail proxy.',
+  sendingSetupEmails: 'Wysyłanie…',
+  setupEmailsSent: 'E-maile konfiguracji wysłane.',
+  setupEmailsSentBoth: 'E-maile wysłane do Ciebie i pacjenta.',
+  setupEmailSentPatient: 'Instrukcje wysłane na e-mail pacjenta.',
+  setupEmailSentProxy: 'Kod konfiguracji wysłany na Twój e-mail.',
+  setupEmailsFailed: 'Nie udało się wysłać e-maili konfiguracji.',
 };

@@ -52,6 +52,7 @@ export function normalizeGalleryAlbum(
     updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : Date.now(),
     createdByUid: String(data.createdByUid || ''),
     isDefault: data.isDefault === true,
+    isReactions: data.isReactions === true,
   };
 }
 
@@ -198,8 +199,12 @@ export async function deleteGalleryAlbum(
 ): Promise<void> {
   const albumRef = doc(db, 'patients', params.patientId, 'gallery_albums', params.albumId);
   const albumSnap = await getDoc(albumRef);
-  if (albumSnap.exists() && albumSnap.data()?.isDefault === true) {
+  const albumData = albumSnap.exists() ? albumSnap.data() : null;
+  if (albumData?.isDefault === true) {
     throw new Error('The default shared photos album cannot be deleted.');
+  }
+  if (albumData?.isReactions === true) {
+    throw new Error('The reactions album cannot be deleted.');
   }
 
   const media = await listAlbumMedia(db, params.patientId, params.albumId);

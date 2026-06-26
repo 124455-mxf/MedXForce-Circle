@@ -1,10 +1,17 @@
 import { useState } from 'react';
-import { Check, Copy, KeyRound, Loader2, Stethoscope, Trash2, X } from 'lucide-react';
+import type { User } from 'firebase/auth';
+import { Check, Copy, KeyRound, Loader2, Mail, Stethoscope, Trash2, X } from 'lucide-react';
 import type { CirclePatientSummary } from '@medxforce/shared';
 import { useCircleT } from '../lib/circleI18nContext';
+import { useCircleToast } from '../hooks/useCircleToast';
+import {
+  provisionSetupEmailToastKey,
+  sendPatientProvisionSetupEmails,
+} from '../services/circlePatientProvisionSetupEmailApi';
 
 type CirclePendingProvisionPanelProps = {
   patient: CirclePatientSummary;
+  user: User;
   /** When the proxy manages other active patients, allow leaving this setup screen. */
   canDismiss?: boolean;
   onDismiss?: () => void;
@@ -14,13 +21,16 @@ type CirclePendingProvisionPanelProps = {
 
 export function CirclePendingProvisionPanel({
   patient,
+  user,
   canDismiss = false,
   onDismiss,
   onSwitchPatient,
   onCancelPending,
 }: CirclePendingProvisionPanelProps) {
   const t = useCircleT();
+  const { showToast } = useCircleToast();
   const [copied, setCopied] = useState(false);
+  const [sendingEmails, setSendingEmails] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
@@ -33,6 +43,28 @@ export function CirclePendingProvisionPanel({
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
       /* clipboard unavailable */
+    }
+  };
+
+  const handleSendSetupEmails = async () => {
+    if (!patient.setupCode || sendingEmails) return;
+    setSendingEmails(true);
+    try {
+      const result = await sendPatientProvisionSetupEmails({
+        provision: {
+          displayName: patient.displayName,
+          setupCode: patient.setupCode,
+          intendedEmail: patient.intendedEmail,
+        },
+        proxyUser: user,
+      });
+      const key = provisionSetupEmailToastKey(result);
+      showToast(
+        key === 'setupEmailsFailed' ? result.message || t(`provision.${key}`) : t(`provision.${key}`),
+        result.success ? 'success' : 'error',
+      );
+    } finally {
+      setSendingEmails(false);
     }
   };
 
@@ -91,6 +123,19 @@ export function CirclePendingProvisionPanel({
           >
             {copied ? <Check size={18} /> : <Copy size={18} />}
             {copied ? t('provision.copied') : t('provision.copyCode')}
+          </button>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
+          <p className="text-xs text-slate-500 leading-relaxed">{t('provision.sendSetupEmailsHint')}</p>
+          <button
+            type="button"
+            disabled={sendingEmails || !user.email}
+            onClick={() => void handleSendSetupEmails()}
+            className="w-full py-3 rounded-2xl bg-slate-900 text-white font-semibold hover:bg-slate-800 disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {sendingEmails ? <Loader2 size={18} className="animate-spin" /> : <Mail size={18} />}
+            {sendingEmails ? t('provision.sendingSetupEmails') : t('provision.sendSetupEmails')}
           </button>
         </div>
 

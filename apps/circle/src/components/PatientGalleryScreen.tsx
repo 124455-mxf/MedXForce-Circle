@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { User } from 'firebase/auth';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import {
   ChevronLeft,
   FolderPlus,
@@ -17,7 +18,13 @@ import {
   createGalleryAlbum,
   deleteCircleGalleryMedia,
   deleteGalleryAlbum,
+  dedupeGalleryAlbumsForDisplay,
+  ensureReactionsGalleryAlbum,
+  findCanonicalReactionsAlbum,
+  isReactionsTitleAlbum,
+  mediaBelongsToGalleryAlbum,
   renameGalleryAlbum,
+  resolveGalleryAlbumTitle,
   listAllGalleryMediaForPatient,
   listGalleryAlbums,
   listUnassignedCircleMedia,
@@ -60,6 +67,7 @@ import {
   circleWorkTabHeaderClass,
   circleWorkTabPanelClass,
 } from '../lib/circleSectionStyles';
+import type { CircleGalleryIntent } from '../lib/circleGalleryIntent';
 
 type MainMode = 'browse' | 'manage';
 type BrowseTab = 'shared' | 'patient';
@@ -100,9 +108,22 @@ function galleryItemCountLabel(t: CircleTranslator, count: number): string {
   return t(count === 1 ? 'gallery.item_one' : 'gallery.item_other', { count });
 }
 
-function mediaInAlbum(item: GalleryAlbumMedia, album: GalleryAlbum): boolean {
-  if (album.isDefault) return !item.albumId || item.albumId === album.id;
-  return item.albumId === album.id;
+function galleryAlbumTitle(
+  album: GalleryAlbum,
+  t: CircleTranslator,
+): string {
+  return resolveGalleryAlbumTitle(album, {
+    defaultAlbum: t('gallery.defaultAlbumTitle'),
+    reactionsAlbum: t('gallery.reactionsAlbumTitle'),
+  });
+}
+
+function mediaInAlbum(
+  item: GalleryAlbumMedia,
+  album: GalleryAlbum,
+  reactedMediaIds: ReadonlySet<string>,
+): boolean {
+  return mediaBelongsToGalleryAlbum(item, album, reactedMediaIds);
 }
 
 function pickCover(items: GalleryAlbumMedia[]): GalleryAlbumMedia | undefined {
@@ -168,6 +189,8 @@ interface PatientGalleryScreenProps {
   patient: CirclePatientSummary;
   db: Firestore;
   storage: FirebaseStorage;
+  galleryIntent?: CircleGalleryIntent | null;
+  onGalleryIntentConsumed?: () => void;
 }
 
 export function PatientGalleryScreen({
@@ -175,6 +198,8 @@ export function PatientGalleryScreen({
   patient,
   db,
   storage,
+  galleryIntent = null,
+  onGalleryIntentConsumed,
 }: PatientGalleryScreenProps) {
   const t = useCircleT();
   const compactChrome = useCircleCompactChrome();
@@ -225,6 +250,7 @@ export function PatientGalleryScreen({
   const [viewedIds, setViewedIds] = useState<Set<string>>(() =>
     getCircleGalleryViewedIds(patient.patientId),
   );
+  const [reactedMediaIds, setReactedMediaIds] = useState<Set<string>>(() => new Set());
 
   const role = patient.role as CircleMemberRole;
   const senderName = user.displayName || user.email || t('gallery.familyMemberFallback');
@@ -248,7 +274,7 @@ export function PatientGalleryScreen({
 
   const albumCards = useMemo(() => {
     return albums.map((album) => {
-      const items = circleMedia.filter((m) => mediaInAlbum(m, album));
+      const items = circleMedia.filter((m) => mediaInAlbum(m, album, reactedMediaIds));
       const unseen = items.filter((m) => !viewedIds.has(m.id)).length;
       return {
         album,
@@ -259,7 +285,16 @@ export function PatientGalleryScreen({
         unseen,
       };
     });
-  }, [albums, circleMedia, viewedIds]);
+  }, [albums, circleMedia, reactedMediaIds, viewedIds]);
+
+  const visibleAlbumCards = useMemo(() => {
+    const canonicalReactionsId = findCanonicalReactionsAlbum(albums)?.id;
+    return albumCards.filter(({ album, count }) => {
+      if (album.isReactions) return count > 0 && album.id === canonicalReactionsId;
+      if (canonicalReactionsId && isReactionsTitleAlbum(album.title)) return false;
+      return true;
+    });
+  }, [albumCards, albums]);
 
   const myAlbumCards = useMemo(
     () => albumCards.filter(({ album }) => album.createdByUid === user.uid),
@@ -267,7 +302,8 @@ export function PatientGalleryScreen({
   );
 
   const canManageAlbum = useCallback(
-    (album: GalleryAlbum) => album.createdByUid === user.uid && !album.isDefault,
+    (album: GalleryAlbum) =>
+      album.createdByUid === user.uid && !album.isDefault && !album.isReactions,
     [user.uid],
   );
 
@@ -279,11 +315,15 @@ export function PatientGalleryScreen({
     setLoading(true);
     setError(null);
     try {
+      await ensureReactionsGalleryAlbum(db, {
+        patientId: patient.patientId,
+        createdByUid: user.uid,
+      }).catch(() => undefined);
       const [albumList, media] = await Promise.all([
         listGalleryAlbums(db, patient.patientId),
         listAllGalleryMediaForPatient(db, patient.patientId),
       ]);
-      setAlbums(albumList);
+      setAlbums(dedupeGalleryAlbumsForDisplay(albumList));
       setAllMedia(media);
       refreshViewed();
     } catch (err) {
@@ -291,7 +331,41 @@ export function PatientGalleryScreen({
     } finally {
       setLoading(false);
     }
-  }, [db, patient.patientId, refreshViewed, t]);
+  }, [db, patient.patientId, refreshViewed, t, user.uid]);
+
+  useEffect(() => {
+    const reactionsQuery = query(
+      collection(db, 'media_reactions'),
+      where('patientId', '==', patient.patientId),
+    );
+    return onSnapshot(
+      reactionsQuery,
+      (snapshot) => {
+        const ids = new Set<string>();
+        for (const docSnap of snapshot.docs) {
+          const mediaId = docSnap.data().mediaId;
+          if (typeof mediaId === 'string' && mediaId) ids.add(mediaId);
+        }
+        setReactedMediaIds(ids);
+      },
+      () => setReactedMediaIds(new Set()),
+    );
+  }, [db, patient.patientId]);
+
+  useEffect(() => {
+    if (!galleryIntent || loading) return;
+    if (galleryIntent.type !== 'open-album' || galleryIntent.albumKind !== 'reactions') return;
+
+    const reactionsAlbum = albums.find((album) => album.isReactions);
+    if (reactionsAlbum) {
+      setMainMode('browse');
+      setBrowseTab('shared');
+      setSharedBrowseMode('album');
+      setGridScope(reactionsAlbum.id);
+      setShowGrid(true);
+    }
+    onGalleryIntentConsumed?.();
+  }, [albums, galleryIntent, loading, onGalleryIntentConsumed]);
 
   const exitManageToBrowse = useCallback(() => {
     setMainMode('browse');
@@ -329,7 +403,7 @@ export function PatientGalleryScreen({
       try {
         const media = await listAllGalleryMediaForPatient(db, patient.patientId);
         const items = media.filter(
-          (m) => m.source !== 'patient' && mediaInAlbum(m, album),
+          (m) => m.source !== 'patient' && mediaInAlbum(m, album, reactedMediaIds),
         );
         const loose = canUpload
           ? await listUnassignedCircleMedia(db, patient.patientId, user.uid)
@@ -342,7 +416,7 @@ export function PatientGalleryScreen({
         setLoading(false);
       }
     },
-    [canUpload, db, patient.patientId, user.uid, t],
+    [canUpload, db, patient.patientId, reactedMediaIds, user.uid, t],
   );
 
   useEffect(() => {
@@ -358,14 +432,23 @@ export function PatientGalleryScreen({
   const sortByNewest = (items: GalleryAlbumMedia[]) =>
     [...items].sort((a, b) => b.timestamp - a.timestamp);
 
+  const resolveGridAlbum = useCallback(
+    (albumId: string): GalleryAlbum | undefined => {
+      const direct = albums.find((album) => album.id === albumId);
+      if (direct) return direct;
+      return findCanonicalReactionsAlbum(albums);
+    },
+    [albums],
+  );
+
   const gridItems = useMemo(() => {
     if (browseTab === 'patient') {
       return sortByNewest(patientMedia);
     }
-    const album = albums.find((a) => a.id === gridScope);
+    const album = resolveGridAlbum(gridScope);
     if (!album) return [];
-    return sortByNewest(circleMedia.filter((m) => mediaInAlbum(m, album)));
-  }, [albums, browseTab, circleMedia, gridScope, patientMedia]);
+    return sortByNewest(circleMedia.filter((m) => mediaInAlbum(m, album, reactedMediaIds)));
+  }, [albums, browseTab, circleMedia, gridScope, patientMedia, reactedMediaIds, resolveGridAlbum]);
 
   const inlineBrowseItems = useMemo(() => {
     if (browseTab !== 'shared' || showGrid) return [];
@@ -392,8 +475,9 @@ export function PatientGalleryScreen({
     if (browseTab === 'patient') {
       return t('gallery.fromPatientGridTitle', { name: patient.displayName });
     }
-    return albums.find((a) => a.id === gridScope)?.title ?? t('gallery.albumFallback');
-  }, [albums, browseTab, gridScope, patient.displayName, t]);
+    const album = resolveGridAlbum(gridScope);
+    return album ? galleryAlbumTitle(album, t) : t('gallery.albumFallback');
+  }, [albums, browseTab, gridScope, patient.displayName, resolveGridAlbum, t]);
 
   const inlineBrowseTitle = useMemo(() => {
     switch (sharedBrowseMode) {
@@ -418,7 +502,17 @@ export function PatientGalleryScreen({
   };
 
   const openAlbumGrid = (albumId: string) => {
-    setGridScope(albumId);
+    const album = albums.find((a) => a.id === albumId);
+    const canonicalReactions = findCanonicalReactionsAlbum(albums);
+    if (
+      canonicalReactions &&
+      album &&
+      (album.isReactions || isReactionsTitleAlbum(album.title))
+    ) {
+      setGridScope(canonicalReactions.id);
+    } else {
+      setGridScope(albumId);
+    }
     setShowGrid(true);
   };
 
@@ -428,9 +522,17 @@ export function PatientGalleryScreen({
   };
 
   const gridAlbum = useMemo(
-    () => albums.find((a) => a.id === gridScope),
-    [albums, gridScope],
+    () => resolveGridAlbum(gridScope),
+    [gridScope, resolveGridAlbum],
   );
+
+  useEffect(() => {
+    if (!showGrid || browseTab !== 'shared') return;
+    const album = albums.find((a) => a.id === gridScope);
+    if (album) return;
+    const canonicalReactions = findCanonicalReactionsAlbum(albums);
+    if (canonicalReactions) setGridScope(canonicalReactions.id);
+  }, [albums, browseTab, gridScope, showGrid]);
 
   const backFromSharedGrid = () => {
     setShowGrid(false);
@@ -461,7 +563,7 @@ export function PatientGalleryScreen({
         unread: countUnseenMedia(circleVideos),
       },
       album: {
-        total: albumCards.length,
+        total: visibleAlbumCards.length,
         unread: countUnseenMedia(circleMedia),
       },
       'my-albums': {
@@ -474,7 +576,7 @@ export function PatientGalleryScreen({
       },
     }),
     [
-      albumCards.length,
+      visibleAlbumCards.length,
       circleMedia,
       circlePhotos,
       circleVideos,
@@ -483,13 +585,23 @@ export function PatientGalleryScreen({
     ],
   );
 
-  const sharedBrowsePills: { id: SharedBrowseMode; label: string }[] = [
-    { id: 'photos', label: t('gallery.allPictures') },
-    { id: 'videos', label: t('gallery.allVideos') },
-    { id: 'album', label: t('gallery.allAlbums') },
-    ...(canUpload ? [{ id: 'my-albums' as const, label: t('gallery.myAlbums') }] : []),
-    { id: 'newest', label: t('gallery.newest') },
-  ];
+  const sharedBrowsePills = useMemo((): { id: SharedBrowseMode; label: string }[] => {
+    const pills: { id: SharedBrowseMode; label: string }[] = [
+      { id: 'photos', label: t('gallery.allPictures') },
+      { id: 'videos', label: t('gallery.allVideos') },
+      { id: 'album', label: t('gallery.allAlbums') },
+      ...(canUpload ? [{ id: 'my-albums' as const, label: t('gallery.myAlbums') }] : []),
+      { id: 'newest', label: t('gallery.newest') },
+    ];
+    return pills.filter((pill) => pill.id !== 'videos' || circleVideos.length > 0);
+  }, [canUpload, circleVideos.length, t]);
+
+  useEffect(() => {
+    if (sharedBrowseMode === 'videos' && circleVideos.length === 0) {
+      setSharedBrowseMode('album');
+      setShowGrid(false);
+    }
+  }, [circleVideos.length, sharedBrowseMode]);
 
   const renderBrowsePills = () => (
     <CircleHorizontalScrollStrip
@@ -867,13 +979,13 @@ export function PatientGalleryScreen({
 
         {mainMode === 'browse' && browseTab === 'shared' && !showGrid && !loading && (
           <div className="space-y-4 min-w-0">
-            {sharedBrowseMode === 'album' && albumCards.length > 0 && (
+            {sharedBrowseMode === 'album' && visibleAlbumCards.length > 0 && (
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 px-1">
                   {t('gallery.sectionBrowseByAlbum')}
                 </p>
                 <div className={photoGridClass}>
-                  {albumCards.map(({ album, cover, count, lastModified, unseen }) => (
+                  {visibleAlbumCards.map(({ album, cover, count, lastModified, unseen }) => (
                     <button
                       key={album.id}
                       type="button"
@@ -894,7 +1006,7 @@ export function PatientGalleryScreen({
                           </span>
                         )}
                         <AlbumThumbnailOverlay
-                          title={album.title}
+                          title={galleryAlbumTitle(album, t)}
                           count={count}
                           lastModified={lastModified}
                           compact={compactAlbumTiles}
@@ -933,7 +1045,7 @@ export function PatientGalleryScreen({
                           </span>
                         )}
                         <AlbumThumbnailOverlay
-                          title={album.title}
+                          title={galleryAlbumTitle(album, t)}
                           count={count}
                           lastModified={lastModified}
                           compact={compactAlbumTiles}
@@ -996,7 +1108,7 @@ export function PatientGalleryScreen({
               </div>
             )}
 
-            {sharedBrowseMode === 'album' && circleMedia.length > 0 && albumCards.length === 0 && (
+            {sharedBrowseMode === 'album' && circleMedia.length > 0 && visibleAlbumCards.length === 0 && (
               <p className="text-sm text-slate-500 px-1">{t('gallery.emptyNoAlbums')}</p>
             )}
           </div>
@@ -1110,7 +1222,7 @@ export function PatientGalleryScreen({
                         </div>
                       )}
                       <AlbumThumbnailOverlay
-                        title={album.title}
+                        title={galleryAlbumTitle(album, t)}
                         count={count}
                         lastModified={lastModified}
                         compact={compactAlbumTiles}

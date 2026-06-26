@@ -8,6 +8,11 @@ import {
   type PatientProvisionRecord,
 } from '@medxforce/shared';
 import { useCircleT } from '../lib/circleI18nContext';
+import { useCircleToast } from '../hooks/useCircleToast';
+import {
+  provisionSetupEmailToastKey,
+  sendPatientProvisionSetupEmails,
+} from '../services/circlePatientProvisionSetupEmailApi';
 
 type CircleAddPatientPanelProps = {
   user: User;
@@ -23,6 +28,7 @@ export function CircleAddPatientPanel({
   compact = false,
 }: CircleAddPatientPanelProps) {
   const t = useCircleT();
+  const { showToast } = useCircleToast();
   const [open, setOpen] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -80,6 +86,16 @@ export function CircleAddPatientPanel({
       reset();
       setOpen(false);
       onCreated(provision);
+      void sendPatientProvisionSetupEmails({ provision, proxyUser: user }).then((result) => {
+        const key = provisionSetupEmailToastKey(result);
+        showToast(
+          key === 'setupEmailsFailed' ? result.message || t(`provision.${key}`) : t(`provision.${key}`),
+          result.success ? 'success' : 'error',
+        );
+        if (!result.success) {
+          console.warn('[CircleAddPatientPanel] setup emails', result.message);
+        }
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : t('provision.createFailed'));
     } finally {

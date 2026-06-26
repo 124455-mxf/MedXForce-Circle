@@ -498,6 +498,7 @@ export default function App() {
             <div className="flex flex-col flex-1 min-h-0 overflow-y-auto gap-4 pb-2">
               <CirclePendingProvisionPanel
                 patient={selectedPatientForSettings}
+                user={user}
                 canDismiss={hasActivePatientBesides(
                   patients,
                   selectedPatientForSettings.patientId,

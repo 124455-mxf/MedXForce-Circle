@@ -75,6 +75,7 @@ import { useCircleRemoteSettings } from '../hooks/useCircleRemoteSettings';
 import { CircleSelectedPatientProvider } from '../context/CircleSelectedPatientContext';
 import { normalizeCircleUiLanguage } from '../lib/circleLanguages';
 import type { CirclePostInboxView } from '../lib/circlePostInboxViews';
+import type { CircleGalleryIntent } from '../lib/circleGalleryIntent';
 
 function TabLoadingFallback() {
   return <div className="flex flex-1 items-center justify-center p-6 text-sm text-slate-500">Loading…</div>;
@@ -120,6 +121,7 @@ export function CircleMainShell({
     thread: CircleMemberThreadKind;
     view: CirclePostInboxView;
   } | null>(null);
+  const [galleryIntent, setGalleryIntent] = useState<CircleGalleryIntent | null>(null);
   const [dropInConfirmOpen, setDropInConfirmOpen] = useState(false);
   const [dropInSentThisOpen, setDropInSentThisOpen] = useState(false);
   const replyDraftGuardRef = useRef<UnsavedReplyDraftGuard | null>(null);
@@ -172,6 +174,15 @@ export function CircleMainShell({
   const handleCircleInboxIntentConsumed = useCallback(() => {
     setCircleInboxIntent(null);
   }, []);
+
+  const handleGalleryIntentConsumed = useCallback(() => {
+    setGalleryIntent(null);
+  }, []);
+
+  const handleOpenRichMediaReactions = useCallback(() => {
+    setGalleryIntent({ type: 'open-album', albumKind: 'reactions' });
+    handleTabChange('media');
+  }, [handleTabChange]);
 
   const selectedPatient = useMemo((): CirclePatientSummary | null => {
     if (patients.length === 0) return null;
@@ -529,6 +540,7 @@ export function CircleMainShell({
               subduedAlertAttention={alertAttention.subduedItems}
               onGoToTab={handleGoToTab}
               onOpenCircleFolder={handleOpenCircleFolder}
+              onOpenRichMediaReactions={handleOpenRichMediaReactions}
               onOpenAnalyticsDetail={handleOpenAnalyticsDetail}
               onOpenVisitCapture={
                 showVisitCapture ? () => setVisitCaptureOpen(true) : undefined
@@ -572,6 +584,8 @@ export function CircleMainShell({
                 patient={selectedPatient}
                 db={db}
                 storage={storage}
+                galleryIntent={galleryIntent}
+                onGalleryIntentConsumed={handleGalleryIntentConsumed}
               />
               </Suspense>
             </div>

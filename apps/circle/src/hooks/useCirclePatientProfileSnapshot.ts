@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { doc, onSnapshot, type Firestore } from 'firebase/firestore';
 import {
   parseCircleProfileSnapshot,
+  resolveCirclePatientPhotoUrl,
   type CirclePatientProfileSnapshot,
 } from '@medxforce/shared';
 
@@ -10,11 +11,13 @@ export function useCirclePatientProfileSnapshot(
   patientId: string | undefined,
 ) {
   const [snapshot, setSnapshot] = useState<CirclePatientProfileSnapshot | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!patientId) {
       setSnapshot(null);
+      setPhotoUrl(undefined);
       setLoading(false);
       return;
     }
@@ -25,18 +28,28 @@ export function useCirclePatientProfileSnapshot(
       (snap) => {
         if (!snap.exists()) {
           setSnapshot(null);
+          setPhotoUrl(undefined);
           setLoading(false);
           return;
         }
-        setSnapshot(parseCircleProfileSnapshot(snap.data().profileSnapshot));
+        const data = snap.data();
+        const parsed = parseCircleProfileSnapshot(data.profileSnapshot);
+        setSnapshot(parsed);
+        setPhotoUrl(
+          resolveCirclePatientPhotoUrl(
+            parsed?.identity.profilePicture,
+            typeof data.photoUrl === 'string' ? data.photoUrl : undefined,
+          ),
+        );
         setLoading(false);
       },
       () => {
         setSnapshot(null);
+        setPhotoUrl(undefined);
         setLoading(false);
       },
     );
   }, [db, patientId]);
 
-  return { snapshot, loading };
+  return { snapshot, photoUrl, loading };
 }

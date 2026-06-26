@@ -111,11 +111,11 @@ export function CircleAssessmentScheduleCalendar({
   return (
     <div
       className={cn(
-        'h-full rounded-2xl border border-slate-100 bg-white flex flex-col',
+        'h-full min-h-0 rounded-2xl border border-slate-100 bg-white flex flex-col overflow-hidden',
         compact ? 'p-3 sm:p-4' : 'p-5',
       )}
     >
-      <div className="flex items-start justify-between gap-2 mb-3">
+      <div className="shrink-0 flex items-start justify-between gap-2 mb-3">
         <div className="flex items-center gap-2 min-w-0">
           <Calendar size={compact ? 16 : 18} className="text-blue-600 shrink-0" />
           <div className="min-w-0">
@@ -156,64 +156,68 @@ export function CircleAssessmentScheduleCalendar({
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-7 gap-0.5 text-center flex-1 min-h-0">
-            {WEEKDAY_KEYS.map((day) => (
-              <div
-                key={day}
-                className="text-[9px] font-bold text-slate-400 uppercase tracking-wider py-0.5"
-              >
-                {weekdayLabel(t, day)}
-              </div>
-            ))}
-            {monthCells.map((date, index) => {
-              if (!date) {
-                return <div key={`pad-${index}`} className={compact ? 'min-h-[2.25rem]' : 'min-h-[2.75rem]'} />;
-              }
-              const dateKey = assessmentScheduleDateKey(date);
-              const events = calendarByDay.get(dateKey) ?? [];
-              const summary = daySummary(events);
-              const isToday = dateKey === todayKey;
-              const isSelected = dateKey === selectedDateKey;
-              const hasDue = summary.due > 0;
-
-              return (
-                <button
-                  key={dateKey}
-                  type="button"
-                  onClick={() => setSelectedDateKey(dateKey)}
-                  className={cn(
-                    'rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-colors',
-                    compact ? 'min-h-[2.25rem] py-0.5' : 'min-h-[2.75rem] py-1',
-                    events.length === 0
-                      ? 'border-transparent text-slate-300'
-                      : 'border-slate-100 hover:border-blue-200 hover:bg-blue-50/40',
-                    isSelected && 'border-blue-300 bg-blue-50/70 ring-1 ring-blue-200/60',
-                    isToday && !isSelected && 'border-blue-200',
-                  )}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain -mx-0.5 px-0.5">
+            <div className="grid grid-cols-7 gap-0.5 text-center">
+              {WEEKDAY_KEYS.map((day) => (
+                <div
+                  key={day}
+                  className="text-[9px] font-bold text-slate-400 uppercase tracking-wider py-0.5"
                 >
-                  <span
+                  {weekdayLabel(t, day)}
+                </div>
+              ))}
+              {monthCells.map((date, index) => {
+                if (!date) {
+                  return (
+                    <div key={`pad-${index}`} className={compact ? 'min-h-[2rem]' : 'min-h-[2.75rem]'} />
+                  );
+                }
+                const dateKey = assessmentScheduleDateKey(date);
+                const events = calendarByDay.get(dateKey) ?? [];
+                const summary = daySummary(events);
+                const isToday = dateKey === todayKey;
+                const isSelected = dateKey === selectedDateKey;
+                const hasDue = summary.due > 0;
+
+                return (
+                  <button
+                    key={dateKey}
+                    type="button"
+                    onClick={() => setSelectedDateKey(dateKey)}
                     className={cn(
-                      'text-[11px] font-bold w-5 h-5 flex items-center justify-center rounded-full',
-                      isToday && 'bg-blue-600 text-white',
+                      'rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-colors',
+                      compact ? 'min-h-[2rem] py-0.5' : 'min-h-[2.75rem] py-1',
+                      events.length === 0
+                        ? 'border-transparent text-slate-300'
+                        : 'border-slate-100 hover:border-blue-200 hover:bg-blue-50/40',
+                      isSelected && 'border-blue-300 bg-blue-50/70 ring-1 ring-blue-200/60',
+                      isToday && !isSelected && 'border-blue-200',
                     )}
                   >
-                    {date.getDate()}
-                  </span>
-                  {events.length > 0 && (
-                    <div className="flex gap-0.5">
-                      {summary.due > 0 && <span className="w-1 h-1 rounded-full bg-rose-500" />}
-                      {summary.upcoming > 0 && <span className="w-1 h-1 rounded-full bg-amber-400" />}
-                      {summary.completed > 0 && !hasDue && summary.upcoming === 0 && (
-                        <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                    <span
+                      className={cn(
+                        'text-[11px] font-bold w-5 h-5 flex items-center justify-center rounded-full',
+                        isToday && 'bg-blue-600 text-white',
                       )}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
+                    >
+                      {date.getDate()}
+                    </span>
+                    {events.length > 0 && (
+                      <div className="flex gap-0.5">
+                        {summary.due > 0 && <span className="w-1 h-1 rounded-full bg-rose-500" />}
+                        {summary.upcoming > 0 && <span className="w-1 h-1 rounded-full bg-amber-400" />}
+                        {summary.completed > 0 && !hasDue && summary.upcoming === 0 && (
+                          <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                        )}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="mt-2 rounded-xl border border-slate-100 bg-slate-50/80 p-2.5 space-y-1.5 max-h-[7.5rem] overflow-y-auto">
+          <div className="shrink-0 mt-2 pt-2 border-t border-slate-100 rounded-xl bg-slate-50 p-2.5 space-y-1.5 max-h-[8.5rem] overflow-y-auto">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               {t('dashboard.assessmentScheduleCalendar.dayDetail', {
                 date: new Date(selectedDateKey + 'T12:00:00').toLocaleDateString(undefined, {

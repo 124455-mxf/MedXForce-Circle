@@ -143,6 +143,7 @@ interface CircleDashboardScreenProps {
   subduedAlertAttention: CircleAlertAttentionItem[];
   onGoToTab: (tab: CircleMainTab) => void;
   onOpenCircleFolder?: (thread: CircleMemberThreadKind, folder: CircleInboxFolder) => void;
+  onOpenRichMediaReactions?: () => void;
   onOpenAnalyticsDetail: (metricId: AnalyticsMetricId) => void;
   onOpenVisitCapture?: () => void;
   onRequestDropIn?: () => void;
@@ -411,6 +412,7 @@ export function CircleDashboardScreen({
   subduedAlertAttention,
   onGoToTab,
   onOpenCircleFolder,
+  onOpenRichMediaReactions,
   onOpenAnalyticsDetail,
   onOpenVisitCapture,
   onRequestDropIn,
@@ -1056,7 +1058,9 @@ export function CircleDashboardScreen({
           onOpenMessages={() => onGoToTab('messages')}
           onOpenCircleFolder={onOpenCircleFolder}
           onOpenCheckIns={() => onOpenAnalyticsDetail('daily-check-in')}
-          onOpenRichMediaReactions={() => onGoToTab('media')}
+          onOpenRichMediaReactions={
+            onOpenRichMediaReactions ?? (() => onGoToTab('media'))
+          }
         />
 
         <CircleDashboardCelebrationSection
@@ -1126,9 +1130,7 @@ export function CircleDashboardScreen({
                   galleryPhotos={galleryDashboard.previewPhotos}
                   enabled={showCircleMap}
                   onManageContacts={
-                    memberRole === 'proxy' || memberRole === 'caregiver'
-                      ? () => onGoToTab('admin')
-                      : undefined
+                    memberRole === 'proxy' ? () => onGoToTab('admin') : undefined
                   }
                 />
               ) : null}

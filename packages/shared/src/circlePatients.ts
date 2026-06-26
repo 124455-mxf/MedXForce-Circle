@@ -19,6 +19,25 @@ import { resolveCircleAccessForInviteEmail } from './circleMemberRoles';
 import { parseCircleProfileSnapshot } from './circlePatientProfile';
 import { listPendingProvisionsForProxy, pendingProvisionToCircleSummary } from './patientProvisions';
 
+/** True when Circle can render the URL in an `<img>` (not blob/data/local paths). */
+export function isCircleDisplayablePhotoUrl(url: unknown): url is string {
+  if (typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith('blob:') || trimmed.startsWith('data:')) return false;
+  return trimmed.startsWith('https://') || trimmed.startsWith('http://');
+}
+
+/** Prefer the first loadable patient photo among snapshot + patients/{id}.photoUrl. */
+export function resolveCirclePatientPhotoUrl(
+  ...candidates: Array<string | undefined | null>
+): string | undefined {
+  for (const candidate of candidates) {
+    if (isCircleDisplayablePhotoUrl(candidate)) return candidate.trim();
+  }
+  return undefined;
+}
+
 export interface CirclePatientSummary {
   patientId: string;
   displayName: string;
@@ -108,14 +127,10 @@ export async function listCirclePatientsForUser(
     const snapshot = patientData
       ? parseCircleProfileSnapshot(patientData.profileSnapshot)
       : null;
-    let photoUrl: string | undefined;
-    if (snapshot) {
-      photoUrl = snapshot.identity.profilePicture?.trim() || undefined;
-    } else {
-      photoUrl = patientData
-        ? String(patientData.photoUrl || '').trim() || undefined
-        : undefined;
-    }
+    const photoUrl = resolveCirclePatientPhotoUrl(
+      snapshot?.identity.profilePicture,
+      patientData ? String(patientData.photoUrl || '') : undefined,
+    );
     const claimedLoginEmail = patientData
       ? String(patientData.claimedLoginEmail || '').trim() || undefined
       : undefined;

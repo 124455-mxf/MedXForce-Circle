@@ -10,15 +10,79 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import { normalizeGalleryAlbum } from './circleGalleryAlbums';
-import type { GalleryAlbum } from './galleryAlbums';
+import type { GalleryAlbum, GalleryAlbumMedia } from './galleryAlbums';
 
 /** Stored title for the auto-created default album (display may use i18n when isDefault). */
 export const DEFAULT_GALLERY_ALBUM_TITLE = 'Shared photos';
+
+/** Stored title for the auto-created reactions album (display may use i18n when isReactions). */
+export const REACTIONS_GALLERY_ALBUM_TITLE = 'Reactions';
 
 export function isDefaultGalleryAlbum(
   album: Pick<GalleryAlbum, 'isDefault'> | { isDefault?: boolean },
 ): boolean {
   return album.isDefault === true;
+}
+
+export function isReactionsGalleryAlbum(
+  album: Pick<GalleryAlbum, 'isReactions'> | { isReactions?: boolean },
+): boolean {
+  return album.isReactions === true;
+}
+
+export function resolveGalleryAlbumTitle(
+  album: Pick<GalleryAlbum, 'title' | 'isDefault' | 'isReactions'>,
+  labels: { defaultAlbum: string; reactionsAlbum: string },
+): string {
+  if (isDefaultGalleryAlbum(album)) return labels.defaultAlbum;
+  if (isReactionsGalleryAlbum(album)) return labels.reactionsAlbum;
+  return album.title;
+}
+
+export function mediaBelongsToGalleryAlbum(
+  media: Pick<GalleryAlbumMedia, 'id' | 'albumId'>,
+  album: Pick<GalleryAlbum, 'id' | 'isDefault' | 'isReactions'>,
+  reactedMediaIds: ReadonlySet<string>,
+): boolean {
+  if (isReactionsGalleryAlbum(album)) {
+    return reactedMediaIds.has(media.id);
+  }
+  if (media.albumId === album.id) return true;
+  return isDefaultGalleryAlbum(album) && !media.albumId;
+}
+
+export function isReactionsTitleAlbum(title: string | undefined | null): boolean {
+  return String(title || '').trim().toLowerCase() === REACTIONS_GALLERY_ALBUM_TITLE.toLowerCase();
+}
+
+export function findCanonicalReactionsAlbum<T extends Pick<GalleryAlbum, 'id' | 'isReactions' | 'createdAt'>>(
+  albums: T[],
+): T | undefined {
+  const flagged = albums
+    .filter((album) => isReactionsGalleryAlbum(album))
+    .sort((a, b) => a.createdAt - b.createdAt);
+  return flagged[0];
+}
+
+/** Keep a single default/reactions system album when duplicates exist in Firestore. */
+export function dedupeGalleryAlbumsForDisplay<
+  T extends Pick<GalleryAlbum, 'id' | 'title' | 'isDefault' | 'isReactions' | 'createdAt'>,
+>(albums: T[]): T[] {
+  const reactions = albums
+    .filter((album) => isReactionsGalleryAlbum(album))
+    .sort((a, b) => a.createdAt - b.createdAt);
+  const defaults = albums
+    .filter((album) => isDefaultGalleryAlbum(album))
+    .sort((a, b) => a.createdAt - b.createdAt);
+  const keepReactionsId = reactions[0]?.id;
+  const keepDefaultId = defaults[0]?.id;
+
+  return albums.filter((album) => {
+    if (isReactionsGalleryAlbum(album)) return album.id === keepReactionsId;
+    if (keepReactionsId && isReactionsTitleAlbum(album.title)) return false;
+    if (isDefaultGalleryAlbum(album)) return album.id === keepDefaultId;
+    return true;
+  });
 }
 
 export async function findDefaultGalleryAlbum(
@@ -47,6 +111,49 @@ export async function ensureDefaultGalleryAlbum(
   const ref = await addDoc(collection(db, 'patients', params.patientId, 'gallery_albums'), {
     title: DEFAULT_GALLERY_ALBUM_TITLE,
     isDefault: true,
+    createdAt: now,
+    updatedAt: now,
+    createdByUid: params.createdByUid,
+  });
+  return ref.id;
+}
+
+export async function findReactionsGalleryAlbum(
+  db: Firestore,
+  patientId: string,
+): Promise<GalleryAlbum | null> {
+  const albums = await listReactionsGalleryAlbums(db, patientId);
+  return albums[0] ?? null;
+}
+
+export async function listReactionsGalleryAlbums(
+  db: Firestore,
+  patientId: string,
+): Promise<GalleryAlbum[]> {
+  const snap = await getDocs(
+    query(
+      collection(db, 'patients', patientId, 'gallery_albums'),
+      where('isReactions', '==', true),
+    ),
+  );
+  return snap.docs
+    .map((docSnap) =>
+      normalizeGalleryAlbum(docSnap.id, patientId, docSnap.data() as Record<string, unknown>),
+    )
+    .sort((a, b) => a.createdAt - b.createdAt);
+}
+
+export async function ensureReactionsGalleryAlbum(
+  db: Firestore,
+  params: { patientId: string; createdByUid: string },
+): Promise<string> {
+  const existing = await findReactionsGalleryAlbum(db, params.patientId);
+  if (existing) return existing.id;
+
+  const now = Date.now();
+  const ref = await addDoc(collection(db, 'patients', params.patientId, 'gallery_albums'), {
+    title: REACTIONS_GALLERY_ALBUM_TITLE,
+    isReactions: true,
     createdAt: now,
     updatedAt: now,
     createdByUid: params.createdByUid,
