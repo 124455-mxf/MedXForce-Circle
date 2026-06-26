@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
-import { doc, onSnapshot, type Firestore } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, type Firestore } from 'firebase/firestore';
 import {
   findManagedContactByEmail,
   listPatientManagedContacts,
+  listProvisionManagedContacts,
   mergeContactWithMemberContactProfile,
   mergeContactWithMemberNotifyPreferences,
   parseMemberContactProfile,
   parseMemberNotifyPreferences,
   parsePatientManagedContacts,
-  readMemberContactProfile,
-  readMemberNotifyPreferences,
   type CircleManagedContact,
   type CirclePatientSummary,
 } from '@medxforce/shared';
+
+function isPendingProvisionPatient(patient: CirclePatientSummary | null): boolean {
+  return patient?.isPendingProvision === true || patient?.provisionStatus === 'pending';
+}
 
 export function useCircleOwnManagedContact(
   db: Firestore,
@@ -22,6 +25,7 @@ export function useCircleOwnManagedContact(
 ) {
   const [contact, setContact] = useState<CircleManagedContact | null>(null);
   const [loading, setLoading] = useState(true);
+  const pendingProvision = isPendingProvisionPatient(patient);
 
   const loadOwnContact = useCallback(async () => {
     if (!patient?.patientId || !user.email) {
@@ -31,16 +35,23 @@ export function useCircleOwnManagedContact(
     }
     setLoading(true);
     try {
-      const listed = await listPatientManagedContacts(db, patient.patientId);
+      const listed = pendingProvision
+        ? await listProvisionManagedContacts(db, patient.patientId)
+        : await listPatientManagedContacts(db, patient.patientId);
       const base = findManagedContactByEmail(listed, user.email) ?? null;
       if (!base || !user.uid) {
         setContact(base);
         return;
       }
-      const [memberProfile, memberPrefs] = await Promise.all([
-        readMemberContactProfile(db, patient.patientId, user.uid),
-        readMemberNotifyPreferences(db, patient.patientId, user.uid),
-      ]);
+      const memberRef = pendingProvision
+        ? doc(db, 'patient_provisions', patient.patientId, 'members', user.uid)
+        : doc(db, 'patients', patient.patientId, 'members', user.uid);
+      const memberSnap = await getDoc(memberRef);
+      const memberData = memberSnap.exists()
+        ? (memberSnap.data() as Record<string, unknown>)
+        : undefined;
+      const memberProfile = parseMemberContactProfile(memberData);
+      const memberPrefs = parseMemberNotifyPreferences(memberData);
       const merged = mergeContactWithMemberContactProfile(base, memberProfile);
       setContact(mergeContactWithMemberNotifyPreferences(merged, memberPrefs));
     } catch (err) {
@@ -49,7 +60,7 @@ export function useCircleOwnManagedContact(
     } finally {
       setLoading(false);
     }
-  }, [db, patient?.patientId, user.email, user.uid]);
+  }, [db, patient?.patientId, pendingProvision, user.email, user.uid]);
 
   useEffect(() => {
     void loadOwnContact();
@@ -58,8 +69,12 @@ export function useCircleOwnManagedContact(
   useEffect(() => {
     if (!patient?.patientId || !user.uid || !user.email) return;
 
-    const patientRef = doc(db, 'patients', patient.patientId);
-    const memberRef = doc(db, 'patients', patient.patientId, 'members', user.uid);
+    const patientRef = pendingProvision
+      ? doc(db, 'patient_provisions', patient.patientId)
+      : doc(db, 'patients', patient.patientId);
+    const memberRef = pendingProvision
+      ? doc(db, 'patient_provisions', patient.patientId, 'members', user.uid)
+      : doc(db, 'patients', patient.patientId, 'members', user.uid);
 
     const apply = (
       patientData: Record<string, unknown> | undefined,
@@ -94,7 +109,7 @@ export function useCircleOwnManagedContact(
       unsubPatient();
       unsubMember();
     };
-  }, [db, patient?.patientId, user.email, user.uid]);
+  }, [db, patient?.patientId, pendingProvision, user.email, user.uid]);
 
   return { contact, loading };
 }
