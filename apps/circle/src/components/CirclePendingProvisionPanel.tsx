@@ -15,7 +15,6 @@ type CirclePendingProvisionPanelProps = {
   /** When the proxy manages other active patients, allow leaving this setup screen. */
   canDismiss?: boolean;
   onDismiss?: () => void;
-  onSwitchPatient?: () => void;
   onCancelPending?: (patient: CirclePatientSummary) => Promise<void>;
 };
 
@@ -24,7 +23,6 @@ export function CirclePendingProvisionPanel({
   user,
   canDismiss = false,
   onDismiss,
-  onSwitchPatient,
   onCancelPending,
 }: CirclePendingProvisionPanelProps) {
   const t = useCircleT();
@@ -94,20 +92,6 @@ export function CirclePendingProvisionPanel({
 
         <p className="text-sm text-slate-600 leading-relaxed">{t('provision.waitingBody')}</p>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-1">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            {t('provision.intendedEmailLabel')}
-          </p>
-          {patient.intendedEmail ? (
-            <>
-              <p className="text-sm font-semibold text-slate-900 break-all">{patient.intendedEmail}</p>
-              <p className="text-xs text-slate-500 leading-relaxed">{t('provision.intendedEmailHint')}</p>
-            </>
-          ) : (
-            <p className="text-sm text-slate-600 leading-relaxed">{t('provision.intendedEmailUnset')}</p>
-          )}
-        </div>
-
         <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 space-y-3">
           <div className="flex items-center gap-2 text-blue-900">
             <KeyRound size={18} />
@@ -126,8 +110,30 @@ export function CirclePendingProvisionPanel({
           </button>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
-          <p className="text-xs text-slate-500 leading-relaxed">{t('provision.sendSetupEmailsHint')}</p>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+          <div className="flex items-center gap-2 text-slate-800">
+            <Mail size={18} />
+            <span className="text-sm font-semibold">{t('provision.emailSetupLabel')}</span>
+          </div>
+          {patient.intendedEmail ? (
+            <>
+              <div className="space-y-1">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  {t('provision.intendedEmailLabel')}
+                </p>
+                <p className="text-sm font-semibold text-slate-900 break-all">{patient.intendedEmail}</p>
+                <p className="text-xs text-slate-500 leading-relaxed">{t('provision.intendedEmailHint')}</p>
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                {t('provision.sendSetupEmailsHintWithPatient', { email: patient.intendedEmail })}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-slate-600 leading-relaxed">{t('provision.intendedEmailUnset')}</p>
+              <p className="text-xs text-slate-500 leading-relaxed">{t('provision.sendSetupEmailsHintProxyOnly')}</p>
+            </>
+          )}
           <button
             type="button"
             disabled={sendingEmails || !user.email}
@@ -144,21 +150,6 @@ export function CirclePendingProvisionPanel({
           <li>{t('provision.stepSignInGoogle')}</li>
           <li>{t('provision.stepEnterCode')}</li>
         </ol>
-
-        {canDismiss && onSwitchPatient ? (
-          <div className="pt-2 border-t border-slate-100 space-y-2">
-            <button
-              type="button"
-              onClick={onSwitchPatient}
-              className="w-full py-3 rounded-2xl bg-slate-100 text-slate-800 font-semibold hover:bg-slate-200"
-            >
-              {t('provision.continueOtherPatients')}
-            </button>
-            <p className="text-xs text-slate-500 text-center leading-relaxed">
-              {t('provision.continueOtherPatientsHint')}
-            </p>
-          </div>
-        ) : null}
 
         {onCancelPending ? (
           <div className="pt-2 border-t border-slate-100 space-y-2">

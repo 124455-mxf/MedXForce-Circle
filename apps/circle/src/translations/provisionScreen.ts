@@ -27,9 +27,6 @@ export const provisionScreenEnglish = {
   intendedEmailUnset: 'Not set — any patient account can use the setup code.',
   createdToast: 'Patient setup created. Share the setup code with hospital staff.',
   dismissSetup: 'Close setup screen',
-  continueOtherPatients: 'Continue with another patient',
-  continueOtherPatientsHint:
-    'This setup stays saved — switch back anytime from your patient list.',
   cancelPending: 'Remove',
   cancelPendingAria: 'Remove unfinished setup for {{name}}',
   cancelPendingTitle: 'Remove unfinished setup?',
@@ -38,8 +35,10 @@ export const provisionScreenEnglish = {
   cancelPendingConfirm: 'Remove setup',
   cancelPendingFailed: 'Could not remove unfinished setup.',
   sendSetupEmails: 'Send setup emails',
-  sendSetupEmailsHint:
-    'Emails the patient app link to the intended patient email (no code) and the setup code to your proxy email.',
+  emailSetupLabel: 'Email setup',
+  sendSetupEmailsHintWithPatient:
+    'Sends app instructions to {{email}} (no code) and the setup code to your proxy inbox.',
+  sendSetupEmailsHintProxyOnly: 'Sends the setup code to your proxy inbox only.',
   sendingSetupEmails: 'Sending…',
   setupEmailsSent: 'Setup emails sent.',
   setupEmailsSentBoth: 'Setup emails sent to you and the patient.',
@@ -77,9 +76,6 @@ export const provisionScreenGerman = {
   intendedEmailUnset: 'Nicht gesetzt — jedes Patientenkonto kann den Setup-Code verwenden.',
   createdToast: 'Patienten-Setup erstellt. Setup-Code mit dem Pflegeteam teilen.',
   dismissSetup: 'Setup-Bildschirm schließen',
-  continueOtherPatients: 'Mit anderem Patienten fortfahren',
-  continueOtherPatientsHint:
-    'Dieses Setup bleibt gespeichert — jederzeit über die Patientenliste zurück.',
   cancelPending: 'Entfernen',
   cancelPendingAria: 'Unfertiges Setup für {{name}} entfernen',
   cancelPendingTitle: 'Unfertiges Setup entfernen?',
@@ -88,8 +84,10 @@ export const provisionScreenGerman = {
   cancelPendingConfirm: 'Setup entfernen',
   cancelPendingFailed: 'Unfertiges Setup konnte nicht entfernt werden.',
   sendSetupEmails: 'Setup-E-Mails senden',
-  sendSetupEmailsHint:
-    'Sendet den Patienten-App-Link an die vorgesehene Patienten-E-Mail (ohne Code) und den Setup-Code an Ihre Proxy-E-Mail.',
+  emailSetupLabel: 'E-Mail-Setup',
+  sendSetupEmailsHintWithPatient:
+    'Sendet App-Anweisungen an {{email}} (ohne Code) und den Setup-Code an Ihr Proxy-Postfach.',
+  sendSetupEmailsHintProxyOnly: 'Sendet nur den Setup-Code an Ihr Proxy-Postfach.',
   sendingSetupEmails: 'Wird gesendet…',
   setupEmailsSent: 'Setup-E-Mails gesendet.',
   setupEmailsSentBoth: 'Setup-E-Mails an Sie und den Patienten gesendet.',
@@ -127,9 +125,6 @@ export const provisionScreenSpanish = {
   intendedEmailUnset: 'Sin definir — cualquier cuenta de paciente puede usar el código.',
   createdToast: 'Configuración creada. Comparta el código con el equipo de cuidado.',
   dismissSetup: 'Cerrar pantalla de configuración',
-  continueOtherPatients: 'Continuar con otro paciente',
-  continueOtherPatientsHint:
-    'Esta configuración se guarda — vuelva cuando quiera desde la lista de pacientes.',
   cancelPending: 'Quitar',
   cancelPendingAria: 'Quitar configuración sin terminar de {{name}}',
   cancelPendingTitle: '¿Quitar configuración sin terminar?',
@@ -138,8 +133,10 @@ export const provisionScreenSpanish = {
   cancelPendingConfirm: 'Quitar configuración',
   cancelPendingFailed: 'No se pudo quitar la configuración sin terminar.',
   sendSetupEmails: 'Enviar correos de configuración',
-  sendSetupEmailsHint:
-    'Envía el enlace de la app al correo del paciente (sin código) y el código de configuración a su correo de proxy.',
+  emailSetupLabel: 'Configuración por correo',
+  sendSetupEmailsHintWithPatient:
+    'Envía instrucciones de la app a {{email}} (sin código) y el código de configuración a su bandeja de proxy.',
+  sendSetupEmailsHintProxyOnly: 'Envía solo el código de configuración a su bandeja de proxy.',
   sendingSetupEmails: 'Enviando…',
   setupEmailsSent: 'Correos de configuración enviados.',
   setupEmailsSentBoth: 'Correos enviados a usted y al paciente.',
@@ -177,9 +174,6 @@ export const provisionScreenPolish = {
   intendedEmailUnset: 'Nie ustawiono — każde konto pacjenta może użyć kodu.',
   createdToast: 'Konfiguracja utworzona. Udostępnij kod personelowi.',
   dismissSetup: 'Zamknij ekran konfiguracji',
-  continueOtherPatients: 'Kontynuuj z innym pacjentem',
-  continueOtherPatientsHint:
-    'Ta konfiguracja zostaje zapisana — wróć w dowolnym momencie z listy pacjentów.',
   cancelPending: 'Usuń',
   cancelPendingAria: 'Usuń niedokończoną konfigurację dla {{name}}',
   cancelPendingTitle: 'Usunąć niedokończoną konfigurację?',
@@ -188,8 +182,10 @@ export const provisionScreenPolish = {
   cancelPendingConfirm: 'Usuń konfigurację',
   cancelPendingFailed: 'Nie udało się usunąć niedokończonej konfiguracji.',
   sendSetupEmails: 'Wyślij e-maile konfiguracji',
-  sendSetupEmailsHint:
-    'Wysyła link do aplikacji pacjenta na wskazany e-mail (bez kodu) oraz kod konfiguracji na Twój e-mail proxy.',
+  emailSetupLabel: 'Konfiguracja e-mail',
+  sendSetupEmailsHintWithPatient:
+    'Wysyła instrukcje aplikacji na {{email}} (bez kodu) oraz kod konfiguracji na skrzynkę proxy.',
+  sendSetupEmailsHintProxyOnly: 'Wysyła tylko kod konfiguracji na skrzynkę proxy.',
   sendingSetupEmails: 'Wysyłanie…',
   setupEmailsSent: 'E-maile konfiguracji wysłane.',
   setupEmailsSentBoth: 'E-maile wysłane do Ciebie i pacjenta.',

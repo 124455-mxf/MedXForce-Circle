@@ -504,7 +504,6 @@ export default function App() {
                   selectedPatientForSettings.patientId,
                 )}
                 onDismiss={handleDismissPendingSetup}
-                onSwitchPatient={() => setPendingSwitcherOpen(true)}
                 onCancelPending={handleCancelPendingProvision}
               />
               <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
