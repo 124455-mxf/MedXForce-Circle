@@ -119,9 +119,18 @@ export function useCirclePatientRawMessages(
               ),
             );
             emit();
+            setError(null);
           },
           (err) => {
-            setError(err.message || 'Could not load messages.');
+            console.warn(`[circlePatientMessagingCore] ${key} listener`, err);
+            buckets.set(key, []);
+            emit();
+            const hasAnyMessages = [...buckets.values()].some((list) => list.length > 0);
+            if (!hasAnyMessages) {
+              setError(err.message || 'Could not load messages.');
+            } else {
+              setError(null);
+            }
             setLoading(false);
           },
         ),
