@@ -216,11 +216,11 @@ export function CirclePatientProfileEditorModal({
   const [pendingLanguage, setPendingLanguage] = useState<RemotePrimaryLanguage | null>(null);
 
   useEffect(() => {
-    if (open) {
-      setDraft(snapshot);
-      setPendingLanguage(null);
-    }
-  }, [open, snapshot]);
+    if (!open) return;
+    setDraft(snapshot);
+    setPendingLanguage(null);
+    // Only seed draft when the modal opens — not on every Firestore snapshot echo.
+  }, [open]);
 
   if (!open) return null;
 
@@ -319,7 +319,9 @@ export function CirclePatientProfileEditorModal({
                 <span className="text-xs font-bold text-slate-500 uppercase">Language</span>
                 <select
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
-                  value={resolveIdentityPrimaryLanguage(draft.identity.language)}
+                  value={
+                    pendingLanguage ?? resolveIdentityPrimaryLanguage(draft.identity.language)
+                  }
                   onChange={(e) => {
                     const next = e.target.value as RemotePrimaryLanguage;
                     const current = resolveIdentityPrimaryLanguage(draft.identity.language);
@@ -934,7 +936,20 @@ export function CirclePatientProfileEditorModal({
           </button>
           <button
             type="button"
-            onClick={() => onSave(draft)}
+            onClick={() => {
+              let draftToSave = draft;
+              if (pendingLanguage) {
+                draftToSave = {
+                  ...draft,
+                  identity: {
+                    ...draft.identity,
+                    language: identityLanguageLabel(pendingLanguage),
+                  },
+                };
+                setPendingLanguage(null);
+              }
+              onSave(draftToSave);
+            }}
             disabled={saving}
             className="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-bold disabled:opacity-50 flex items-center justify-center gap-2"
           >
@@ -946,6 +961,7 @@ export function CirclePatientProfileEditorModal({
 
       <CirclePatientLanguageConfirmModal
         open={pendingLanguage !== null}
+        saving={saving}
         patientName={
           patientDisplayName?.trim() ||
           `${draft.identity.firstName || ''} ${draft.identity.lastName || ''}`.trim() ||
@@ -954,15 +970,17 @@ export function CirclePatientProfileEditorModal({
         languageLabel={pendingLanguage ? identityLanguageLabel(pendingLanguage) : ''}
         onCancel={() => setPendingLanguage(null)}
         onConfirm={() => {
-          if (!pendingLanguage) return;
-          setDraft({
+          if (!pendingLanguage || saving) return;
+          const next: CirclePatientProfileSnapshot = {
             ...draft,
             identity: {
               ...draft.identity,
               language: identityLanguageLabel(pendingLanguage),
             },
-          });
+          };
           setPendingLanguage(null);
+          setDraft(next);
+          onSave(next);
         }}
       />
     </div>

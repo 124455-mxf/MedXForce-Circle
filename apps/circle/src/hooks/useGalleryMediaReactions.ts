@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { addDoc, collection, onSnapshot, query, where } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import {
-  tagGalleryMediaForCircleMember,
-  type GalleryReactionRecord,
-} from '@medxforce/shared';
+import type { GalleryReactionRecord } from '@medxforce/shared';
 function mergeReactionsIntoMap(
   target: Record<string, GalleryReactionRecord[]>,
   snapshot: { docs: { id: string; data: () => Record<string, unknown> }[] },
@@ -81,15 +78,6 @@ export function useGalleryMediaReactions(
         emoji,
         timestamp: Date.now(),
       });
-      try {
-        await tagGalleryMediaForCircleMember(db, {
-          patientId,
-          mediaId,
-          circleMemberUid: viewerUid,
-        });
-      } catch (err) {
-        console.warn('[GALLERY] Could not auto-tag circle member on media:', err);
-      }
       return docRef.id;
     },
     [db, patientId, viewerUid],

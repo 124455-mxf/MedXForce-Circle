@@ -11,6 +11,7 @@ import {
 import { formatPatientOnlineDurationMinutes } from '../hooks/usePatientOnlinePresence';
 import type { CircleTranslator } from './circleI18nContext';
 import type { CircleUiLanguage } from './circleLanguages';
+import { identityLanguageLabel, resolveIdentityPrimaryLanguage } from './circleLanguages';
 
 const LOCALE_BY_LANGUAGE: Record<CircleUiLanguage, string> = {
   English: 'en',
@@ -183,6 +184,46 @@ export function formatDashboardApplicationModeLineT(
   const label = t(labelPath);
   const modeLabel = label === labelPath ? t('dashboard.appModes.custom') : label;
   return t('dashboard.modePreset', { label: modeLabel });
+}
+
+export function formatLiveTileLanguageLineT(
+  t: CircleTranslator,
+  remoteSettings: PatientRemoteSettingsDoc | null | undefined,
+  profileLanguage: string | undefined | null,
+  loading = false,
+): string {
+  if (loading) return t('dashboard.liveLanguageLoading');
+  const primary =
+    remoteSettings?.primaryLanguage ??
+    resolveIdentityPrimaryLanguage(profileLanguage);
+  return t('dashboard.liveLanguage', {
+    label: identityLanguageLabel(primary),
+  });
+}
+
+export function formatLiveTileApplicationModeLineT(
+  t: CircleTranslator,
+  doc: PatientRemoteSettingsDoc | null | undefined,
+  loading = false,
+): string {
+  if (loading) return t('dashboard.liveApplicationModeLoading');
+  if (!doc?.appMode || isRemoteSettingsCustomized(doc)) {
+    return t('dashboard.liveApplicationMode', { label: t('dashboard.appModes.custom') });
+  }
+  const modeKey = doc.appMode;
+  const labelPath = `dashboard.appModes.${modeKey}`;
+  const label = t(labelPath);
+  const modeLabel = label === labelPath ? t('dashboard.appModes.custom') : label;
+  return t('dashboard.liveApplicationMode', { label: modeLabel });
+}
+
+export function formatLiveTilePhaseLineT(
+  t: CircleTranslator,
+  phase: string | undefined | null,
+  loading = false,
+): string {
+  if (loading) return t('dashboard.livePhaseLoading');
+  return t('dashboard.phase', { phase: treatmentPhaseLabelT(t, phase) });
 }
 
 export function formatDashboardPatientDashboardViewLineT(

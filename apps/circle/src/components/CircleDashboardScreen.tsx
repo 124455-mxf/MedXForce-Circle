@@ -95,6 +95,9 @@ import {
   dashboardPlural,
   formatDashboardApplicationModeLineT,
   formatDashboardPatientDashboardViewLineT,
+  formatLiveTileApplicationModeLineT,
+  formatLiveTileLanguageLineT,
+  formatLiveTilePhaseLineT,
   formatDashboardLastLine,
   formatDashboardTimestamp,
   formatPatientActiveSectionT,
@@ -203,6 +206,7 @@ function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
 function LivePatientWidget({
   onlineDurationLabel,
   activeSectionLabel,
+  patientContextLines,
   showRemotePrompts,
   compact = false,
   onPromptCheckIn,
@@ -216,6 +220,7 @@ function LivePatientWidget({
 }: {
   onlineDurationLabel: string;
   activeSectionLabel: string;
+  patientContextLines?: string[];
   showRemotePrompts: boolean;
   compact?: boolean;
   onPromptCheckIn: () => void;
@@ -263,11 +268,16 @@ function LivePatientWidget({
         )}
       >
         <div className="flex-1 min-w-0 flex flex-col">
-          <Radio size={20} className="mb-2 shrink-0 text-emerald-600" />
+          <Radio size={20} className="mb-1 shrink-0 text-emerald-600" />
           <p className="font-bold text-slate-800 text-sm sm:text-base">{t('dashboard.live')}</p>
-          <div className="text-xs text-slate-600 mt-1 leading-snug flex-1 flex flex-col justify-end gap-0.5">
+          <div className="text-xs text-slate-600 mt-3 leading-snug flex flex-col gap-1">
             <p>{t('dashboard.onlineFor', { duration: onlineDurationLabel })}</p>
             <p className="line-clamp-2">{t('dashboard.currently', { section: activeSectionLabel })}</p>
+            {patientContextLines?.map((line, index) => (
+              <p key={`live-context-${index}`} className="line-clamp-1">
+                {line}
+              </p>
+            ))}
           </div>
         </div>
 
@@ -583,6 +593,24 @@ export function CircleDashboardScreen({
         patientPresence.onlineSince || patientPresence.lastSeen,
       )
     : '';
+
+  const livePatientContextLines =
+    memberRole !== 'family'
+      ? [
+          formatLiveTileLanguageLineT(
+            t,
+            remoteSettings,
+            profileSnapshot?.identity.language,
+            remoteSettingsLoading || profileLoading,
+          ),
+          formatLiveTileApplicationModeLineT(t, remoteSettings, remoteSettingsLoading),
+          formatLiveTilePhaseLineT(
+            t,
+            profileSnapshot?.clinical.treatmentPhase,
+            profileLoading,
+          ),
+        ]
+      : undefined;
 
   const lastLine = (ts: number | null | undefined) =>
     formatDashboardLastLine(t, language, ts);
@@ -997,13 +1025,14 @@ export function CircleDashboardScreen({
             <div
               className={cn(
                 'col-span-2',
-                memberRole === 'family' ? null : 'h-[12.75rem] sm:h-[13.25rem]',
+                memberRole === 'family' ? null : 'h-[15.5rem] sm:h-[16rem]',
                 dropInActive && !dropInChatOpen && onResumeDropIn ? 'mb-6' : null,
               )}
             >
               <LivePatientWidget
                 onlineDurationLabel={liveOnlineDurationLabel}
                 activeSectionLabel={formatPatientActiveSectionT(t, patientPresence.activeSection)}
+                patientContextLines={livePatientContextLines}
                 showRemotePrompts={showRemotePrompts}
                 compact={memberRole === 'family'}
                 t={t}

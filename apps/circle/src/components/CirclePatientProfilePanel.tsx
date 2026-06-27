@@ -138,6 +138,7 @@ export function CirclePatientProfilePanel({
           next,
           user.uid,
           patient.displayName,
+          user.displayName || undefined,
         );
         setDraftSnapshot(null);
         setEditSection(null);
@@ -216,6 +217,7 @@ export function CirclePatientProfilePanel({
         next,
         user.uid,
         patient.displayName,
+        user.displayName || undefined,
       );
       setDraftSnapshot(null);
       setFileToCrop(null);

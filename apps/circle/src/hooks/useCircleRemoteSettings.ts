@@ -4,6 +4,7 @@ import type { User } from 'firebase/auth';
 import {
   createDefaultRemoteSettings,
   subscribeRemoteSettings,
+  syncCirclePatientProfileLanguageFromRemoteSettings,
   writeRemoteSettings,
   type CirclePatientSummary,
   type PatientRemoteSettingsDoc,
@@ -21,6 +22,8 @@ export function useCircleRemoteSettings(
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const saveTimerRef = useRef<number | null>(null);
+  const pendingSaveRef = useRef<PatientRemoteSettingsDoc | null>(null);
+  const savingRef = useRef(false);
 
   const patientId = patient?.patientId ?? '';
 
@@ -39,11 +42,12 @@ export function useCircleRemoteSettings(
       db,
       patientId,
       (remote) => {
-        if (saveTimerRef.current) {
-          window.clearTimeout(saveTimerRef.current);
-          saveTimerRef.current = null;
-        }
         setFromFirestore(remote != null);
+        // Do not cancel a pending proxy save when the patient app echoes remote_settings.
+        if (pendingSaveRef.current || savingRef.current) {
+          setLoading(false);
+          return;
+        }
         setSettings(remote ?? createDefaultRemoteSettings(patientId));
         setLoading(false);
       },
@@ -57,14 +61,18 @@ export function useCircleRemoteSettings(
   const persist = useCallback(
     (next: PatientRemoteSettingsDoc) => {
       if (!user || !patient) return;
+      const previousPrimaryLanguage = settings?.primaryLanguage;
+      pendingSaveRef.current = next;
       setSettings(next);
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
       saveTimerRef.current = window.setTimeout(async () => {
+        const draft = pendingSaveRef.current ?? next;
+        savingRef.current = true;
         setSaving(true);
         setError(null);
         try {
           const payload: PatientRemoteSettingsDoc = {
-            ...next,
+            ...draft,
             patientId: patient.patientId,
             updatedAt: Date.now(),
             updatedByUid: user.uid,
@@ -73,15 +81,34 @@ export function useCircleRemoteSettings(
             source: 'circle',
           };
           await writeRemoteSettings(db, payload);
+          if (
+            payload.primaryLanguage &&
+            payload.primaryLanguage !== previousPrimaryLanguage
+          ) {
+            try {
+              await syncCirclePatientProfileLanguageFromRemoteSettings(
+                db,
+                patient.patientId,
+                payload.primaryLanguage,
+                user.uid,
+                patient.displayName,
+                user.displayName || undefined,
+              );
+            } catch (err) {
+              console.warn('[circleRemoteSettings] profile language', err);
+            }
+          }
+          pendingSaveRef.current = null;
           setSavedAt(Date.now());
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Could not save remote settings.');
         } finally {
+          savingRef.current = false;
           setSaving(false);
         }
       }, 600);
     },
-    [db, patient, user],
+    [db, patient, settings?.primaryLanguage, user],
   );
 
   useEffect(

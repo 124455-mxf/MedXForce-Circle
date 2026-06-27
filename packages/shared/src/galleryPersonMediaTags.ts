@@ -3,7 +3,6 @@ import {
   arrayUnion,
   collection,
   doc,
-  getDoc,
   onSnapshot,
   setDoc,
   type Firestore,
@@ -13,7 +12,10 @@ export type GalleryPersonMediaTagDoc = {
   personId: string;
   personName?: string;
   personRelationship?: string;
-  mediaIds: string[];
+  /** Manual People & Faces tags (Circle or patient tagging UI). */
+  manualMediaIds: string[];
+  /** Legacy field — may contain reaction auto-tags; not used for People & Faces. */
+  legacyMediaIds?: string[];
   updatedAt: number;
   lastTaggedByUid?: string;
 };
@@ -24,47 +26,34 @@ export type GalleryTagPerson = {
   relationship?: string;
 };
 
-function normalizeTagDoc(
-  personId: string,
-  data: Record<string, unknown>,
-): GalleryPersonMediaTagDoc {
-  const mediaIds = Array.isArray(data.mediaIds)
-    ? data.mediaIds.filter((id): id is string => typeof id === 'string')
+function normalizeStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((id): id is string => typeof id === 'string')
     : [];
+}
+
+function normalizeTagDoc(personId: string, data: Record<string, unknown>): GalleryPersonMediaTagDoc {
   return {
     personId,
     personName: typeof data.personName === 'string' ? data.personName : undefined,
     personRelationship:
       typeof data.personRelationship === 'string' ? data.personRelationship : undefined,
-    mediaIds,
+    manualMediaIds: normalizeStringArray(data.manualMediaIds),
+    legacyMediaIds: normalizeStringArray(data.mediaIds),
     updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : Date.now(),
     lastTaggedByUid:
       typeof data.lastTaggedByUid === 'string' ? data.lastTaggedByUid : undefined,
   };
 }
 
-/** Circle member tags a photo for their linked Friends & Family / caregiver contact. */
-export async function tagGalleryMediaForCircleMember(
-  db: Firestore,
-  params: { patientId: string; mediaId: string; circleMemberUid: string },
-): Promise<void> {
-  const memberSnap = await getDoc(
-    doc(db, 'patients', params.patientId, 'members', params.circleMemberUid),
-  );
-  const contactId =
-    typeof memberSnap.data()?.contactId === 'string' ? memberSnap.data()!.contactId.trim() : '';
-  if (!contactId) return;
+/** Media ids that count toward People & Faces for one tag document. */
+export function peopleFacesMediaIdsForTag(tag: GalleryPersonMediaTagDoc): string[] {
+  return tag.manualMediaIds;
+}
 
-  await setDoc(
-    doc(db, 'patients', params.patientId, 'gallery_person_media_tags', contactId),
-    {
-      personId: contactId,
-      mediaIds: arrayUnion(params.mediaId),
-      updatedAt: Date.now(),
-      lastTaggedByUid: params.circleMemberUid,
-    },
-    { merge: true },
-  );
+/** Legacy reaction auto-tags stored in `mediaIds` before reactions were decoupled. */
+export function legacyReactionMediaIdsForTag(tag: GalleryPersonMediaTagDoc): string[] {
+  return tag.legacyMediaIds ?? [];
 }
 
 export function listenGalleryPersonMediaTags(
@@ -103,7 +92,7 @@ export async function toggleGalleryPersonMediaTag(
     personName: params.person.name,
     updatedAt: Date.now(),
     lastTaggedByUid: params.taggedByUid,
-    mediaIds: params.currentlyTagged
+    manualMediaIds: params.currentlyTagged
       ? arrayRemove(params.mediaId)
       : arrayUnion(params.mediaId),
   };
@@ -117,7 +106,8 @@ export function mediaIdsForPerson(
   tags: GalleryPersonMediaTagDoc[],
   personId: string,
 ): string[] {
-  return tags.find((t) => t.personId === personId)?.mediaIds ?? [];
+  const tag = tags.find((t) => t.personId === personId);
+  return tag ? peopleFacesMediaIdsForTag(tag) : [];
 }
 
 export function peopleTaggedOnMedia(
@@ -126,7 +116,7 @@ export function peopleTaggedOnMedia(
   mediaId: string,
 ): GalleryTagPerson[] {
   const taggedIds = new Set(
-    tags.filter((t) => t.mediaIds.includes(mediaId)).map((t) => t.personId),
+    tags.filter((t) => peopleFacesMediaIdsForTag(t).includes(mediaId)).map((t) => t.personId),
   );
   return people.filter((p) => taggedIds.has(p.id));
 }

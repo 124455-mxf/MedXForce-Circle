@@ -214,15 +214,21 @@ export function preferencesToCircleProfileDetails(
   const identity = { ...((base.identity as Record<string, unknown>) || {}) };
   const extended = { ...((base.extended as Record<string, unknown>) || {}) };
 
-  const nickName = str(identity.nickName) || str(preferences?.nickName);
-  if (nickName) identity.nickName = nickName;
+  identity.nickName = str(identity.nickName);
 
   if (!str(identity.dob) && preferences?.userDob) {
     identity.dob = str(preferences.userDob);
   }
 
   if (!str(identity.language) && preferences?.primaryLanguage) {
-    identity.language = str(preferences.primaryLanguage);
+    const primary = str(preferences.primaryLanguage);
+    const langMap: Record<string, string> = {
+      English: 'English (EN)',
+      German: 'German (DE)',
+      Spanish: 'Spanish (ES)',
+      Polish: 'Polish (PL)',
+    };
+    identity.language = langMap[primary] || langMap[primary.split(' ')[0]] || primary;
   }
 
   if (!str(extended.sex) && preferences?.userGender) {

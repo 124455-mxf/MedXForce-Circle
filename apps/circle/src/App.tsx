@@ -35,6 +35,7 @@ import { CircleStartupSequence } from './components/CircleStartupSequence';
 import { useCircleStartupSequence } from './hooks/useCircleStartupSequence';
 import { collection, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import { consumeAuthRedirectOnce, firebase } from './lib/firebaseClient';
+import { CIRCLE_BUILD_ID } from './lib/circleBuildId';
 import { sendWelcomeEmailsForAcceptedInvites } from './services/circleWelcomeEmailApi';
 import { useCircleI18n } from './hooks/useCircleI18n';
 import { CircleI18nProvider } from './lib/circleI18nContext';
@@ -408,6 +409,9 @@ export default function App() {
             {t('auth.createAccount')}
           </button>
           <p className="text-xs text-slate-500 text-center">{t('auth.googleHint')}</p>
+          <p className="text-[10px] text-slate-400 text-center font-mono" title="Hosted app version">
+            build {CIRCLE_BUILD_ID}
+          </p>
         </div>
       </div>
     </div>

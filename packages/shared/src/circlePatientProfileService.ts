@@ -21,6 +21,87 @@ import {
   type CirclePatientProfileSnapshot,
   type CircleProfileNotification,
 } from './circlePatientProfile';
+import {
+  createDefaultRemoteSettings,
+  parsePatientRemoteSettings,
+  REMOTE_PRIMARY_LANGUAGE_OPTIONS,
+  remoteSettingsDocRef,
+  writeRemoteSettings,
+  type RemotePrimaryLanguage,
+} from './remoteSettings';
+
+function primaryLanguageFromProfileLanguage(raw: string): RemotePrimaryLanguage {
+  const short = String(raw || '').split(' ')[0];
+  if (short === 'German' || short === 'Spanish' || short === 'Polish') return short;
+  return 'English';
+}
+
+async function syncRemoteSettingsPrimaryLanguage(
+  db: Firestore,
+  patientId: string,
+  languageRaw: string,
+  actorUid: string,
+  actorDisplayName: string,
+  updatedAt: number,
+): Promise<void> {
+  const primaryLanguage = primaryLanguageFromProfileLanguage(languageRaw);
+  const rsSnap = await getDoc(remoteSettingsDocRef(db, patientId));
+  const base = rsSnap.exists()
+    ? parsePatientRemoteSettings(patientId, rsSnap.data() as Record<string, unknown>)
+    : createDefaultRemoteSettings(patientId);
+  if (!base || base.primaryLanguage === primaryLanguage) return;
+
+  await writeRemoteSettings(db, {
+    ...base,
+    patientId,
+    primaryLanguage,
+    updatedAt,
+    updatedByUid: actorUid,
+    updatedByName: actorDisplayName.trim() || 'Circle proxy',
+    source: 'circle',
+  });
+}
+
+function identityLanguageLabelForPrimary(primary: RemotePrimaryLanguage): string {
+  return (
+    REMOTE_PRIMARY_LANGUAGE_OPTIONS.find((option) => option.value === primary)?.label ??
+    'English (EN)'
+  );
+}
+
+/** Keep patients/{id}.profileSnapshot.language aligned when proxy changes remote_settings.primaryLanguage. */
+export async function syncCirclePatientProfileLanguageFromRemoteSettings(
+  db: Firestore,
+  patientId: string,
+  primaryLanguage: RemotePrimaryLanguage,
+  actorUid: string,
+  patientDisplayName: string,
+  actorDisplayName?: string,
+): Promise<void> {
+  const { snapshot } = await readCirclePatientProfile(db, patientId);
+  if (!snapshot) return;
+
+  if (primaryLanguageFromProfileLanguage(snapshot.identity.language) === primaryLanguage) {
+    return;
+  }
+
+  const next: CirclePatientProfileSnapshot = {
+    ...snapshot,
+    identity: {
+      ...snapshot.identity,
+      language: identityLanguageLabelForPrimary(primaryLanguage),
+    },
+  };
+
+  await updateCirclePatientProfileFromProxy(
+    db,
+    patientId,
+    next,
+    actorUid,
+    patientDisplayName,
+    actorDisplayName,
+  );
+}
 
 export interface CirclePatientProfileState {
   snapshot: CirclePatientProfileSnapshot | null;
@@ -46,6 +127,7 @@ export async function updateCirclePatientProfileFromProxy(
   snapshot: CirclePatientProfileSnapshot,
   actorUid: string,
   patientDisplayName: string,
+  actorDisplayName?: string,
 ): Promise<void> {
   const patientRef = doc(db, 'patients', patientId);
   const existingSnap = await getDoc(patientRef);
@@ -63,7 +145,43 @@ export async function updateCirclePatientProfileFromProxy(
   const changedLabels = describeProfileSnapshotChanges(previousSnapshot, snapshot);
   const meaningfulChanges = meaningfulProfileChangedLabels(changedLabels);
   const firestoreSnapshot = sanitizeProfileSnapshotForFirestore(snapshot);
+  const languageChanged =
+    String(previousSnapshot?.identity.language ?? '').trim() !==
+    String(snapshot.identity.language ?? '').trim();
+
   if (meaningfulChanges.length === 0) {
+    if (languageChanged) {
+      const meta: CirclePatientProfileMeta = {
+        updatedAt: Date.now(),
+        updatedBy: 'proxy',
+        updatedByUid: actorUid,
+        summary: buildProfileChangeSummary('proxy', patientDisplayName, ['Primary language']),
+        changedLabels: ['Primary language'],
+      };
+      await setDoc(
+        patientRef,
+        {
+          profileSnapshot: firestoreSnapshot,
+          profileMeta: meta,
+          updatedAt: meta.updatedAt,
+        },
+        { merge: true },
+      );
+      try {
+        await syncRemoteSettingsPrimaryLanguage(
+          db,
+          patientId,
+          snapshot.identity.language,
+          actorUid,
+          actorDisplayName || patientDisplayName,
+          meta.updatedAt,
+        );
+      } catch (err) {
+        console.warn('[updateCirclePatientProfileFromProxy] remote settings language', err);
+      }
+      return;
+    }
+
     await setDoc(
       patientRef,
       {
@@ -94,6 +212,21 @@ export async function updateCirclePatientProfileFromProxy(
     },
     { merge: true },
   );
+
+  if (changedLabels.includes('Primary language')) {
+    try {
+      await syncRemoteSettingsPrimaryLanguage(
+        db,
+        patientId,
+        snapshot.identity.language,
+        actorUid,
+        actorDisplayName || patientDisplayName,
+        meta.updatedAt,
+      );
+    } catch (err) {
+      console.warn('[updateCirclePatientProfileFromProxy] remote settings language', err);
+    }
+  }
 
   if (meaningfulChanges.length > 0) {
     const notificationId = profileNotificationDocId('patient_edit', changedLabels);
