@@ -105,13 +105,18 @@ export function useGalleryPersonTagging(
     async (person: GalleryTagPerson, mediaId: string) => {
       if (!patientId || !viewerUid) return;
       const currentlyTagged = isPersonTaggedOnMedia(person.id, mediaId);
-      await toggleGalleryPersonMediaTag(db, {
-        patientId,
-        person,
-        mediaId,
-        taggedByUid: viewerUid,
-        currentlyTagged,
-      });
+      try {
+        await toggleGalleryPersonMediaTag(db, {
+          patientId,
+          person,
+          mediaId,
+          taggedByUid: viewerUid,
+          currentlyTagged,
+        });
+      } catch (err) {
+        console.warn('[useGalleryPersonTagging] toggle failed', err);
+        throw err;
+      }
     },
     [db, isPersonTaggedOnMedia, patientId, viewerUid],
   );
@@ -126,13 +131,18 @@ export function useGalleryPersonTagging(
         name: trimmedName,
         relationship: relationship.trim() || undefined,
       };
-      await toggleGalleryPersonMediaTag(db, {
-        patientId,
-        person,
-        mediaId,
-        taggedByUid: viewerUid,
-        currentlyTagged: false,
-      });
+      try {
+        await toggleGalleryPersonMediaTag(db, {
+          patientId,
+          person,
+          mediaId,
+          taggedByUid: viewerUid,
+          currentlyTagged: false,
+        });
+      } catch (err) {
+        console.warn('[useGalleryPersonTagging] create tag failed', err);
+        throw err;
+      }
       return person;
     },
     [db, patientId, viewerUid],

@@ -97,6 +97,10 @@ export function CircleGalleryLightbox({
   const hasPrev = index > 0;
   const hasNext = index < items.length - 1;
   const [isSlideshowActive, setIsSlideshowActive] = useState(autoPlaySlideshow);
+  const indexRef = useRef(index);
+  const slideshowActiveRef = useRef(isSlideshowActive);
+  indexRef.current = index;
+  slideshowActiveRef.current = isSlideshowActive;
   const [recentReactionId, setRecentReactionId] = useState<string | null>(null);
   const [showIdentify, setShowIdentify] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -131,16 +135,21 @@ export function CircleGalleryLightbox({
   }, [item?.id]);
 
   const goNext = useCallback(() => {
-    if (index < items.length - 1) {
-      onIndexChange(index + 1);
-    } else if (isSlideshowActive && items.length > 1) {
+    const i = indexRef.current;
+    const len = items.length;
+    if (i < len - 1) {
+      onIndexChange(i + 1);
+      return;
+    }
+    if (slideshowActiveRef.current && len > 1) {
       onIndexChange(0);
     }
-  }, [index, isSlideshowActive, items.length, onIndexChange]);
+  }, [items.length, onIndexChange]);
 
   const goPrev = useCallback(() => {
-    if (index > 0) onIndexChange(index - 1);
-  }, [index, onIndexChange]);
+    const i = indexRef.current;
+    if (i > 0) onIndexChange(i - 1);
+  }, [onIndexChange]);
 
   const itemRef = useRef(item);
   itemRef.current = item;
@@ -154,7 +163,7 @@ export function CircleGalleryLightbox({
 
   // Photos: fixed interval. Never advance while a video slide is active.
   useEffect(() => {
-    if (!isSlideshowActive || !item || item.isVideo) return;
+    if (!isSlideshowActive || !item || item.isVideo || items.length <= 1) return;
 
     const timer = window.setInterval(() => {
       if (itemRef.current?.isVideo) return;
@@ -162,7 +171,7 @@ export function CircleGalleryLightbox({
     }, DEFAULT_SLIDESHOW_SECONDS * 1000);
 
     return () => window.clearInterval(timer);
-  }, [goNext, isSlideshowActive, item?.id, item?.isVideo]);
+  }, [goNext, isSlideshowActive, item?.id, item?.isVideo, items.length]);
 
   // Videos: advance only when playback finishes.
   useEffect(() => {
@@ -269,11 +278,15 @@ export function CircleGalleryLightbox({
             mediaId={item.id}
             isTagged={(personId) => isPersonTaggedOnMedia(personId, item.id)}
             onToggle={(person: GalleryTagPerson) => {
-              void togglePersonOnMedia(person, item.id);
+              void togglePersonOnMedia(person, item.id).catch(() => {
+                window.alert(t('gallery.tagFailed'));
+              });
             }}
-            onCreateAndTag={(name, relationship) => {
-              void createPersonOnMedia(name, relationship, item.id);
-            }}
+            onCreateAndTag={(name, relationship) =>
+              createPersonOnMedia(name, relationship, item.id).catch(() => {
+                window.alert(t('gallery.tagFailed'));
+              })
+            }
             onClose={() => setShowIdentify(false)}
           />
         ) : null}

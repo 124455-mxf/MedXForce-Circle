@@ -82,6 +82,7 @@ export const galleryScreenEnglish = {
   errorDeleteAlbum: 'Could not delete album.',
   errorAddToAlbum: 'Could not add to album.',
   errorRenameAlbum: 'Could not rename album.',
+  tagFailed: 'Could not save person tag.',
   familyMemberFallback: 'Family member',
 };
 
@@ -169,6 +170,7 @@ export const galleryScreenGerman = {
   errorDeleteAlbum: 'Album konnte nicht gelöscht werden.',
   errorAddToAlbum: 'Hinzufügen zum Album fehlgeschlagen.',
   errorRenameAlbum: 'Album konnte nicht umbenannt werden.',
+  tagFailed: 'Personen-Markierung konnte nicht gespeichert werden.',
   familyMemberFallback: 'Familienmitglied',
 };
 
@@ -256,6 +258,7 @@ export const galleryScreenSpanish = {
   errorDeleteAlbum: 'No se pudo eliminar el álbum.',
   errorAddToAlbum: 'No se pudo añadir al álbum.',
   errorRenameAlbum: 'No se pudo renombrar el álbum.',
+  tagFailed: 'No se pudo guardar la etiqueta.',
   familyMemberFallback: 'Familiar',
 };
 
@@ -343,5 +346,6 @@ export const galleryScreenPolish = {
   errorDeleteAlbum: 'Nie udało się usunąć albumu.',
   errorAddToAlbum: 'Nie udało się dodać do albumu.',
   errorRenameAlbum: 'Nie udało się zmienić nazwy albumu.',
+  tagFailed: 'Nie udało się zapisać oznaczenia osoby.',
   familyMemberFallback: 'Członek rodziny',
 };
