@@ -126,7 +126,9 @@ export function CircleGalleryLightbox({
   const taggedPeople = item ? getTaggedOnMedia(item.id) : [];
 
   useEffect(() => {
-    setIsSlideshowActive(autoPlaySlideshow);
+    if (autoPlaySlideshow) {
+      setIsSlideshowActive(true);
+    }
   }, [autoPlaySlideshow]);
 
   useEffect(() => {
@@ -158,6 +160,16 @@ export function CircleGalleryLightbox({
   const itemRef = useRef(item);
   itemRef.current = item;
 
+  const photoTimerRef = useRef<number | null>(null);
+  const photoSlideKeyRef = useRef<string | null>(null);
+
+  const clearPhotoTimer = useCallback(() => {
+    if (photoTimerRef.current !== null) {
+      window.clearInterval(photoTimerRef.current);
+      photoTimerRef.current = null;
+    }
+  }, []);
+
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
 
   const bindVideoElement = useCallback((element: HTMLVideoElement | null) => {
@@ -165,17 +177,50 @@ export function CircleGalleryLightbox({
     setVideoElement(element);
   }, []);
 
-  // Photos: fixed interval. Never advance while a video slide is active.
+  // Photos: advance on a fixed interval. Keep the timer alive across Firestore-driven
+  // re-renders; only reset when the slide, slideshow state, or item count changes.
   useEffect(() => {
-    if (!isSlideshowActive || !item || item.isVideo || items.length <= 1) return;
+    if (!isSlideshowActive || !item || item.isVideo || items.length <= 1) {
+      clearPhotoTimer();
+      photoSlideKeyRef.current = null;
+      return;
+    }
 
-    const timer = window.setInterval(() => {
-      if (itemRef.current?.isVideo) return;
-      goNext();
-    }, DEFAULT_SLIDESHOW_SECONDS * 1000);
+    const slideKey = item.id;
+    if (photoSlideKeyRef.current === slideKey && photoTimerRef.current !== null) {
+      return;
+    }
 
-    return () => window.clearInterval(timer);
-  }, [goNext, isSlideshowActive, item?.id, item?.isVideo, items.length]);
+    clearPhotoTimer();
+    photoSlideKeyRef.current = slideKey;
+
+    let elapsedMs = 0;
+    const tickMs = 250;
+    const totalMs = DEFAULT_SLIDESHOW_SECONDS * 1000;
+
+    photoTimerRef.current = window.setInterval(() => {
+      if (!slideshowActiveRef.current) return;
+      const currentItem = itemRef.current;
+      if (!currentItem || currentItem.isVideo || currentItem.id !== slideKey) return;
+
+      elapsedMs += tickMs;
+      if (elapsedMs < totalMs) return;
+
+      elapsedMs = 0;
+      const i = indexRef.current;
+      const len = itemsLengthRef.current;
+      if (i < len - 1) {
+        onIndexChangeRef.current(i + 1);
+      } else if (len > 1) {
+        onIndexChangeRef.current(0);
+      }
+    }, tickMs);
+
+    return () => {
+      clearPhotoTimer();
+      photoSlideKeyRef.current = null;
+    };
+  }, [clearPhotoTimer, isSlideshowActive, item?.id, item?.isVideo, items.length]);
 
   // Videos: advance only when playback finishes.
   useEffect(() => {
