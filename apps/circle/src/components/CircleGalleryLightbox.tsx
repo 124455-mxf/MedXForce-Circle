@@ -99,8 +99,12 @@ export function CircleGalleryLightbox({
   const [isSlideshowActive, setIsSlideshowActive] = useState(autoPlaySlideshow);
   const indexRef = useRef(index);
   const slideshowActiveRef = useRef(isSlideshowActive);
+  const onIndexChangeRef = useRef(onIndexChange);
+  const itemsLengthRef = useRef(items.length);
   indexRef.current = index;
   slideshowActiveRef.current = isSlideshowActive;
+  onIndexChangeRef.current = onIndexChange;
+  itemsLengthRef.current = items.length;
   const [recentReactionId, setRecentReactionId] = useState<string | null>(null);
   const [showIdentify, setShowIdentify] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -136,20 +140,20 @@ export function CircleGalleryLightbox({
 
   const goNext = useCallback(() => {
     const i = indexRef.current;
-    const len = items.length;
+    const len = itemsLengthRef.current;
     if (i < len - 1) {
-      onIndexChange(i + 1);
+      onIndexChangeRef.current(i + 1);
       return;
     }
     if (slideshowActiveRef.current && len > 1) {
-      onIndexChange(0);
+      onIndexChangeRef.current(0);
     }
-  }, [items.length, onIndexChange]);
+  }, []);
 
   const goPrev = useCallback(() => {
     const i = indexRef.current;
-    if (i > 0) onIndexChange(i - 1);
-  }, [onIndexChange]);
+    if (i > 0) onIndexChangeRef.current(i - 1);
+  }, []);
 
   const itemRef = useRef(item);
   itemRef.current = item;

@@ -501,6 +501,15 @@ export function PatientGalleryScreen({
     refreshViewed();
   };
 
+  const handleLightboxIndexChange = useCallback((index: number) => {
+    setLightbox((prev) => (prev ? { ...prev, index } : null));
+  }, []);
+
+  const handleLightboxClose = useCallback(() => {
+    setLightbox(null);
+    refreshViewed();
+  }, [refreshViewed]);
+
   const openAlbumGrid = (albumId: string) => {
     const album = albums.find((a) => a.id === albumId);
     const canonicalReactions = findCanonicalReactionsAlbum(albums);
@@ -1439,11 +1448,8 @@ export function PatientGalleryScreen({
           items={lightbox.items}
           index={lightbox.index}
           autoPlaySlideshow={lightbox.slideshow}
-          onIndexChange={(index) => setLightbox((prev) => (prev ? { ...prev, index } : null))}
-          onClose={() => {
-            setLightbox(null);
-            refreshViewed();
-          }}
+          onIndexChange={handleLightboxIndexChange}
+          onClose={handleLightboxClose}
         />
       )}
 
