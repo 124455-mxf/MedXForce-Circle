@@ -246,6 +246,7 @@ export function PatientGalleryScreen({
     items: GalleryAlbumMedia[];
     index: number;
     slideshow?: boolean;
+    session: number;
   } | null>(null);
   const [viewedIds, setViewedIds] = useState<Set<string>>(() =>
     getCircleGalleryViewedIds(patient.patientId),
@@ -497,7 +498,12 @@ export function PatientGalleryScreen({
     index: number,
     options?: { slideshow?: boolean },
   ) => {
-    setLightbox({ items, index, slideshow: options?.slideshow });
+    setLightbox((prev) => ({
+      items,
+      index,
+      slideshow: options?.slideshow,
+      session: (prev?.session ?? 0) + 1,
+    }));
     refreshViewed();
   };
 
@@ -1441,6 +1447,7 @@ export function PatientGalleryScreen({
 
       {lightbox && (
         <CircleGalleryLightbox
+          key={lightbox.session}
           db={db}
           user={user}
           patientId={patient.patientId}

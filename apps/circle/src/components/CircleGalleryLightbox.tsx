@@ -17,7 +17,12 @@ import {
 } from '../lib/galleryLightboxLayout';
 import { resolveGalleryUploaderDisplayName } from '../lib/galleryUploaderDisplay';
 import { CircleGalleryCaptionView } from './CircleGalleryCaptionView';
+import { CircleGalleryLightboxSlideshowTimer } from './CircleGalleryLightboxSlideshowTimer';
 import { useCircleT } from '../lib/circleI18nContext';
+import {
+  formatSlideshowCountdown,
+  remainingSlideshowSeconds,
+} from '../lib/gallerySlideshow';
 
 const DEFAULT_SLIDESHOW_SECONDS = 5;
 
@@ -97,6 +102,7 @@ export function CircleGalleryLightbox({
   const hasPrev = index > 0;
   const hasNext = index < items.length - 1;
   const [isSlideshowActive, setIsSlideshowActive] = useState(autoPlaySlideshow);
+  const [slideshowProgress, setSlideshowProgress] = useState(0);
   const indexRef = useRef(index);
   const slideshowActiveRef = useRef(isSlideshowActive);
   const onIndexChangeRef = useRef(onIndexChange);
@@ -157,18 +163,16 @@ export function CircleGalleryLightbox({
     if (i > 0) onIndexChangeRef.current(i - 1);
   }, []);
 
+  const advanceSlideshow = useCallback(() => {
+    const i = indexRef.current;
+    const len = itemsLengthRef.current;
+    if (len <= 1) return;
+    onIndexChangeRef.current(i < len - 1 ? i + 1 : 0);
+    setSlideshowProgress(0);
+  }, []);
+
   const itemRef = useRef(item);
   itemRef.current = item;
-
-  const photoTimerRef = useRef<number | null>(null);
-  const photoSlideKeyRef = useRef<string | null>(null);
-
-  const clearPhotoTimer = useCallback(() => {
-    if (photoTimerRef.current !== null) {
-      window.clearInterval(photoTimerRef.current);
-      photoTimerRef.current = null;
-    }
-  }, []);
 
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
 
@@ -177,57 +181,53 @@ export function CircleGalleryLightbox({
     setVideoElement(element);
   }, []);
 
-  // Photos: advance on a fixed interval. Keep the timer alive across Firestore-driven
-  // re-renders; only reset when the slide, slideshow state, or item count changes.
+  // Photo slides: one timeout per index — survives Firestore re-renders (deps exclude item object).
   useEffect(() => {
-    if (!isSlideshowActive || !item || item.isVideo || items.length <= 1) {
-      clearPhotoTimer();
-      photoSlideKeyRef.current = null;
+    if (!isSlideshowActive || items.length <= 1) {
+      setSlideshowProgress(0);
       return;
     }
 
-    const slideKey = item.id;
-    if (photoSlideKeyRef.current === slideKey && photoTimerRef.current !== null) {
+    const slideIndex = index;
+    const slide = items[slideIndex];
+    if (!slide || slide.isVideo) {
+      setSlideshowProgress(0);
       return;
     }
 
-    clearPhotoTimer();
-    photoSlideKeyRef.current = slideKey;
-
-    let elapsedMs = 0;
-    const tickMs = 250;
+    const slideId = slide.id;
+    const tickMs = 50;
     const totalMs = DEFAULT_SLIDESHOW_SECONDS * 1000;
+    let elapsedMs = 0;
+    setSlideshowProgress(0);
 
-    photoTimerRef.current = window.setInterval(() => {
-      if (!slideshowActiveRef.current) return;
-      const currentItem = itemRef.current;
-      if (!currentItem || currentItem.isVideo || currentItem.id !== slideKey) return;
-
+    const progressTimer = window.setInterval(() => {
       elapsedMs += tickMs;
-      if (elapsedMs < totalMs) return;
-
-      elapsedMs = 0;
-      const i = indexRef.current;
-      const len = itemsLengthRef.current;
-      if (i < len - 1) {
-        onIndexChangeRef.current(i + 1);
-      } else if (len > 1) {
-        onIndexChangeRef.current(0);
-      }
+      setSlideshowProgress(Math.min(100, (elapsedMs / totalMs) * 100));
     }, tickMs);
 
-    return () => {
-      clearPhotoTimer();
-      photoSlideKeyRef.current = null;
-    };
-  }, [clearPhotoTimer, isSlideshowActive, item?.id, item?.isVideo, items.length]);
+    const advanceTimer = window.setTimeout(() => {
+      if (!slideshowActiveRef.current) return;
+      if (indexRef.current !== slideIndex) return;
+      const current = itemRef.current;
+      if (!current || current.isVideo || current.id !== slideId) return;
+      advanceSlideshow();
+    }, totalMs);
 
-  // Videos: advance only when playback finishes.
+    return () => {
+      window.clearInterval(progressTimer);
+      window.clearTimeout(advanceTimer);
+    };
+  }, [advanceSlideshow, index, isSlideshowActive, items.length]);
+
+  // Videos: advance when playback ends, or skip after a cap if autoplay fails.
   useEffect(() => {
     if (!isSlideshowActive || !item?.isVideo || !videoElement) return;
 
+    let cancelled = false;
+
     const onEnded = () => {
-      goNext();
+      if (!cancelled) advanceSlideshow();
     };
 
     const startPlayback = () => {
@@ -239,6 +239,13 @@ export function CircleGalleryLightbox({
       if (videoElement.paused) startPlayback();
     };
 
+    const stallTimer = window.setTimeout(() => {
+      if (cancelled || videoElement.ended) return;
+      if (videoElement.paused || videoElement.currentTime < 0.25) {
+        advanceSlideshow();
+      }
+    }, Math.max(DEFAULT_SLIDESHOW_SECONDS * 1000, 8000));
+
     videoElement.addEventListener('ended', onEnded);
     videoElement.addEventListener('canplay', onCanPlay);
 
@@ -247,11 +254,13 @@ export function CircleGalleryLightbox({
     }
 
     return () => {
+      cancelled = true;
+      window.clearTimeout(stallTimer);
       videoElement.removeEventListener('ended', onEnded);
       videoElement.removeEventListener('canplay', onCanPlay);
       videoElement.pause();
     };
-  }, [goNext, isSlideshowActive, item?.id, item?.isVideo, videoElement]);
+  }, [advanceSlideshow, isSlideshowActive, index, item?.id, item?.isVideo, videoElement]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -271,6 +280,12 @@ export function CircleGalleryLightbox({
     item?.source,
     patientDisplayName,
   );
+
+  const slideshowCountdownLabel = isSlideshowActive
+    ? formatSlideshowCountdown(
+        remainingSlideshowSeconds(slideshowProgress, DEFAULT_SLIDESHOW_SECONDS),
+      )
+    : '';
 
   if (!item) return null;
 
@@ -303,7 +318,11 @@ export function CircleGalleryLightbox({
             className="max-h-full max-w-full rounded-lg"
           />
         ) : imageSrc ? (
-          <CircleAdaptiveLightboxPhoto src={imageSrc} stageBounds={lightboxStageBounds} />
+          <CircleAdaptiveLightboxPhoto
+            key={item.id}
+            src={imageSrc}
+            stageBounds={lightboxStageBounds}
+          />
         ) : (
           <div className="max-w-md rounded-2xl bg-white px-8 py-10 text-center text-slate-500 shadow-lg">
             <ImageIcon size={40} className="mx-auto mb-3 text-slate-300" />
@@ -354,16 +373,26 @@ export function CircleGalleryLightbox({
         <span className="pointer-events-none h-8 px-4 bg-white/95 text-slate-800 rounded-full text-sm font-bold shadow-xl border border-slate-200 tabular-nums flex items-center whitespace-nowrap">
           {index + 1} <span className="text-slate-300 mx-1">/</span> {items.length}
         </span>
-        <button
-          type="button"
-          onClick={() => setIsSlideshowActive((v) => !v)}
-          className="pointer-events-auto w-9 h-9 rounded-full bg-blue-600 text-white shadow-xl flex items-center justify-center hover:bg-blue-700"
-          aria-label={
-            isSlideshowActive ? t('common.aria.pauseSlideshow') : t('common.aria.playSlideshow')
-          }
-        >
-          {isSlideshowActive ? <Pause size={18} fill="white" /> : <Play size={18} fill="white" />}
-        </button>
+        <div className="pointer-events-none flex items-center gap-2">
+          <CircleGalleryLightboxSlideshowTimer
+            active={isSlideshowActive}
+            progress={slideshowProgress}
+            label={slideshowCountdownLabel}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              setSlideshowProgress(0);
+              setIsSlideshowActive((v) => !v);
+            }}
+            className="pointer-events-auto w-9 h-9 rounded-full bg-blue-600 text-white shadow-xl flex items-center justify-center hover:bg-blue-700"
+            aria-label={
+              isSlideshowActive ? t('common.aria.pauseSlideshow') : t('common.aria.playSlideshow')
+            }
+          >
+            {isSlideshowActive ? <Pause size={18} fill="white" /> : <Play size={18} fill="white" />}
+          </button>
+        </div>
       </div>
 
       <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col items-center gap-2 px-4 pb-4 pointer-events-none">
