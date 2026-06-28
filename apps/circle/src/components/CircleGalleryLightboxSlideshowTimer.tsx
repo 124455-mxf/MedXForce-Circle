@@ -9,22 +9,27 @@ function ringDashOffset(progress: number): number {
 }
 
 export function CircleGalleryLightboxSlideshowTimer({
+  visible,
   active,
   progress,
   label,
 }: {
+  /** Show the ring whenever the gallery can slideshow (2+ items). */
+  visible: boolean;
   active: boolean;
   progress: number;
   label: string;
 }) {
-  const dashOffset = ringDashOffset(progress);
+  if (!visible) return null;
+
+  const dashOffset = ringDashOffset(active ? progress : 0);
 
   return (
     <div className="relative w-8 h-8 shrink-0" aria-hidden={!active}>
       <div
         className={cn(
           'absolute inset-0 flex items-center justify-center bg-white rounded-full border border-slate-200 shadow-xl transition-opacity duration-200',
-          active ? 'opacity-100' : 'opacity-0 pointer-events-none',
+          active ? 'opacity-100' : 'opacity-50',
         )}
       >
         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 40 40" aria-hidden>

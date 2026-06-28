@@ -285,7 +285,8 @@ export function CircleGalleryLightbox({
     ? formatSlideshowCountdown(
         remainingSlideshowSeconds(slideshowProgress, DEFAULT_SLIDESHOW_SECONDS),
       )
-    : '';
+    : String(DEFAULT_SLIDESHOW_SECONDS);
+  const showSlideshowTimer = items.length > 1;
 
   if (!item) return null;
 
@@ -375,6 +376,7 @@ export function CircleGalleryLightbox({
         </span>
         <div className="pointer-events-none flex items-center gap-2">
           <CircleGalleryLightboxSlideshowTimer
+            visible={showSlideshowTimer}
             active={isSlideshowActive}
             progress={slideshowProgress}
             label={slideshowCountdownLabel}

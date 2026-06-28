@@ -1,13 +1,37 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import path from 'path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 
+const circleDir = fileURLToPath(new URL('.', import.meta.url));
+const monorepoRoot = path.resolve(circleDir, '../..');
+const pkg = JSON.parse(readFileSync(path.join(circleDir, 'package.json'), 'utf-8')) as {
+  version: string;
+};
+
 const circleBuildId = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+function readGitShortSha(): string {
+  try {
+    return execSync('git rev-parse --short HEAD', {
+      cwd: monorepoRoot,
+      encoding: 'utf8',
+    }).trim();
+  } catch {
+    return 'local';
+  }
+}
+
+const circleGitSha = readGitShortSha();
 
 export default defineConfig({
   define: {
     __CIRCLE_BUILD_ID__: JSON.stringify(circleBuildId),
+    __CIRCLE_APP_VERSION__: JSON.stringify(pkg.version),
+    __CIRCLE_GIT_SHA__: JSON.stringify(circleGitSha),
   },
   plugins: [
     react(),
@@ -22,7 +46,7 @@ export default defineConfig({
           )
           .replace(
             '<title>MedXForce Circle</title>',
-            `<title>MedXForce Circle</title>\n    <!-- circle-build:${circleBuildId} -->`,
+            `<title>MedXForce Circle</title>\n    <!-- circle-build:${circleBuildId} circle-version:${pkg.version} circle-git:${circleGitSha} -->`,
           );
       },
     },

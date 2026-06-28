@@ -1,4 +1,5 @@
 import type { CircleStartupPhase } from '../hooks/useCircleStartupSequence';
+import { formatCircleBuildDetail, formatCircleBuildLabel } from '../lib/circleBuildId';
 
 /** Circle app brand splash color */
 export const STARTUP_BRAND_COLOR = '#F9A142';
@@ -83,6 +84,13 @@ export function CircleStartupSequence({ phase, exiting, tagline }: CircleStartup
               style={{ width: `${Math.max(6, progress)}%` }}
             />
           </div>
+
+          <p
+            className="mt-3 text-center text-[10px] font-medium tracking-wide text-white/75 landscape:mt-2"
+            title={formatCircleBuildDetail()}
+          >
+            {formatCircleBuildLabel()}
+          </p>
         </footer>
       </div>
     </div>
