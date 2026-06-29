@@ -1173,6 +1173,9 @@ export function CircleDashboardScreen({
               ) : null}
               {showAssessmentScheduleCalendar ? (
                 <CircleDashboardAssessmentScheduleSection
+                  db={db}
+                  patientId={patient.patientId}
+                  authorName={user.displayName || user.email || 'Circle'}
                   memberRole={memberRole}
                   byMetricId={byMetricId}
                   treatmentPhase={profileSnapshot?.clinical?.treatmentPhase}

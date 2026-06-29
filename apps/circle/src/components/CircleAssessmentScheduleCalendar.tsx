@@ -1,11 +1,15 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 import { useMemo, useState } from 'react';
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, MapPin, Plus } from 'lucide-react';
 import {
   assessmentScheduleDateKey,
   getAssessmentScheduleCalendar,
+  getCareCalendarByDay,
+  buildAppleMapsUrl,
+  formatCareCalendarTimeRange,
   type AssessmentScheduleDayEvent,
-  type RemoteAssessmentSchedule,
+  type CareCalendarDayEvent,
+  type CareCalendarEntry,
 } from '@medxforce/shared';
 import type { AnalyticsMetricId } from '@medxforce/shared';
 import {
@@ -16,8 +20,11 @@ import { cn } from '../lib/utils';
 
 type CircleAssessmentScheduleCalendarProps = {
   schedule: CircleAssessmentScheduleContext;
+  careEntries?: CareCalendarEntry[];
   t: (path: string, params?: Record<string, unknown>) => string;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
+  onAddAppointment?: (dateKey?: string) => void;
+  onEditAppointment?: (entryId: string) => void;
   compact?: boolean;
 };
 
@@ -66,10 +73,16 @@ function assessmentLabel(
 
 export function CircleAssessmentScheduleCalendar({
   schedule,
+  careEntries = [],
   t,
   onOpenAssessment,
+  onAddAppointment,
+  onEditAppointment,
   compact = false,
 }: CircleAssessmentScheduleCalendarProps) {
+  const ct = (key: string, params?: Record<string, unknown>) =>
+    t(`dashboard.careCalendar.${key}`, params);
+
   const today = new Date();
   const todayKey = assessmentScheduleDateKey(today);
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -91,9 +104,15 @@ export function CircleAssessmentScheduleCalendar({
     [schedule, rangeStart, rangeEnd],
   );
 
+  const careByDay = useMemo(
+    () => getCareCalendarByDay(careEntries, rangeStart, rangeEnd),
+    [careEntries, rangeStart, rangeEnd],
+  );
+
   const monthCells = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
   const selectedEvents = calendarByDay.get(selectedDateKey) ?? [];
-  const hasAnyEvents = calendarByDay.size > 0;
+  const selectedCareEvents = careByDay.get(selectedDateKey) ?? [];
+  const hasAnyEvents = calendarByDay.size > 0 || careByDay.size > 0;
 
   const shiftMonth = (delta: number) => {
     const next = new Date(viewYear, viewMonth + delta, 1);
@@ -128,6 +147,16 @@ export function CircleAssessmentScheduleCalendar({
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          {onAddAppointment && (
+            <button
+              type="button"
+              onClick={() => onAddAppointment(selectedDateKey)}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-violet-600 text-white text-[10px] font-bold hover:bg-violet-700"
+            >
+              <Plus size={14} />
+              {ct('addShort')}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => shiftMonth(-1)}
@@ -151,9 +180,21 @@ export function CircleAssessmentScheduleCalendar({
       </div>
 
       {!hasAnyEvents ? (
-        <p className="text-xs text-slate-400 text-center py-4 flex-1 flex items-center justify-center">
-          {t('dashboard.assessmentScheduleCalendar.emptyMonth')}
-        </p>
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 py-4">
+          <p className="text-xs text-slate-400 text-center">
+            {t('dashboard.assessmentScheduleCalendar.emptyMonth')}
+          </p>
+          {onAddAppointment && (
+            <button
+              type="button"
+              onClick={() => onAddAppointment(selectedDateKey)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-700"
+            >
+              <Plus size={14} />
+              {ct('addShort')}
+            </button>
+          )}
+        </div>
       ) : (
         <>
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain -mx-0.5 px-0.5">
@@ -174,10 +215,13 @@ export function CircleAssessmentScheduleCalendar({
                 }
                 const dateKey = assessmentScheduleDateKey(date);
                 const events = calendarByDay.get(dateKey) ?? [];
+                const careEvents = careByDay.get(dateKey) ?? [];
                 const summary = daySummary(events);
                 const isToday = dateKey === todayKey;
                 const isSelected = dateKey === selectedDateKey;
                 const hasDue = summary.due > 0;
+                const hasCare = careEvents.length > 0;
+                const hasAssessments = events.length > 0;
 
                 return (
                   <button
@@ -187,11 +231,14 @@ export function CircleAssessmentScheduleCalendar({
                     className={cn(
                       'rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-colors',
                       compact ? 'min-h-[2rem] py-0.5' : 'min-h-[2.75rem] py-1',
-                      events.length === 0
+                      !hasAssessments && !hasCare
                         ? 'border-transparent text-slate-300'
-                        : 'border-slate-100 hover:border-blue-200 hover:bg-blue-50/40',
-                      isSelected && 'border-blue-300 bg-blue-50/70 ring-1 ring-blue-200/60',
-                      isToday && !isSelected && 'border-blue-200',
+                        : hasCare
+                          ? 'border-violet-200 bg-violet-50/70 hover:bg-violet-50'
+                          : 'border-slate-100 hover:border-blue-200 hover:bg-blue-50/40',
+                      isSelected && hasCare && 'ring-1 ring-violet-300/70 border-violet-300',
+                      isSelected && !hasCare && 'border-blue-300 bg-blue-50/70 ring-1 ring-blue-200/60',
+                      isToday && !isSelected && (hasCare ? 'border-violet-300' : 'border-blue-200'),
                     )}
                   >
                     <span
@@ -202,8 +249,9 @@ export function CircleAssessmentScheduleCalendar({
                     >
                       {date.getDate()}
                     </span>
-                    {events.length > 0 && (
+                    {(hasAssessments || hasCare) && (
                       <div className="flex gap-0.5">
+                        {hasCare && <span className="w-1 h-1 rounded-full bg-violet-500" />}
                         {summary.due > 0 && <span className="w-1 h-1 rounded-full bg-rose-500" />}
                         {summary.upcoming > 0 && <span className="w-1 h-1 rounded-full bg-amber-400" />}
                         {summary.completed > 0 && !hasDue && summary.upcoming === 0 && (
@@ -227,9 +275,19 @@ export function CircleAssessmentScheduleCalendar({
                 }),
               })}
             </p>
-            {selectedEvents.length === 0 ? (
-              <p className="text-xs text-slate-400">{t('dashboard.assessmentScheduleCalendar.noAssessmentsDay')}</p>
-            ) : (
+            {selectedCareEvents.length > 0 && (
+              <ul className="space-y-1">
+                {selectedCareEvents.map((event) => (
+                  <CareAppointmentListItem
+                    key={`${event.entryId}-${selectedDateKey}`}
+                    event={event}
+                    t={t}
+                    onEdit={() => onEditAppointment?.(event.entryId)}
+                  />
+                ))}
+              </ul>
+            )}
+            {selectedEvents.length > 0 && (
               <ul className="space-y-1">
                 {selectedEvents.map((event) => {
                   const metricId = assessmentScheduleIdToAnalyticsMetric(event.id);
@@ -267,9 +325,65 @@ export function CircleAssessmentScheduleCalendar({
                 })}
               </ul>
             )}
+            {selectedEvents.length === 0 && selectedCareEvents.length === 0 && (
+              <p className="text-xs text-slate-400">
+                {t('dashboard.assessmentScheduleCalendar.noAssessmentsDay')}
+              </p>
+            )}
           </div>
         </>
       )}
     </div>
+  );
+}
+
+function CareAppointmentListItem({
+  event,
+  t,
+  onEdit,
+}: {
+  event: CareCalendarDayEvent;
+  t: CircleAssessmentScheduleCalendarProps['t'];
+  onEdit?: () => void;
+}) {
+  const ct = (key: string, params?: Record<string, unknown>) =>
+    t(`dashboard.careCalendar.${key}`, params);
+  const timeLabel = formatCareCalendarTimeRange(event.startTimeMinutes, event.endTimeMinutes);
+  const mapsUrl = event.address ? buildAppleMapsUrl(event.address) : null;
+
+  return (
+    <li className="rounded-lg bg-violet-50/80 border border-violet-100 px-2 py-1.5 space-y-1">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-slate-800 truncate">{event.title}</p>
+          <p className="text-[9px] font-bold uppercase tracking-wider text-violet-700">
+            {ct(`kinds.${event.kind}`)}
+            {event.source === 'circle' ? ` · ${ct('fromCircle')}` : ''}
+          </p>
+          {timeLabel && <p className="text-[10px] text-slate-500">{timeLabel}</p>}
+        </div>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="shrink-0 text-[10px] font-bold text-violet-700 hover:text-violet-800"
+          >
+            {t('common.edit')}
+          </button>
+        )}
+      </div>
+      {event.details && <p className="text-[10px] text-slate-600 line-clamp-2">{event.details}</p>}
+      {mapsUrl && (
+        <a
+          href={mapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-[10px] font-bold text-violet-700 hover:underline"
+        >
+          <MapPin size={12} />
+          {event.address?.label || ct('openMaps')}
+        </a>
+      )}
+    </li>
   );
 }
