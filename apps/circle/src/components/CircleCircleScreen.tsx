@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
-import { Loader2, Megaphone, MessageCircle, Shield, Stethoscope, Trash2, Undo2, Users } from 'lucide-react';
+import { Loader2, CalendarClock, Megaphone, MessageCircle, Shield, Stethoscope, Trash2, Undo2, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
   canDeleteCircleThreadPostForEveryone,
@@ -15,7 +15,11 @@ import {
   deleteCircleThreadPostForEveryone,
   hideCircleThreadPostForUser,
   isAnnouncementThreadPost,
+  isAppointmentInviteThreadPost,
+  isAppointmentInviteVisibleToMember,
   isDiscussionThreadPost,
+  isSyntheticAppointmentInvitePostId,
+  mergeAppointmentInvitePostsWithCareCalendar,
   unhideCircleThreadPostForUser,
   type CircleMemberRole,
   type CircleMemberThreadKind,
@@ -61,6 +65,7 @@ import {
   isCirclePostUnread,
   circlePostInboxViewsForThread,
   partitionCirclePostInboxViews,
+  summarizeUnreadInboxFolders,
   type CirclePostInboxView,
 } from '../lib/circlePostInboxViews';
 import {
@@ -91,6 +96,8 @@ import {
 } from '../lib/circleUrgencyStyles';
 import { useCircleMemberOnboarding } from '../hooks/useCircleMemberOnboarding';
 import { CircleOnboardingWelcomeCard } from './CircleOnboardingWelcomeCard';
+import { useCircleMemberInviteContext } from '../hooks/useCircleMemberInviteContext';
+import { useCareCalendarEntries } from '../hooks/useCareCalendarEntries';
 
 interface CircleCircleScreenProps {
   user: User;
@@ -119,6 +126,8 @@ function circlePostInboxSubtitle(t: ReturnType<typeof useCircleT>, view: CircleP
       return t('circle.inboxSubtitleDropIns');
     case 'visit_captures':
       return t('circle.inboxSubtitleVisitCaptures');
+    case 'appointments':
+      return t('circle.inboxSubtitleAppointments');
     case 'hidden':
       return t('circle.inboxSubtitleHidden');
     default:
@@ -140,6 +149,8 @@ function circlePostInboxEmptyMessage(
       return t('circle.inboxEmptyDropIns');
     case 'visit_captures':
       return t('circle.inboxEmptyVisitCaptures');
+    case 'appointments':
+      return t('circle.inboxEmptyAppointments');
     case 'hidden':
       return t('circle.inboxEmptyHidden');
     default:
@@ -155,6 +166,8 @@ function circlePostInboxTabLabel(t: ReturnType<typeof useCircleT>, view: CircleP
       return t('circle.tabDropIns');
     case 'visit_captures':
       return t('circle.tabVisitCaptures');
+    case 'appointments':
+      return t('circle.tabAppointments');
     case 'hidden':
       return t('circle.tabHidden');
     default:
@@ -168,6 +181,8 @@ function circlePostInboxTabIcon(view: CirclePostInboxView): LucideIcon | null {
       return Megaphone;
     case 'visit_captures':
       return Stethoscope;
+    case 'appointments':
+      return CalendarClock;
     case 'drop_ins':
       return MessageCircle;
     default:
@@ -182,6 +197,8 @@ function circlePostInboxTabIconClass(view: CirclePostInboxView, active: boolean)
       return 'text-violet-600';
     case 'visit_captures':
       return 'text-teal-600';
+    case 'appointments':
+      return 'text-amber-600';
     case 'drop_ins':
       return 'text-blue-600';
     default:
@@ -221,6 +238,11 @@ export function CircleCircleScreen({
   const patientLanguage = normalizeCircleUiLanguage(remoteSettings?.primaryLanguage);
   const memberLanguages = useCirclePatientMemberLanguages(db, patient.patientId, user.uid);
   const memberRole = patient.role as CircleMemberRole;
+  const { inviteContext: memberInviteContext, memberContactId } = useCircleMemberInviteContext(
+    db,
+    user,
+    patient,
+  );
   const ownRoleLabel = translateCircleMemberRole(t, memberRole);
   const isProxy = patient.role === 'proxy' && !!patient.capabilities.inviteMembers;
   const canOpen = canParticipateInCircleOpenThread(memberRole);
@@ -292,6 +314,20 @@ export function CircleCircleScreen({
     threadEnabled,
     user.uid,
   );
+  const { entries: careCalendarEntries } = useCareCalendarEntries(db, patient.patientId);
+
+  const allPosts = useMemo(
+    () =>
+      activeThread === 'open'
+        ? mergeAppointmentInvitePostsWithCareCalendar(
+            rawPosts,
+            careCalendarEntries,
+            memberInviteContext,
+            patient.patientId,
+          )
+        : rawPosts,
+    [activeThread, careCalendarEntries, memberInviteContext, patient.patientId, rawPosts],
+  );
 
   const showCircleOnboarding =
     showOnboardingWelcome && activeThread === 'open' && inboxView === 'discussion';
@@ -349,8 +385,16 @@ export function CircleCircleScreen({
   ) : null;
 
   const filteredPosts = useMemo(
-    () => filterPostsForInboxView(rawPosts, inboxView, hiddenByPostId, activeThread),
-    [activeThread, hiddenByPostId, inboxView, rawPosts],
+    () =>
+      filterPostsForInboxView(
+        allPosts,
+        inboxView,
+        hiddenByPostId,
+        activeThread,
+        user.uid,
+        memberInviteContext,
+      ),
+    [activeThread, allPosts, hiddenByPostId, inboxView, memberInviteContext, user.uid],
   );
 
   const orderedPosts = useMemo(
@@ -361,10 +405,12 @@ export function CircleCircleScreen({
     [filteredPosts],
   );
 
-  const selectedPost = useMemo(
-    () => rawPosts.find((post) => post.id === selectedPostId) ?? null,
-    [rawPosts, selectedPostId],
-  );
+  const selectedPost = useMemo(() => {
+    const post = allPosts.find((row) => row.id === selectedPostId);
+    if (!post) return null;
+    if (!isAppointmentInviteVisibleToMember(post, user.uid, memberInviteContext)) return null;
+    return post;
+  }, [allPosts, memberInviteContext, selectedPostId, user.uid]);
 
   const selectedPostIsDiscussion = useMemo(
     () => !!selectedPost && isDiscussionThreadPost(selectedPost),
@@ -395,24 +441,38 @@ export function CircleCircleScreen({
       inboxViews.reduce(
         (acc, view) => {
           acc[view] = {
-            total: countPostsForInboxView(rawPosts, view, hiddenByPostId, activeThread),
+            total: countPostsForInboxView(
+              allPosts,
+              view,
+              hiddenByPostId,
+              activeThread,
+              user.uid,
+              memberInviteContext,
+            ),
             unread: countUnreadPostsForInboxView(
-              rawPosts,
+              allPosts,
               view,
               hiddenByPostId,
               activeThread,
               user.uid,
               getPostLastRead,
+              memberInviteContext,
             ),
           };
           return acc;
         },
         {} as Record<CirclePostInboxView, { total: number; unread: number }>,
       ),
-    [activeThread, getPostLastRead, hiddenByPostId, inboxViews, postReadTick, rawPosts, user.uid],
+    [activeThread, allPosts, getPostLastRead, hiddenByPostId, inboxViews, memberInviteContext, postReadTick, user.uid],
   );
 
   const activeTabUnread = inboxTabCounts[inboxView]?.unread ?? 0;
+
+  const unreadFolderBreakdown = useMemo(
+    () =>
+      summarizeUnreadInboxFolders(inboxTabCounts, (view) => circlePostInboxTabLabel(t, view)),
+    [inboxTabCounts, t],
+  );
 
   const authorName = useMemo(
     () => user.displayName?.trim() || user.email?.split('@')[0] || t('circle.circleMemberFallback'),
@@ -421,12 +481,16 @@ export function CircleCircleScreen({
 
   const recentContext = useMemo(
     () =>
-      rawPosts
-        .filter((post) => !hiddenByPostId[post.id])
+      allPosts
+        .filter(
+          (post) =>
+            !hiddenByPostId[post.id] &&
+            isAppointmentInviteVisibleToMember(post, user.uid, memberInviteContext),
+        )
         .slice(-6)
         .map((p) => `${p.authorName}: ${p.text}`)
         .join('\n'),
-    [hiddenByPostId, rawPosts],
+    [allPosts, hiddenByPostId, memberInviteContext, user.uid],
   );
 
   const handleMarkTabRead = useCallback(() => {
@@ -434,13 +498,20 @@ export function CircleCircleScreen({
       patient.patientId,
       user.uid,
       activeThread,
-      filterPostsForInboxView(rawPosts, inboxView, hiddenByPostId, activeThread),
+      filterPostsForInboxView(
+        allPosts,
+        inboxView,
+        hiddenByPostId,
+        activeThread,
+        user.uid,
+        memberInviteContext,
+      ),
     );
-  }, [activeThread, hiddenByPostId, inboxView, patient.patientId, rawPosts, user.uid]);
+  }, [activeThread, allPosts, hiddenByPostId, inboxView, memberInviteContext, patient.patientId, user.uid]);
 
   const openPost = useCallback(
     (postId: string) => {
-      const post = rawPosts.find((row) => row.id === postId);
+      const post = allPosts.find((row) => row.id === postId);
       if (!post) return;
       setReplyDraft('');
       setReplySendError(null);
@@ -455,7 +526,7 @@ export function CircleCircleScreen({
         );
       }
     },
-    [activeThread, inboxView, patient.patientId, rawPosts, user.uid],
+    [activeThread, allPosts, inboxView, patient.patientId, user.uid],
   );
 
   const leavePost = useCallback(() => {
@@ -674,6 +745,11 @@ export function CircleCircleScreen({
                         {t('circle.badgeNew')}
                       </span>
                     )}
+                    {isAppointmentInviteThreadPost(post) ? (
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-violet-700 bg-violet-50 px-1.5 py-0.5 rounded-md">
+                        {t('dashboard.careCalendar.legendAppointment')}
+                      </span>
+                    ) : null}
                     {replyCount > 0 && inboxView === 'discussion' ? (
                       <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
                         {replyCountLabel}
@@ -703,7 +779,7 @@ export function CircleCircleScreen({
             >
               <Undo2 size={16} />
             </button>
-          ) : (
+          ) : !isSyntheticAppointmentInvitePostId(post.id) ? (
             <button
               type="button"
               onClick={() => {
@@ -715,7 +791,7 @@ export function CircleCircleScreen({
             >
               <Trash2 size={16} />
             </button>
-          )}
+          ) : null}
         </div>
       </li>
     );
@@ -817,6 +893,11 @@ export function CircleCircleScreen({
               : undefined
           }
           t={t}
+          db={db}
+          patientId={patient.patientId}
+          memberContactId={memberContactId}
+          memberDocContactId={memberInviteContext.memberDocContactId}
+          memberDisplayName={memberInviteContext.displayName}
         />
         {messageModals}
       </>
@@ -867,6 +948,12 @@ export function CircleCircleScreen({
               ) : undefined
             }
           />
+
+          {unreadCount > 0 && unreadFolderBreakdown ? (
+            <p className="text-xs font-semibold text-red-700 leading-snug">
+              {t('circle.unreadWhere', { places: unreadFolderBreakdown })}
+            </p>
+          ) : null}
 
           <div className={circleTabListClass} role="tablist" aria-label={t('circle.threadsAria')}>
             <button

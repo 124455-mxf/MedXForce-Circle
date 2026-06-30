@@ -47,8 +47,6 @@ import { CircleDashboardPatientLocaleWidget } from './CircleDashboardPatientLoca
 import { CircleGalleryRotatingPreviewWidget } from './CircleGalleryRotatingPreviewWidget';
 import { CircleDashboardCircleMapSection } from './CircleDashboardCircleMapSection';
 import { CircleDashboardCheckInWellnessSection } from './CircleDashboardCheckInWellnessSection';
-import { CircleDashboardAssessmentScheduleSection } from './CircleDashboardAssessmentScheduleSection';
-
 import { CirclePatientCommandConfirmModal } from './CirclePatientCommandConfirmModal';
 
 import { CircleAlertAttentionBanner } from './CircleAlertAttentionBanner';
@@ -551,11 +549,6 @@ export function CircleDashboardScreen({
     memberRole !== 'friend' &&
     showEngagementStats &&
     isWidgetVisible('check-in-wellness-ring');
-  const showAssessmentScheduleCalendar =
-    memberRole !== 'friend' &&
-    showEngagementStats &&
-    isWidgetVisible('assessment-schedule-calendar') &&
-    remoteSettings?.featuresVisibility?.healthAssessments !== false;
   const dailyCheckInsCompletedForDisplay = dailyCheckInEnabled
     ? checkInStats.completed
     : 0;
@@ -1128,7 +1121,7 @@ export function CircleDashboardScreen({
           />
         ) : null}
 
-        {familyGalleryWidget || showCircleMap || showCheckInWellnessRing || showAssessmentScheduleCalendar ? (
+        {familyGalleryWidget || showCircleMap || showCheckInWellnessRing ? (
           <section className="space-y-2">
             <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionStayConnected')}</h3>
             <div className="grid grid-cols-2 gap-3">
@@ -1169,22 +1162,6 @@ export function CircleDashboardScreen({
                   answerTrend={dailyDetail?.answerTrend}
                   enabled={showCheckInWellnessRing}
                   onOpenDetails={() => onOpenAnalyticsDetail('daily-check-in')}
-                />
-              ) : null}
-              {showAssessmentScheduleCalendar ? (
-                <CircleDashboardAssessmentScheduleSection
-                  db={db}
-                  patientId={patient.patientId}
-                  authorName={user.displayName || user.email || 'Circle'}
-                  memberRole={memberRole}
-                  byMetricId={byMetricId}
-                  treatmentPhase={profileSnapshot?.clinical?.treatmentPhase}
-                  appMode={remoteSettings?.appMode}
-                  healthAssessmentsEnabled={remoteSettings?.featuresVisibility?.healthAssessments}
-                  remoteAssessmentSchedule={remoteSettings?.assessmentSchedule}
-                  enabled={showAssessmentScheduleCalendar}
-                  t={t}
-                  onOpenAssessment={onOpenAnalyticsDetail}
                 />
               ) : null}
             </div>

@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import type { Firestore } from 'firebase/firestore';
 import { Check, ChevronLeft, Copy, Loader2, Maximize2, Trash2 } from 'lucide-react';
 import {
   isDropInThreadPost,
@@ -58,6 +59,11 @@ export function CirclePostDetailView({
   onRestore,
   onDeleteForEveryone,
   t,
+  db,
+  patientId,
+  memberContactId,
+  memberDocContactId,
+  memberDisplayName,
 }: {
   post: CircleMemberThreadPost;
   isOwn: boolean;
@@ -83,6 +89,11 @@ export function CirclePostDetailView({
   onRestore?: () => void;
   onDeleteForEveryone?: () => void;
   t: CircleTranslator;
+  db?: Firestore;
+  patientId?: string;
+  memberContactId?: string;
+  memberDocContactId?: string;
+  memberDisplayName?: string;
 }) {
   const [copied, setCopied] = useState(false);
   const [expandedOpen, setExpandedOpen] = useState(false);
@@ -180,6 +191,12 @@ export function CirclePostDetailView({
             viewerLanguage={viewerLanguage}
             t={t}
             disableTruncate
+            db={db}
+            patientId={patientId}
+            memberUid={currentUserUid}
+            memberContactId={memberContactId}
+            memberDocContactId={memberDocContactId}
+            memberDisplayName={memberDisplayName}
           />
           <div className="mt-6 flex flex-wrap items-center gap-2">
             <button
@@ -283,6 +300,12 @@ export function CirclePostDetailView({
           viewerLanguage={viewerLanguage}
           t={t}
           disableTruncate
+          db={db}
+          patientId={patientId}
+          memberUid={currentUserUid}
+          memberContactId={memberContactId}
+          memberDocContactId={memberDocContactId}
+          memberDisplayName={memberDisplayName}
         />
       </CircleMessageExpandOverlay>
     </>

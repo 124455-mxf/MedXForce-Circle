@@ -111,7 +111,7 @@ export const CIRCLE_DASHBOARD_WIDGET_SECTIONS: Record<
     'assessments',
   ],
   you: ['diary', 'circle', 'gallery-engagement'],
-  stayConnected: ['circle-map', 'check-in-wellness-ring', 'assessment-schedule-calendar'],
+  stayConnected: ['circle-map', 'check-in-wellness-ring'],
   patientApp: ['remote-settings', 'user-profile'],
 };
 

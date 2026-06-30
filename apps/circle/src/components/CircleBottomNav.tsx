@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Calendar,
   Image,
   LayoutDashboard,
   MessageSquare,
@@ -13,7 +14,13 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
-import { canViewAnalyticsTab, canViewRemoteSettingsTab, type PatientCapabilities } from '@medxforce/shared';
+import {
+  canViewAnalyticsTab,
+  canViewRemoteSettingsTab,
+  normalizeMemberRole,
+  type CircleMemberRole,
+  type PatientCapabilities,
+} from '@medxforce/shared';
 import { cn } from '../lib/utils';
 import { CircleNavBadge } from './CircleCountBadge';
 import { useCircleT } from '../lib/circleI18nContext';
@@ -22,6 +29,7 @@ import type { CircleTranslator } from '../lib/circleI18nContext';
 export type CircleMainTab =
   | 'dashboard'
   | 'messages'
+  | 'schedule'
   | 'media'
   | 'circle'
   | 'admin'
@@ -44,6 +52,7 @@ export interface CircleNavItem {
 export interface CircleBottomNavBadges {
   messages?: number;
   circle?: number;
+  schedule?: number;
   more?: number;
 }
 
@@ -73,6 +82,7 @@ function badgeCountForTab(tab: CircleMainTab, badges?: CircleBottomNavBadges): n
   if (!badges) return 0;
   if (tab === 'messages') return badges.messages ?? 0;
   if (tab === 'circle') return badges.circle ?? 0;
+  if (tab === 'schedule') return badges.schedule ?? 0;
   return 0;
 }
 
@@ -153,7 +163,10 @@ export function CircleBottomNav({
                   >
                     <Icon size={compact ? 18 : 19} strokeWidth={active ? 2.25 : 1.75} />
                   </span>
-                  <CircleNavBadge count={badgeCountForTab(item.id, badges)} />
+                  <CircleNavBadge
+                    count={badgeCountForTab(item.id, badges)}
+                    onActive={active}
+                  />
                 </NavIconSlot>
                 <span
                   className={cn(
@@ -318,21 +331,28 @@ export function CircleBottomNav({
   );
 }
 
-export function primaryNavItemsForPatient(capabilities: PatientCapabilities): CircleNavItem[] {
+export type CircleNavBuildOptions = {
+  memberRole?: CircleMemberRole;
+  healthAssessmentsEnabled?: boolean;
+};
+
+export function primaryNavItemsForPatient(
+  capabilities: PatientCapabilities,
+  options: CircleNavBuildOptions = {},
+): CircleNavItem[] {
+  const memberRole = options.memberRole ? normalizeMemberRole(options.memberRole) : undefined;
+  const showSchedule =
+    memberRole !== 'friend' && options.healthAssessmentsEnabled !== false;
+
   const items: CircleNavItem[] = [{ id: 'dashboard', label: 'Home', icon: LayoutDashboard }];
 
   if (capabilities.messaging) {
     items.push({ id: 'messages', label: 'Messages', icon: MessageSquare });
   }
-  if (capabilities.viewCircleMedia || capabilities.richMediaUpload) {
-    items.push({ id: 'media', label: 'Media', icon: Image });
-  }
 
-  items.push({
-    id: 'circle',
-    label: 'Circle',
-    icon: Users,
-  });
+  if (showSchedule) {
+    items.push({ id: 'schedule', label: 'Schedule', icon: Calendar });
+  }
 
   items.push({
     id: 'diary',
@@ -340,11 +360,26 @@ export function primaryNavItemsForPatient(capabilities: PatientCapabilities): Ci
     icon: ScrollText,
   });
 
+  items.push({
+    id: 'circle',
+    label: 'Circle',
+    icon: Users,
+  });
+
   return items;
 }
 
 export function moreNavItemsForPatient(capabilities: PatientCapabilities): CircleNavItem[] {
   const items: CircleNavItem[] = [];
+
+  if (capabilities.viewCircleMedia || capabilities.richMediaUpload) {
+    items.push({
+      id: 'media',
+      label: 'Media',
+      icon: Image,
+      description: 'Photos & gallery',
+    });
+  }
 
   if (capabilities.inviteMembers) {
     items.push({
@@ -389,18 +424,25 @@ export function moreNavItemsForPatient(capabilities: PatientCapabilities): Circl
   return items;
 }
 
-export function allNavItemsForPatient(capabilities: PatientCapabilities): CircleNavItem[] {
-  return [...primaryNavItemsForPatient(capabilities), ...moreNavItemsForPatient(capabilities)];
+export function allNavItemsForPatient(
+  capabilities: PatientCapabilities,
+  options: CircleNavBuildOptions = {},
+): CircleNavItem[] {
+  return [...primaryNavItemsForPatient(capabilities, options), ...moreNavItemsForPatient(capabilities)];
 }
 
 /** @deprecated Use primaryNavItemsForPatient + moreNavItemsForPatient */
-export function navItemsForPatient(capabilities: PatientCapabilities): CircleNavItem[] {
-  return allNavItemsForPatient(capabilities);
+export function navItemsForPatient(
+  capabilities: PatientCapabilities,
+  options: CircleNavBuildOptions = {},
+): CircleNavItem[] {
+  return allNavItemsForPatient(capabilities, options);
 }
 
 const NAV_LABEL_KEYS: Record<CircleMainTab, string> = {
   dashboard: 'nav.home',
   messages: 'nav.messages',
+  schedule: 'nav.schedule',
   media: 'nav.media',
   circle: 'nav.circle',
   diary: 'nav.diary',
@@ -412,6 +454,7 @@ const NAV_LABEL_KEYS: Record<CircleMainTab, string> = {
 };
 
 const NAV_DESC_KEYS: Partial<Record<CircleMainTab, string>> = {
+  media: 'nav.mediaDesc',
   admin: 'nav.adminDesc',
   analytics: 'nav.analyticsDesc',
   'remote-settings': 'nav.remoteSettingsDesc',

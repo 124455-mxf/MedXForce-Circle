@@ -26,6 +26,7 @@ import {
 } from './CircleBottomNav';
 import { useCircleI18nContext } from '../lib/circleI18nContext';
 import { CircleDiaryScreen } from './CircleDiaryScreen';
+import { CircleScheduleScreen } from './CircleScheduleScreen';
 import { CircleKnowScreen } from './CircleKnowScreen';
 import { CircleMedXForceLabScreen } from './CircleMedXForceLabScreen';
 import { CirclePatientSwitcher } from './CirclePatientSwitcher';
@@ -51,6 +52,7 @@ import { useCircleAlertAttentionState } from '../hooks/useCircleAlertAttentionSt
 import { useFamilyGalleryDashboard } from '../hooks/useFamilyGalleryDashboard';
 import { DASHBOARD_STATS_DAYS } from '../lib/circleDashboardStats';
 import { useCircleMemberThreadUnread } from '../hooks/useCircleMemberThreadUnread';
+import { useScheduleActionBadgeCount } from '../hooks/useScheduleActionBadgeCount';
 import { useCirclePatientThreads } from '../hooks/useCirclePatientThreads';
 import { CirclePatientThreadsProvider } from '../context/CirclePatientThreadsContext';
 import { useCircleToast } from '../hooks/useCircleToast';
@@ -324,10 +326,21 @@ export function CircleMainShell({
     selectedPatient?.patientId,
   );
 
+  const navBuildOptions = useMemo(
+    () => ({
+      memberRole,
+      healthAssessmentsEnabled: remoteSettings?.featuresVisibility?.healthAssessments,
+    }),
+    [memberRole, remoteSettings?.featuresVisibility?.healthAssessments],
+  );
+
   const primaryNavItems = useMemo(() => {
     if (!selectedPatient) return [];
-    return localizeNavItems(primaryNavItemsForPatient(selectedPatient.capabilities), t);
-  }, [selectedPatient, t]);
+    return localizeNavItems(
+      primaryNavItemsForPatient(selectedPatient.capabilities, navBuildOptions),
+      t,
+    );
+  }, [selectedPatient, navBuildOptions, t]);
 
   const moreNavItems = useMemo(() => {
     if (!selectedPatient) return [];
@@ -336,8 +349,8 @@ export function CircleMainShell({
 
   const allNavItems = useMemo(() => {
     if (!selectedPatient) return [];
-    return allNavItemsForPatient(selectedPatient.capabilities);
-  }, [selectedPatient]);
+    return allNavItemsForPatient(selectedPatient.capabilities, navBuildOptions);
+  }, [selectedPatient, navBuildOptions]);
 
   const threadState = useCirclePatientThreads(
     db,
@@ -377,6 +390,14 @@ export function CircleMainShell({
     selectedPatient?.patientId ?? '',
     user,
     selectedPatient?.role ?? '',
+    selectedPatient,
+  );
+
+  const scheduleActionBadgeCount = useScheduleActionBadgeCount(
+    db,
+    selectedPatient?.patientId,
+    user,
+    selectedPatient,
   );
 
   const galleryDashboard = useFamilyGalleryDashboard(
@@ -402,10 +423,12 @@ export function CircleMainShell({
     return {
       messages: messagesUnread,
       circle: circleThreadUnread.unreadCount,
+      schedule: scheduleActionBadgeCount,
       more: 0,
     };
   }, [
     circleThreadUnread.unreadCount,
+    scheduleActionBadgeCount,
     selectedPatient?.capabilities.messaging,
     threadState.unreadCount,
   ]);
@@ -503,6 +526,7 @@ export function CircleMainShell({
             'flex-1 min-h-0',
             activeTab === 'messages' ||
               activeTab === 'media' ||
+              activeTab === 'schedule' ||
               activeTab === 'diary' ||
               activeTab === 'circle' ||
               activeTab === 'analytics' ||
@@ -574,6 +598,16 @@ export function CircleMainShell({
                 draftGuardRef={replyDraftGuardRef}
               />
               </Suspense>
+            </div>
+          )}
+          {activeTab === 'schedule' && selectedPatient && (
+            <div className="flex flex-col flex-1 min-h-0 min-w-0">
+              <CircleScheduleScreen
+                user={user}
+                db={db}
+                patient={selectedPatient}
+                onOpenAssessment={handleOpenAnalyticsDetail}
+              />
             </div>
           )}
           {activeTab === 'media' && (

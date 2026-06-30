@@ -2,22 +2,48 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Firestore } from 'firebase/firestore';
 import { AnimatePresence, motion } from 'motion/react';
-import { MapPin, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import { CircleCareCalendarAddressFields } from './CircleCareCalendarAddressFields';
+import { CircleCareCalendarAttendeeFields } from './CircleCareCalendarAttendeeFields';
+import { CircleCareCalendarAppointmentEpisodeFields, CircleCareCalendarAppointmentTaskFields } from './CircleCareCalendarAppointmentFields';
+import { CareCalendarDiscardConfirmModal } from './CareCalendarDiscardConfirmModal';
+import { CircleCareCalendarDurationSelect } from './CircleCareCalendarDurationSelect';
+import { CircleCareCalendarTimeSelect } from './CircleCareCalendarTimeSelect';
 import {
   CARE_CALENDAR_KINDS,
+  CARE_CALENDAR_MIN_DURATION_MINUTES,
   careCalendarDateKey,
+  careCalendarDurationFromRange,
+  careCalendarEndMinutesFromDuration,
+  careCalendarTimeInputValue,
+  clampCareCalendarDurationMinutes,
+  defaultCareCalendarStartTimeForDate,
   defaultWeeklyRecurrenceDays,
+  hasCareCalendarAddress,
+  parseCareCalendarTimeInput,
   type CareCalendarAddress,
+  type CareCalendarAttendee,
   type CareCalendarEntry,
   type CareCalendarEntryKind,
   type CareCalendarRecurrence,
+  defaultNewCircleCareCalendarAttendees,
+  sanitizeCareCalendarAttendees,
+  defaultAppointmentTasksForSubtype,
+  defaultVisitSubtypeForKind,
+  sanitizeCareCalendarAppointmentTasks,
+  supportsCareCalendarAppointmentEpisode,
+  type CareCalendarAppointmentTask,
+  type CareCalendarVisitSubtype,
+  type CircleMemberRole,
 } from '@medxforce/shared';
 import {
   cancelCareCalendarEntry,
   createCareCalendarEntry,
   updateCareCalendarEntry,
   type CareCalendarEntryInput,
+  type CareCalendarInviteContext,
 } from '../services/careCalendarService';
+import { useCareCalendarAttendeeOptions } from '../hooks/useCareCalendarAttendeeOptions';
 import { cn } from '../lib/utils';
 
 type CircleCareCalendarEntryModalProps = {
@@ -25,6 +51,10 @@ type CircleCareCalendarEntryModalProps = {
   db: Firestore;
   patientId: string;
   authorName: string;
+  authorUid: string;
+  authorRole: CircleMemberRole;
+  organizerContactId?: string;
+  organizerContactReady?: boolean;
   initialDateKey?: string;
   editingEntry?: CareCalendarEntry | null;
   t: (path: string, params?: Record<string, unknown>) => string;
@@ -33,22 +63,6 @@ type CircleCareCalendarEntryModalProps = {
 };
 
 type RecurrenceMode = 'once' | 'daily' | 'weekly' | 'monthly';
-
-function timeInputValue(minutes?: number): string {
-  if (minutes == null || Number.isNaN(minutes)) return '';
-  const h = Math.floor(minutes / 60) % 24;
-  const m = minutes % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
-function parseTimeInput(value: string): number | undefined {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
-  if (!match) return undefined;
-  const h = Number(match[1]);
-  const m = Number(match[2]);
-  if (h < 0 || h > 23 || m < 0 || m > 59) return undefined;
-  return h * 60 + m;
-}
 
 function emptyAddress(): CareCalendarAddress {
   return { label: '', line1: '', city: '', state: '', postalCode: '', country: '' };
@@ -59,6 +73,10 @@ export function CircleCareCalendarEntryModal({
   db,
   patientId,
   authorName,
+  authorUid,
+  authorRole,
+  organizerContactId,
+  organizerContactReady = true,
   initialDateKey,
   editingEntry,
   t,
@@ -73,14 +91,38 @@ export function CircleCareCalendarEntryModal({
   const [title, setTitle] = useState('');
   const [details, setDetails] = useState('');
   const [startDateKey, setStartDateKey] = useState(todayKey);
-  const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('');
+  const [startTime, setStartTime] = useState(() => defaultCareCalendarStartTimeForDate(todayKey));
+  const [durationMinutes, setDurationMinutes] = useState(CARE_CALENDAR_MIN_DURATION_MINUTES);
   const [recurrenceMode, setRecurrenceMode] = useState<RecurrenceMode>('once');
   const [weeklyDays, setWeeklyDays] = useState<number[]>([new Date().getDay()]);
   const [untilDateKey, setUntilDateKey] = useState('');
   const [address, setAddress] = useState<CareCalendarAddress>(emptyAddress());
+  const [attendees, setAttendees] = useState<CareCalendarAttendee[]>([]);
+  const [visitSubtype, setVisitSubtype] = useState<CareCalendarVisitSubtype | undefined>('primary_care');
+  const [doctorName, setDoctorName] = useState('');
+  const [supportingNotes, setSupportingNotes] = useState('');
+  const [appointmentTasks, setAppointmentTasks] = useState<CareCalendarAppointmentTask[]>([]);
   const [busy, setBusy] = useState(false);
+  const attendeeOptions = useCareCalendarAttendeeOptions(db, patientId);
   const [error, setError] = useState<string | null>(null);
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
+
+  const hasDraftContent = useMemo(() => {
+    if (editingEntry) return false;
+    if (title.trim() || details.trim() || supportingNotes.trim() || doctorName.trim()) return true;
+    if (attendees.length > 0) return true;
+    if (hasCareCalendarAddress(address)) return true;
+    if (appointmentTasks.some((task) => task.text?.trim())) return true;
+    return false;
+  }, [address, appointmentTasks, attendees.length, details, doctorName, editingEntry, supportingNotes, title]);
+
+  const requestClose = () => {
+    if (hasDraftContent) {
+      setDiscardConfirmOpen(true);
+      return;
+    }
+    onClose();
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -90,8 +132,13 @@ export function CircleCareCalendarEntryModal({
       setTitle(editingEntry.title);
       setDetails(editingEntry.details || '');
       setStartDateKey(editingEntry.startDateKey);
-      setStartTime(timeInputValue(editingEntry.startTimeMinutes) || '09:00');
-      setEndTime(timeInputValue(editingEntry.endTimeMinutes));
+      setStartTime(careCalendarTimeInputValue(editingEntry.startTimeMinutes) || '09:00');
+      setDurationMinutes(
+        careCalendarDurationFromRange(
+          editingEntry.startTimeMinutes,
+          editingEntry.endTimeMinutes,
+        ),
+      );
       if (editingEntry.recurrence.type === 'daily') setRecurrenceMode('daily');
       else if (editingEntry.recurrence.type === 'weekly') setRecurrenceMode('weekly');
       else if (editingEntry.recurrence.type === 'monthly') setRecurrenceMode('monthly');
@@ -107,20 +154,73 @@ export function CircleCareCalendarEntryModal({
           : '';
       setUntilDateKey(until);
       setAddress(editingEntry.address ? { ...emptyAddress(), ...editingEntry.address } : emptyAddress());
+      setAttendees(
+        editingEntry.attendees ? sanitizeCareCalendarAttendees(editingEntry.attendees) : [],
+      );
+      setVisitSubtype(editingEntry.visitSubtype);
+      setDoctorName(editingEntry.doctorName || '');
+      setSupportingNotes(editingEntry.supportingNotes || '');
+      setAppointmentTasks(editingEntry.appointmentTasks ?? []);
     } else {
       setKind('doctor');
       setTitle('');
       setDetails('');
       const dateKey = initialDateKey || todayKey;
       setStartDateKey(dateKey);
-      setStartTime('09:00');
-      setEndTime('');
+      setStartTime(defaultCareCalendarStartTimeForDate(dateKey));
+      setDurationMinutes(CARE_CALENDAR_MIN_DURATION_MINUTES);
       setRecurrenceMode('once');
       setWeeklyDays(defaultWeeklyRecurrenceDays(dateKey));
       setUntilDateKey('');
       setAddress(emptyAddress());
+      setAttendees([]);
+      const defaultSubtype = defaultVisitSubtypeForKind('doctor');
+      setVisitSubtype(defaultSubtype);
+      setDoctorName('');
+      setSupportingNotes('');
+      setAppointmentTasks(defaultAppointmentTasksForSubtype(defaultSubtype));
     }
   }, [open, editingEntry, initialDateKey, todayKey]);
+
+  const handleKindChange = (nextKind: CareCalendarEntryKind) => {
+    setKind(nextKind);
+    if (!editingEntry && supportsCareCalendarAppointmentEpisode(nextKind)) {
+      const subtype = defaultVisitSubtypeForKind(nextKind);
+      setVisitSubtype(subtype);
+      setAppointmentTasks(defaultAppointmentTasksForSubtype(subtype));
+    }
+    if (!supportsCareCalendarAppointmentEpisode(nextKind)) {
+      setVisitSubtype(undefined);
+      setSupportingNotes('');
+      setAppointmentTasks([]);
+    }
+  };
+
+  const handleVisitSubtypeChange = (subtype: CareCalendarVisitSubtype | undefined) => {
+    setVisitSubtype(subtype);
+    if (!editingEntry && subtype) {
+      setAppointmentTasks(defaultAppointmentTasksForSubtype(subtype));
+    }
+  };
+
+  useEffect(() => {
+    if (!open || editingEntry || !organizerContactReady) return;
+
+    const patientOption = attendeeOptions.find((option) => option.role === 'patient');
+    if (!patientOption) return;
+
+    if (
+      organizerContactId &&
+      !attendeeOptions.some((option) => option.contactId === organizerContactId)
+    ) {
+      return;
+    }
+
+    setAttendees((current) => {
+      if (current.length > 0) return current;
+      return defaultNewCircleCareCalendarAttendees(attendeeOptions, organizerContactId);
+    });
+  }, [open, editingEntry, attendeeOptions, organizerContactId, organizerContactReady]);
 
   const recurrence = useMemo((): CareCalendarRecurrence => {
     if (recurrenceMode === 'daily') {
@@ -139,44 +239,98 @@ export function CircleCareCalendarEntryModal({
     return { type: 'once' };
   }, [recurrenceMode, weeklyDays, untilDateKey, startDateKey]);
 
-  const buildInput = (): CareCalendarEntryInput => ({
-    kind,
-    title,
-    details,
-    startDateKey,
-    startTimeMinutes: parseTimeInput(startTime),
-    endTimeMinutes: parseTimeInput(endTime),
+  const buildInput = (): CareCalendarEntryInput => {
+    const startM = parseCareCalendarTimeInput(startTime);
+    return {
+      kind,
+      title,
+      details,
+      startDateKey,
+      startTimeMinutes: startM,
+      endTimeMinutes:
+        startM != null
+          ? careCalendarEndMinutesFromDuration(startM, durationMinutes)
+          : undefined,
     recurrence,
-    address: address.label.trim()
+    address: hasCareCalendarAddress(address)
       ? {
-          label: address.label.trim(),
+          label: address.label.trim() || address.line1?.trim() || 'Location',
           line1: address.line1?.trim() || undefined,
+          suite: address.suite?.trim() || undefined,
           city: address.city?.trim() || undefined,
           state: address.state?.trim() || undefined,
           postalCode: address.postalCode?.trim() || undefined,
           country: address.country?.trim() || undefined,
+          latitude: address.latitude,
+          longitude: address.longitude,
         }
+      : undefined,
+    attendees: (() => {
+      const cleaned = sanitizeCareCalendarAttendees(attendees);
+      return cleaned.length ? cleaned : undefined;
+    })(),
+    visitSubtype: supportsCareCalendarAppointmentEpisode(kind) ? visitSubtype : undefined,
+    supportingNotes: supportsCareCalendarAppointmentEpisode(kind) ? supportingNotes : undefined,
+    doctorName: kind === 'doctor' ? doctorName.trim() || undefined : undefined,
+    appointmentTasks: supportsCareCalendarAppointmentEpisode(kind)
+      ? sanitizeCareCalendarAppointmentTasks(appointmentTasks)
       : undefined,
     source: 'circle',
     createdByName: authorName,
-  });
+    };
+  };
+
+  const handleStartDateKeyChange = (dateKey: string) => {
+    setStartDateKey(dateKey);
+    if (editingEntry) return;
+    const nextStart = defaultCareCalendarStartTimeForDate(dateKey);
+    setStartTime(nextStart);
+    const startM = parseCareCalendarTimeInput(nextStart);
+    if (startM != null) {
+      setDurationMinutes((current) => clampCareCalendarDurationMinutes(startM, current));
+    }
+  };
+
+  const handleStartTimeChange = (value: string) => {
+    setStartTime(value);
+    const startM = parseCareCalendarTimeInput(value);
+    if (startM == null) return;
+    setDurationMinutes((current) => clampCareCalendarDurationMinutes(startM, current));
+  };
 
   const handleSave = async () => {
     if (!title.trim()) {
       setError(ct('errors.titleRequired'));
       return;
     }
+    const startM = parseCareCalendarTimeInput(startTime);
+    if (startM == null) {
+      setError(ct('errors.startTimeRequired'));
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
       const input = buildInput();
+      const inviteContext: CareCalendarInviteContext = {
+        authorUid,
+        authorRole,
+        authorName,
+        previousAttendees: editingEntry?.attendees,
+      };
       if (editingEntry) {
-        await updateCareCalendarEntry(db, patientId, editingEntry.id, input);
+        await updateCareCalendarEntry(db, patientId, editingEntry.id, input, inviteContext);
+        onSaved?.();
+        onClose();
       } else {
-        await createCareCalendarEntry(db, patientId, input);
+        const result = await createCareCalendarEntry(db, patientId, input, inviteContext);
+        onSaved?.();
+        if (result.inviteNotifyFailed) {
+          setError(ct('errors.inviteNotifyFailed'));
+          return;
+        }
+        onClose();
       }
-      onSaved?.();
-      onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : ct('errors.saveFailed'));
     } finally {
@@ -205,6 +359,7 @@ export function CircleCareCalendarEntryModal({
   };
 
   return (
+    <>
     <AnimatePresence>
       {open && (
         <motion.div
@@ -212,7 +367,7 @@ export function CircleCareCalendarEntryModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm"
-          onClick={onClose}
+          onClick={requestClose}
         >
           <motion.div
             initial={{ y: 24, opacity: 0 }}
@@ -227,7 +382,7 @@ export function CircleCareCalendarEntryModal({
               </h3>
               <button
                 type="button"
-                onClick={onClose}
+                onClick={requestClose}
                 className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"
               >
                 <X size={20} />
@@ -240,7 +395,7 @@ export function CircleCareCalendarEntryModal({
                   <button
                     key={k}
                     type="button"
-                    onClick={() => setKind(k)}
+                    onClick={() => handleKindChange(k)}
                     className={cn(
                       'px-3 py-2.5 rounded-xl text-sm font-bold border transition-colors',
                       kind === k
@@ -263,6 +418,18 @@ export function CircleCareCalendarEntryModal({
                 />
               </label>
 
+              {kind === 'doctor' ? (
+                <label className="block space-y-1.5">
+                  <span className="text-sm font-bold text-slate-700">{ct('fields.doctorName')}</span>
+                  <input
+                    value={doctorName}
+                    onChange={(e) => setDoctorName(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200"
+                    placeholder={ct('fields.doctorNamePlaceholder')}
+                  />
+                </label>
+              ) : null}
+
               <label className="block space-y-1.5">
                 <span className="text-sm font-bold text-slate-700">{ct('fields.details')}</span>
                 <textarea
@@ -274,35 +441,82 @@ export function CircleCareCalendarEntryModal({
                 />
               </label>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <label className="block space-y-1.5 sm:col-span-1">
+              <CircleCareCalendarAppointmentEpisodeFields
+                kind={kind}
+                visitSubtype={visitSubtype}
+                onVisitSubtypeChange={handleVisitSubtypeChange}
+                supportingNotes={supportingNotes}
+                onSupportingNotesChange={setSupportingNotes}
+                t={ct}
+              />
+
+              <div className="space-y-3">
+                <label className="block space-y-1.5 min-w-0">
                   <span className="text-sm font-bold text-slate-700">{ct('fields.date')}</span>
                   <input
                     type="date"
                     value={startDateKey}
-                    onChange={(e) => setStartDateKey(e.target.value)}
-                    className="w-full px-3 py-3 rounded-xl border border-slate-200"
+                    onChange={(e) => handleStartDateKeyChange(e.target.value)}
+                    className="w-full min-w-0 max-w-full box-border px-3 py-3 rounded-xl border border-slate-200"
                   />
                 </label>
-                <label className="block space-y-1.5">
-                  <span className="text-sm font-bold text-slate-700">{ct('fields.startTime')}</span>
-                  <input
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full px-3 py-3 rounded-xl border border-slate-200"
-                  />
-                </label>
-                <label className="block space-y-1.5">
-                  <span className="text-sm font-bold text-slate-700">{ct('fields.endTime')}</span>
-                  <input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full px-3 py-3 rounded-xl border border-slate-200"
-                  />
-                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="block space-y-1.5 min-w-0">
+                    <span className="text-sm font-bold text-slate-700">{ct('fields.startTime')}</span>
+                    <CircleCareCalendarTimeSelect
+                      value={startTime}
+                      onChange={handleStartTimeChange}
+                      className="w-full min-w-0 max-w-full box-border px-3 py-3 rounded-xl border border-slate-200"
+                      aria-label={ct('fields.startTime')}
+                    />
+                  </label>
+                  <label className="block space-y-1.5 min-w-0">
+                    <span className="text-sm font-bold text-slate-700">{ct('fields.duration')}</span>
+                    <CircleCareCalendarDurationSelect
+                      valueMinutes={durationMinutes}
+                      onChange={setDurationMinutes}
+                      startMinutes={parseCareCalendarTimeInput(startTime) ?? undefined}
+                      formatOption={(minutes) =>
+                        minutes < 60
+                          ? ct('fields.durationMinutes', { count: minutes })
+                          : minutes % 60 === 0
+                            ? ct('fields.durationHours', { count: minutes / 60 })
+                            : ct('fields.durationHoursMinutes', {
+                                hours: Math.floor(minutes / 60),
+                                minutes: minutes % 60,
+                              })
+                      }
+                      className="w-full min-w-0 max-w-full box-border px-3 py-3 rounded-xl border border-slate-200"
+                      aria-label={ct('fields.duration')}
+                    />
+                  </label>
+                </div>
               </div>
+
+              <CircleCareCalendarAttendeeFields
+                options={attendeeOptions}
+                attendees={attendees}
+                onChange={setAttendees}
+                translate={ct}
+                roleLabel={(key) => {
+                  const role = key.replace('circleRoles.', '');
+                  return t(`dashboard.circleMap.roles.${role}`);
+                }}
+                searchPlaceholder={ct('fields.attendeeSearchPlaceholder')}
+                searchNoMatches={ct('fields.attendeeSearchNoMatches')}
+                caregiversSectionLabel={ct('fields.attendeesCaregiversSection')}
+                familySectionLabel={ct('fields.attendeesFamilySection')}
+                patientSectionLabel={ct('fields.attendeesPatientSection')}
+              />
+
+              <CircleCareCalendarAppointmentTaskFields
+                kind={kind}
+                visitSubtype={visitSubtype}
+                appointmentTasks={appointmentTasks}
+                onAppointmentTasksChange={setAppointmentTasks}
+                t={ct}
+                isEditing={!!editingEntry}
+              />
 
               <div className="space-y-2">
                 <span className="text-sm font-bold text-slate-700">{ct('fields.recurrence')}</span>
@@ -355,38 +569,11 @@ export function CircleCareCalendarEntryModal({
                 )}
               </div>
 
-              <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
-                <div className="flex items-center gap-2 text-slate-800 font-bold">
-                  <MapPin size={18} />
-                  <span>{ct('fields.location')}</span>
-                </div>
-                <input
-                  value={address.label}
-                  onChange={(e) => setAddress((a) => ({ ...a, label: e.target.value }))}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white"
-                  placeholder={ct('fields.locationLabel')}
-                />
-                <input
-                  value={address.line1 || ''}
-                  onChange={(e) => setAddress((a) => ({ ...a, line1: e.target.value }))}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white"
-                  placeholder={ct('fields.addressLine')}
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    value={address.city || ''}
-                    onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white"
-                    placeholder={ct('fields.city')}
-                  />
-                  <input
-                    value={address.state || ''}
-                    onChange={(e) => setAddress((a) => ({ ...a, state: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white"
-                    placeholder={ct('fields.state')}
-                  />
-                </div>
-              </div>
+              <CircleCareCalendarAddressFields
+                address={address}
+                onChange={setAddress}
+                translate={ct}
+              />
 
               {error && <p className="text-sm font-medium text-red-600">{error}</p>}
 
@@ -415,5 +602,18 @@ export function CircleCareCalendarEntryModal({
         </motion.div>
       )}
     </AnimatePresence>
+    <CareCalendarDiscardConfirmModal
+      open={discardConfirmOpen}
+      title={ct('discardConfirmTitle')}
+      message={ct('discardConfirmDesc')}
+      confirmLabel={ct('discardAction')}
+      cancelLabel={ct('keepEditing')}
+      onClose={() => setDiscardConfirmOpen(false)}
+      onConfirm={() => {
+        setDiscardConfirmOpen(false);
+        onClose();
+      }}
+    />
+    </>
   );
 }

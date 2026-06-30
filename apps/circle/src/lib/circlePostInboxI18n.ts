@@ -1,8 +1,11 @@
 import {
   circleThreadPostBoldTitleLine,
+  isAppointmentInviteThreadPost,
   isDropInThreadPost,
   isVisitCaptureThreadPost,
+  parseAppointmentInvitePost,
   parseVisitCapturePostText,
+  APPOINTMENT_INVITE_POST_MARKER,
   type CircleMemberThreadPost,
 } from '@medxforce/shared';
 import type { CircleUiLanguage } from './circleLanguages';
@@ -64,6 +67,14 @@ export function circlePostInboxTitle(
     const parsed = parseVisitCapturePostText(post.text);
     if (parsed?.heading) return parsed.heading;
   }
+  if (isAppointmentInviteThreadPost(post)) {
+    const parsed = parseAppointmentInvitePost(post);
+    if (parsed?.title) return parsed.title;
+    const firstLine = post.text.split('\n')[0]?.trim() ?? '';
+    if (firstLine.startsWith(APPOINTMENT_INVITE_POST_MARKER)) {
+      return firstLine.slice(APPOINTMENT_INVITE_POST_MARKER.length).trim();
+    }
+  }
   const boldLine = circleThreadPostBoldTitleLine(post);
   if (boldLine) {
     const newlineIdx = post.text.indexOf('\n');
@@ -85,6 +96,21 @@ export function circlePostInboxSnippet(
   const parsedVisit = parseVisitCapturePostText(post.text);
   if (parsedVisit) {
     return trimInboxSnippet(buildVisitCapturePostPreviewText(parsedVisit));
+  }
+  if (isAppointmentInviteThreadPost(post)) {
+    const lines = post.text
+      .replace(/\r\n/g, '\n')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith('entry:'));
+    const scheduleLine = lines.find(
+      (line, index) =>
+        index > 0 && !line.startsWith('Type:') && !line.startsWith('Invited:'),
+    );
+    const typeLine = lines.find((line) => line.startsWith('Type:'));
+    const typeLabel = typeLine?.replace('Type:', '').trim();
+    const preview = [scheduleLine, typeLabel].filter(Boolean).join(' · ');
+    if (preview) return trimInboxSnippet(preview);
   }
 
   const isOwn = post.authorUid === viewerUid;

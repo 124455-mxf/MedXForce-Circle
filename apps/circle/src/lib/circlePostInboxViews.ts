@@ -1,9 +1,12 @@
 import {
   isAnnouncementThreadPost,
+  isAppointmentInviteThreadPost,
+  isAppointmentInviteVisibleToMember,
   isCircleThreadPostHiddenForUser,
   isDropInThreadPost,
   isVisitCaptureThreadPost,
   canParticipateInCircleOpenThread,
+  type CareCalendarMemberInviteContext,
   type CircleMemberThreadKind,
   type CircleMemberThreadPost,
   type CircleThreadPostHiddenRecord,
@@ -12,6 +15,7 @@ import {
 export type CirclePostInboxView =
   | 'discussion'
   | 'announcements'
+  | 'appointments'
   | 'drop_ins'
   | 'visit_captures'
   | 'hidden';
@@ -22,6 +26,7 @@ export type CirclePostCategory = Exclude<CirclePostInboxView, 'hidden'>;
 export const CIRCLE_POST_INBOX_ICON_VIEWS: readonly CirclePostInboxView[] = [
   'announcements',
   'visit_captures',
+  'appointments',
   'drop_ins',
 ];
 
@@ -46,6 +51,7 @@ export function circlePostCategory(post: CircleMemberThreadPost): CirclePostCate
   if (isDropInThreadPost(post)) return 'drop_ins';
   if (isVisitCaptureThreadPost(post)) return 'visit_captures';
   if (isAnnouncementThreadPost(post)) return 'announcements';
+  if (isAppointmentInviteThreadPost(post)) return 'appointments';
   return 'discussion';
 }
 
@@ -54,7 +60,7 @@ export function circlePostInboxViewsForThread(
   memberRole: string,
 ): CirclePostInboxView[] {
   if (threadKind === 'open') {
-    const views: CirclePostInboxView[] = ['discussion', 'announcements'];
+    const views: CirclePostInboxView[] = ['discussion', 'announcements', 'appointments'];
     if (canParticipateInCircleOpenThread(memberRole)) {
       views.push('visit_captures');
     }
@@ -69,7 +75,13 @@ export function postMatchesInboxView(
   view: CirclePostInboxView,
   hiddenByPostId: Record<string, CircleThreadPostHiddenRecord>,
   threadKind: CircleMemberThreadKind,
+  viewerUid: string,
+  inviteContext?: Pick<
+    CareCalendarMemberInviteContext,
+    'contactId' | 'memberDocContactId' | 'inviteContactId' | 'displayName'
+  >,
 ): boolean {
+  if (!isAppointmentInviteVisibleToMember(post, viewerUid, inviteContext)) return false;
   const isHidden = isCircleThreadPostHiddenForUser(hiddenByPostId, post.id, threadKind);
   if (view === 'hidden') return isHidden;
   if (isHidden) return false;
@@ -81,8 +93,15 @@ export function filterPostsForInboxView(
   view: CirclePostInboxView,
   hiddenByPostId: Record<string, CircleThreadPostHiddenRecord>,
   threadKind: CircleMemberThreadKind,
+  viewerUid: string,
+  inviteContext?: Pick<
+    CareCalendarMemberInviteContext,
+    'contactId' | 'memberDocContactId' | 'inviteContactId' | 'displayName'
+  >,
 ): CircleMemberThreadPost[] {
-  return posts.filter((post) => postMatchesInboxView(post, view, hiddenByPostId, threadKind));
+  return posts.filter((post) =>
+    postMatchesInboxView(post, view, hiddenByPostId, threadKind, viewerUid, inviteContext),
+  );
 }
 
 export function countPostsForInboxView(
@@ -90,8 +109,20 @@ export function countPostsForInboxView(
   view: CirclePostInboxView,
   hiddenByPostId: Record<string, CircleThreadPostHiddenRecord>,
   threadKind: CircleMemberThreadKind,
+  viewerUid: string,
+  inviteContext?: Pick<
+    CareCalendarMemberInviteContext,
+    'contactId' | 'memberDocContactId' | 'inviteContactId' | 'displayName'
+  >,
 ): number {
-  return filterPostsForInboxView(posts, view, hiddenByPostId, threadKind).length;
+  return filterPostsForInboxView(
+    posts,
+    view,
+    hiddenByPostId,
+    threadKind,
+    viewerUid,
+    inviteContext,
+  ).length;
 }
 
 export function getCirclePostLatestActivityAt(post: CircleMemberThreadPost): number {
@@ -122,8 +153,19 @@ export function countUnreadPostsForInboxView(
   threadKind: CircleMemberThreadKind,
   userUid: string,
   getLastReadAtForPost: (postId: string) => number,
+  inviteContext?: Pick<
+    CareCalendarMemberInviteContext,
+    'contactId' | 'memberDocContactId' | 'inviteContactId' | 'displayName'
+  >,
 ): number {
-  return filterPostsForInboxView(posts, view, hiddenByPostId, threadKind).filter((post) =>
+  return filterPostsForInboxView(
+    posts,
+    view,
+    hiddenByPostId,
+    threadKind,
+    userUid,
+    inviteContext,
+  ).filter((post) =>
     isCirclePostUnread(post, userUid, getLastReadAtForPost(post.id)),
   ).length;
 }
@@ -135,6 +177,10 @@ export function countUnreadPostsForThread(
   memberRole: string,
   userUid: string,
   getLastReadAtForPost: (postId: string) => number,
+  inviteContext?: Pick<
+    CareCalendarMemberInviteContext,
+    'contactId' | 'memberDocContactId' | 'inviteContactId' | 'displayName'
+  >,
 ): number {
   return circlePostInboxViewsForThread(threadKind, memberRole)
     .filter((view): view is CirclePostCategory => view !== 'hidden')
@@ -148,7 +194,29 @@ export function countUnreadPostsForThread(
           threadKind,
           userUid,
           getLastReadAtForPost,
+          inviteContext,
         ),
       0,
     );
+}
+
+/** Human-readable list of inbox folders that still have unread posts. */
+export function summarizeUnreadInboxFolders(
+  counts: Partial<Record<CirclePostInboxView, { unread: number }>>,
+  labelForView: (view: CirclePostCategory) => string,
+): string | null {
+  const views: CirclePostCategory[] = [
+    'discussion',
+    'announcements',
+    'appointments',
+    'visit_captures',
+    'drop_ins',
+  ];
+  const parts = views
+    .map((view) => {
+      const unread = counts[view]?.unread ?? 0;
+      return unread > 0 ? `${labelForView(view)} (${unread})` : null;
+    })
+    .filter((part): part is string => !!part);
+  return parts.length ? parts.join(' · ') : null;
 }

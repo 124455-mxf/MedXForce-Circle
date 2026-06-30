@@ -24,12 +24,14 @@ export function useCircleOwnManagedContact(
   patient: CirclePatientSummary | null,
 ) {
   const [contact, setContact] = useState<CircleManagedContact | null>(null);
+  const [memberDocContactId, setMemberDocContactId] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const pendingProvision = isPendingProvisionPatient(patient);
 
   const loadOwnContact = useCallback(async () => {
     if (!patient?.patientId || !user.email) {
       setContact(null);
+      setMemberDocContactId(undefined);
       setLoading(false);
       return;
     }
@@ -50,6 +52,7 @@ export function useCircleOwnManagedContact(
       const memberData = memberSnap.exists()
         ? (memberSnap.data() as Record<string, unknown>)
         : undefined;
+      setMemberDocContactId(String(memberData?.contactId || '').trim() || undefined);
       const memberProfile = parseMemberContactProfile(memberData);
       const memberPrefs = parseMemberNotifyPreferences(memberData);
       const merged = mergeContactWithMemberContactProfile(base, memberProfile);
@@ -57,6 +60,7 @@ export function useCircleOwnManagedContact(
     } catch (err) {
       console.warn('[useCircleOwnManagedContact]', err);
       setContact(null);
+      setMemberDocContactId(undefined);
     } finally {
       setLoading(false);
     }
@@ -85,8 +89,12 @@ export function useCircleOwnManagedContact(
       const base = findManagedContactByEmail(listed, user.email ?? '');
       if (!base) {
         setContact(null);
+        setMemberDocContactId(
+          String(memberData?.contactId || '').trim() || undefined,
+        );
         return;
       }
+      setMemberDocContactId(String(memberData?.contactId || '').trim() || undefined);
       const memberProfile = parseMemberContactProfile(memberData);
       const memberPrefs = parseMemberNotifyPreferences(memberData);
       const merged = mergeContactWithMemberContactProfile(base, memberProfile);
@@ -111,5 +119,5 @@ export function useCircleOwnManagedContact(
     };
   }, [db, patient?.patientId, pendingProvision, user.email, user.uid]);
 
-  return { contact, loading };
+  return { contact, memberDocContactId, loading };
 }

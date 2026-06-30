@@ -11,6 +11,7 @@ import {
 import type { CircleMemberRole } from './patientPermissions';
 import { isDropInThreadPost } from './dropIn';
 import { isVisitCaptureThreadPost } from './visitCapture';
+import { isAppointmentInviteThreadPost } from './careCalendarInvite';
 
 /** Author or proxy may delete for everyone within this window (unless someone responded). */
 export const CIRCLE_THREAD_POST_DELETE_WINDOW_MS = 30 * 60 * 1000;
@@ -36,8 +37,11 @@ export interface CircleMemberThreadPost {
   translations?: CircleMemberThreadPostTranslation[];
   /** Set when another member posts after this one — blocks delete-for-everyone. */
   respondLocked?: boolean;
-  postKind?: 'discussion' | 'announcement' | 'visit_capture' | 'drop_in';
+  postKind?: 'discussion' | 'announcement' | 'visit_capture' | 'drop_in' | 'appointment_invite';
   visitCaptureId?: string;
+  careCalendarEntryId?: string;
+  inviteTargetUids?: string[];
+  inviteeContactIds?: string[];
   replyCount?: number;
   lastReplyAt?: number;
   lastReplyAuthorUid?: string;
@@ -229,7 +233,7 @@ export function circleThreadPostBoldTitleLine(post: {
   text: string;
   postKind?: string;
 }): boolean {
-  return isVisitCaptureThreadPost(post) || isDropInThreadPost(post);
+  return isVisitCaptureThreadPost(post) || isDropInThreadPost(post) || isAppointmentInviteThreadPost(post);
 }
 
 export function isAnnouncementThreadPost(post: { postKind?: string }): boolean {
@@ -241,7 +245,12 @@ export function isDiscussionThreadPost(post: {
   text: string;
   postKind?: string;
 }): boolean {
-  if (isVisitCaptureThreadPost(post) || isDropInThreadPost(post) || isAnnouncementThreadPost(post)) {
+  if (
+    isVisitCaptureThreadPost(post)
+    || isDropInThreadPost(post)
+    || isAppointmentInviteThreadPost(post)
+    || isAnnouncementThreadPost(post)
+  ) {
     return false;
   }
   return post.postKind === 'discussion' || !post.postKind;
@@ -284,10 +293,19 @@ export function parseCircleMemberThreadPost(
           ? 'drop_in'
           : data.postKind === 'announcement'
             ? 'announcement'
-            : data.postKind === 'discussion'
-              ? 'discussion'
-              : undefined,
+            : data.postKind === 'appointment_invite'
+              ? 'appointment_invite'
+              : data.postKind === 'discussion'
+                ? 'discussion'
+                : undefined,
     visitCaptureId: data.visitCaptureId ? String(data.visitCaptureId) : undefined,
+    careCalendarEntryId: data.careCalendarEntryId ? String(data.careCalendarEntryId) : undefined,
+    inviteTargetUids: Array.isArray(data.inviteTargetUids)
+      ? data.inviteTargetUids.map((uid) => String(uid)).filter(Boolean)
+      : undefined,
+    inviteeContactIds: Array.isArray(data.inviteeContactIds)
+      ? data.inviteeContactIds.map((id) => String(id)).filter(Boolean)
+      : undefined,
     replyCount: typeof data.replyCount === 'number' ? data.replyCount : undefined,
     lastReplyAt: typeof data.lastReplyAt === 'number' ? data.lastReplyAt : undefined,
     lastReplyAuthorUid:

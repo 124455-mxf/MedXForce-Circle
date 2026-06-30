@@ -11,13 +11,20 @@ function badgeMinWidthClass(count: number): string {
 }
 
 /** Red pill counters — matches Circle bottom nav badge styling. */
-export function CircleNavBadge({ count }: { count: number }) {
+export function CircleNavBadge({
+  count,
+  onActive = false,
+}: {
+  count: number;
+  onActive?: boolean;
+}) {
   if (count <= 0) return null;
   const label = formatCircleBadgeCount(count);
   return (
     <span
       className={cn(
-        'absolute -top-1 -right-2 h-[14px] rounded-full bg-red-500 text-white text-[9px] font-bold leading-none flex items-center justify-center tabular-nums pointer-events-none ring-2 ring-white',
+        'absolute -top-1 -right-2 h-[14px] rounded-full bg-red-500 text-white text-[9px] font-bold leading-none flex items-center justify-center tabular-nums pointer-events-none ring-2',
+        onActive ? 'ring-blue-600' : 'ring-white',
         badgeMinWidthClass(count),
       )}
       aria-hidden
