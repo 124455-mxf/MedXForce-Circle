@@ -1,9 +1,11 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Check, X } from 'lucide-react';
 import type { AnalyticsMetricId, AssessmentHistoryMap, CareCalendarDayEvent } from '@medxforce/shared';
 import {
   appointmentTasksForPhase,
+  appointmentTasksStatusMatch,
+  applyAppointmentTaskStatusChange,
   countRecommendedCareCalendarAssessmentNudges,
   getCareCalendarAssessmentNudges,
   openAppointmentTaskCount,
@@ -47,8 +49,23 @@ export function CircleCareCalendarAppointmentEpisodePanel({
 }: CircleCareCalendarAppointmentEpisodePanelProps) {
   const hasEpisode = supportsCareCalendarAppointmentEpisode(event.kind);
   const [tab, setTab] = useState<EpisodeTab>('details');
-  const openPre = openAppointmentTaskCount(appointmentTasksForPhase(event.appointmentTasks, 'pre'));
-  const openPost = openAppointmentTaskCount(appointmentTasksForPhase(event.appointmentTasks, 'post'));
+  const [tasksOverride, setTasksOverride] = useState<CareCalendarAppointmentTask[] | null>(null);
+
+  const activeTasks = tasksOverride ?? event.appointmentTasks;
+
+  useEffect(() => {
+    setTasksOverride(null);
+  }, [event.entryId]);
+
+  useEffect(() => {
+    setTasksOverride((current) => {
+      if (!current) return null;
+      return appointmentTasksStatusMatch(event.appointmentTasks, current) ? null : current;
+    });
+  }, [event.appointmentTasks]);
+
+  const openPre = openAppointmentTaskCount(appointmentTasksForPhase(activeTasks, 'pre'));
+  const openPost = openAppointmentTaskCount(appointmentTasksForPhase(activeTasks, 'post'));
 
   const preNudgeCount = useMemo(() => {
     if (!preferences) return 0;
@@ -69,22 +86,19 @@ export function CircleCareCalendarAppointmentEpisodePanel({
   }
 
   const toggleTask = async (taskId: string, nextStatus: 'open' | 'done' | 'dismissed') => {
-    if (!onTasksChange || !event.appointmentTasks) return;
-    const now = Date.now();
-    const next = event.appointmentTasks.map((task) => {
-      if (task.id !== taskId) return task;
-      return {
-        ...task,
-        status: nextStatus,
-        doneAt: nextStatus === 'open' ? undefined : now,
-        doneByUid: nextStatus === 'open' ? undefined : currentUserUid,
-      };
-    });
-    await onTasksChange(next);
+    if (!onTasksChange) return;
+    const base = activeTasks ?? [];
+    const next = applyAppointmentTaskStatusChange(base, taskId, nextStatus, currentUserUid);
+    setTasksOverride(next);
+    try {
+      await onTasksChange(next);
+    } catch {
+      setTasksOverride(null);
+    }
   };
 
   const renderTaskList = (phase: 'pre' | 'post') => {
-    const tasks = appointmentTasksForPhase(event.appointmentTasks, phase);
+    const tasks = appointmentTasksForPhase(activeTasks, phase);
     if (!tasks.length) {
       return <p className="text-sm text-slate-400">{ct('episode.noTasks')}</p>;
     }

@@ -184,16 +184,54 @@ export function parseCareCalendarAppointmentTasks(raw: unknown): CareCalendarApp
   return tasks.length ? tasks.slice(0, 40) : undefined;
 }
 
+export function appointmentTasksStatusMatch(
+  a: CareCalendarAppointmentTask[] | undefined,
+  b: CareCalendarAppointmentTask[] | undefined,
+): boolean {
+  if (!a?.length && !b?.length) return true;
+  if (!a?.length || !b?.length || a.length !== b.length) return false;
+  return a.every((task, index) => {
+    const other = b[index];
+    return task.id === other.id && task.status === other.status;
+  });
+}
+
+export function applyAppointmentTaskStatusChange(
+  tasks: CareCalendarAppointmentTask[],
+  taskId: string,
+  nextStatus: CareCalendarAppointmentTaskStatus,
+  doneByUid?: string,
+): CareCalendarAppointmentTask[] {
+  const now = Date.now();
+  return tasks.map((task) => {
+    if (task.id !== taskId) return task;
+    if (nextStatus === 'open') {
+      const { doneAt: _doneAt, doneByUid: _doneByUid, ...rest } = task;
+      return { ...rest, status: 'open' };
+    }
+    return {
+      ...task,
+      status: nextStatus,
+      doneAt: now,
+      ...(doneByUid ? { doneByUid } : {}),
+    };
+  });
+}
+
 export function sanitizeCareCalendarAppointmentTasks(
   tasks: CareCalendarAppointmentTask[],
 ): CareCalendarAppointmentTask[] {
   return tasks
     .filter((t) => t.title.trim())
     .slice(0, 40)
-    .map((t) => ({
-      ...t,
-      title: t.title.trim().slice(0, 300),
-    }));
+    .map((t) => {
+      const title = t.title.trim().slice(0, 300);
+      if (t.status === 'open') {
+        const { doneAt: _doneAt, doneByUid: _doneByUid, ...rest } = t;
+        return { ...rest, title, status: 'open' as const };
+      }
+      return { ...t, title };
+    });
 }
 
 export function appointmentTasksForPhase(

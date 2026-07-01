@@ -9,9 +9,13 @@ import {
   mergeAttendeeResponses,
   partitionCareDayEventsByPast,
   sortCareDayEventsForTodayView,
-  careCalendarDayEventTiming,
   SCHEDULE_IMMINENT_BANNER_REFRESH_MS,
   shouldShowAttendeeInviteResponseBadge,
+  careCalendarCardTimingBorderClasses,
+  careCalendarPrepBorderClasses,
+  resolveAppointmentPrepHighlight,
+  resolveCareCalendarAppointmentTiming,
+  type AppointmentPrepHighlight,
   type AssessmentScheduleDayEvent,
   type CareCalendarDayEvent,
 } from '@medxforce/shared';
@@ -22,6 +26,7 @@ import { CircleCareCalendarMapsLinks } from './CircleCareCalendarMapsLinks';
 import { CircleCareCalendarInviteRsvpBar } from './CircleCareCalendarInviteRsvpBar';
 import { CircleScheduleImminentBanner } from './CircleScheduleImminentBanner';
 import { CircleCareCalendarAssessmentNudgeHint } from './CircleCareCalendarAssessmentNudgesList';
+import { CircleCareCalendarPrepStatusBadge } from './CircleCareCalendarPrepStatusBadge';
 import {
   CircleScheduleAppointmentDetailSheet,
   type CircleScheduleAppointmentSelection,
@@ -157,7 +162,7 @@ export function CircleScheduleTodayView({
               {upcomingCare.length > 0 ? (
                 <ul className="space-y-3">
                   {upcomingCare.map((event) => (
-                    <TodayCareCard
+                    <CircleScheduleDayAppointmentCard
                       key={`${event.entryId}-${dateKey}`}
                       event={event}
                       ct={ct}
@@ -204,7 +209,7 @@ export function CircleScheduleTodayView({
                   {pastExpanded ? (
                     <ul className="mt-3 space-y-3">
                       {pastCare.map((event) => (
-                        <TodayCareCard
+                        <CircleScheduleDayAppointmentCard
                           key={`past-${event.entryId}-${dateKey}`}
                           event={event}
                           ct={ct}
@@ -315,7 +320,7 @@ export function CircleScheduleTodayView({
   );
 }
 
-function TodayCareCard({
+function CircleScheduleDayAppointmentCard({
   event,
   ct,
   t,
@@ -334,6 +339,7 @@ function TodayCareCard({
   muted = false,
   now,
   showTimingHighlight = false,
+  showPrepBorder = true,
 }: {
   event: CareCalendarDayEvent;
   ct: (key: string, params?: Record<string, unknown>) => string;
@@ -353,43 +359,65 @@ function TodayCareCard({
   muted?: boolean;
   now?: Date;
   showTimingHighlight?: boolean;
+  showPrepBorder?: boolean;
 }) {
   const timeLabel =
     formatCareCalendarTimeRange(event.startTimeMinutes, event.endTimeMinutes) ||
     formatCareCalendarTime(event.startTimeMinutes) ||
     '';
 
-  const timing =
-    showTimingHighlight && now
-      ? careCalendarDayEventTiming(dateKey, event.startTimeMinutes, event.endTimeMinutes, now)
-      : null;
+  const timing = resolveCareCalendarAppointmentTiming(event, dateKey, {
+    now,
+    highlightTodayTiming: showTimingHighlight,
+    forcePast: muted,
+  });
   const inProgress = timing === 'in_progress';
   const upcoming = timing === 'upcoming' || timing === 'unscheduled';
+  const isPast = timing === 'past';
+  const prepHighlight: AppointmentPrepHighlight =
+    showPrepBorder !== false && assessmentSchedule
+      ? resolveAppointmentPrepHighlight(event, dateKey, timing, {
+          preferences: assessmentSchedule.preferences,
+          histories: assessmentSchedule.histories,
+        })
+      : 'none';
 
   return (
     <li
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
       className={cn(
-        'flex items-stretch gap-4 rounded-2xl border shadow-sm overflow-hidden transition-shadow',
-        muted && 'opacity-80 border-slate-200 bg-slate-50/70',
-        !muted && inProgress && 'border-emerald-300 bg-emerald-50/70 ring-2 ring-emerald-300/80 shadow-md shadow-emerald-100',
-        !muted && upcoming && !inProgress && 'border-violet-200 bg-violet-50/80 ring-2 ring-violet-200 shadow-md shadow-violet-100/80',
-        !muted && !inProgress && !upcoming && 'border-violet-100 bg-violet-50/60',
+        'flex items-stretch gap-4 rounded-2xl border-2 shadow-sm overflow-hidden transition-shadow cursor-pointer',
+        isPast && 'opacity-80 bg-slate-50/80',
+        !isPast && inProgress && 'bg-emerald-50/70 shadow-md shadow-emerald-100',
+        !isPast && upcoming && !inProgress && 'bg-violet-50/80 shadow-md shadow-violet-100/80',
+        prepHighlight !== 'none'
+          ? careCalendarPrepBorderClasses(prepHighlight, 'card')
+          : careCalendarCardTimingBorderClasses(timing, prepHighlight),
+        'hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400',
       )}
     >
       <div
         className={cn(
-          'shrink-0 w-16 border-r flex flex-col items-center justify-center px-2 py-4',
-          inProgress && 'bg-emerald-100/90 border-emerald-200',
-          upcoming && !inProgress && 'bg-violet-100/90 border-violet-200',
-          !inProgress && !upcoming && 'bg-violet-100/80 border-violet-100',
+          'shrink-0 w-16 border-r flex flex-col items-center justify-center px-2 py-4 pointer-events-none',
+          isPast && 'bg-slate-100/90 border-slate-200',
+          !isPast && inProgress && 'bg-emerald-100/90 border-emerald-200',
+          !isPast && upcoming && !inProgress && 'bg-violet-100/90 border-violet-200',
         )}
       >
         <span
           className={cn(
             'text-xs font-bold text-center leading-tight',
-            inProgress && 'text-emerald-900',
-            upcoming && !inProgress && 'text-violet-900',
-            !inProgress && !upcoming && 'text-violet-800',
+            isPast && 'text-slate-600',
+            !isPast && inProgress && 'text-emerald-900',
+            !isPast && upcoming && !inProgress && 'text-violet-900',
           )}
         >
           {timeLabel.split(' – ')[0]}
@@ -398,9 +426,9 @@ function TodayCareCard({
           <span
             className={cn(
               'text-[10px] mt-1 text-center',
-              inProgress && 'text-emerald-700',
-              upcoming && !inProgress && 'text-violet-700',
-              !inProgress && !upcoming && 'text-violet-600',
+              isPast && 'text-slate-500',
+              !isPast && inProgress && 'text-emerald-700',
+              !isPast && upcoming && !inProgress && 'text-violet-700',
             )}
           >
             {timeLabel.split(' – ')[1]}
@@ -409,30 +437,39 @@ function TodayCareCard({
       </div>
       <div className="flex-1 py-4 pr-4 min-w-0 space-y-2">
         <div className="flex items-start justify-between gap-2">
-          <button
-            type="button"
-            onClick={onOpen}
-            className={cn(
-              'flex-1 min-w-0 text-left rounded-lg -m-1 p-1 transition-colors',
-              inProgress && 'hover:bg-emerald-100/50',
-              upcoming && !inProgress && 'hover:bg-violet-100/50',
-              !inProgress && !upcoming && 'hover:bg-violet-100/50',
-            )}
-          >
-            {timing && (inProgress || upcoming) ? (
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1.5 mb-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
-                  inProgress && 'bg-emerald-600 text-white',
-                  upcoming && !inProgress && 'bg-violet-600 text-white',
-                )}
-              >
-                {inProgress ? (
-                  <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" aria-hidden />
-                ) : null}
-                {t(`schedulePage.views.${inProgress ? 'inProgress' : 'upcoming'}`)}
-              </span>
-            ) : null}
+          <div className="flex-1 min-w-0 text-left space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {isPast ? (
+                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-slate-500 text-white">
+                  {t('schedulePage.views.past')}
+                </span>
+              ) : null}
+              {!isPast && (inProgress || upcoming) ? (
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                    inProgress && 'bg-emerald-600 text-white',
+                    upcoming && !inProgress && 'bg-violet-600 text-white',
+                  )}
+                >
+                  {inProgress ? (
+                    <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" aria-hidden />
+                  ) : null}
+                  {t(`schedulePage.views.${inProgress ? 'inProgress' : 'upcoming'}`)}
+                </span>
+              ) : null}
+              {!isPast && assessmentSchedule ? (
+                <CircleCareCalendarPrepStatusBadge
+                  event={event}
+                  dateKey={dateKey}
+                  t={t}
+                  preferences={assessmentSchedule.preferences}
+                  histories={assessmentSchedule.histories}
+                  now={now}
+                  highlightTodayTiming={showTimingHighlight}
+                />
+              ) : null}
+            </div>
             <p className="text-base font-bold text-slate-900">{event.title}</p>
             <p className="text-[10px] font-bold uppercase tracking-wider text-violet-700 mt-0.5">
               {ct(`kinds.${event.kind}`)}
@@ -451,7 +488,7 @@ function TodayCareCard({
                 ct={ct}
               />
             ) : null}
-          </button>
+          </div>
           {onEdit ? (
             <button
               type="button"
@@ -494,6 +531,8 @@ function TodayCareCard({
     </li>
   );
 }
+
+export { CircleScheduleDayAppointmentCard };
 
 function AppointmentAttendeeResponses({
   event,

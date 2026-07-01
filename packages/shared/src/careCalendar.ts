@@ -602,3 +602,16 @@ export function buildScheduleTimeSlots(
   }
   return slots;
 }
+
+/** Week grid uses a shorter day range and hourly rows for readability. */
+export const SCHEDULE_WEEK_VIEW_START_HOUR = 8;
+export const SCHEDULE_WEEK_VIEW_END_HOUR = 18;
+export const SCHEDULE_WEEK_SLOT_MINUTES = 60;
+
+export function buildScheduleWeekTimeSlots(): number[] {
+  return buildScheduleTimeSlots(
+    SCHEDULE_WEEK_VIEW_START_HOUR,
+    SCHEDULE_WEEK_VIEW_END_HOUR,
+    SCHEDULE_WEEK_SLOT_MINUTES,
+  );
+}

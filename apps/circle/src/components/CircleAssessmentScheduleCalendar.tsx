@@ -1,5 +1,5 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Firestore } from 'firebase/firestore';
 import { Calendar, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import {
@@ -22,6 +22,7 @@ import {
   type CircleScheduleAppointmentSelection,
 } from './CircleScheduleWeekView';
 import { CircleScheduleWeekView } from './CircleScheduleWeekView';
+import { CircleScheduleSelectedDayDetailPanel } from './CircleScheduleSelectedDayDetailPanel';
 import type { AnalyticsMetricId } from '@medxforce/shared';
 import {
   assessmentScheduleIdToAnalyticsMetric,
@@ -206,6 +207,28 @@ export function CircleAssessmentScheduleCalendar({
   const dayAssessmentEvents = visibleCalendarByDay.get(selectedDateKey) ?? [];
   const hasAnyEvents = visibleMonthCalendarByDay.size > 0 || monthCareByDay.size > 0;
 
+  const weekDayKeys = useMemo(
+    () => getCalendarWeekDays(weekAnchor).map((d) => careCalendarDateKey(d)),
+    [weekAnchor],
+  );
+
+  useEffect(() => {
+    if (viewMode !== 'week') return;
+    setSelectedDateKey((current) => {
+      if (weekDayKeys.includes(current)) return current;
+      if (weekDayKeys.includes(todayKey)) return todayKey;
+      return weekDayKeys[0] ?? current;
+    });
+  }, [viewMode, weekAnchor, weekDayKeys, todayKey]);
+
+  const weekDetailCareEvents = useMemo(() => {
+    return [...(careByDay.get(selectedDateKey) ?? [])].sort(
+      (a, b) => (a.startTimeMinutes ?? 0) - (b.startTimeMinutes ?? 0),
+    );
+  }, [careByDay, selectedDateKey]);
+
+  const weekDetailAssessmentEvents = visibleCalendarByDay.get(selectedDateKey) ?? [];
+
   const shiftMonth = (delta: number) => {
     const next = new Date(viewYear, viewMonth + delta, 1);
     setViewYear(next.getFullYear());
@@ -236,12 +259,7 @@ export function CircleAssessmentScheduleCalendar({
     year: 'numeric',
   });
 
-  const addDateKey =
-    viewMode === 'today'
-      ? selectedDateKey
-      : viewMode === 'week'
-        ? careCalendarDateKey(weekAnchor)
-        : selectedDateKey;
+  const addDateKey = selectedDateKey;
 
   const weekDays = useMemo(() => getCalendarWeekDays(weekAnchor), [weekAnchor]);
   const weekLabel = `${weekDays[0].toLocaleDateString(undefined, {
@@ -336,14 +354,6 @@ export function CircleAssessmentScheduleCalendar({
       )}
       {viewMode === 'week' && (
         <>
-          <button
-            type="button"
-            onClick={() => shiftWeek(-1)}
-            className={dateNavButtonClass}
-            aria-label={t('schedulePage.views.prevWeek')}
-          >
-            <ChevronLeft size={18} />
-          </button>
           {!isCurrentWeek ? (
             <button
               type="button"
@@ -353,6 +363,14 @@ export function CircleAssessmentScheduleCalendar({
               {t('schedulePage.views.thisWeek')}
             </button>
           ) : null}
+          <button
+            type="button"
+            onClick={() => shiftWeek(-1)}
+            className={dateNavButtonClass}
+            aria-label={t('schedulePage.views.prevWeek')}
+          >
+            <ChevronLeft size={18} />
+          </button>
           <span className={dateNavLabelClass}>{weekLabel}</span>
           <button
             type="button"
@@ -494,7 +512,7 @@ export function CircleAssessmentScheduleCalendar({
     <div
       className={cn(
         'h-full min-h-0 rounded-2xl border border-slate-100 bg-white flex flex-col overflow-hidden p-5 space-y-4',
-        viewMode === 'week' && 'min-h-0',
+        viewMode === 'week' && 'min-h-0 tablet-portrait:min-h-0',
       )}
     >
       <div
@@ -543,29 +561,54 @@ export function CircleAssessmentScheduleCalendar({
       )}
 
       {viewMode === 'week' && (
-        <CircleScheduleWeekView
-          weekAnchor={weekAnchor}
-          calendarByDay={visibleCalendarByDay}
-          careByDay={careByDay}
-          todayKey={todayKey}
-          t={t}
-          onEditAppointment={onEditAppointment}
-          onAppointmentTasksChange={onAppointmentTasksChange}
-          currentUserUid={currentUserUid}
-          patientId={patientId}
-          db={db}
-          memberContactId={memberContactId}
-          memberDocContactId={memberDocContactId}
-          inviteContactId={inviteContactId}
-          memberDisplayName={memberDisplayName}
-          memberRole={memberRole}
-          assessmentSchedule={assessmentsEnabled ? schedule : undefined}
-          onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
-          onDayClick={(dateKey) => {
-            setSelectedDateKey(dateKey);
-            setViewMode('today');
-          }}
-        />
+        <>
+          <CircleScheduleWeekView
+            weekAnchor={weekAnchor}
+            calendarByDay={visibleCalendarByDay}
+            careByDay={careByDay}
+            todayKey={todayKey}
+            selectedDayDateKey={selectedDateKey}
+            onSelectedDayChange={setSelectedDateKey}
+            preferences={schedule.preferences}
+            histories={schedule.histories}
+            t={t}
+            onEditAppointment={onEditAppointment}
+            onAppointmentTasksChange={onAppointmentTasksChange}
+            currentUserUid={currentUserUid}
+            patientId={patientId}
+            db={db}
+            memberContactId={memberContactId}
+            memberDocContactId={memberDocContactId}
+            inviteContactId={inviteContactId}
+            memberDisplayName={memberDisplayName}
+            memberRole={memberRole}
+            assessmentSchedule={assessmentsEnabled ? schedule : undefined}
+            onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
+          />
+          <CircleScheduleSelectedDayDetailPanel
+            selectedDateKey={selectedDateKey}
+            todayKey={todayKey}
+            careEvents={weekDetailCareEvents}
+            assessmentEvents={weekDetailAssessmentEvents}
+            t={t}
+            assessmentLabel={(event) => assessmentLabel(event, t)}
+            onOpenAppointment={(event) =>
+              setAppointmentSelection({ dateKey: selectedDateKey, event })
+            }
+            onEditAppointment={onEditAppointment}
+            onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
+            assessmentSchedule={assessmentsEnabled ? schedule : undefined}
+            db={db}
+            patientId={patientId}
+            memberContactId={memberContactId}
+            memberDocContactId={memberDocContactId}
+            inviteContactId={inviteContactId}
+            memberDisplayName={memberDisplayName}
+            memberRole={memberRole}
+            currentUserUid={currentUserUid}
+            className="shrink-0 mt-3 tablet-portrait:mt-2 tablet-portrait:flex-1 tablet-portrait:min-h-0 tablet-portrait:overflow-y-auto"
+          />
+        </>
       )}
 
       {viewMode === 'month' && !hasAnyEvents ? (

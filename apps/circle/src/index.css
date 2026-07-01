@@ -1,6 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
+@custom-variant tablet-portrait (@media (min-width: 768px) and (max-width: 1366px) and (orientation: portrait));
+@custom-variant landscape-short (@media (orientation: landscape) and (max-height: 1024px));
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
@@ -196,4 +199,47 @@ body {
 .circle-urgency-tab-alert,
 .circle-urgency-tab-attention {
   animation: none;
+}
+
+@keyframes prep-attention-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55);
+  }
+  50% {
+    opacity: 0.9;
+    box-shadow: 0 0 0 5px rgba(245, 158, 11, 0);
+  }
+}
+
+.animate-prep-attention {
+  animation: prep-attention-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes prep-border-pulse {
+  0%,
+  100% {
+    border-color: rgb(251 191 36);
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.45);
+  }
+  50% {
+    border-color: rgb(245 158 11);
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.2);
+  }
+}
+
+.animate-prep-border {
+  animation: prep-border-pulse 1.6s ease-in-out infinite;
+}
+
+.schedule-week-scroll {
+  max-height: min(26rem, calc(100dvh - 16rem));
+}
+
+@media (min-width: 768px) and (max-width: 1366px) and (orientation: portrait) {
+  .schedule-week-scroll {
+    max-height: min(22rem, calc(100dvh - 24rem));
+    min-height: 0;
+  }
 }

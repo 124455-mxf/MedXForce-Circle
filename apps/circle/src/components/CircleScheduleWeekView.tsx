@@ -11,9 +11,19 @@ import {
   formatCareCalendarTime,
   formatCareCalendarTimeRange,
   getCalendarWeekDays,
+  buildScheduleWeekTimeSlots,
+  SCHEDULE_WEEK_VIEW_START_HOUR,
+  SCHEDULE_WEEK_VIEW_END_HOUR,
+  SCHEDULE_WEEK_SLOT_MINUTES,
   mergeAttendeeResponses,
   parseAttendeeResponseSummary,
   shouldShowAttendeeInviteResponseBadge,
+  careCalendarWeekEventBlockClasses,
+  careCalendarPrepBorderClasses,
+  countAppointmentPrepRemaining,
+  resolveAppointmentPrepHighlight,
+  resolveCareCalendarAppointmentTiming,
+  type AssessmentHistoryMap,
   type AssessmentScheduleDayEvent,
   type CareCalendarAttendee,
   type CareCalendarDayEvent,
@@ -25,14 +35,15 @@ import { CircleMessageExpandOverlay } from './CircleMessageExpandOverlay';
 import type { CareCalendarAppointmentTask } from '@medxforce/shared';
 import type { CircleAssessmentScheduleContext } from '../lib/circleAssessmentScheduleMetrics';
 import type { AnalyticsMetricId } from '@medxforce/shared';
+import {
+  CIRCLE_SCHEDULE_WEEK_SCROLL_CLASS,
+  CIRCLE_SCHEDULE_WEEK_VIEW_SHELL_CLASS,
+} from '../lib/circleScheduleLayout';
 import { cn } from '../lib/utils';
 
-const WEEK_START_HOUR = 7;
-const WEEK_END_HOUR = 20;
-const WEEK_SLOT_MINUTES = 60;
-const DAY_START_MINUTES = WEEK_START_HOUR * 60;
-const DAY_END_MINUTES = WEEK_END_HOUR * 60;
-const SLOT_HEIGHT_PX = 52;
+const DAY_START_MINUTES = SCHEDULE_WEEK_VIEW_START_HOUR * 60;
+const DAY_END_MINUTES = SCHEDULE_WEEK_VIEW_END_HOUR * 60;
+const SLOT_HEIGHT_PX = 48;
 const MOBILE_VISIBLE_DAYS = 3;
 
 export type CircleScheduleAppointmentSelection = {
@@ -45,8 +56,11 @@ type CircleScheduleWeekViewProps = {
   calendarByDay: Map<string, AssessmentScheduleDayEvent[]>;
   careByDay: Map<string, CareCalendarDayEvent[]>;
   todayKey: string;
+  selectedDayDateKey?: string;
+  onSelectedDayChange?: (dateKey: string) => void;
+  preferences?: Record<string, unknown>;
+  histories?: AssessmentHistoryMap;
   t: (path: string, params?: Record<string, unknown>) => string;
-  onDayClick?: (dateKey: string) => void;
   onEditAppointment?: (entryId: string) => void;
   onAppointmentTasksChange?: (
     entryId: string,
@@ -66,21 +80,17 @@ type CircleScheduleWeekViewProps = {
 };
 
 function buildWeekTimeSlots(): number[] {
-  const slots: number[] = [];
-  for (let m = DAY_START_MINUTES; m < DAY_END_MINUTES; m += WEEK_SLOT_MINUTES) {
-    slots.push(m);
-  }
-  return slots;
+  return buildScheduleWeekTimeSlots();
 }
 
 function minutesToTop(minutes: number): number {
-  return ((minutes - DAY_START_MINUTES) / WEEK_SLOT_MINUTES) * SLOT_HEIGHT_PX;
+  return ((minutes - DAY_START_MINUTES) / SCHEDULE_WEEK_SLOT_MINUTES) * SLOT_HEIGHT_PX;
 }
 
 function eventBlockHeight(startMinutes: number, endMinutes: number | undefined): number {
-  const end = endMinutes ?? startMinutes + WEEK_SLOT_MINUTES;
-  const duration = Math.max(end - startMinutes, WEEK_SLOT_MINUTES);
-  return (duration / WEEK_SLOT_MINUTES) * SLOT_HEIGHT_PX;
+  const end = endMinutes ?? startMinutes + SCHEDULE_WEEK_SLOT_MINUTES;
+  const duration = Math.max(end - startMinutes, SCHEDULE_WEEK_SLOT_MINUTES);
+  return (duration / SCHEDULE_WEEK_SLOT_MINUTES) * SLOT_HEIGHT_PX;
 }
 
 function defaultMobileDayOffset(weekDays: Date[], todayKey: string): number {
@@ -140,8 +150,11 @@ export function CircleScheduleWeekView({
   calendarByDay,
   careByDay,
   todayKey,
+  selectedDayDateKey,
+  onSelectedDayChange,
+  preferences,
+  histories = {},
   t,
-  onDayClick,
   onEditAppointment,
   onAppointmentTasksChange,
   currentUserUid,
@@ -183,7 +196,7 @@ export function CircleScheduleWeekView({
   })}`;
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className={CIRCLE_SCHEDULE_WEEK_VIEW_SHELL_CLASS}>
       <p className="text-xs text-slate-400 text-center shrink-0 mb-2">
         {t('schedulePage.views.weekScrollHint')}
       </p>
@@ -220,10 +233,7 @@ export function CircleScheduleWeekView({
         </button>
       </div>
 
-      <div
-        className="flex-1 min-h-0 overflow-y-auto overscroll-contain rounded-xl border border-slate-100 md:overflow-auto"
-        style={{ maxHeight: 'min(32rem, calc(100dvh - 14rem))' }}
-      >
+      <div className={CIRCLE_SCHEDULE_WEEK_SCROLL_CLASS}>
         <div className="md:hidden">
           <WeekDaysGrid
             days={mobileVisibleDays}
@@ -235,9 +245,12 @@ export function CircleScheduleWeekView({
             calendarByDay={calendarByDay}
             careByDay={careByDay}
             todayKey={todayKey}
+            selectedDayDateKey={selectedDayDateKey}
             selection={selection}
+            preferences={preferences}
+            histories={histories}
             t={t}
-            onDayClick={onDayClick}
+            onSelectedDayChange={onSelectedDayChange}
             onSelectAppointment={setSelection}
           />
         </div>
@@ -252,9 +265,12 @@ export function CircleScheduleWeekView({
             calendarByDay={calendarByDay}
             careByDay={careByDay}
             todayKey={todayKey}
+            selectedDayDateKey={selectedDayDateKey}
             selection={selection}
+            preferences={preferences}
+            histories={histories}
             t={t}
-            onDayClick={onDayClick}
+            onSelectedDayChange={onSelectedDayChange}
             onSelectAppointment={setSelection}
           />
         </div>
@@ -302,9 +318,12 @@ function WeekDaysGrid({
   calendarByDay,
   careByDay,
   todayKey,
+  selectedDayDateKey,
   selection,
+  preferences,
+  histories = {},
   t,
-  onDayClick,
+  onSelectedDayChange,
   onSelectAppointment,
 }: {
   days: Date[];
@@ -316,9 +335,12 @@ function WeekDaysGrid({
   calendarByDay: Map<string, AssessmentScheduleDayEvent[]>;
   careByDay: Map<string, CareCalendarDayEvent[]>;
   todayKey: string;
+  selectedDayDateKey?: string;
   selection: CircleScheduleAppointmentSelection | null;
+  preferences?: Record<string, unknown>;
+  histories?: AssessmentHistoryMap;
   t: CircleScheduleWeekViewProps['t'];
-  onDayClick?: (dateKey: string) => void;
+  onSelectedDayChange?: (dateKey: string) => void;
   onSelectAppointment: (selection: CircleScheduleAppointmentSelection) => void;
 }) {
   return (
@@ -333,16 +355,19 @@ function WeekDaysGrid({
       {days.map((date) => {
         const dateKey = careCalendarDateKey(date);
         const isToday = dateKey === todayKey;
+        const isSelected = dateKey === selectedDayDateKey;
         const assessmentCount = (calendarByDay.get(dateKey) ?? []).length;
 
         return (
           <button
             key={`header-${dateKey}`}
             type="button"
-            onClick={() => onDayClick?.(dateKey)}
+            onClick={() => onSelectedDayChange?.(dateKey)}
             className={cn(
-              'sticky top-0 z-20 bg-white py-1.5 text-center border-b border-slate-100',
+              'sticky top-0 z-20 bg-white py-1.5 text-center border-b border-slate-100 transition-colors',
               isToday && 'bg-blue-50',
+              isSelected && !isToday && 'bg-violet-50',
+              isSelected && 'ring-2 ring-inset ring-violet-300/80',
             )}
           >
             <p
@@ -358,7 +383,8 @@ function WeekDaysGrid({
                 'font-bold mt-0.5 mx-auto flex items-center justify-center rounded-full',
                 compactHeaders ? 'text-xs w-6 h-6' : 'text-sm w-7 h-7',
                 isToday && 'bg-blue-600 text-white',
-                !isToday && 'text-slate-700',
+                !isToday && isSelected && 'bg-violet-600 text-white',
+                !isToday && !isSelected && 'text-slate-700',
               )}
             >
               {date.getDate()}
@@ -396,11 +422,17 @@ function WeekDaysGrid({
         const dateKey = assessmentScheduleDateKey(date);
         const careEvents = careByDay.get(dateKey) ?? [];
         const isToday = dateKey === todayKey;
+        const isDaySelected = dateKey === selectedDayDateKey;
 
         return (
           <div
             key={`col-${dateKey}`}
-            className={cn('bg-white relative border-l border-slate-50', isToday && 'bg-blue-50/30')}
+            className={cn(
+              'bg-white relative border-l border-slate-50',
+              isToday && 'bg-blue-50/30',
+              isDaySelected && !isToday && 'bg-violet-50/25',
+              isDaySelected && 'ring-2 ring-inset ring-violet-200/90',
+            )}
             style={{ height: gridHeight }}
           >
             {timeSlots.map((minutes, i) => (
@@ -419,19 +451,40 @@ function WeekDaysGrid({
               const height = eventBlockHeight(start, end);
               const isSelected =
                 selection?.event.entryId === event.entryId && selection.dateKey === dateKey;
+              const timing = resolveCareCalendarAppointmentTiming(event, dateKey, {
+                highlightTodayTiming: isToday,
+              });
+              const prepHighlight = resolveAppointmentPrepHighlight(event, dateKey, timing, {
+                preferences,
+                histories,
+              });
+              const prepRemaining = countAppointmentPrepRemaining(event, dateKey, {
+                preferences,
+                histories,
+              }).total;
 
               return (
                 <button
                   key={`${event.entryId}-${dateKey}`}
                   type="button"
-                  onClick={() => onSelectAppointment({ dateKey, event })}
+                  onClick={() => {
+                    onSelectedDayChange?.(dateKey);
+                    onSelectAppointment({ dateKey, event });
+                  }}
                   className={cn(
                     'absolute left-0.5 right-0.5 z-10 rounded-lg text-left px-1.5 py-1 overflow-hidden border shadow-sm transition-all',
-                    isSelected
-                      ? 'bg-violet-700 border-violet-800 text-white ring-2 ring-violet-300'
-                      : 'bg-violet-500 border-violet-600 text-white hover:bg-violet-600',
+                    careCalendarWeekEventBlockClasses(timing, isSelected),
+                    prepHighlight !== 'none' &&
+                      careCalendarPrepBorderClasses(prepHighlight, 'week'),
                   )}
                   style={{ top, height: Math.max(height, SLOT_HEIGHT_PX - 4) }}
+                  title={
+                    prepHighlight === 'needed'
+                      ? t('schedulePage.views.prepNeededHint', { count: prepRemaining })
+                      : prepHighlight === 'ready'
+                        ? t('schedulePage.views.prepReady')
+                        : undefined
+                  }
                 >
                   <p className="text-[10px] font-bold truncate leading-tight">{event.title}</p>
                   {height >= SLOT_HEIGHT_PX * 1.2 && (
