@@ -893,17 +893,17 @@ export function CircleDashboardScreen({
       }
     : null;
 
-  const richMediaReactionsFromPatient = galleryDashboard.patientReactionsTotal > 0;
+  const richMediaReactionsFromPatient = galleryDashboard.patientReactionsLast7 > 0;
   const richMediaReactionsCount =
     canSeeGallery && !galleryDashboard.loading
       ? richMediaReactionsFromPatient
         ? galleryDashboard.patientReactionsTotal
-        : galleryDashboard.totalReactions
+        : galleryDashboard.reactionsLast7 > 0
+          ? galleryDashboard.reactionsLast7
+          : 0
       : 0;
   const richMediaReactionsRecencyTint: AlertAttentionRecencyUrgency =
-    galleryDashboard.patientReactionsLast7 > 0 || galleryDashboard.reactionsLast7 > 0
-      ? 'green'
-      : 'neutral';
+    richMediaReactionsCount > 0 ? 'green' : 'neutral';
 
   if (showRemoteSettings) {
     const checkInLabel =
