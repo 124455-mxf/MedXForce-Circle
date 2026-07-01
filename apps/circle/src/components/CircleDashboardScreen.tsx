@@ -895,12 +895,8 @@ export function CircleDashboardScreen({
 
   const richMediaReactionsFromPatient = galleryDashboard.patientReactionsLast7 > 0;
   const richMediaReactionsCount =
-    canSeeGallery && !galleryDashboard.loading
-      ? richMediaReactionsFromPatient
-        ? galleryDashboard.patientReactionsTotal
-        : galleryDashboard.reactionsLast7 > 0
-          ? galleryDashboard.reactionsLast7
-          : 0
+    canSeeGallery && !galleryDashboard.loading && richMediaReactionsFromPatient
+      ? galleryDashboard.patientReactionsTotal
       : 0;
   const richMediaReactionsRecencyTint: AlertAttentionRecencyUrgency =
     richMediaReactionsCount > 0 ? 'green' : 'neutral';
