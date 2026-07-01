@@ -6,6 +6,7 @@ import type { User } from 'firebase/auth';
 import {
   ASSESSMENT_AFTER_FIRST_COMMUNICATION_MS,
   hasAssessmentInWindow,
+  isParticipationReminderSnoozed,
   isPatientInsightsPreviewRemindersEnabled,
   shouldShowAssessmentAfterFirstCommReminder,
   shouldShowDiaryEntryReminder,
@@ -96,7 +97,9 @@ function CelebrationCard({
           aria-label={t(
             dismissKind === 'teamCoverage' || dismissKind === 'profileIncomplete'
               ? 'dashboard.reminders.dismissCareReminder'
-              : 'dashboard.reminders.dismissReminder',
+              : dismissKind === 'birthday' || dismissKind === 'onsetMilestone'
+                ? 'dashboard.reminders.dismissCelebrationReminder'
+                : 'dashboard.reminders.dismissReminder',
           )}
           onClick={(event) => {
             event.stopPropagation();
@@ -267,13 +270,14 @@ export function CircleDashboardCelebrationSection({
     });
 
   const tiles: CelebrationTile[] = [];
-  if (birthday) {
+  if (birthday && !isParticipationReminderSnoozed('birthday', snoozes)) {
     tiles.push({
       key: 'birthday',
       tone: 'birthday',
       icon: birthday.daysUntil >= 0 && birthday.daysUntil <= 1 ? PartyPopper : Cake,
       headline: birthday.headline,
       body: birthday.body,
+      dismissKind: 'birthday',
     });
   } else if (previewBirthday) {
     tiles.push({
@@ -286,13 +290,14 @@ export function CircleDashboardCelebrationSection({
     });
   }
 
-  if (onsetMilestone) {
+  if (onsetMilestone && !isParticipationReminderSnoozed('onsetMilestone', snoozes)) {
     tiles.push({
       key: 'onset',
       tone: 'milestone',
       icon: Flag,
       headline: onsetMilestone.headline,
       body: onsetMilestone.body,
+      dismissKind: 'onsetMilestone',
     });
   } else {
     if (previewOnsetFiveYear) {

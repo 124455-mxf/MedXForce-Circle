@@ -742,6 +742,7 @@ export const appShellEnglish = {
       previewDiaryBody: 'Sample participation nudge — tap to open Diary.',
       dismissReminder: 'Dismiss for 4 weeks',
       dismissCareReminder: 'Dismiss for 7 days',
+      dismissCelebrationReminder: 'Hide for now',
       careAssessmentHeadline: 'Time for a baseline assessment?',
       careAssessmentBody:
         'It has been two weeks since the first patient message — no assessment has been logged yet. Tap to review assessments.',
@@ -1603,6 +1604,7 @@ export const appShellGerman = {
       previewDiaryBody: 'Beispiel-Erinnerung — tippen für Tagebuch.',
       dismissReminder: '4 Wochen ausblenden',
       dismissCareReminder: '7 Tage ausblenden',
+      dismissCelebrationReminder: 'Jetzt ausblenden',
       careAssessmentHeadline: 'Zeit für eine Basis-Beurteilung?',
       careAssessmentBody:
         'Seit der ersten Patientennachricht sind zwei Wochen vergangen — noch keine Beurteilung erfasst. Tippen für Beurteilungen.',
@@ -2464,6 +2466,7 @@ export const appShellSpanish = {
       previewDiaryBody: 'Recordatorio de ejemplo — toca para Diario.',
       dismissReminder: 'Ocultar 4 semanas',
       dismissCareReminder: 'Ocultar 7 días',
+      dismissCelebrationReminder: 'Ocultar por ahora',
       careAssessmentHeadline: '¿Hora de una evaluación inicial?',
       careAssessmentBody:
         'Han pasado dos semanas desde el primer mensaje del paciente — aún no hay evaluación registrada. Toca para revisar evaluaciones.',
@@ -3325,6 +3328,7 @@ export const appShellPolish = {
       previewDiaryBody: 'Przykładowe przypomnienie — dotknij Dziennik.',
       dismissReminder: 'Ukryj na 4 tygodnie',
       dismissCareReminder: 'Ukryj na 7 dni',
+      dismissCelebrationReminder: 'Ukryj na teraz',
       careAssessmentHeadline: 'Czas na ocenę wyjściową?',
       careAssessmentBody:
         'Minęły dwa tygodnie od pierwszej wiadomości pacjenta — nie zarejestrowano jeszcze oceny. Dotknij, aby przejrzeć oceny.',

@@ -6,16 +6,24 @@ export const PARTICIPATION_REMINDER_WINDOW_MS = 28 * 24 * 60 * 60 * 1000;
 /** Care-team and profile reminders resurface sooner — proxy action is time-sensitive. */
 export const CARE_ACTION_REMINDER_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
 
+/** Celebration tiles (birthday / onset) use the same window as the UI (-3 to +7 days). */
+export const CELEBRATION_REMINDER_SNOOZE_MS = 11 * 24 * 60 * 60 * 1000;
+
 export type CircleParticipationReminderKind =
   | 'galleryUpload'
   | 'diaryEntry'
   | 'assessmentAfterFirstComm'
   | 'profileIncomplete'
-  | 'teamCoverage';
+  | 'teamCoverage'
+  | 'birthday'
+  | 'onsetMilestone';
 
 export function reminderSnoozeDurationMs(kind: CircleParticipationReminderKind): number {
   if (kind === 'teamCoverage' || kind === 'profileIncomplete') {
     return CARE_ACTION_REMINDER_SNOOZE_MS;
+  }
+  if (kind === 'birthday' || kind === 'onsetMilestone') {
+    return CELEBRATION_REMINDER_SNOOZE_MS;
   }
   return PARTICIPATION_REMINDER_WINDOW_MS;
 }
@@ -50,6 +58,12 @@ export function parseMemberReminderSnoozes(
   }
   if (typeof map.teamCoverage === 'number' && map.teamCoverage > 0) {
     next.teamCoverage = map.teamCoverage;
+  }
+  if (typeof map.birthday === 'number' && map.birthday > 0) {
+    next.birthday = map.birthday;
+  }
+  if (typeof map.onsetMilestone === 'number' && map.onsetMilestone > 0) {
+    next.onsetMilestone = map.onsetMilestone;
   }
   return next;
 }

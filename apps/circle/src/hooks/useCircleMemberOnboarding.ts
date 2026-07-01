@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { onSnapshot, type Firestore } from 'firebase/firestore';
+import { doc, onSnapshot, type Firestore } from 'firebase/firestore';
 import {
   dismissMemberOnboardingWelcome,
+  isOnboardingWelcomeDismissedForPatient,
   memberOnboardingRef,
-  parseMemberOnboardingWelcomeDismissed,
 } from '@medxforce/shared';
 
 export function useCircleMemberOnboarding(
@@ -24,21 +24,45 @@ export function useCircleMemberOnboarding(
     }
 
     setLoading(true);
-    return onSnapshot(
-      memberOnboardingRef(db, patientId, memberUid),
+    let profileData: Record<string, unknown> | undefined;
+    let memberData: Record<string, unknown> | undefined;
+
+    const publishDismissed = () => {
+      setDismissed(isOnboardingWelcomeDismissedForPatient(profileData, memberData, patientId));
+      setLoading(false);
+    };
+
+    const profileRef = doc(db, 'circle_profiles', memberUid);
+    const memberRef = memberOnboardingRef(db, patientId, memberUid);
+
+    const unsubProfile = onSnapshot(
+      profileRef,
       (snap) => {
-        setDismissed(
-          snap.exists()
-            ? parseMemberOnboardingWelcomeDismissed(snap.data() as Record<string, unknown>)
-            : false,
-        );
-        setLoading(false);
+        profileData = snap.exists() ? (snap.data() as Record<string, unknown>) : undefined;
+        publishDismissed();
       },
       () => {
-        setDismissed(false);
-        setLoading(false);
+        profileData = undefined;
+        publishDismissed();
       },
     );
+
+    const unsubMember = onSnapshot(
+      memberRef,
+      (snap) => {
+        memberData = snap.exists() ? (snap.data() as Record<string, unknown>) : undefined;
+        publishDismissed();
+      },
+      () => {
+        memberData = undefined;
+        publishDismissed();
+      },
+    );
+
+    return () => {
+      unsubProfile();
+      unsubMember();
+    };
   }, [db, enabled, memberUid, patientId]);
 
   const dismissWelcome = useCallback(async () => {
@@ -47,6 +71,9 @@ export function useCircleMemberOnboarding(
     try {
       await dismissMemberOnboardingWelcome(db, patientId, memberUid);
       setDismissed(true);
+    } catch (err) {
+      console.warn('[Circle] Could not dismiss onboarding welcome:', err);
+      throw err;
     } finally {
       setDismissing(false);
     }
