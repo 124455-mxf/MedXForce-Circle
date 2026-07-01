@@ -52,4 +52,5 @@ export * from './careCalendar';
 export * from './careCalendarScheduleActions';
 export * from './careCalendarAttendees';
 export * from './careCalendarInvite';
+export * from './careCalendarAssessmentNudges';
 export * from './dailyCheckIn';

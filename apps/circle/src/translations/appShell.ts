@@ -466,6 +466,10 @@ export const appShellEnglish = {
         markDone: 'Mark done',
         markOpen: 'Mark not done',
         dismissTask: 'Dismiss',
+        assessmentNudgesPreTitle: 'Recommended assessments before this visit',
+        assessmentNudgesPostTitle: 'Recommended assessments after this visit',
+        assessmentNudgeRecommended: 'Recommended',
+        assessmentNudgesShort: '{{count}} assessment(s) recommended',
       },
       errors: {
         titleRequired: 'Please enter a title.',

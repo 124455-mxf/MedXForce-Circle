@@ -5,6 +5,7 @@ import type { Firestore } from 'firebase/firestore';
 import {
   canParticipateInCircleOpenThread,
   canSeeCircleRestrictedThread,
+  canViewCircleAppointmentInvites,
   circleMemberThreadPostsCollection,
   isCircleThreadPostHiddenForUser,
   mergeAppointmentInvitePostsWithCareCalendar,
@@ -19,7 +20,7 @@ import {
   subscribeCirclePostThreadRead,
 } from '../lib/circlePostThreadRead';
 import { useHiddenCircleThreadPosts } from './useHiddenCircleThreadPosts';
-import { useCareCalendarEntries } from './useCareCalendarEntries';
+import { useCareCalendarEntries, buildCareCalendarEntriesSubscription } from './useCareCalendarEntries';
 import { useCircleMemberInviteContext } from './useCircleMemberInviteContext';
 
 export function useCircleMemberThreadUnread(
@@ -33,8 +34,19 @@ export function useCircleMemberThreadUnread(
   const canOpen = canParticipateInCircleOpenThread(memberRole);
   const canRestricted = canSeeCircleRestrictedThread(memberRole);
   const { hiddenByPostId } = useHiddenCircleThreadPosts(db, patientId, userId);
-  const { entries: careCalendarEntries } = useCareCalendarEntries(db, patientId);
-  const { inviteContext } = useCircleMemberInviteContext(db, user, patient);
+  const { inviteContext, inviteContextReady } = useCircleMemberInviteContext(db, user, patient);
+  const canViewAppointments = canViewCircleAppointmentInvites(memberRole);
+  const calendarSubscription = useMemo(
+    () =>
+      canViewAppointments
+        ? buildCareCalendarEntriesSubscription(patient, user.uid, inviteContext, {
+            inviteContextReady,
+            memberRole,
+          })
+        : undefined,
+    [canViewAppointments, inviteContext, inviteContextReady, memberRole, patient, user.uid],
+  );
+  const { entries: careCalendarEntries } = useCareCalendarEntries(db, patientId, calendarSubscription);
   const postReadTick = useSyncExternalStore(
     subscribeCirclePostThreadRead,
     getCirclePostThreadReadSnapshot,
@@ -82,15 +94,16 @@ export function useCircleMemberThreadUnread(
 
   const openPostsWithInvites = useMemo(
     () =>
-      canOpen && patientId
+      canOpen && patientId && canViewAppointments
         ? mergeAppointmentInvitePostsWithCareCalendar(
             openPosts,
             careCalendarEntries,
             inviteContext,
             patientId,
+            memberRole,
           )
         : openPosts,
-    [canOpen, careCalendarEntries, inviteContext, openPosts, patientId],
+    [canOpen, canViewAppointments, careCalendarEntries, inviteContext, memberRole, openPosts, patientId],
   );
 
   const visibleOpenPosts = useMemo(
@@ -130,9 +143,10 @@ export function useCircleMemberThreadUnread(
             userId,
             getOpenPostLastRead,
             inviteContext,
+            memberRole,
           )
         : 0,
-    [canOpen, getOpenPostLastRead, hiddenByPostId, inviteContext, openPostsWithInvites, postReadTick, userId],
+    [canOpen, getOpenPostLastRead, hiddenByPostId, inviteContext, memberRole, openPostsWithInvites, postReadTick, userId],
   );
 
   const announcementsRestrictedUnreadCount = useMemo(
@@ -173,9 +187,10 @@ export function useCircleMemberThreadUnread(
             userId,
             getOpenPostLastRead,
             inviteContext,
+            memberRole,
           )
         : 0,
-    [canOpen, getOpenPostLastRead, hiddenByPostId, inviteContext, openPostsWithInvites, postReadTick, userId],
+    [canOpen, getOpenPostLastRead, hiddenByPostId, inviteContext, memberRole, openPostsWithInvites, postReadTick, userId],
   );
 
   const discussionsRestrictedUnreadCount = useMemo(
@@ -238,6 +253,7 @@ export function useCircleMemberThreadUnread(
         userId,
         getOpenPostLastRead,
         inviteContext,
+        memberRole,
       );
     }
     if (canRestricted) {
@@ -258,6 +274,7 @@ export function useCircleMemberThreadUnread(
     getRestrictedPostLastRead,
     hiddenByPostId,
     inviteContext,
+    memberRole,
     openPostsWithInvites,
     postReadTick,
     restrictedPosts,
@@ -275,9 +292,10 @@ export function useCircleMemberThreadUnread(
             userId,
             getOpenPostLastRead,
             inviteContext,
+            memberRole,
           )
         : 0,
-    [canOpen, getOpenPostLastRead, hiddenByPostId, inviteContext, openPostsWithInvites, postReadTick, userId],
+    [canOpen, getOpenPostLastRead, hiddenByPostId, inviteContext, memberRole, openPostsWithInvites, postReadTick, userId],
   );
 
   const visitCapturesRestrictedUnreadCount = useMemo(

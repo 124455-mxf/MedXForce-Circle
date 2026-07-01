@@ -4,9 +4,12 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { Calendar } from 'lucide-react';
 import {
   APPOINTMENT_INVITE_POST_MARKER,
+  appointmentInviteAttendeesFromPost,
   formatCareCalendarAttendeeSummary,
   formatCareCalendarTimeRange,
   hasCareCalendarAddress,
+  mergeAttendeeResponses,
+  parseAttendeeResponseSummary,
   parseAppointmentInvitePost,
   type CareCalendarAddress,
   type CareCalendarAttendee,
@@ -27,6 +30,9 @@ type LoadedCareCalendarEntry = {
   startTimeMinutes?: number;
   endTimeMinutes?: number;
   attendees?: CareCalendarAttendee[];
+  attendeeResponseSummary?: ReturnType<typeof parseAttendeeResponseSummary>;
+  inviteeContactIds?: string[];
+  inviteeMemberUidByContactId?: Record<string, string>;
   address?: CareCalendarAddress;
   supportingNotes?: string;
 };
@@ -65,6 +71,20 @@ function parseLoadedEntry(data: Record<string, unknown>): LoadedCareCalendarEntr
     attendees: Array.isArray(data.attendees)
       ? (data.attendees as CareCalendarAttendee[])
       : undefined,
+    attendeeResponseSummary: parseAttendeeResponseSummary(data.attendeeResponseSummary),
+    inviteeContactIds: Array.isArray(data.inviteeContactIds)
+      ? data.inviteeContactIds.map((id) => String(id)).filter(Boolean)
+      : undefined,
+    inviteeMemberUidByContactId:
+      data.inviteeMemberUidByContactId &&
+      typeof data.inviteeMemberUidByContactId === 'object' &&
+      !Array.isArray(data.inviteeMemberUidByContactId)
+        ? Object.fromEntries(
+            Object.entries(data.inviteeMemberUidByContactId as Record<string, unknown>)
+              .map(([key, value]) => [key, String(value)])
+              .filter(([, value]) => Boolean(value)),
+          )
+        : undefined,
     address: parseAddressField(data.address),
     supportingNotes: data.supportingNotes ? String(data.supportingNotes).trim() : undefined,
   };
@@ -84,7 +104,9 @@ export function CircleAppointmentInvitePost({
   memberUid,
   memberContactId,
   memberDocContactId,
+  inviteContactId,
   memberDisplayName,
+  memberRole,
   t,
   disableTruncate = false,
 }: {
@@ -94,7 +116,9 @@ export function CircleAppointmentInvitePost({
   memberUid: string;
   memberContactId?: string;
   memberDocContactId?: string;
+  inviteContactId?: string;
   memberDisplayName?: string;
+  memberRole?: string;
   t: CircleTranslator;
   disableTruncate?: boolean;
 }) {
@@ -106,6 +130,22 @@ export function CircleAppointmentInvitePost({
     t(`dashboard.careCalendar.${key}`, params);
 
   const entryId = post.careCalendarEntryId || parsed?.entryId || '';
+  const fallbackAttendees = useMemo(
+    () => appointmentInviteAttendeesFromPost(post, parsed),
+    [parsed, post],
+  );
+  const rsvpAttendees = useMemo(
+    () =>
+      mergeAttendeeResponses(
+        entry?.attendees ?? fallbackAttendees,
+        entry?.attendeeResponseSummary,
+        entry?.inviteeMemberUidByContactId,
+      ) ?? fallbackAttendees,
+    [entry?.attendeeResponseSummary, entry?.attendees, entry?.inviteeMemberUidByContactId, fallbackAttendees],
+  );
+  const inviteeContactIds = entry?.inviteeContactIds?.length
+    ? entry.inviteeContactIds
+    : post.inviteeContactIds;
 
   useEffect(() => {
     if (!entryId) {
@@ -147,8 +187,8 @@ export function CircleAppointmentInvitePost({
     return `${dateLabel}${timeLabel ? ` · ${timeLabel}` : ''}`;
   }, [entry]);
 
-  const goingWith = entry?.attendees?.length
-    ? formatCareCalendarAttendeeSummary(entry.attendees, { excludePatient: true })
+  const goingWith = rsvpAttendees?.length
+    ? formatCareCalendarAttendeeSummary(rsvpAttendees, { excludePatient: true })
     : parsed?.inviteeNames.length
       ? parsed.inviteeNames.join(', ')
       : '';
@@ -195,6 +235,23 @@ export function CircleAppointmentInvitePost({
             ))}
           </div>
         </div>
+        {entryId ? (
+          <CircleCareCalendarInviteRsvpBar
+            db={db}
+            patientId={patientId}
+            entryId={entryId}
+            attendees={rsvpAttendees}
+            memberUid={memberUid}
+            memberContactId={memberContactId}
+            memberDocContactId={memberDocContactId}
+            inviteContactId={inviteContactId}
+            inviteeContactIds={inviteeContactIds}
+            inviteeMemberUidByContactId={entry?.inviteeMemberUidByContactId}
+            memberDisplayName={memberDisplayName}
+            memberRole={memberRole}
+            t={t}
+          />
+        ) : null}
       </div>
     );
   }
@@ -272,11 +329,15 @@ export function CircleAppointmentInvitePost({
           db={db}
           patientId={patientId}
           entryId={entryId}
-          attendees={entry?.attendees}
+          attendees={rsvpAttendees}
           memberUid={memberUid}
           memberContactId={memberContactId}
           memberDocContactId={memberDocContactId}
+          inviteContactId={inviteContactId}
+          inviteeContactIds={inviteeContactIds}
+          inviteeMemberUidByContactId={entry?.inviteeMemberUidByContactId}
           memberDisplayName={memberDisplayName}
+          memberRole={memberRole}
           startDateKey={entry?.startDateKey}
           startTimeMinutes={entry?.startTimeMinutes}
           endTimeMinutes={entry?.endTimeMinutes}

@@ -6,6 +6,7 @@ import {
   findImminentCareCalendarDayEvents,
   formatCareCalendarTime,
   formatCareCalendarTimeRange,
+  mergeAttendeeResponses,
   partitionCareDayEventsByPast,
   sortCareDayEventsForTodayView,
   careCalendarDayEventTiming,
@@ -16,10 +17,11 @@ import {
 } from '@medxforce/shared';
 import type { Firestore } from 'firebase/firestore';
 import type { AnalyticsMetricId } from '@medxforce/shared';
-import { assessmentScheduleIdToAnalyticsMetric } from '../lib/circleAssessmentScheduleMetrics';
+import { assessmentScheduleIdToAnalyticsMetric, type CircleAssessmentScheduleContext } from '../lib/circleAssessmentScheduleMetrics';
 import { CircleCareCalendarMapsLinks } from './CircleCareCalendarMapsLinks';
 import { CircleCareCalendarInviteRsvpBar } from './CircleCareCalendarInviteRsvpBar';
 import { CircleScheduleImminentBanner } from './CircleScheduleImminentBanner';
+import { CircleCareCalendarAssessmentNudgeHint } from './CircleCareCalendarAssessmentNudgesList';
 import {
   CircleScheduleAppointmentDetailSheet,
   type CircleScheduleAppointmentSelection,
@@ -44,8 +46,11 @@ type CircleScheduleTodayViewProps = {
   patientId?: string;
   memberContactId?: string;
   memberDocContactId?: string;
+  inviteContactId?: string;
   memberDisplayName?: string;
+  memberRole?: string;
   currentUserUid?: string;
+  assessmentSchedule?: CircleAssessmentScheduleContext;
 };
 
 export function CircleScheduleTodayView({
@@ -62,8 +67,11 @@ export function CircleScheduleTodayView({
   patientId,
   memberContactId,
   memberDocContactId,
+  inviteContactId,
   memberDisplayName,
+  memberRole,
   currentUserUid,
+  assessmentSchedule,
 }: CircleScheduleTodayViewProps) {
   const [selection, setSelection] = useState<CircleScheduleAppointmentSelection | null>(null);
   const [pastExpanded, setPastExpanded] = useState(false);
@@ -164,8 +172,11 @@ export function CircleScheduleTodayView({
                       patientId={patientId}
                       memberContactId={memberContactId}
                       memberDocContactId={memberDocContactId}
+                      inviteContactId={inviteContactId}
                       memberDisplayName={memberDisplayName}
+                      memberRole={memberRole}
                       currentUserUid={currentUserUid}
+                      assessmentSchedule={assessmentSchedule}
                       dateKey={dateKey}
                     />
                   ))}
@@ -206,7 +217,9 @@ export function CircleScheduleTodayView({
                           patientId={patientId}
                           memberContactId={memberContactId}
                           memberDocContactId={memberDocContactId}
+                          inviteContactId={inviteContactId}
                           memberDisplayName={memberDisplayName}
+                          memberRole={memberRole}
                           currentUserUid={currentUserUid}
                           dateKey={dateKey}
                           muted
@@ -291,7 +304,11 @@ export function CircleScheduleTodayView({
           db={db}
           memberContactId={memberContactId}
           memberDocContactId={memberDocContactId}
+          inviteContactId={inviteContactId}
           memberDisplayName={memberDisplayName}
+          memberRole={memberRole}
+          assessmentSchedule={assessmentSchedule}
+          onOpenAssessment={onOpenAssessment}
         />
       ) : null}
     </div>
@@ -308,9 +325,12 @@ function TodayCareCard({
   patientId,
   memberContactId,
   memberDocContactId,
+  inviteContactId,
   memberDisplayName,
+  memberRole,
   currentUserUid,
   dateKey,
+  assessmentSchedule,
   muted = false,
   now,
   showTimingHighlight = false,
@@ -324,9 +344,12 @@ function TodayCareCard({
   patientId?: string;
   memberContactId?: string;
   memberDocContactId?: string;
+  inviteContactId?: string;
   memberDisplayName?: string;
+  memberRole?: string;
   currentUserUid?: string;
   dateKey: string;
+  assessmentSchedule?: CircleAssessmentScheduleContext;
   muted?: boolean;
   now?: Date;
   showTimingHighlight?: boolean;
@@ -419,6 +442,15 @@ function TodayCareCard({
             {event.details ? (
               <p className="text-sm text-slate-600 mt-1 line-clamp-2">{event.details}</p>
             ) : null}
+            {assessmentSchedule ? (
+              <CircleCareCalendarAssessmentNudgeHint
+                event={event}
+                dateKey={dateKey}
+                preferences={assessmentSchedule.preferences}
+                histories={assessmentSchedule.histories}
+                ct={ct}
+              />
+            ) : null}
           </button>
           {onEdit ? (
             <button
@@ -445,7 +477,11 @@ function TodayCareCard({
             memberUid={currentUserUid}
             memberContactId={memberContactId}
             memberDocContactId={memberDocContactId}
+            inviteContactId={inviteContactId}
+            inviteeContactIds={event.inviteeContactIds}
+            inviteeMemberUidByContactId={event.inviteeMemberUidByContactId}
             memberDisplayName={memberDisplayName}
+            memberRole={memberRole}
             startDateKey={dateKey}
             startTimeMinutes={event.startTimeMinutes}
             endTimeMinutes={event.endTimeMinutes}
@@ -470,7 +506,13 @@ function AppointmentAttendeeResponses({
   ct: (key: string, params?: Record<string, unknown>) => string;
   t: CircleScheduleTodayViewProps['t'];
 }) {
-  if (!event.attendees?.length) return null;
+  const attendees =
+    mergeAttendeeResponses(
+      event.attendees,
+      event.attendeeResponseSummary,
+      event.inviteeMemberUidByContactId,
+    ) ?? event.attendees;
+  if (!attendees?.length) return null;
 
   const inviteTiming = {
     eventStatus: event.status,
@@ -485,7 +527,7 @@ function AppointmentAttendeeResponses({
         {ct('fields.attendeesWith')}
       </p>
       <ul className="space-y-1">
-        {event.attendees.map((attendee) => {
+        {attendees.map((attendee) => {
           const roleKey = careCalendarAttendeeRoleLabelKey(attendee.role);
           const role = roleKey.split('.').pop() ?? attendee.role;
           const tier =

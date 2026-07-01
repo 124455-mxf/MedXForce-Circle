@@ -63,7 +63,9 @@ export function CirclePostDetailView({
   patientId,
   memberContactId,
   memberDocContactId,
+  inviteContactId,
   memberDisplayName,
+  memberRole,
 }: {
   post: CircleMemberThreadPost;
   isOwn: boolean;
@@ -93,7 +95,9 @@ export function CirclePostDetailView({
   patientId?: string;
   memberContactId?: string;
   memberDocContactId?: string;
+  inviteContactId?: string;
   memberDisplayName?: string;
+  memberRole?: string;
 }) {
   const [copied, setCopied] = useState(false);
   const [expandedOpen, setExpandedOpen] = useState(false);
@@ -196,7 +200,9 @@ export function CirclePostDetailView({
             memberUid={currentUserUid}
             memberContactId={memberContactId}
             memberDocContactId={memberDocContactId}
+            inviteContactId={inviteContactId}
             memberDisplayName={memberDisplayName}
+            memberRole={memberRole}
           />
           <div className="mt-6 flex flex-wrap items-center gap-2">
             <button
@@ -305,7 +311,9 @@ export function CirclePostDetailView({
           memberUid={currentUserUid}
           memberContactId={memberContactId}
           memberDocContactId={memberDocContactId}
+          inviteContactId={inviteContactId}
           memberDisplayName={memberDisplayName}
+          memberRole={memberRole}
         />
       </CircleMessageExpandOverlay>
     </>

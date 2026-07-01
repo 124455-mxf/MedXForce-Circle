@@ -7,6 +7,7 @@ import {
   orderBy,
   query,
   updateDoc,
+  where,
   type Firestore,
   type Unsubscribe,
 } from 'firebase/firestore';
@@ -18,9 +19,15 @@ import type {
   CareCalendarAttendeeResponseSummary,
   CareCalendarEntry,
   CareCalendarEntryKind,
+  CareCalendarMemberInviteContext,
   CareCalendarRecurrence,
 } from '@medxforce/shared';
 import type { CircleMemberRole } from '@medxforce/shared';
+import {
+  circleMemberThreadPostsCollection,
+  isAppointmentInviteVisibleToMember,
+  parseCircleMemberThreadPost,
+} from '@medxforce/shared';
 import {
   isValidVisitSubtypeForKind,
   parseCareCalendarAppointmentTasks,
@@ -36,7 +43,7 @@ import {
   normalizeCareCalendarAttendeesForSave,
   parseAttendeeResponseSummary,
   publishCareCalendarInvitePosts,
-  resolveInviteeMemberUids,
+  resolveInviteeMemberMaps,
   sanitizeCareCalendarAddressForFirestore,
 } from '@medxforce/shared';
 
@@ -155,7 +162,21 @@ function parseEntry(id: string, data: Record<string, unknown>): CareCalendarEntr
     ? data.kind
     : 'other') as CareCalendarEntryKind;
   const attendeeResponseSummary = parseAttendeeResponseSummary(data.attendeeResponseSummary);
-  const attendees = mergeAttendeeResponses(parseAttendees(data.attendees), attendeeResponseSummary);
+  const inviteeMemberUidByContactId =
+    data.inviteeMemberUidByContactId &&
+    typeof data.inviteeMemberUidByContactId === 'object' &&
+    !Array.isArray(data.inviteeMemberUidByContactId)
+      ? Object.fromEntries(
+          Object.entries(data.inviteeMemberUidByContactId as Record<string, unknown>)
+            .map(([contactId, uid]) => [String(contactId), String(uid)])
+            .filter(([contactId, uid]) => Boolean(contactId) && Boolean(uid)),
+        )
+      : undefined;
+  const attendees = mergeAttendeeResponses(
+    parseAttendees(data.attendees),
+    attendeeResponseSummary,
+    inviteeMemberUidByContactId,
+  );
   return {
     id,
     patientId: String(data.patientId || ''),
@@ -176,6 +197,7 @@ function parseEntry(id: string, data: Record<string, unknown>): CareCalendarEntr
     inviteeMemberUids: Array.isArray(data.inviteeMemberUids)
       ? data.inviteeMemberUids.map((uid) => String(uid)).filter(Boolean)
       : undefined,
+    ...(inviteeMemberUidByContactId ? { inviteeMemberUidByContactId } : {}),
     ...episodeFieldsFromData(kind, data),
     doctorName: data.doctorName ? String(data.doctorName).trim() : undefined,
     source: data.source === 'circle' ? 'circle' : 'patient',
@@ -187,23 +209,210 @@ function parseEntry(id: string, data: Record<string, unknown>): CareCalendarEntr
   };
 }
 
+export type CareCalendarEntriesSubscriptionOptions = {
+  /** Caregivers/proxy with remoteSettings — full calendar read. */
+  canReadAllEntries: boolean;
+  memberUid?: string;
+  /** Managed / member / invite contact ids for inviteeContactIds queries. */
+  memberContactIds?: string[];
+  /** Used to resolve appointment invite posts → entry doc subscriptions. */
+  inviteContext?: CareCalendarMemberInviteContext;
+};
+
+function sortCareCalendarEntries(entries: CareCalendarEntry[]): CareCalendarEntry[] {
+  return [...entries].sort((a, b) => a.startDateKey.localeCompare(b.startDateKey));
+}
+
+function subscribeInviteScopedCareCalendarEntries(
+  db: Firestore,
+  patientId: string,
+  options: CareCalendarEntriesSubscriptionOptions,
+  onEntries: (entries: CareCalendarEntry[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  const memberUid = options.memberUid?.trim();
+  const inviteContext = options.inviteContext;
+
+  if (memberUid && inviteContext) {
+    return subscribeInviteScopedCareCalendarEntriesViaPosts(
+      db,
+      patientId,
+      memberUid,
+      inviteContext,
+      onEntries,
+      onError,
+    );
+  }
+
+  const col = entriesCollection(db, patientId);
+  const byId = new Map<string, CareCalendarEntry>();
+  const unsubs: Unsubscribe[] = [];
+
+  const emit = () => {
+    onEntries(
+      sortCareCalendarEntries(
+        [...byId.values()].filter((entry) => !entry.cancelledAt),
+      ),
+    );
+  };
+
+  const attachQuery = (q: ReturnType<typeof query>) => {
+    unsubs.push(
+      onSnapshot(
+        q,
+        (snap) => {
+          for (const change of snap.docChanges()) {
+            const entry = parseEntry(change.doc.id, change.doc.data() as Record<string, unknown>);
+            if (change.type === 'removed' || entry.cancelledAt) {
+              byId.delete(change.doc.id);
+            } else {
+              byId.set(change.doc.id, entry);
+            }
+          }
+          emit();
+        },
+        (err) => onError?.(err),
+      ),
+    );
+  };
+
+  if (memberUid) {
+    attachQuery(query(col, where('inviteeMemberUids', 'array-contains', memberUid)));
+  }
+
+  const memberContactIds = [
+    ...new Set(
+      (options.memberContactIds ?? [])
+        .map((id) => id.trim())
+        .filter(Boolean),
+    ),
+  ];
+  for (const memberContactId of memberContactIds) {
+    attachQuery(query(col, where('inviteeContactIds', 'array-contains', memberContactId)));
+  }
+
+  if (!unsubs.length) {
+    onEntries([]);
+    return () => {};
+  }
+
+  return () => {
+    for (const unsub of unsubs) unsub();
+  };
+}
+
+/** Invite-scoped members read entry docs linked from appointment invite posts (avoids collection query rule mismatch). */
+function subscribeInviteScopedCareCalendarEntriesViaPosts(
+  db: Firestore,
+  patientId: string,
+  memberUid: string,
+  inviteContext: CareCalendarMemberInviteContext,
+  onEntries: (entries: CareCalendarEntry[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  const byId = new Map<string, CareCalendarEntry>();
+  const entryDocUnsubs = new Map<string, Unsubscribe>();
+  const postsCol = circleMemberThreadPostsCollection(db, patientId, 'open');
+  let syncedEntryIdsKey = '';
+
+  const emit = () => {
+    onEntries(
+      sortCareCalendarEntries(
+        [...byId.values()].filter((entry) => !entry.cancelledAt),
+      ),
+    );
+  };
+
+  const syncEntryDocSubscriptions = (entryIds: Set<string>) => {
+    const nextKey = [...entryIds].sort().join('\0');
+    if (nextKey === syncedEntryIdsKey) return;
+    syncedEntryIdsKey = nextKey;
+
+    for (const [entryId, unsub] of entryDocUnsubs.entries()) {
+      if (entryIds.has(entryId)) continue;
+      unsub();
+      entryDocUnsubs.delete(entryId);
+      byId.delete(entryId);
+    }
+
+    for (const entryId of entryIds) {
+      if (entryDocUnsubs.has(entryId)) continue;
+      const entryRef = doc(db, 'patients', patientId, 'care_calendar', entryId);
+      entryDocUnsubs.set(
+        entryId,
+        onSnapshot(
+          entryRef,
+          (snap) => {
+            if (!snap.exists()) {
+              byId.delete(entryId);
+            } else {
+              const entry = parseEntry(snap.id, snap.data() as Record<string, unknown>);
+              if (entry.cancelledAt) byId.delete(entryId);
+              else byId.set(entryId, entry);
+            }
+            emit();
+          },
+          (err) => onError?.(err),
+        ),
+      );
+    }
+
+    emit();
+  };
+
+  const postsUnsub = onSnapshot(
+    query(postsCol, where('postKind', '==', 'appointment_invite')),
+    (snap) => {
+      const entryIds = new Set<string>();
+      for (const postSnap of snap.docs) {
+        const post = parseCircleMemberThreadPost(
+          postSnap.id,
+          postSnap.data() as Record<string, unknown>,
+        );
+        if (!isAppointmentInviteVisibleToMember(post, memberUid, inviteContext)) continue;
+        const entryId = post.careCalendarEntryId?.trim();
+        if (entryId) entryIds.add(entryId);
+      }
+      syncEntryDocSubscriptions(entryIds);
+    },
+    (err) => onError?.(err),
+  );
+
+  return () => {
+    postsUnsub();
+    for (const unsub of entryDocUnsubs.values()) unsub();
+    entryDocUnsubs.clear();
+    byId.clear();
+  };
+}
+
 export function subscribeCareCalendarEntries(
   db: Firestore,
   patientId: string,
   onEntries: (entries: CareCalendarEntry[]) => void,
   onError?: (error: Error) => void,
+  options?: CareCalendarEntriesSubscriptionOptions,
 ): Unsubscribe {
-  const q = query(entriesCollection(db, patientId), orderBy('startDateKey', 'asc'));
-  return onSnapshot(
-    q,
-    (snap) => {
-      const entries = snap.docs
-        .map((d) => parseEntry(d.id, d.data() as Record<string, unknown>))
-        .filter((e) => !e.cancelledAt);
-      onEntries(entries);
-    },
-    (err) => onError?.(err),
-  );
+  if (options?.canReadAllEntries) {
+    const q = query(entriesCollection(db, patientId), orderBy('startDateKey', 'asc'));
+    return onSnapshot(
+      q,
+      (snap) => {
+        const entries = snap.docs
+          .map((d) => parseEntry(d.id, d.data() as Record<string, unknown>))
+          .filter((e) => !e.cancelledAt);
+        onEntries(entries);
+      },
+      (err) => onError?.(err),
+    );
+  }
+
+  if (options) {
+    return subscribeInviteScopedCareCalendarEntries(db, patientId, options, onEntries, onError);
+  }
+
+  onEntries([]);
+  return () => {};
 }
 
 export type CareCalendarEntryInput = {
@@ -246,7 +455,7 @@ function attendeesFirestorePayload(
   const inviteeContactIds = buildInviteeContactIds(normalized);
   return {
     attendees: normalized,
-    attendeeResponseSummary: buildAttendeeResponseSummary(normalized) ?? null,
+    attendeeResponseSummary: buildAttendeeResponseSummary(normalized) ?? {},
     inviteeContactIds: inviteeContactIds.length ? inviteeContactIds : null,
   };
 }
@@ -321,10 +530,10 @@ export async function createCareCalendarEntry(
 
   const now = Date.now();
   const attendeePayload = attendeesFirestorePayload(input.attendees);
-  const inviteeMemberUids =
+  const { inviteeMemberUids, inviteeMemberUidByContactId } =
     attendeePayload.attendees?.length
-      ? await resolveInviteeMemberUids(db, patientId, attendeePayload.attendees)
-      : null;
+      ? await resolveInviteeMemberMaps(db, patientId, attendeePayload.attendees)
+      : { inviteeMemberUids: null, inviteeMemberUidByContactId: null };
   const ref = await addDoc(entriesCollection(db, patientId), {
     patientId,
     kind: input.kind,
@@ -338,7 +547,8 @@ export async function createCareCalendarEntry(
     attendees: attendeePayload.attendees,
     attendeeResponseSummary: attendeePayload.attendeeResponseSummary,
     inviteeContactIds: attendeePayload.inviteeContactIds,
-    inviteeMemberUids,
+    inviteeMemberUids: inviteeMemberUids ?? [],
+    inviteeMemberUidByContactId,
     ...episodeFirestorePayload(input.kind, input),
     doctorName: input.doctorName?.trim() || null,
     source: input.source,
@@ -406,9 +616,13 @@ export async function updateCareCalendarEntry(
     patch.attendees = attendeePayload.attendees;
     patch.attendeeResponseSummary = attendeePayload.attendeeResponseSummary;
     patch.inviteeContactIds = attendeePayload.inviteeContactIds;
-    patch.inviteeMemberUids = attendeePayload.attendees?.length
-      ? await resolveInviteeMemberUids(db, patientId, attendeePayload.attendees)
-      : null;
+    const memberMaps = await resolveInviteeMemberMaps(
+      db,
+      patientId,
+      attendeePayload.attendees,
+    );
+    patch.inviteeMemberUids = memberMaps.inviteeMemberUids ?? [];
+    patch.inviteeMemberUidByContactId = memberMaps.inviteeMemberUidByContactId;
   }
   if (input.kind) {
     if (!supportsCareCalendarAppointmentEpisode(input.kind)) {

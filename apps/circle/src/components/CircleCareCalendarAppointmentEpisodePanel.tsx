@@ -1,20 +1,33 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Check, X } from 'lucide-react';
-import type { CareCalendarDayEvent } from '@medxforce/shared';
+import type { AnalyticsMetricId, AssessmentHistoryMap, CareCalendarDayEvent } from '@medxforce/shared';
 import {
   appointmentTasksForPhase,
+  countRecommendedCareCalendarAssessmentNudges,
+  getCareCalendarAssessmentNudges,
   openAppointmentTaskCount,
   supportsCareCalendarAppointmentEpisode,
   type CareCalendarAppointmentTask,
 } from '@medxforce/shared';
+import { CircleCareCalendarAssessmentNudgesList } from './CircleCareCalendarAssessmentNudgesList';
 import { cn } from '../lib/utils';
 
 type EpisodeTab = 'details' | 'prepare' | 'followup';
 
 type CircleCareCalendarAppointmentEpisodePanelProps = {
   event: CareCalendarDayEvent;
-  ct: (key: string) => string;
+  appointmentDateKey: string;
+  ct: (key: string, params?: Record<string, unknown>) => string;
+  t: (path: string, params?: Record<string, unknown>) => string;
+  preferences?: {
+    featuresVisibility?: Record<string, unknown>;
+    appMode?: string;
+    fullUserDetails?: { clinical?: { treatmentPhase?: string } } | null;
+    assessmentSchedule?: unknown;
+  };
+  histories?: AssessmentHistoryMap;
+  onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
   currentUserUid?: string;
   onTasksChange?: (tasks: CareCalendarAppointmentTask[]) => void | Promise<void>;
   detailsContent?: ReactNode;
@@ -22,7 +35,12 @@ type CircleCareCalendarAppointmentEpisodePanelProps = {
 
 export function CircleCareCalendarAppointmentEpisodePanel({
   event,
+  appointmentDateKey,
   ct,
+  t,
+  preferences,
+  histories = {},
+  onOpenAssessment,
   currentUserUid,
   onTasksChange,
   detailsContent,
@@ -31,6 +49,20 @@ export function CircleCareCalendarAppointmentEpisodePanel({
   const [tab, setTab] = useState<EpisodeTab>('details');
   const openPre = openAppointmentTaskCount(appointmentTasksForPhase(event.appointmentTasks, 'pre'));
   const openPost = openAppointmentTaskCount(appointmentTasksForPhase(event.appointmentTasks, 'post'));
+
+  const preNudgeCount = useMemo(() => {
+    if (!preferences) return 0;
+    return countRecommendedCareCalendarAssessmentNudges(
+      getCareCalendarAssessmentNudges(event, appointmentDateKey, 'pre', preferences, histories),
+    );
+  }, [appointmentDateKey, event, histories, preferences]);
+
+  const postNudgeCount = useMemo(() => {
+    if (!preferences) return 0;
+    return countRecommendedCareCalendarAssessmentNudges(
+      getCareCalendarAssessmentNudges(event, appointmentDateKey, 'post', preferences, histories),
+    );
+  }, [appointmentDateKey, event, histories, preferences]);
 
   if (!hasEpisode) {
     return <>{detailsContent}</>;
@@ -125,10 +157,10 @@ export function CircleCareCalendarAppointmentEpisodePanel({
           ] as const
         ).map(([key, label]) => {
           const badge =
-            key === 'prepare' && openPre > 0
-              ? openPre
-              : key === 'followup' && openPost > 0
-                ? openPost
+            key === 'prepare' && openPre + preNudgeCount > 0
+              ? openPre + preNudgeCount
+              : key === 'followup' && openPost + postNudgeCount > 0
+                ? openPost + postNudgeCount
                 : 0;
           return (
             <button
@@ -152,7 +184,7 @@ export function CircleCareCalendarAppointmentEpisodePanel({
       </div>
 
       {tab === 'details' && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {event.visitSubtype && (
             <p className="text-sm text-slate-600">
               <span className="font-bold text-slate-700">{ct('fields.visitSubtype')}: </span>
@@ -161,16 +193,48 @@ export function CircleCareCalendarAppointmentEpisodePanel({
           )}
           {detailsContent}
           {event.supportingNotes && (
-            <div>
-              <p className="text-sm font-bold text-slate-700 mb-1">{ct('fields.supportingNotes')}</p>
+            <div className="pt-1">
+              <p className="text-sm font-bold text-slate-700 mb-2">{ct('fields.supportingNotes')}</p>
               <p className="text-sm text-slate-600 whitespace-pre-wrap">{event.supportingNotes}</p>
             </div>
           )}
         </div>
       )}
 
-      {tab === 'prepare' && renderTaskList('pre')}
-      {tab === 'followup' && renderTaskList('post')}
+      {tab === 'prepare' && (
+        <div className="space-y-4">
+          {preferences ? (
+            <CircleCareCalendarAssessmentNudgesList
+              event={event}
+              dateKey={appointmentDateKey}
+              phase="pre"
+              preferences={preferences}
+              histories={histories}
+              ct={ct}
+              t={t}
+              onOpenAssessment={onOpenAssessment}
+            />
+          ) : null}
+          {renderTaskList('pre')}
+        </div>
+      )}
+      {tab === 'followup' && (
+        <div className="space-y-4">
+          {preferences ? (
+            <CircleCareCalendarAssessmentNudgesList
+              event={event}
+              dateKey={appointmentDateKey}
+              phase="post"
+              preferences={preferences}
+              histories={histories}
+              ct={ct}
+              t={t}
+              onOpenAssessment={onOpenAssessment}
+            />
+          ) : null}
+          {renderTaskList('post')}
+        </div>
+      )}
     </div>
   );
 }

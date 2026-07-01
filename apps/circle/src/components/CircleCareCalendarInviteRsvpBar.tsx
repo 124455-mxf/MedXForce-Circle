@@ -6,8 +6,12 @@ import {
   attendeeNeedsAppointmentInvite,
   findCareCalendarAttendeeForMember,
   isCareCalendarAppointmentPast,
+  mergeAttendeeResponses,
+  parseAttendeeResponseSummary,
   respondToCareCalendarInvite,
+  resolveCareCalendarRsvpContactIdForEntry,
   type CareCalendarAttendee,
+  type CareCalendarAttendeeResponse,
   type CareCalendarMemberInviteContext,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
@@ -20,7 +24,11 @@ export function CircleCareCalendarInviteRsvpBar({
   memberUid,
   memberContactId,
   memberDocContactId,
+  inviteContactId,
   memberDisplayName,
+  inviteeContactIds,
+  inviteeMemberUidByContactId,
+  memberRole,
   startDateKey,
   startTimeMinutes,
   endTimeMinutes,
@@ -35,7 +43,11 @@ export function CircleCareCalendarInviteRsvpBar({
   memberUid?: string;
   memberContactId?: string;
   memberDocContactId?: string;
+  inviteContactId?: string;
   memberDisplayName?: string;
+  inviteeContactIds?: string[];
+  inviteeMemberUidByContactId?: Record<string, string>;
+  memberRole?: string;
   startDateKey?: string;
   startTimeMinutes?: number;
   endTimeMinutes?: number;
@@ -48,14 +60,14 @@ export function CircleCareCalendarInviteRsvpBar({
       memberUid: memberUid ?? '',
       contactId: memberContactId,
       memberDocContactId,
+      inviteContactId,
       displayName: memberDisplayName,
     }),
-    [memberContactId, memberDisplayName, memberDocContactId, memberUid],
+    [inviteContactId, memberContactId, memberDisplayName, memberDocContactId, memberUid],
   );
 
-  const self = findCareCalendarAttendeeForMember(attendees, inviteContext);
-  const resolvedContactId = self?.contactId;
-  const [response, setResponse] = useState(self?.response ?? 'pending');
+  const [liveAttendees, setLiveAttendees] = useState<CareCalendarAttendee[] | undefined>(attendees);
+  const [response, setResponse] = useState<CareCalendarAttendeeResponse>('pending');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [entryTiming, setEntryTiming] = useState({
@@ -64,25 +76,70 @@ export function CircleCareCalendarInviteRsvpBar({
     endTimeMinutes,
   });
 
+  const mergedAttendees = useMemo(
+    () => liveAttendees,
+    [liveAttendees],
+  );
+
+  const resolvedContactId = useMemo(
+    () =>
+      resolveCareCalendarRsvpContactIdForEntry(
+        {
+          inviteeContactIds,
+          inviteeMemberUidByContactId,
+          attendees: mergedAttendees,
+        },
+        inviteContext,
+      ),
+    [inviteContext, inviteeContactIds, inviteeMemberUidByContactId, mergedAttendees],
+  );
+
+  const self = findCareCalendarAttendeeForMember(mergedAttendees, inviteContext);
+
   useEffect(() => {
-    setResponse(self?.response ?? 'pending');
+    setLiveAttendees(attendees);
+  }, [attendees]);
+
+  useEffect(() => {
+    const selfResponse = self?.response;
+    if (selfResponse === 'accepted' || selfResponse === 'declined') {
+      setResponse(selfResponse);
+    } else {
+      setResponse('pending');
+    }
   }, [self?.response]);
 
   useEffect(() => {
     if (!entryId) return;
     const ref = doc(db, 'patients', patientId, 'care_calendar', entryId);
-    return onSnapshot(ref, (snap) => {
-      const data = snap.data();
-      const summary = data?.attendeeResponseSummary as
-        | Record<string, { response?: string }>
-        | undefined;
-      if (resolvedContactId) {
-        const fromSummary = summary?.[resolvedContactId]?.response;
-        if (fromSummary === 'accepted' || fromSummary === 'declined') {
-          setResponse(fromSummary);
+    return onSnapshot(
+      ref,
+      (snap) => {
+        const data = snap.data();
+        if (!data) return;
+        const rawAttendees = Array.isArray(data.attendees)
+          ? (data.attendees as CareCalendarAttendee[])
+          : attendees;
+        const summary = parseAttendeeResponseSummary(data.attendeeResponseSummary);
+        const uidMap =
+          data.inviteeMemberUidByContactId &&
+          typeof data.inviteeMemberUidByContactId === 'object' &&
+          !Array.isArray(data.inviteeMemberUidByContactId)
+            ? Object.fromEntries(
+                Object.entries(data.inviteeMemberUidByContactId as Record<string, unknown>)
+                  .map(([contactId, uid]) => [String(contactId), String(uid)])
+                  .filter(([contactId, uid]) => Boolean(contactId) && Boolean(uid)),
+              )
+            : inviteeMemberUidByContactId;
+        const merged = mergeAttendeeResponses(rawAttendees, summary, uidMap);
+        setLiveAttendees(merged);
+        const liveSelf = findCareCalendarAttendeeForMember(merged, inviteContext);
+        const liveResponse = liveSelf?.response ?? 'pending';
+        if (liveResponse === 'accepted' || liveResponse === 'declined') {
+          setResponse(liveResponse);
+        } else {
+          setResponse('pending');
         }
-      }
-      if (data) {
         setEntryTiming({
           startDateKey: String(data.startDateKey || startDateKey || ''),
           startTimeMinutes:
@@ -90,14 +147,18 @@ export function CircleCareCalendarInviteRsvpBar({
           endTimeMinutes:
             data.endTimeMinutes != null ? Number(data.endTimeMinutes) : endTimeMinutes,
         });
-      }
-    });
+      },
+      () => {
+        // Read may be denied for legacy entries; RSVP still works via attendeeResponseSummary update.
+      },
+    );
   }, [
+    attendees,
     db,
     endTimeMinutes,
     entryId,
+    inviteContext,
     patientId,
-    resolvedContactId,
     startDateKey,
     startTimeMinutes,
   ]);
@@ -123,7 +184,7 @@ export function CircleCareCalendarInviteRsvpBar({
   }
 
   const handleRespond = async (next: 'accepted' | 'declined') => {
-    if (busy) return;
+    if (busy || !resolvedContactId) return;
     setBusy(true);
     setError(null);
     try {
@@ -134,9 +195,16 @@ export function CircleCareCalendarInviteRsvpBar({
         resolvedContactId,
         memberUid,
         next,
+        {
+          managedContactId: memberContactId,
+          memberDocContactId,
+          inviteContactId,
+          displayName: memberDisplayName,
+          memberRole,
+        },
       );
-      setResponse(next);
     } catch (err) {
+      setResponse('pending');
       setError(err instanceof Error ? err.message : t('circle.appointmentInviteRespondFailed'));
     } finally {
       setBusy(false);

@@ -1,8 +1,9 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { Firestore } from 'firebase/firestore';
-import { ChevronLeft, ChevronRight, Users, X } from 'lucide-react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { ChevronLeft, ChevronRight, Maximize2, Users, X } from 'lucide-react';
 import {
   assessmentScheduleDateKey,
   careCalendarAttendeeRoleLabelKey,
@@ -10,14 +11,20 @@ import {
   formatCareCalendarTime,
   formatCareCalendarTimeRange,
   getCalendarWeekDays,
+  mergeAttendeeResponses,
+  parseAttendeeResponseSummary,
   shouldShowAttendeeInviteResponseBadge,
   type AssessmentScheduleDayEvent,
+  type CareCalendarAttendee,
   type CareCalendarDayEvent,
 } from '@medxforce/shared';
 import { CircleCareCalendarMapsLinks } from './CircleCareCalendarMapsLinks';
 import { CircleCareCalendarAppointmentEpisodePanel } from './CircleCareCalendarAppointmentEpisodePanel';
 import { CircleCareCalendarInviteRsvpBar } from './CircleCareCalendarInviteRsvpBar';
+import { CircleMessageExpandOverlay } from './CircleMessageExpandOverlay';
 import type { CareCalendarAppointmentTask } from '@medxforce/shared';
+import type { CircleAssessmentScheduleContext } from '../lib/circleAssessmentScheduleMetrics';
+import type { AnalyticsMetricId } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 
 const WEEK_START_HOUR = 7;
@@ -51,7 +58,11 @@ type CircleScheduleWeekViewProps = {
   db?: Firestore;
   memberContactId?: string;
   memberDocContactId?: string;
+  inviteContactId?: string;
   memberDisplayName?: string;
+  memberRole?: string;
+  assessmentSchedule?: CircleAssessmentScheduleContext;
+  onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
 };
 
 function buildWeekTimeSlots(): number[] {
@@ -78,6 +89,52 @@ function defaultMobileDayOffset(weekDays: Date[], todayKey: string): number {
   return Math.max(0, Math.min(todayIdx - 1, weekDays.length - MOBILE_VISIBLE_DAYS));
 }
 
+function useLiveMergedAttendees(
+  db: Firestore | undefined,
+  patientId: string | undefined,
+  entryId: string,
+  fallback?: CareCalendarAttendee[],
+  inviteeMemberUidByContactId?: Record<string, string>,
+): CareCalendarAttendee[] | undefined {
+  const [attendees, setAttendees] = useState(fallback);
+
+  useEffect(() => {
+    setAttendees(fallback);
+  }, [entryId, fallback]);
+
+  useEffect(() => {
+    if (!db || !patientId || !entryId) return;
+    const entryRef = doc(db, 'patients', patientId, 'care_calendar', entryId);
+    return onSnapshot(
+      entryRef,
+      (snap) => {
+        if (!snap.exists()) return;
+        const data = snap.data();
+        const rawAttendees = Array.isArray(data.attendees)
+          ? (data.attendees as CareCalendarAttendee[])
+          : fallback;
+        const summary = parseAttendeeResponseSummary(data.attendeeResponseSummary);
+        const uidMap =
+          data.inviteeMemberUidByContactId &&
+          typeof data.inviteeMemberUidByContactId === 'object' &&
+          !Array.isArray(data.inviteeMemberUidByContactId)
+            ? Object.fromEntries(
+                Object.entries(data.inviteeMemberUidByContactId as Record<string, unknown>)
+                  .map(([contactId, uid]) => [String(contactId), String(uid)])
+                  .filter(([contactId, uid]) => Boolean(contactId) && Boolean(uid)),
+              )
+            : inviteeMemberUidByContactId;
+        setAttendees(mergeAttendeeResponses(rawAttendees, summary, uidMap) ?? fallback);
+      },
+      () => {
+        /* read may be denied for legacy entries */
+      },
+    );
+  }, [db, entryId, fallback, inviteeMemberUidByContactId, patientId]);
+
+  return attendees ?? fallback;
+}
+
 export function CircleScheduleWeekView({
   weekAnchor,
   calendarByDay,
@@ -92,7 +149,11 @@ export function CircleScheduleWeekView({
   db,
   memberContactId,
   memberDocContactId,
+  inviteContactId,
   memberDisplayName,
+  memberRole,
+  assessmentSchedule,
+  onOpenAssessment,
 }: CircleScheduleWeekViewProps) {
   const [selection, setSelection] = useState<CircleScheduleAppointmentSelection | null>(null);
   const ct = (key: string, params?: Record<string, unknown>) =>
@@ -220,7 +281,11 @@ export function CircleScheduleWeekView({
           db={db}
           memberContactId={memberContactId}
           memberDocContactId={memberDocContactId}
+          inviteContactId={inviteContactId}
           memberDisplayName={memberDisplayName}
+          memberRole={memberRole}
+          assessmentSchedule={assessmentSchedule}
+          onOpenAssessment={onOpenAssessment}
         />
       )}
     </div>
@@ -397,7 +462,11 @@ export function CircleScheduleAppointmentDetailSheet({
   db,
   memberContactId,
   memberDocContactId,
+  inviteContactId,
   memberDisplayName,
+  memberRole,
+  assessmentSchedule,
+  onOpenAssessment,
 }: {
   selection: CircleScheduleAppointmentSelection;
   ct: (key: string, params?: Record<string, unknown>) => string;
@@ -410,7 +479,11 @@ export function CircleScheduleAppointmentDetailSheet({
   db?: Firestore;
   memberContactId?: string;
   memberDocContactId?: string;
+  inviteContactId?: string;
   memberDisplayName?: string;
+  memberRole?: string;
+  assessmentSchedule?: CircleAssessmentScheduleContext;
+  onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
 }) {
   useEffect(() => {
     const previous = document.body.style.overflow;
@@ -448,11 +521,30 @@ export function CircleScheduleAppointmentDetailSheet({
           db={db}
           memberContactId={memberContactId}
           memberDocContactId={memberDocContactId}
+          inviteContactId={inviteContactId}
           memberDisplayName={memberDisplayName}
+          memberRole={memberRole}
+          assessmentSchedule={assessmentSchedule}
+          onOpenAssessment={onOpenAssessment}
         />
       </div>
     </div>,
     document.body,
+  );
+}
+
+function AppointmentDetailSection({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <section>
+      <p className="text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-2">{label}</p>
+      {children}
+    </section>
   );
 }
 
@@ -468,7 +560,11 @@ function WeekAppointmentDetail({
   db,
   memberContactId,
   memberDocContactId,
+  inviteContactId,
   memberDisplayName,
+  memberRole,
+  assessmentSchedule,
+  onOpenAssessment,
 }: {
   selection: CircleScheduleAppointmentSelection;
   ct: (key: string, params?: Record<string, unknown>) => string;
@@ -481,9 +577,25 @@ function WeekAppointmentDetail({
   db?: Firestore;
   memberContactId?: string;
   memberDocContactId?: string;
+  inviteContactId?: string;
   memberDisplayName?: string;
+  memberRole?: string;
+  assessmentSchedule?: CircleAssessmentScheduleContext;
+  onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
 }) {
+  const [expandedOpen, setExpandedOpen] = useState(false);
   const { event, dateKey } = selection;
+  const displayAttendees = useLiveMergedAttendees(
+    db,
+    patientId,
+    event.entryId,
+    mergeAttendeeResponses(
+      event.attendees,
+      event.attendeeResponseSummary,
+      event.inviteeMemberUidByContactId,
+    ) ?? event.attendees,
+    event.inviteeMemberUidByContactId,
+  );
   const timeLabel = formatCareCalendarTimeRange(event.startTimeMinutes, event.endTimeMinutes);
   const dayLabel = new Date(dateKey + 'T12:00:00').toLocaleDateString(undefined, {
     weekday: 'long',
@@ -497,18 +609,23 @@ function WeekAppointmentDetail({
     startTimeMinutes: event.startTimeMinutes,
     endTimeMinutes: event.endTimeMinutes,
   };
+  const subtitle = [
+    ct('legendAppointment'),
+    ct(`kinds.${event.kind}`),
+    event.visitSubtype ? ct(`visitSubtype.${event.visitSubtype}`) : null,
+    event.source === 'circle' ? ct('fromCircle') : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   const detailsContent = (
     <>{event.details ? <p className="text-sm text-slate-600">{event.details}</p> : null}</>
   );
 
-  const goingWithBlock = event.attendees?.length ? (
-    <div className="space-y-1.5">
-      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-        {ct('fields.attendeesWith')}
-      </p>
-      <ul className="space-y-1">
-        {event.attendees.map((attendee) => {
+  const goingWithBlock = displayAttendees?.length ? (
+    <AppointmentDetailSection label={ct('fields.attendeesWith')}>
+      <ul className="space-y-1.5">
+        {displayAttendees.map((attendee) => {
           const roleKey = careCalendarAttendeeRoleLabelKey(attendee.role);
           const role = roleKey.split('.').pop() ?? attendee.role;
           const tier =
@@ -556,91 +673,121 @@ function WeekAppointmentDetail({
           );
         })}
       </ul>
-    </div>
+    </AppointmentDetailSection>
   ) : null;
 
+  const appointmentBody = (
+    <>
+      <div className="space-y-5">
+        {event.doctorName ? (
+          <AppointmentDetailSection label={ct('fields.doctorName')}>
+            <p className="text-sm text-slate-700">{event.doctorName}</p>
+          </AppointmentDetailSection>
+        ) : null}
+        <AppointmentDetailSection label={ct('fields.dateTime')}>
+          <p className="text-sm text-slate-600">{dateTimeLabel}</p>
+        </AppointmentDetailSection>
+        {event.address ? (
+          <CircleCareCalendarMapsLinks
+            address={event.address}
+            ct={ct}
+            showFullAddress
+            sectionHeader={ct('fields.location')}
+          />
+        ) : null}
+        {goingWithBlock}
+        {db && patientId ? (
+          <CircleCareCalendarInviteRsvpBar
+            db={db}
+            patientId={patientId}
+            entryId={event.entryId}
+            attendees={displayAttendees}
+            memberUid={currentUserUid}
+            memberContactId={memberContactId}
+            memberDocContactId={memberDocContactId}
+            inviteContactId={inviteContactId}
+            inviteeContactIds={event.inviteeContactIds}
+            inviteeMemberUidByContactId={event.inviteeMemberUidByContactId}
+            memberDisplayName={memberDisplayName}
+            memberRole={memberRole}
+            startDateKey={dateKey}
+            startTimeMinutes={event.startTimeMinutes}
+            endTimeMinutes={event.endTimeMinutes}
+            eventStatus={event.status}
+            t={t}
+          />
+        ) : null}
+      </div>
+      <div className="mt-6">
+        <CircleCareCalendarAppointmentEpisodePanel
+          event={event}
+          appointmentDateKey={dateKey}
+          ct={ct}
+          t={t}
+          preferences={assessmentSchedule?.preferences}
+          histories={assessmentSchedule?.histories}
+          onOpenAssessment={onOpenAssessment}
+          currentUserUid={currentUserUid}
+          onTasksChange={
+            onAppointmentTasksChange
+              ? (tasks) => onAppointmentTasksChange(event.entryId, event.kind, tasks)
+              : undefined
+          }
+          detailsContent={detailsContent}
+        />
+      </div>
+    </>
+  );
+
   return (
-    <div className="space-y-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 space-y-2">
-          <p className="text-lg font-bold text-slate-900">{event.title}</p>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-violet-700">
-            {ct('legendAppointment')} · {ct(`kinds.${event.kind}`)}
-            {event.visitSubtype ? ` · ${ct(`visitSubtype.${event.visitSubtype}`)}` : ''}
-            {event.source === 'circle' ? ` · ${ct('fromCircle')}` : ''}
-          </p>
-          {event.doctorName ? (
-            <div className="space-y-0.5">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                {ct('fields.doctorName')}
-              </p>
-              <p className="text-sm text-slate-700">{event.doctorName}</p>
-            </div>
-          ) : null}
-          <div className="space-y-0.5">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-              {ct('fields.dateTime')}
-            </p>
-            <p className="text-sm text-slate-600">{dateTimeLabel}</p>
+    <>
+      <div className="space-y-6">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 space-y-1">
+            <p className="text-lg font-bold text-slate-900">{event.title}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-violet-700">{subtitle}</p>
           </div>
-          {event.address ? (
-            <CircleCareCalendarMapsLinks
-              address={event.address}
-              ct={ct}
-              showFullAddress
-              sectionHeader={ct('fields.location')}
-            />
-          ) : null}
-          {goingWithBlock ? <div className="pt-2">{goingWithBlock}</div> : null}
-          {db && patientId ? (
-            <CircleCareCalendarInviteRsvpBar
-              db={db}
-              patientId={patientId}
-              entryId={event.entryId}
-              attendees={event.attendees}
-              memberUid={currentUserUid}
-              memberContactId={memberContactId}
-              memberDocContactId={memberDocContactId}
-              memberDisplayName={memberDisplayName}
-              startDateKey={dateKey}
-              startTimeMinutes={event.startTimeMinutes}
-              endTimeMinutes={event.endTimeMinutes}
-              eventStatus={event.status}
-              t={t}
-            />
-          ) : null}
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          {onEdit ? (
+          <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
-              onClick={onEdit}
-              className="px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-bold hover:bg-violet-700"
+              onClick={() => setExpandedOpen(true)}
+              className="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+              aria-label={t('circle.expandMessage')}
+              title={t('circle.expandMessage')}
             >
-              {t('common.edit')}
+              <Maximize2 size={18} />
             </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:bg-slate-50"
-            aria-label={t('common.close')}
-          >
-            <X size={18} />
-          </button>
+            {onEdit ? (
+              <button
+                type="button"
+                onClick={onEdit}
+                className="px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-bold hover:bg-violet-700"
+              >
+                {t('common.edit')}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-xl text-slate-400 hover:bg-slate-50"
+              aria-label={t('common.close')}
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
+        {appointmentBody}
       </div>
-      <CircleCareCalendarAppointmentEpisodePanel
-        event={event}
-        ct={ct}
-        currentUserUid={currentUserUid}
-        onTasksChange={
-          onAppointmentTasksChange
-            ? (tasks) => onAppointmentTasksChange(event.entryId, event.kind, tasks)
-            : undefined
-        }
-        detailsContent={detailsContent}
-      />
-    </div>
+      <CircleMessageExpandOverlay
+        open={expandedOpen}
+        title={event.title}
+        subtitle={subtitle}
+        onClose={() => setExpandedOpen(false)}
+        t={t}
+        zClassName="z-[220]"
+      >
+        {appointmentBody}
+      </CircleMessageExpandOverlay>
+    </>
   );
 }

@@ -34,10 +34,9 @@ export function CircleScheduleScreen({
   const { snapshot: profileSnapshot } = useCirclePatientProfileSnapshot(db, patient.patientId);
   const { settings: remoteSettings } = useCircleRemoteSettingsFromShell();
 
-  const enabled =
-    memberRole !== 'friend' && remoteSettings?.featuresVisibility?.healthAssessments !== false;
+  const scheduleEnabled = memberRole !== 'friend';
 
-  if (!enabled) {
+  if (!scheduleEnabled) {
     return (
       <div className={circleWorkTabPanelClass}>
         <CircleWorkTabSectionIntro
@@ -71,7 +70,7 @@ export function CircleScheduleScreen({
           appMode={remoteSettings?.appMode}
           healthAssessmentsEnabled={remoteSettings?.featuresVisibility?.healthAssessments}
           remoteAssessmentSchedule={remoteSettings?.assessmentSchedule}
-          enabled={enabled}
+          enabled={scheduleEnabled}
           fullPage
           t={t}
           onOpenAssessment={onOpenAssessment}

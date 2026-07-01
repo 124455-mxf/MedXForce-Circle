@@ -1,6 +1,7 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 
 import {
+  arrayUnion,
   collection,
   doc,
   getDoc,
@@ -23,6 +24,7 @@ import type {
 import { formatCareCalendarTimeRange, isCareCalendarAppointmentPast } from './careCalendar';
 import {
   canParticipateInCircleOpenThread,
+  canViewCircleAppointmentInvites,
   circleMemberThreadPostsCollection,
   type CircleMemberThreadPost,
 } from './circleMemberThreads';
@@ -122,13 +124,45 @@ export function parseAttendeeResponseSummary(
   return Object.keys(summary).length ? summary : undefined;
 }
 
+function attendeeUidForContactId(
+  contactId: string,
+  inviteeMemberUidByContactId?: Record<string, string>,
+): string | undefined {
+  const uid = inviteeMemberUidByContactId?.[contactId]?.trim();
+  return uid || undefined;
+}
+
+/** Map summary rows to attendee rows — never copy one member's RSVP onto another invitee. */
+function summaryRowForAttendee(
+  attendee: CareCalendarAttendee,
+  summary?: CareCalendarAttendeeResponseSummary,
+  inviteeMemberUidByContactId?: Record<string, string>,
+): CareCalendarAttendeeResponseRecord | undefined {
+  const direct = summary?.[attendee.contactId];
+  if (direct) return direct;
+  if (!summary) return undefined;
+
+  const attendeeUid = attendeeUidForContactId(attendee.contactId, inviteeMemberUidByContactId);
+  if (!attendeeUid) return undefined;
+
+  for (const [summaryKey, row] of Object.entries(summary)) {
+    if (row.respondedByUid !== attendeeUid) continue;
+    if (summaryKey === attendee.contactId) return row;
+    const summaryKeyUid = attendeeUidForContactId(summaryKey, inviteeMemberUidByContactId);
+    if (summaryKeyUid === attendeeUid) return row;
+  }
+
+  return undefined;
+}
+
 export function mergeAttendeeResponses(
   attendees: CareCalendarAttendee[] | undefined,
   summary?: CareCalendarAttendeeResponseSummary,
+  inviteeMemberUidByContactId?: Record<string, string>,
 ): CareCalendarAttendee[] | undefined {
   if (!attendees?.length) return attendees;
   return attendees.map((attendee) => {
-    const fromSummary = summary?.[attendee.contactId];
+    const fromSummary = summaryRowForAttendee(attendee, summary, inviteeMemberUidByContactId);
     if (!fromSummary) return attendee;
     return {
       ...attendee,
@@ -216,6 +250,22 @@ export function parseAppointmentInvitePost(
   };
 }
 
+/** Minimal attendees for RSVP when the live care_calendar doc cannot be loaded. */
+export function appointmentInviteAttendeesFromPost(
+  post: Pick<CircleMemberThreadPost, 'inviteeContactIds' | 'text'>,
+  parsed: ParsedAppointmentInvitePost | null,
+): CareCalendarAttendee[] | undefined {
+  const contactIds = post.inviteeContactIds ?? [];
+  const names = parsed?.inviteeNames ?? [];
+  if (!contactIds.length) return undefined;
+  return contactIds.map((contactId, index) => ({
+    contactId,
+    name: names[index] ?? names[0] ?? 'Invitee',
+    role: 'family',
+    response: 'pending' as const,
+  }));
+}
+
 export function inviteTargetsForMember(
   post: Pick<CircleMemberThreadPost, 'inviteTargetUids' | 'authorUid'>,
   memberUid: string,
@@ -239,6 +289,222 @@ export function memberInviteContactIds(
   ];
 }
 
+/** Matches Firestore memberEffectiveContactId (invite ref when member doc is stale). */
+export function memberEffectiveInviteContactId(
+  context: Pick<
+    CareCalendarMemberInviteContext,
+    'contactId' | 'memberDocContactId' | 'inviteContactId'
+  >,
+): string | undefined {
+  const fromMemberDoc = context.memberDocContactId?.trim();
+  const fromInvite = context.inviteContactId?.trim();
+  const managed = context.contactId?.trim();
+  if (fromMemberDoc && managed && fromMemberDoc === managed) return fromMemberDoc;
+  if (fromMemberDoc && fromInvite && fromMemberDoc !== fromInvite) return fromInvite;
+  if (fromMemberDoc) return fromMemberDoc;
+  if (fromInvite) return fromInvite;
+  return managed || undefined;
+}
+
+/** Contact ids for inviteeContactIds array-contains queries — aligned with Firestore memberEffectiveContactId. */
+export function careCalendarInviteQueryContactIds(
+  context: Pick<
+    CareCalendarMemberInviteContext,
+    'contactId' | 'memberDocContactId' | 'inviteContactId'
+  >,
+): string[] {
+  const effective = memberEffectiveInviteContactId(context);
+  const invite = context.inviteContactId?.trim();
+  const ids: string[] = [];
+  if (effective) ids.push(effective);
+  if (invite && invite !== effective) ids.push(invite);
+  if (!ids.length && context.contactId?.trim()) ids.push(context.contactId.trim());
+  return [...new Set(ids)];
+}
+
+/** Contact id key for attendeeResponseSummary writes — aligns with Firestore RSVP rules. */
+export function resolveCareCalendarRsvpContactId(
+  attendees: CareCalendarAttendee[] | undefined,
+  context: CareCalendarMemberInviteContext,
+  inviteeContactIds?: string[],
+  inviteeMemberUidByContactId?: Record<string, string>,
+): string | undefined {
+  const ids = [
+    ...new Set(
+      (inviteeContactIds?.length ? inviteeContactIds : buildInviteeContactIds(attendees)).filter(
+        Boolean,
+      ),
+    ),
+  ];
+  const selfAttendee = findCareCalendarAttendeeForMember(attendees, context);
+
+  if (context.memberUid && inviteeMemberUidByContactId) {
+    for (const [contactId, uid] of Object.entries(inviteeMemberUidByContactId)) {
+      if (uid !== context.memberUid) continue;
+      if (!ids.length || ids.includes(contactId)) return contactId;
+    }
+  }
+
+  for (const memberId of memberInviteContactIds(context)) {
+    if (ids.includes(memberId)) return memberId;
+  }
+
+  if (selfAttendee?.contactId && ids.includes(selfAttendee.contactId)) {
+    return selfAttendee.contactId;
+  }
+
+  const fromInviteeList = resolveInviteeContactIdForMemberAttendee(
+    attendees,
+    context,
+    ids,
+    inviteeMemberUidByContactId,
+  );
+  if (fromInviteeList) return fromInviteeList;
+
+  if (selfAttendee?.contactId && attendeeNeedsAppointmentInvite(selfAttendee)) {
+    return selfAttendee.contactId;
+  }
+
+  if (!ids.length) {
+    return (
+      resolveCareCalendarMemberContactId(attendees, context) ??
+      memberEffectiveInviteContactId(context)
+    );
+  }
+
+  const attendeeId = resolveCareCalendarMemberContactId(attendees, context);
+  if (attendeeId && ids.includes(attendeeId)) {
+    return attendeeId;
+  }
+
+  const effective = memberEffectiveInviteContactId(context);
+  if (effective && ids.includes(effective)) {
+    return effective;
+  }
+
+  if (context.memberUid && ids.length === 1) {
+    return ids[0];
+  }
+
+  return undefined;
+}
+
+/** When the attendee row has a stale contactId, pick the inviteeContactIds slot for this member. */
+export function resolveInviteeContactIdForMemberAttendee(
+  attendees: CareCalendarAttendee[] | undefined,
+  context: CareCalendarMemberInviteContext,
+  inviteeContactIds: string[],
+  inviteeMemberUidByContactId?: Record<string, string>,
+): string | undefined {
+  const self = findCareCalendarAttendeeForMember(attendees, context);
+  if (!self || !inviteeContactIds.length) return undefined;
+
+  if (self.contactId && inviteeContactIds.includes(self.contactId)) {
+    return self.contactId;
+  }
+
+  if (context.memberUid && inviteeMemberUidByContactId) {
+    for (const contactId of inviteeContactIds) {
+      if (inviteeMemberUidByContactId[contactId] === context.memberUid) {
+        return contactId;
+      }
+    }
+  }
+
+  for (const memberId of memberInviteContactIds(context)) {
+    if (inviteeContactIds.includes(memberId)) return memberId;
+  }
+
+  const claimedByOtherRows = new Set(
+    (attendees ?? [])
+      .filter((attendee) => attendee !== self && attendee.contactId)
+      .filter(
+        (attendee) =>
+          !!attendee.contactId && inviteeContactIds.includes(attendee.contactId),
+      )
+      .map((attendee) => attendee.contactId as string),
+  );
+  let candidates = inviteeContactIds.filter((id) => !claimedByOtherRows.has(id));
+
+  if (context.memberUid && inviteeMemberUidByContactId && candidates.length > 1) {
+    candidates = candidates.filter(
+      (id) =>
+        !inviteeMemberUidByContactId[id] ||
+        inviteeMemberUidByContactId[id] === context.memberUid,
+    );
+  }
+
+  if (candidates.length === 1) return candidates[0];
+  return undefined;
+}
+
+export function isAllowedRsvpSummaryContactKey(
+  cid: string | undefined,
+  inviteeContactIds?: string[],
+  attendees?: CareCalendarAttendee[],
+): boolean {
+  const id = cid?.trim();
+  if (!id) return false;
+  if ((inviteeContactIds ?? []).includes(id)) return true;
+  return (attendees ?? []).some(
+    (attendee) => attendee.contactId === id && attendeeNeedsAppointmentInvite(attendee),
+  );
+}
+
+export function resolveCareCalendarRsvpContactIdForEntry(
+  entry: {
+    inviteeContactIds?: string[];
+    inviteeMemberUidByContactId?: Record<string, string>;
+    attendees?: CareCalendarAttendee[];
+    attendeeResponseSummary?: CareCalendarAttendeeResponseSummary;
+  },
+  context: CareCalendarMemberInviteContext,
+): string | undefined {
+  const attendees = mergeAttendeeResponses(
+    entry.attendees,
+    entry.attendeeResponseSummary,
+    entry.inviteeMemberUidByContactId,
+  );
+  const inviteeFromDoc = entry.inviteeContactIds?.filter(Boolean) ?? [];
+  const inviteeIds = inviteeFromDoc.length ? inviteeFromDoc : buildInviteeContactIds(attendees);
+
+  const candidates: string[] = [];
+  const push = (id?: string) => {
+    const trimmed = id?.trim();
+    if (trimmed && !candidates.includes(trimmed)) candidates.push(trimmed);
+  };
+
+  if (context.memberUid && entry.inviteeMemberUidByContactId) {
+    for (const [contactId, uid] of Object.entries(entry.inviteeMemberUidByContactId)) {
+      if (uid === context.memberUid) push(contactId);
+    }
+  }
+
+  push(
+    resolveCareCalendarRsvpContactId(
+      attendees,
+      context,
+      inviteeIds,
+      entry.inviteeMemberUidByContactId,
+    ),
+  );
+  push(
+    resolveInviteeContactIdForMemberAttendee(
+      attendees,
+      context,
+      inviteeIds,
+      entry.inviteeMemberUidByContactId,
+    ),
+  );
+  push(findCareCalendarAttendeeForMember(attendees, context)?.contactId);
+
+  for (const cid of candidates) {
+    if (isAllowedRsvpSummaryContactKey(cid, inviteeIds, attendees)) return cid;
+  }
+
+  return undefined;
+}
+
 function parseInvitedNamesFromAppointmentPostText(text: string): string[] {
   const line = text.split('\n').find((row) => row.startsWith('Invited:'));
   if (!line) return [];
@@ -259,8 +525,10 @@ export function isAppointmentInviteVisibleToMember(
     CareCalendarMemberInviteContext,
     'contactId' | 'memberDocContactId' | 'inviteContactId' | 'displayName'
   >,
+  memberRole?: string,
 ): boolean {
   if (!isAppointmentInviteThreadPost(post)) return true;
+  if (memberRole && !canViewCircleAppointmentInvites(memberRole)) return false;
   if (post.authorUid === memberUid) return true;
   if ((post.inviteTargetUids ?? []).includes(memberUid)) return true;
   if (inviteContext) {
@@ -277,6 +545,21 @@ export function isAppointmentInviteVisibleToMember(
   return false;
 }
 
+export function isValidCircleMemberUid(uid: string | undefined | null): boolean {
+  const id = uid?.trim();
+  if (!id || id.startsWith('contact_')) return false;
+  return id.length >= 20;
+}
+
+function setResolvedMemberUid(
+  result: Map<string, string>,
+  contactId: string,
+  memberUid: string,
+): void {
+  if (!isValidCircleMemberUid(memberUid)) return;
+  result.set(contactId, memberUid.trim());
+}
+
 export function buildInviteeContactIds(
   attendees: CareCalendarAttendee[] | undefined | null,
 ): string[] {
@@ -291,16 +574,44 @@ export function buildInviteeContactIds(
   ];
 }
 
+export function buildInviteeMemberUidByContactId(
+  uidByContact: Map<string, string>,
+): Record<string, string> | null {
+  if (!uidByContact.size) return null;
+  const valid = [...uidByContact.entries()].filter(([, uid]) => isValidCircleMemberUid(uid));
+  if (!valid.length) return null;
+  return Object.fromEntries(valid);
+}
+
+export async function resolveInviteeMemberMaps(
+  db: Firestore,
+  patientId: string,
+  attendees: CareCalendarAttendee[] | undefined | null,
+): Promise<{
+  inviteeMemberUids: string[] | null;
+  inviteeMemberUidByContactId: Record<string, string> | null;
+}> {
+  const invitees = (attendees ?? []).filter(attendeeNeedsAppointmentInvite);
+  if (!invitees.length) {
+    return { inviteeMemberUids: null, inviteeMemberUidByContactId: null };
+  }
+  const uidByContact = await resolveMemberUidsByContactIds(db, patientId, invitees);
+  if (!uidByContact.size) {
+    return { inviteeMemberUids: null, inviteeMemberUidByContactId: null };
+  }
+  return {
+    inviteeMemberUids: [...new Set([...uidByContact.values()])],
+    inviteeMemberUidByContactId: buildInviteeMemberUidByContactId(uidByContact),
+  };
+}
+
 export async function resolveInviteeMemberUids(
   db: Firestore,
   patientId: string,
   attendees: CareCalendarAttendee[] | undefined | null,
 ): Promise<string[] | null> {
-  const invitees = (attendees ?? []).filter(attendeeNeedsAppointmentInvite);
-  if (!invitees.length) return null;
-  const uidByContact = await resolveMemberUidsByContactIds(db, patientId, invitees);
-  const uids = [...new Set([...uidByContact.values()])];
-  return uids.length ? uids : null;
+  const { inviteeMemberUids } = await resolveInviteeMemberMaps(db, patientId, attendees);
+  return inviteeMemberUids;
 }
 
 function normalizeContactLabel(value: string): string {
@@ -366,10 +677,27 @@ export async function resolveMemberUidsByContactIds(
     const data = memberDoc.data() as Record<string, unknown>;
     const contactId = String(data.contactId || '').trim();
     if (!contactId || !wanted.has(contactId) || result.has(contactId)) continue;
-    result.set(contactId, memberDoc.id);
+    setResolvedMemberUid(result, contactId, memberDoc.id);
   }
 
   let unresolvedContactIds = [...wanted.keys()].filter((contactId) => !result.has(contactId));
+  if (unresolvedContactIds.length) {
+    for (const memberDoc of activeMembers) {
+      const data = memberDoc.data() as Record<string, unknown>;
+      const inviteRef = String(data.inviteRef || '').trim();
+      if (!inviteRef) continue;
+      const inviteSnap = await getDoc(doc(db, 'circle_invites', inviteRef));
+      if (!inviteSnap.exists()) continue;
+      const inviteData = inviteSnap.data() as Record<string, unknown>;
+      if (inviteData.status !== 'accepted') continue;
+      const inviteContactId = String(inviteData.contactId || '').trim();
+      if (!inviteContactId || !unresolvedContactIds.includes(inviteContactId)) continue;
+      if (result.has(inviteContactId)) continue;
+      setResolvedMemberUid(result, inviteContactId, memberDoc.id);
+    }
+  }
+
+  unresolvedContactIds = [...wanted.keys()].filter((contactId) => !result.has(contactId));
   if (unresolvedContactIds.length) {
     for (const memberDoc of activeMembers) {
       const displayName = normalizeContactLabel(String(memberDoc.data().displayName || ''));
@@ -379,7 +707,7 @@ export async function resolveMemberUidsByContactIds(
         const wantedName = wanted.get(contactId) || '';
         const directoryName = contactDirectory.get(contactId)?.normalizedName || '';
         if (wantedName === displayName || (directoryName && directoryName === displayName)) {
-          result.set(contactId, memberDoc.id);
+          setResolvedMemberUid(result, contactId, memberDoc.id);
         }
       }
     }
@@ -393,7 +721,7 @@ export async function resolveMemberUidsByContactIds(
       for (const contactId of unresolvedContactIds) {
         if (result.has(contactId)) continue;
         if (contactDirectory.get(contactId)?.email === invitedEmail) {
-          result.set(contactId, memberDoc.id);
+          setResolvedMemberUid(result, contactId, memberDoc.id);
         }
       }
     }
@@ -411,7 +739,7 @@ export async function resolveMemberUidsByContactIds(
         const wantedName = wanted.get(contactId) || '';
         const directoryName = contactDirectory.get(contactId)?.normalizedName || '';
         if (wantedName === emailLocal || (directoryName && directoryName === emailLocal)) {
-          result.set(contactId, memberDoc.id);
+          setResolvedMemberUid(result, contactId, memberDoc.id);
         }
       }
     }
@@ -427,9 +755,22 @@ export async function resolveMemberUidsByContactIds(
       if (!inviteSnap.exists()) continue;
       const inviteData = inviteSnap.data() as Record<string, unknown>;
       if (inviteData.status !== 'accepted') continue;
-      const contactId = String(inviteData.contactId || '').trim();
-      if (!contactId || !unresolvedContactIds.includes(contactId) || result.has(contactId)) continue;
-      result.set(contactId, memberDoc.id);
+      const invitedEmail = normalizeInviteEmail(String(inviteData.invitedEmail || ''));
+      if (!invitedEmail) continue;
+      const emailLocal = normalizeContactLabel(invitedEmail.split('@')[0] || '');
+      for (const contactId of unresolvedContactIds) {
+        if (result.has(contactId)) continue;
+        const directory = contactDirectory.get(contactId);
+        const wantedName = wanted.get(contactId) || '';
+        if (
+          directory?.email === invitedEmail
+          || (emailLocal
+            && (wantedName === emailLocal
+              || (directory?.normalizedName && directory.normalizedName === emailLocal)))
+        ) {
+          setResolvedMemberUid(result, contactId, memberDoc.id);
+        }
+      }
     }
   }
 
@@ -443,8 +784,8 @@ export async function resolveMemberUidsByContactIds(
       if (data.status !== 'accepted') continue;
       const contactId = String(data.contactId || '').trim();
       const acceptedByUid = String(data.acceptedByUid || '').trim();
-      if (!contactId || !acceptedByUid || !unresolvedContactIds.includes(contactId)) continue;
-      result.set(contactId, acceptedByUid);
+      if (!contactId || !unresolvedContactIds.includes(contactId)) continue;
+      setResolvedMemberUid(result, contactId, acceptedByUid);
     }
   }
 
@@ -458,11 +799,11 @@ export async function resolveMemberUidsByContactIds(
       if (data.status !== 'accepted') continue;
       const invitedEmail = normalizeInviteEmail(String(data.invitedEmail || ''));
       const acceptedByUid = String(data.acceptedByUid || '').trim();
-      if (!invitedEmail || !acceptedByUid) continue;
+      if (!invitedEmail) continue;
       for (const contactId of unresolvedContactIds) {
         if (result.has(contactId)) continue;
         if (contactDirectory.get(contactId)?.email === invitedEmail) {
-          result.set(contactId, acceptedByUid);
+          setResolvedMemberUid(result, contactId, acceptedByUid);
         }
       }
     }
@@ -571,6 +912,39 @@ export async function publishCareCalendarInvitePosts(
   }
 }
 
+export function shouldSyncCircleMemberInviteContactId(
+  role: string | undefined,
+): boolean {
+  return (
+    role === 'friend' ||
+    role === 'family' ||
+    role === 'caregiver' ||
+    role === 'professional_caregiver'
+  );
+}
+
+const memberInviteContactSyncCompleted = new Set<string>();
+
+export async function syncCircleMemberInviteContactId(
+  db: Firestore,
+  patientId: string,
+  memberUid: string,
+  managedContactId: string | undefined,
+  memberDocContactId: string | undefined,
+  memberRole?: string,
+): Promise<void> {
+  if (memberRole && !shouldSyncCircleMemberInviteContactId(memberRole)) return;
+  const next = managedContactId?.trim();
+  if (!next || next === memberDocContactId?.trim()) return;
+  const syncKey = `${patientId}:${memberUid}:${next}`;
+  if (memberInviteContactSyncCompleted.has(syncKey)) return;
+  await updateDoc(doc(db, 'patients', patientId, 'members', memberUid), {
+    contactId: next,
+    updatedAt: Date.now(),
+  });
+  memberInviteContactSyncCompleted.add(syncKey);
+}
+
 export async function respondToCareCalendarInvite(
   db: Firestore,
   patientId: string,
@@ -578,16 +952,154 @@ export async function respondToCareCalendarInvite(
   memberContactId: string,
   memberUid: string,
   response: Exclude<CareCalendarAttendeeResponse, 'pending'>,
+  options?: {
+    managedContactId?: string;
+    memberDocContactId?: string;
+    inviteContactId?: string;
+    displayName?: string;
+    memberRole?: string;
+  },
 ): Promise<void> {
+  const entryRef = doc(db, 'patients', patientId, 'care_calendar', entryId);
+  const entrySnap = await getDoc(entryRef);
+  if (!entrySnap.exists()) {
+    throw new Error('Appointment not found.');
+  }
+
+  const entryData = entrySnap.data() as Record<string, unknown>;
+  const inviteContext: CareCalendarMemberInviteContext = {
+    memberUid,
+    contactId: options?.managedContactId ?? memberContactId,
+    memberDocContactId: options?.memberDocContactId,
+    inviteContactId: options?.inviteContactId,
+    displayName: options?.displayName,
+  };
+  const parsedEntry = {
+    inviteeContactIds: Array.isArray(entryData.inviteeContactIds)
+      ? entryData.inviteeContactIds.map((id) => String(id)).filter(Boolean)
+      : undefined,
+    inviteeMemberUidByContactId:
+      entryData.inviteeMemberUidByContactId &&
+      typeof entryData.inviteeMemberUidByContactId === 'object'
+        ? Object.fromEntries(
+            Object.entries(
+              entryData.inviteeMemberUidByContactId as Record<string, unknown>,
+            ).map(([key, value]) => [key, String(value)]),
+          )
+        : undefined,
+    attendees: Array.isArray(entryData.attendees)
+      ? (entryData.attendees as CareCalendarAttendee[])
+      : undefined,
+    attendeeResponseSummary: parseAttendeeResponseSummary(
+      entryData.attendeeResponseSummary,
+    ),
+  };
+  const rsvpContactId = resolveCareCalendarRsvpContactIdForEntry(parsedEntry, inviteContext);
+  if (!rsvpContactId) {
+    throw new Error('Could not resolve invite contact for RSVP.');
+  }
+
   const now = Date.now();
-  await updateDoc(doc(db, 'patients', patientId, 'care_calendar', entryId), {
-    [`attendeeResponseSummary.${memberContactId}`]: {
+  const beforeUids = Array.isArray(entryData.inviteeMemberUids)
+    ? (entryData.inviteeMemberUids as string[]).map(String)
+    : [];
+  const needsUidBackfill =
+    !beforeUids.includes(memberUid) ||
+    beforeUids.some((uid) => !isValidCircleMemberUid(uid) && uid.includes('contact_'));
+  const existingMapUid = parsedEntry.inviteeMemberUidByContactId?.[rsvpContactId];
+  const needsMapFix = !isValidCircleMemberUid(existingMapUid) || existingMapUid !== memberUid;
+
+  const patch: Record<string, unknown> = {
+    [`attendeeResponseSummary.${rsvpContactId}`]: {
       response,
       respondedAt: now,
       respondedByUid: memberUid,
     },
     updatedAt: now,
-  });
+  };
+  if (needsUidBackfill) {
+    patch.inviteeMemberUids = arrayUnion(memberUid);
+  }
+  if (needsMapFix) {
+    patch[`inviteeMemberUidByContactId.${rsvpContactId}`] = memberUid;
+  }
+
+  await updateDoc(entryRef, patch);
+  const verifySnap = await getDoc(entryRef);
+  const verifyData = verifySnap.data() as Record<string, unknown> | undefined;
+  const verifySummary = parseAttendeeResponseSummary(verifyData?.attendeeResponseSummary);
+  const verifyRow = verifySummary?.[rsvpContactId];
+  if (verifyRow?.response !== response || verifyRow.respondedByUid !== memberUid) {
+    throw new Error('Missing or insufficient permissions.');
+  }
+
+  try {
+    if (options?.managedContactId) {
+      await syncCircleMemberInviteContactId(
+        db,
+        patientId,
+        memberUid,
+        options.managedContactId,
+        options.memberDocContactId,
+        options.memberRole,
+      );
+    }
+  } catch {
+    /* RSVP succeeded; member contact sync is best-effort */
+  }
+}
+
+/** Backfill inviteeMemberUids for entries already RSVP'd before uid self-heal shipped. */
+export async function backfillCareCalendarInviteeMemberUidWhereResponded(
+  db: Firestore,
+  patientId: string,
+  memberUid: string,
+  inviteContext: CareCalendarMemberInviteContext,
+): Promise<void> {
+  try {
+    const contactIds = careCalendarInviteQueryContactIds(inviteContext);
+    const summaryContactIds = memberInviteContactIds(inviteContext);
+    if (!contactIds.length) return;
+
+    const col = collection(db, 'patients', patientId, 'care_calendar');
+    const seen = new Set<string>();
+
+    for (const contactId of contactIds) {
+      let snap;
+      try {
+        snap = await getDocs(
+          query(col, where('inviteeContactIds', 'array-contains', contactId)),
+        );
+      } catch {
+        continue;
+      }
+      for (const docSnap of snap.docs) {
+        if (seen.has(docSnap.id)) continue;
+        seen.add(docSnap.id);
+        const data = docSnap.data() as Record<string, unknown>;
+        const uids = Array.isArray(data.inviteeMemberUids)
+          ? (data.inviteeMemberUids as string[])
+          : [];
+        if (uids.includes(memberUid)) continue;
+        const summary = data.attendeeResponseSummary as CareCalendarAttendeeResponseSummary | undefined;
+        const matchedContactId = summaryContactIds.find(
+          (id) => summary?.[id]?.respondedByUid === memberUid,
+        );
+        if (!matchedContactId) continue;
+        try {
+          await updateDoc(docSnap.ref, {
+            inviteeMemberUids: arrayUnion(memberUid),
+            [`inviteeMemberUidByContactId.${matchedContactId}`]: memberUid,
+            updatedAt: Date.now(),
+          });
+        } catch {
+          /* repair rule may not apply yet */
+        }
+      }
+    }
+  } catch {
+    /* best-effort — schedule subscription is the primary path */
+  }
 }
 
 export function attendeeResponseLabel(
@@ -599,10 +1111,23 @@ export function attendeeResponseLabel(
 export function shouldHideDeclinedAppointmentForContact(
   attendees: CareCalendarAttendee[] | undefined,
   memberContactId: string | undefined,
+  inviteContext?: Pick<
+    CareCalendarMemberInviteContext,
+    'contactId' | 'memberDocContactId' | 'inviteContactId'
+  >,
 ): boolean {
-  if (!memberContactId || !attendees?.length) return false;
-  const self = attendees.find((attendee) => attendee.contactId === memberContactId);
-  return self?.response === 'declined';
+  if (!attendees?.length) return false;
+  const contactIds = inviteContext
+    ? memberInviteContactIds(inviteContext)
+    : memberContactId
+      ? [memberContactId]
+      : [];
+  if (!contactIds.length) return false;
+  for (const contactId of contactIds) {
+    const self = attendees.find((attendee) => attendee.contactId === contactId);
+    if (self?.response === 'declined') return true;
+  }
+  return false;
 }
 
 export const SYNTHETIC_APPOINTMENT_INVITE_POST_ID_PREFIX = 'care-calendar-invite-';
@@ -660,7 +1185,11 @@ function attendeeInviteResponseForMember(
   entry: CareCalendarEntry,
   context: CareCalendarMemberInviteContext,
 ): CareCalendarAttendeeResponse {
-  const attendees = mergeAttendeeResponses(entry.attendees, entry.attendeeResponseSummary);
+  const attendees = mergeAttendeeResponses(
+    entry.attendees,
+    entry.attendeeResponseSummary,
+    entry.inviteeMemberUidByContactId,
+  );
   const self = findCareCalendarAttendeeForMember(attendees, context);
   return self?.response ?? 'pending';
 }
@@ -681,7 +1210,11 @@ export function pendingAppointmentInviteEntriesForMember(
     ) {
       return false;
     }
-    const attendees = mergeAttendeeResponses(entry.attendees, entry.attendeeResponseSummary);
+    const attendees = mergeAttendeeResponses(
+      entry.attendees,
+      entry.attendeeResponseSummary,
+      entry.inviteeMemberUidByContactId,
+    );
     const invitedByUid = (entry.inviteeMemberUids ?? []).includes(context.memberUid);
     const self = findCareCalendarAttendeeForMember(attendees, context);
     if (!invitedByUid && (!self || !attendeeNeedsAppointmentInvite(self))) return false;
@@ -708,7 +1241,12 @@ export function buildSyntheticAppointmentInvitePost(
   patientId: string,
   memberUid: string,
 ): CircleMemberThreadPost {
-  const attendees = mergeAttendeeResponses(entry.attendees, entry.attendeeResponseSummary) ?? [];
+  const attendees =
+    mergeAttendeeResponses(
+      entry.attendees,
+      entry.attendeeResponseSummary,
+      entry.inviteeMemberUidByContactId,
+    ) ?? [];
   const invitees = attendees.filter(attendeeNeedsAppointmentInvite);
   const text = formatAppointmentInvitePostText({
     entryId: entry.id,
@@ -741,7 +1279,9 @@ export function mergeAppointmentInvitePostsWithCareCalendar(
   entries: CareCalendarEntry[],
   context: CareCalendarMemberInviteContext,
   patientId: string,
+  memberRole?: string,
 ): CircleMemberThreadPost[] {
+  if (memberRole && !canViewCircleAppointmentInvites(memberRole)) return posts;
   const pending = pendingAppointmentInviteEntriesForMember(entries, context);
   const synthetic = pending
     .filter((entry) => !hasVisibleInvitePostForEntry(posts, entry.id, context))

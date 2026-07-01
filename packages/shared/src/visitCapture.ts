@@ -116,8 +116,9 @@ export function canRecordVisitCaptureInCircleFolder(
   threadKind: 'open' | 'restricted',
 ): boolean {
   if (!canStartVisitCapture(role)) return false;
+  if (canViewCareCoordinationCaptures(role)) return true;
   if (threadKind === 'open') return role === 'family';
-  return canViewCareCoordinationCaptures(role);
+  return false;
 }
 
 export function canViewCareCoordinationCaptures(role: CircleMemberRole | string): boolean {

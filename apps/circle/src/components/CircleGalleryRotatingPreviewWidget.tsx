@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ImageIcon } from 'lucide-react';
 import type { FamilyGalleryPreviewPhoto } from '../hooks/useFamilyGalleryDashboard';
 import { useGalleryImageSrc } from '../lib/galleryHeicDisplay';
@@ -37,10 +37,11 @@ export function CircleGalleryRotatingPreviewWidget({
 }: CircleGalleryRotatingPreviewWidgetProps) {
   const t = useCircleT();
   const [index, setIndex] = useState(0);
+  const photosKey = useMemo(() => photos.map((photo) => photo.id).join('|'), [photos]);
 
   useEffect(() => {
     setIndex(0);
-  }, [photos]);
+  }, [photosKey]);
 
   useEffect(() => {
     if (photos.length <= 1) return undefined;
@@ -48,7 +49,7 @@ export function CircleGalleryRotatingPreviewWidget({
       setIndex((current) => (current + 1) % photos.length);
     }, ROTATE_MS);
     return () => window.clearInterval(timer);
-  }, [photos]);
+  }, [photos.length, photosKey]);
 
   const current = photos[index];
   const subtitle =

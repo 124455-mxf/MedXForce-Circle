@@ -1,13 +1,13 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { AnalyticsMetricId, CircleMemberRole, CirclePatientSummary, PatientAnalyticsSummary, PatientCapabilities, RemoteAssessmentSchedule } from '@medxforce/shared';
-import { canViewRemoteSettingsTab, normalizeMemberRole, shouldHideDeclinedAppointmentForContact } from '@medxforce/shared';
+import { backfillCareCalendarInviteeMemberUidWhereResponded, canViewRemoteSettingsTab, normalizeMemberRole, shouldHideDeclinedAppointmentForContact } from '@medxforce/shared';
 import { buildCircleAssessmentScheduleContext } from '../lib/circleAssessmentScheduleMetrics';
 import { CircleAssessmentScheduleCalendar } from './CircleAssessmentScheduleCalendar';
 import { CircleCareCalendarEntryModal } from './CircleCareCalendarEntryModal';
-import { useCareCalendarEntries } from '../hooks/useCareCalendarEntries';
+import { useCareCalendarEntries, buildCareCalendarEntriesSubscription } from '../hooks/useCareCalendarEntries';
 import { useCircleMemberInviteContext } from '../hooks/useCircleMemberInviteContext';
 import { updateCareCalendarEntry } from '../services/careCalendarService';
 import type { CareCalendarAppointmentTask, CareCalendarEntry } from '@medxforce/shared';
@@ -49,32 +49,73 @@ export function CircleDashboardAssessmentScheduleSection({
   t,
   onOpenAssessment,
 }: CircleDashboardAssessmentScheduleSectionProps) {
-  const { entries: careEntries } = useCareCalendarEntries(db, patientId);
-  const { inviteContext, memberContactId, contact: ownContact, loading: ownContactLoading } =
+  const { inviteContext, memberContactId, contact: ownContact, loading: ownContactLoading, inviteContextReady } =
     useCircleMemberInviteContext(db, user, patient);
+  const inviteMembershipRepairAttempted = useRef(false);
+  const calendarSubscription = useMemo(
+    () =>
+      buildCareCalendarEntriesSubscription(patient, user.uid, inviteContext, {
+        inviteContextReady,
+      }),
+    [inviteContext, inviteContextReady, patient, user.uid],
+  );
+  const { entries: careEntries } = useCareCalendarEntries(db, patientId, calendarSubscription);
+
+  useEffect(() => {
+    if (
+      inviteMembershipRepairAttempted.current ||
+      !inviteContextReady ||
+      patient.capabilities?.remoteSettings === true
+    ) {
+      return;
+    }
+    inviteMembershipRepairAttempted.current = true;
+    void backfillCareCalendarInviteeMemberUidWhereResponded(
+      db,
+      patientId,
+      user.uid,
+      inviteContext,
+    ).catch(() => {
+      /* best-effort repair */
+    });
+  }, [db, inviteContext, inviteContextReady, patient.capabilities?.remoteSettings, patientId, user.uid]);
   const visibleCareEntries = useMemo(
     () =>
-      ownContact?.id
-        ? careEntries.filter(
-            (entry) => !shouldHideDeclinedAppointmentForContact(entry.attendees, ownContact.id),
-          )
-        : careEntries,
-    [careEntries, ownContact?.id],
+      careEntries.filter(
+        (entry) =>
+          !shouldHideDeclinedAppointmentForContact(
+            entry.attendees,
+            memberContactId,
+            inviteContext,
+          ),
+      ),
+    [careEntries, inviteContext, memberContactId],
   );
   const [modalOpen, setModalOpen] = useState(false);
   const [editEntryId, setEditEntryId] = useState<string | null>(null);
   const [initialDateKey, setInitialDateKey] = useState<string | undefined>();
+
+  const canReadRemoteSettings = canViewRemoteSettingsTab(capabilities);
+  const effectiveHealthAssessmentsEnabled =
+    canReadRemoteSettings && healthAssessmentsEnabled !== false;
 
   const schedule = useMemo(
     () =>
       buildCircleAssessmentScheduleContext({
         byMetricId,
         treatmentPhase,
-        appMode,
-        healthAssessmentsEnabled,
-        remoteAssessmentSchedule,
+        appMode: canReadRemoteSettings ? appMode : undefined,
+        healthAssessmentsEnabled: effectiveHealthAssessmentsEnabled,
+        remoteAssessmentSchedule: canReadRemoteSettings ? remoteAssessmentSchedule : undefined,
       }),
-    [byMetricId, treatmentPhase, appMode, healthAssessmentsEnabled, remoteAssessmentSchedule],
+    [
+      byMetricId,
+      treatmentPhase,
+      appMode,
+      canReadRemoteSettings,
+      effectiveHealthAssessmentsEnabled,
+      remoteAssessmentSchedule,
+    ],
   );
 
   const editingEntry = useMemo(
@@ -128,7 +169,9 @@ export function CircleDashboardAssessmentScheduleSection({
           db={db}
           memberContactId={memberContactId}
           memberDocContactId={inviteContext.memberDocContactId}
+          inviteContactId={inviteContext.inviteContactId}
           memberDisplayName={inviteContext.displayName}
+          memberRole={memberRole}
           compact={!fullPage}
           hideHeader={fullPage}
           enableViewModes={fullPage}

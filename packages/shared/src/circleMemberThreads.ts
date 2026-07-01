@@ -90,6 +90,11 @@ export function canParticipateInCircleOpenThread(role: string): boolean {
   return OPEN_THREAD_ROLES.has(role as CircleMemberRole);
 }
 
+/** Friends use Circle conversation but do not receive care-calendar appointment invites. */
+export function canViewCircleAppointmentInvites(role: string): boolean {
+  return (role as CircleMemberRole) !== 'friend';
+}
+
 export function canParticipateInCircleRestrictedThread(role: string): boolean {
   return RESTRICTED_THREAD_ROLES.has(role as CircleMemberRole);
 }

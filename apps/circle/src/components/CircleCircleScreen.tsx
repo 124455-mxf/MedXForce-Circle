@@ -10,6 +10,7 @@ import {
   canRecordVisitCaptureInCircleFolder,
   canReplyToCircleMemberThreadPost,
   canSeeCircleRestrictedThread,
+  canViewCircleAppointmentInvites,
   createCircleMemberThreadPost,
   createCircleMemberThreadPostReply,
   deleteCircleThreadPostForEveryone,
@@ -97,7 +98,7 @@ import {
 import { useCircleMemberOnboarding } from '../hooks/useCircleMemberOnboarding';
 import { CircleOnboardingWelcomeCard } from './CircleOnboardingWelcomeCard';
 import { useCircleMemberInviteContext } from '../hooks/useCircleMemberInviteContext';
-import { useCareCalendarEntries } from '../hooks/useCareCalendarEntries';
+import { useCareCalendarEntries, buildCareCalendarEntriesSubscription } from '../hooks/useCareCalendarEntries';
 
 interface CircleCircleScreenProps {
   user: User;
@@ -238,7 +239,7 @@ export function CircleCircleScreen({
   const patientLanguage = normalizeCircleUiLanguage(remoteSettings?.primaryLanguage);
   const memberLanguages = useCirclePatientMemberLanguages(db, patient.patientId, user.uid);
   const memberRole = patient.role as CircleMemberRole;
-  const { inviteContext: memberInviteContext, memberContactId } = useCircleMemberInviteContext(
+  const { inviteContext: memberInviteContext, memberContactId, inviteContextReady } = useCircleMemberInviteContext(
     db,
     user,
     patient,
@@ -314,19 +315,34 @@ export function CircleCircleScreen({
     threadEnabled,
     user.uid,
   );
-  const { entries: careCalendarEntries } = useCareCalendarEntries(db, patient.patientId);
+  const calendarSubscription = useMemo(
+    () =>
+      canViewCircleAppointmentInvites(memberRole)
+        ? buildCareCalendarEntriesSubscription(patient, user.uid, memberInviteContext, {
+            inviteContextReady,
+            memberRole,
+          })
+        : undefined,
+    [inviteContextReady, memberInviteContext, memberRole, patient, user.uid],
+  );
+  const { entries: careCalendarEntries } = useCareCalendarEntries(
+    db,
+    patient.patientId,
+    calendarSubscription,
+  );
 
   const allPosts = useMemo(
     () =>
-      activeThread === 'open'
+      activeThread === 'open' && canViewCircleAppointmentInvites(memberRole)
         ? mergeAppointmentInvitePostsWithCareCalendar(
             rawPosts,
             careCalendarEntries,
             memberInviteContext,
             patient.patientId,
+            memberRole,
           )
         : rawPosts,
-    [activeThread, careCalendarEntries, memberInviteContext, patient.patientId, rawPosts],
+    [activeThread, careCalendarEntries, memberInviteContext, memberRole, patient.patientId, rawPosts],
   );
 
   const showCircleOnboarding =
@@ -336,6 +352,12 @@ export function CircleCircleScreen({
     () => circlePostInboxViewsForThread(activeThread, memberRole),
     [activeThread, memberRole],
   );
+
+  useEffect(() => {
+    if (!inboxViews.includes(inboxView)) {
+      setInboxView('discussion');
+    }
+  }, [inboxView, inboxViews]);
   const { iconViews: inboxIconViews, textViews: inboxTextViews } = useMemo(
     () => partitionCirclePostInboxViews(inboxViews),
     [inboxViews],
@@ -393,8 +415,9 @@ export function CircleCircleScreen({
         activeThread,
         user.uid,
         memberInviteContext,
+        memberRole,
       ),
-    [activeThread, allPosts, hiddenByPostId, inboxView, memberInviteContext, user.uid],
+    [activeThread, allPosts, hiddenByPostId, inboxView, memberInviteContext, memberRole, user.uid],
   );
 
   const orderedPosts = useMemo(
@@ -408,9 +431,9 @@ export function CircleCircleScreen({
   const selectedPost = useMemo(() => {
     const post = allPosts.find((row) => row.id === selectedPostId);
     if (!post) return null;
-    if (!isAppointmentInviteVisibleToMember(post, user.uid, memberInviteContext)) return null;
+    if (!isAppointmentInviteVisibleToMember(post, user.uid, memberInviteContext, memberRole)) return null;
     return post;
-  }, [allPosts, memberInviteContext, selectedPostId, user.uid]);
+  }, [allPosts, memberInviteContext, memberRole, selectedPostId, user.uid]);
 
   const selectedPostIsDiscussion = useMemo(
     () => !!selectedPost && isDiscussionThreadPost(selectedPost),
@@ -448,6 +471,7 @@ export function CircleCircleScreen({
               activeThread,
               user.uid,
               memberInviteContext,
+              memberRole,
             ),
             unread: countUnreadPostsForInboxView(
               allPosts,
@@ -457,13 +481,14 @@ export function CircleCircleScreen({
               user.uid,
               getPostLastRead,
               memberInviteContext,
+              memberRole,
             ),
           };
           return acc;
         },
         {} as Record<CirclePostInboxView, { total: number; unread: number }>,
       ),
-    [activeThread, allPosts, getPostLastRead, hiddenByPostId, inboxViews, memberInviteContext, postReadTick, user.uid],
+    [activeThread, allPosts, getPostLastRead, hiddenByPostId, inboxViews, memberInviteContext, memberRole, postReadTick, user.uid],
   );
 
   const activeTabUnread = inboxTabCounts[inboxView]?.unread ?? 0;
@@ -485,12 +510,12 @@ export function CircleCircleScreen({
         .filter(
           (post) =>
             !hiddenByPostId[post.id] &&
-            isAppointmentInviteVisibleToMember(post, user.uid, memberInviteContext),
+            isAppointmentInviteVisibleToMember(post, user.uid, memberInviteContext, memberRole),
         )
         .slice(-6)
         .map((p) => `${p.authorName}: ${p.text}`)
         .join('\n'),
-    [allPosts, hiddenByPostId, memberInviteContext, user.uid],
+    [allPosts, hiddenByPostId, memberInviteContext, memberRole, user.uid],
   );
 
   const handleMarkTabRead = useCallback(() => {
@@ -505,9 +530,10 @@ export function CircleCircleScreen({
         activeThread,
         user.uid,
         memberInviteContext,
+        memberRole,
       ),
     );
-  }, [activeThread, allPosts, hiddenByPostId, inboxView, memberInviteContext, patient.patientId, user.uid]);
+  }, [activeThread, allPosts, hiddenByPostId, inboxView, memberInviteContext, memberRole, patient.patientId, user.uid]);
 
   const openPost = useCallback(
     (postId: string) => {
@@ -897,7 +923,9 @@ export function CircleCircleScreen({
           patientId={patient.patientId}
           memberContactId={memberContactId}
           memberDocContactId={memberInviteContext.memberDocContactId}
+          inviteContactId={memberInviteContext.inviteContactId}
           memberDisplayName={memberInviteContext.displayName}
+          memberRole={memberRole}
         />
         {messageModals}
       </>

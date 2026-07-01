@@ -46,7 +46,9 @@ type CircleAssessmentScheduleCalendarProps = {
   db?: Firestore;
   memberContactId?: string;
   memberDocContactId?: string;
+  inviteContactId?: string;
   memberDisplayName?: string;
+  memberRole?: string;
   compact?: boolean;
   hideHeader?: boolean;
   enableViewModes?: boolean;
@@ -56,6 +58,7 @@ type ScheduleViewMode = 'today' | 'week' | 'month';
 
 const WEEKDAY_KEYS = [0, 1, 2, 3, 4, 5, 6] as const;
 const VIEW_MODES: ScheduleViewMode[] = ['today', 'week', 'month'];
+const EMPTY_ASSESSMENT_CALENDAR = new Map<string, AssessmentScheduleDayEvent[]>();
 
 function buildMonthGrid(year: number, month: number): (Date | null)[] {
   const first = new Date(year, month, 1);
@@ -111,7 +114,9 @@ export function CircleAssessmentScheduleCalendar({
   db,
   memberContactId,
   memberDocContactId,
+  inviteContactId,
   memberDisplayName,
+  memberRole,
   compact = false,
   hideHeader = false,
   enableViewModes = false,
@@ -191,11 +196,15 @@ export function CircleAssessmentScheduleCalendar({
   );
 
   const monthCells = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
-  const selectedEvents = monthCalendarByDay.get(selectedDateKey) ?? [];
+  const assessmentsEnabled = schedule.preferences.featuresVisibility.healthAssessments;
+  const visibleCalendarByDay = assessmentsEnabled ? calendarByDay : EMPTY_ASSESSMENT_CALENDAR;
+  const visibleMonthCalendarByDay = assessmentsEnabled ? monthCalendarByDay : EMPTY_ASSESSMENT_CALENDAR;
+
+  const selectedEvents = visibleMonthCalendarByDay.get(selectedDateKey) ?? [];
   const selectedCareEvents = monthCareByDay.get(selectedDateKey) ?? [];
   const dayCareEvents = careByDay.get(selectedDateKey) ?? [];
-  const dayAssessmentEvents = calendarByDay.get(selectedDateKey) ?? [];
-  const hasAnyEvents = monthCalendarByDay.size > 0 || monthCareByDay.size > 0;
+  const dayAssessmentEvents = visibleCalendarByDay.get(selectedDateKey) ?? [];
+  const hasAnyEvents = visibleMonthCalendarByDay.size > 0 || monthCareByDay.size > 0;
 
   const shiftMonth = (delta: number) => {
     const next = new Date(viewYear, viewMonth + delta, 1);
@@ -244,8 +253,6 @@ export function CircleAssessmentScheduleCalendar({
     year: 'numeric',
   })}`;
   const isCurrentWeek = weekDays.some((day) => assessmentScheduleDateKey(day) === todayKey);
-
-  if (!schedule.preferences.featuresVisibility.healthAssessments) return null;
 
   const viewModeSelector = enableViewModes ? (
     <div className="flex w-full rounded-xl border border-slate-100 p-0.5 bg-slate-50 shrink-0">
@@ -438,7 +445,7 @@ export function CircleAssessmentScheduleCalendar({
             compact={compact}
             t={t}
             monthCells={monthCells}
-            monthCalendarByDay={monthCalendarByDay}
+            monthCalendarByDay={visibleMonthCalendarByDay}
             monthCareByDay={monthCareByDay}
             selectedDateKey={selectedDateKey}
             todayKey={todayKey}
@@ -446,7 +453,7 @@ export function CircleAssessmentScheduleCalendar({
             selectedEvents={selectedEvents}
             onSelectDate={setSelectedDateKey}
             onEditAppointment={onEditAppointment}
-            onOpenAssessment={onOpenAssessment}
+            onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
             onSelectAppointment={setAppointmentSelection}
           />
         )}
@@ -472,7 +479,11 @@ export function CircleAssessmentScheduleCalendar({
             db={db}
             memberContactId={memberContactId}
             memberDocContactId={memberDocContactId}
+            inviteContactId={inviteContactId}
             memberDisplayName={memberDisplayName}
+            memberRole={memberRole}
+            assessmentSchedule={assessmentsEnabled ? schedule : undefined}
+            onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
           />
         ) : null}
       </div>
@@ -517,21 +528,24 @@ export function CircleAssessmentScheduleCalendar({
           t={t}
           assessmentLabel={(event) => assessmentLabel(event, t)}
           onEditAppointment={onEditAppointment}
-          onOpenAssessment={onOpenAssessment}
+          onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
           onAppointmentTasksChange={onAppointmentTasksChange}
           db={db}
           patientId={patientId}
           memberContactId={memberContactId}
           memberDocContactId={memberDocContactId}
+          inviteContactId={inviteContactId}
           memberDisplayName={memberDisplayName}
+          memberRole={memberRole}
           currentUserUid={currentUserUid}
+          assessmentSchedule={assessmentsEnabled ? schedule : undefined}
         />
       )}
 
       {viewMode === 'week' && (
         <CircleScheduleWeekView
           weekAnchor={weekAnchor}
-          calendarByDay={calendarByDay}
+          calendarByDay={visibleCalendarByDay}
           careByDay={careByDay}
           todayKey={todayKey}
           t={t}
@@ -542,7 +556,11 @@ export function CircleAssessmentScheduleCalendar({
           db={db}
           memberContactId={memberContactId}
           memberDocContactId={memberDocContactId}
+          inviteContactId={inviteContactId}
           memberDisplayName={memberDisplayName}
+          memberRole={memberRole}
+          assessmentSchedule={assessmentsEnabled ? schedule : undefined}
+          onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
           onDayClick={(dateKey) => {
             setSelectedDateKey(dateKey);
             setViewMode('today');
@@ -571,7 +589,7 @@ export function CircleAssessmentScheduleCalendar({
           compact={false}
           t={t}
           monthCells={monthCells}
-          monthCalendarByDay={monthCalendarByDay}
+          monthCalendarByDay={visibleMonthCalendarByDay}
           monthCareByDay={monthCareByDay}
           selectedDateKey={selectedDateKey}
           todayKey={todayKey}
@@ -579,7 +597,7 @@ export function CircleAssessmentScheduleCalendar({
           selectedEvents={selectedEvents}
           onSelectDate={setSelectedDateKey}
           onEditAppointment={onEditAppointment}
-          onOpenAssessment={onOpenAssessment}
+          onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
           onSelectAppointment={setAppointmentSelection}
           fullSize
         />
@@ -606,7 +624,11 @@ export function CircleAssessmentScheduleCalendar({
           db={db}
           memberContactId={memberContactId}
           memberDocContactId={memberDocContactId}
+          inviteContactId={inviteContactId}
           memberDisplayName={memberDisplayName}
+          memberRole={memberRole}
+          assessmentSchedule={assessmentsEnabled ? schedule : undefined}
+          onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
         />
       ) : null}
     </div>

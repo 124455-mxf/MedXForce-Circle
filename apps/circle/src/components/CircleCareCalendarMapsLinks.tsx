@@ -88,9 +88,9 @@ export function CircleCareCalendarMapsLinks({
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       {sectionHeader ? (
-        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{sectionHeader}</p>
+        <p className="text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-2">{sectionHeader}</p>
       ) : null}
       {addressLines.map((line) => (
         <p key={line} className="text-sm text-slate-600">

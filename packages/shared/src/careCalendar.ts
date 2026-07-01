@@ -65,6 +65,8 @@ export type CareCalendarEntry = {
   attendeeResponseSummary?: CareCalendarAttendeeResponseSummary;
   inviteeContactIds?: string[];
   inviteeMemberUids?: string[];
+  /** contactId → circle member uid; used for RSVP permission on multi-invitee appointments. */
+  inviteeMemberUidByContactId?: Record<string, string>;
   visitSubtype?: CareCalendarVisitSubtype;
   supportingNotes?: string;
   appointmentTasks?: CareCalendarAppointmentTask[];
@@ -87,6 +89,8 @@ export type CareCalendarDayEvent = {
   address?: CareCalendarAddress;
   attendees?: CareCalendarAttendee[];
   attendeeResponseSummary?: CareCalendarAttendeeResponseSummary;
+  inviteeContactIds?: string[];
+  inviteeMemberUidByContactId?: Record<string, string>;
   visitSubtype?: CareCalendarVisitSubtype;
   supportingNotes?: string;
   appointmentTasks?: CareCalendarAppointmentTask[];
@@ -398,6 +402,9 @@ export function getCareCalendarByDay(
         endTimeMinutes: entry.endTimeMinutes,
         address: entry.address,
         attendees: entry.attendees,
+        attendeeResponseSummary: entry.attendeeResponseSummary,
+        inviteeContactIds: entry.inviteeContactIds,
+        inviteeMemberUidByContactId: entry.inviteeMemberUidByContactId,
         visitSubtype: entry.visitSubtype,
         supportingNotes: entry.supportingNotes,
         appointmentTasks: entry.appointmentTasks,

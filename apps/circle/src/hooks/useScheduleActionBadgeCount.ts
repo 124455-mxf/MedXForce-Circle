@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import type { Firestore } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { countScheduleTabBadge, type CirclePatientSummary } from '@medxforce/shared';
-import { useCareCalendarEntries } from './useCareCalendarEntries';
+import { useCareCalendarEntries, buildCareCalendarEntriesSubscription } from './useCareCalendarEntries';
 import { useCircleMemberInviteContext } from './useCircleMemberInviteContext';
 
 export function useScheduleActionBadgeCount(
@@ -12,8 +12,15 @@ export function useScheduleActionBadgeCount(
   user: User,
   patient: CirclePatientSummary | null,
 ) {
-  const { entries } = useCareCalendarEntries(db, patientId);
-  const { inviteContext } = useCircleMemberInviteContext(db, user, patient);
+  const { inviteContext, inviteContextReady } = useCircleMemberInviteContext(db, user, patient);
+  const calendarSubscription = useMemo(
+    () =>
+      buildCareCalendarEntriesSubscription(patient, user.uid, inviteContext, {
+        inviteContextReady,
+      }),
+    [inviteContext, inviteContextReady, patient, user.uid],
+  );
+  const { entries } = useCareCalendarEntries(db, patientId, calendarSubscription);
 
   return useMemo(
     () =>

@@ -11,10 +11,12 @@ export function useCircleMemberInviteContext(
 ) {
   const { contact, memberDocContactId, loading } = useCircleOwnManagedContact(db, user, patient);
   const [inviteContactId, setInviteContactId] = useState<string | undefined>();
+  const [inviteContactIdReady, setInviteContactIdReady] = useState(false);
 
   useEffect(() => {
     if (!patient?.patientId || !user.uid) {
       setInviteContactId(undefined);
+      setInviteContactIdReady(true);
       return;
     }
 
@@ -23,8 +25,10 @@ export function useCircleMemberInviteContext(
       const inviteRef = String(snap.data()?.inviteRef || '').trim();
       if (!inviteRef) {
         setInviteContactId(undefined);
+        setInviteContactIdReady(true);
         return;
       }
+      setInviteContactIdReady(false);
       void getDoc(doc(db, 'circle_invites', inviteRef))
         .then((inviteSnap) => {
           const cid = inviteSnap.exists()
@@ -32,7 +36,8 @@ export function useCircleMemberInviteContext(
             : '';
           setInviteContactId(cid || undefined);
         })
-        .catch(() => setInviteContactId(undefined));
+        .catch(() => setInviteContactId(undefined))
+        .finally(() => setInviteContactIdReady(true));
     });
   }, [db, patient?.patientId, user.uid]);
 
@@ -40,7 +45,7 @@ export function useCircleMemberInviteContext(
     () => ({
       memberUid: user.uid,
       contactId: contact?.id,
-      memberDocContactId: memberDocContactId ?? inviteContactId,
+      memberDocContactId,
       inviteContactId,
       displayName:
         contact?.name?.trim() ||
@@ -62,5 +67,7 @@ export function useCircleMemberInviteContext(
   const memberContactId =
     contact?.id ?? memberDocContactId ?? inviteContactId ?? undefined;
 
-  return { inviteContext, memberContactId, contact, loading };
+  const inviteContextReady = !loading && inviteContactIdReady;
+
+  return { inviteContext, memberContactId, contact, loading, inviteContextReady };
 }

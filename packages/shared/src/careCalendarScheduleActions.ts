@@ -149,7 +149,11 @@ function inviteResponseForMember(
   entry: CareCalendarEntry,
   context: CareCalendarMemberInviteContext,
 ): 'pending' | 'accepted' | 'declined' {
-  const attendees = mergeAttendeeResponses(entry.attendees, entry.attendeeResponseSummary);
+  const attendees = mergeAttendeeResponses(
+    entry.attendees,
+    entry.attendeeResponseSummary,
+    entry.inviteeMemberUidByContactId,
+  );
   const self = findCareCalendarAttendeeForMember(attendees, context);
   return self?.response ?? 'pending';
 }
@@ -167,7 +171,11 @@ export function countPendingAppointmentInvitesForMember(
     if (entry.cancelledAt) continue;
     if (!entryOccurrencesInHorizon(entry, horizonDays, now).length) continue;
 
-    const attendees = mergeAttendeeResponses(entry.attendees, entry.attendeeResponseSummary);
+    const attendees = mergeAttendeeResponses(
+      entry.attendees,
+      entry.attendeeResponseSummary,
+      entry.inviteeMemberUidByContactId,
+    );
     const invitedByUid = (entry.inviteeMemberUids ?? []).includes(context.memberUid);
     const self = findCareCalendarAttendeeForMember(attendees, context);
     if (!invitedByUid && (!self || !attendeeNeedsAppointmentInvite(self))) continue;

@@ -6,6 +6,7 @@ import {
   isDropInThreadPost,
   isVisitCaptureThreadPost,
   canParticipateInCircleOpenThread,
+  canViewCircleAppointmentInvites,
   type CareCalendarMemberInviteContext,
   type CircleMemberThreadKind,
   type CircleMemberThreadPost,
@@ -60,7 +61,10 @@ export function circlePostInboxViewsForThread(
   memberRole: string,
 ): CirclePostInboxView[] {
   if (threadKind === 'open') {
-    const views: CirclePostInboxView[] = ['discussion', 'announcements', 'appointments'];
+    const views: CirclePostInboxView[] = ['discussion', 'announcements'];
+    if (canViewCircleAppointmentInvites(memberRole)) {
+      views.push('appointments');
+    }
     if (canParticipateInCircleOpenThread(memberRole)) {
       views.push('visit_captures');
     }
@@ -80,8 +84,9 @@ export function postMatchesInboxView(
     CareCalendarMemberInviteContext,
     'contactId' | 'memberDocContactId' | 'inviteContactId' | 'displayName'
   >,
+  memberRole?: string,
 ): boolean {
-  if (!isAppointmentInviteVisibleToMember(post, viewerUid, inviteContext)) return false;
+  if (!isAppointmentInviteVisibleToMember(post, viewerUid, inviteContext, memberRole)) return false;
   const isHidden = isCircleThreadPostHiddenForUser(hiddenByPostId, post.id, threadKind);
   if (view === 'hidden') return isHidden;
   if (isHidden) return false;
@@ -98,9 +103,18 @@ export function filterPostsForInboxView(
     CareCalendarMemberInviteContext,
     'contactId' | 'memberDocContactId' | 'inviteContactId' | 'displayName'
   >,
+  memberRole?: string,
 ): CircleMemberThreadPost[] {
   return posts.filter((post) =>
-    postMatchesInboxView(post, view, hiddenByPostId, threadKind, viewerUid, inviteContext),
+    postMatchesInboxView(
+      post,
+      view,
+      hiddenByPostId,
+      threadKind,
+      viewerUid,
+      inviteContext,
+      memberRole,
+    ),
   );
 }
 
@@ -114,6 +128,7 @@ export function countPostsForInboxView(
     CareCalendarMemberInviteContext,
     'contactId' | 'memberDocContactId' | 'inviteContactId' | 'displayName'
   >,
+  memberRole?: string,
 ): number {
   return filterPostsForInboxView(
     posts,
@@ -122,6 +137,7 @@ export function countPostsForInboxView(
     threadKind,
     viewerUid,
     inviteContext,
+    memberRole,
   ).length;
 }
 
@@ -157,6 +173,7 @@ export function countUnreadPostsForInboxView(
     CareCalendarMemberInviteContext,
     'contactId' | 'memberDocContactId' | 'inviteContactId' | 'displayName'
   >,
+  memberRole?: string,
 ): number {
   return filterPostsForInboxView(
     posts,
@@ -165,6 +182,7 @@ export function countUnreadPostsForInboxView(
     threadKind,
     userUid,
     inviteContext,
+    memberRole,
   ).filter((post) =>
     isCirclePostUnread(post, userUid, getLastReadAtForPost(post.id)),
   ).length;
@@ -195,6 +213,7 @@ export function countUnreadPostsForThread(
           userUid,
           getLastReadAtForPost,
           inviteContext,
+          memberRole,
         ),
       0,
     );
