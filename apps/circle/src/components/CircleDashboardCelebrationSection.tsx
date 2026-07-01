@@ -459,7 +459,11 @@ export function CircleDashboardCelebrationSection({
               dismissKind={tile.dismissKind}
               onOpen={tile.onOpen}
               t={t}
-              onDismiss={(kind) => void dismissReminder(kind)}
+              onDismiss={(kind) => {
+                void dismissReminder(kind).catch((err) => {
+                  console.warn('[Circle] Reminder dismiss failed:', err);
+                });
+              }}
             />
           </div>
         ))}

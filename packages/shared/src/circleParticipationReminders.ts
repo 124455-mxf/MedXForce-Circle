@@ -24,10 +24,15 @@ export type CircleParticipationReminderSnoozes = Partial<
   Record<CircleParticipationReminderKind, number>
 >;
 
+export type CircleProfileReminderSnoozesByPatient = Record<
+  string,
+  CircleParticipationReminderSnoozes
+>;
+
 export function parseMemberReminderSnoozes(
   data: Record<string, unknown> | undefined,
 ): CircleParticipationReminderSnoozes {
-  const raw = data?.reminderSnoozes;
+  const raw = data?.reminderSnoozes ?? data;
   if (!raw || typeof raw !== 'object') return {};
   const map = raw as Record<string, unknown>;
   const next: CircleParticipationReminderSnoozes = {};
@@ -45,6 +50,23 @@ export function parseMemberReminderSnoozes(
   }
   if (typeof map.teamCoverage === 'number' && map.teamCoverage > 0) {
     next.teamCoverage = map.teamCoverage;
+  }
+  return next;
+}
+
+export function parseReminderSnoozesByPatient(
+  raw: unknown,
+): CircleProfileReminderSnoozesByPatient {
+  if (!raw || typeof raw !== 'object') return {};
+  const next: CircleProfileReminderSnoozesByPatient = {};
+  for (const [patientId, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof patientId !== 'string' || !patientId.trim()) continue;
+    const parsed = parseMemberReminderSnoozes(
+      value && typeof value === 'object' ? (value as Record<string, unknown>) : undefined,
+    );
+    if (Object.keys(parsed).length > 0) {
+      next[patientId] = parsed;
+    }
   }
   return next;
 }
@@ -84,6 +106,7 @@ export function shouldShowDiaryEntryReminder(input: {
   return now - input.latestMyDiaryAt >= PARTICIPATION_REMINDER_WINDOW_MS;
 }
 
+/** Legacy member-doc path (read fallback for snoozes written before circle_profiles migration). */
 export function memberParticipationSnoozeRef(
   db: Firestore,
   patientId: string,
@@ -92,7 +115,11 @@ export function memberParticipationSnoozeRef(
   return doc(db, 'patients', patientId, 'members', memberUid);
 }
 
-export async function readMemberReminderSnoozes(
+export function circleProfileReminderSnoozesRef(db: Firestore, memberUid: string) {
+  return doc(db, 'circle_profiles', memberUid);
+}
+
+async function readLegacyMemberReminderSnoozes(
   db: Firestore,
   patientId: string,
   memberUid: string,
@@ -100,6 +127,36 @@ export async function readMemberReminderSnoozes(
   const snap = await getDoc(memberParticipationSnoozeRef(db, patientId, memberUid));
   if (!snap.exists()) return {};
   return parseMemberReminderSnoozes(snap.data() as Record<string, unknown>);
+}
+
+async function readCircleProfileReminderSnoozes(
+  db: Firestore,
+  patientId: string,
+  memberUid: string,
+): Promise<CircleParticipationReminderSnoozes> {
+  const snap = await getDoc(circleProfileReminderSnoozesRef(db, memberUid));
+  if (!snap.exists()) return {};
+  const byPatient = parseReminderSnoozesByPatient(snap.data()?.reminderSnoozesByPatient);
+  return byPatient[patientId] ?? {};
+}
+
+function mergeReminderSnoozes(
+  primary: CircleParticipationReminderSnoozes,
+  fallback: CircleParticipationReminderSnoozes,
+): CircleParticipationReminderSnoozes {
+  return { ...fallback, ...primary };
+}
+
+export async function readMemberReminderSnoozes(
+  db: Firestore,
+  patientId: string,
+  memberUid: string,
+): Promise<CircleParticipationReminderSnoozes> {
+  const [profileSnoozes, legacySnoozes] = await Promise.all([
+    readCircleProfileReminderSnoozes(db, patientId, memberUid),
+    readLegacyMemberReminderSnoozes(db, patientId, memberUid),
+  ]);
+  return mergeReminderSnoozes(profileSnoozes, legacySnoozes);
 }
 
 export async function snoozeParticipationReminder(
@@ -114,13 +171,25 @@ export async function snoozeParticipationReminder(
     ...existing,
     [kind]: now + reminderSnoozeDurationMs(kind),
   };
+
+  const profileRef = circleProfileReminderSnoozesRef(db, memberUid);
+  const profileSnap = await getDoc(profileRef);
+  const byPatient = profileSnap.exists()
+    ? parseReminderSnoozesByPatient(profileSnap.data()?.reminderSnoozesByPatient)
+    : {};
+
   await setDoc(
-    memberParticipationSnoozeRef(db, patientId, memberUid),
+    profileRef,
     {
-      reminderSnoozes: next,
+      uid: memberUid,
+      reminderSnoozesByPatient: {
+        ...byPatient,
+        [patientId]: next,
+      },
       updatedAt: now,
     },
     { merge: true },
   );
+
   return next;
 }
