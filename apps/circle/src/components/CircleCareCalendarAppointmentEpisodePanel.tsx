@@ -16,6 +16,7 @@ import {
   type CareCalendarAppointmentTask,
 } from '@medxforce/shared';
 import { CircleCareCalendarAssessmentNudgesList } from './CircleCareCalendarAssessmentNudgesList';
+import { CircleExpandableTextPreview } from './CircleExpandableTextPreview';
 import { cn } from '../lib/utils';
 
 type EpisodeTab = 'details' | 'prepare' | 'followup';
@@ -90,7 +91,7 @@ export function CircleCareCalendarAppointmentEpisodePanel({
     if (!onRecordVisit) return false;
     const timing = resolveCareCalendarAppointmentTiming(event, appointmentDateKey);
     return canOfferRecordVisitForAppointment(event.kind, timing, {
-      isAppointmentToday: appointmentDateKey === careCalendarDateKey(),
+      isAppointmentToday: appointmentDateKey === careCalendarDateKey(new Date()),
     });
   }, [appointmentDateKey, event, onRecordVisit]);
 
@@ -219,12 +220,16 @@ export function CircleCareCalendarAppointmentEpisodePanel({
             </p>
           )}
           {detailsContent}
-          {event.supportingNotes && (
-            <div className="pt-1">
-              <p className="text-sm font-bold text-slate-700 mb-2">{ct('fields.supportingNotes')}</p>
-              <p className="text-sm text-slate-600 whitespace-pre-wrap">{event.supportingNotes}</p>
-            </div>
-          )}
+          {event.supportingNotes ? (
+            <CircleExpandableTextPreview
+              label={ct('fields.supportingNotes')}
+              text={event.supportingNotes}
+              t={t}
+              rootClassName={cn(
+                (event.details || detailsContent) && 'pt-4 mt-2 border-t border-slate-100',
+              )}
+            />
+          ) : null}
           {showRecordVisit ? (
             <button
               type="button"

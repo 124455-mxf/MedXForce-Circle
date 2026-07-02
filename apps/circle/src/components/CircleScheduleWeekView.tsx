@@ -32,6 +32,7 @@ import {
 } from '@medxforce/shared';
 import { CircleCareCalendarMapsLinks } from './CircleCareCalendarMapsLinks';
 import { CircleCareCalendarAppointmentEpisodePanel } from './CircleCareCalendarAppointmentEpisodePanel';
+import { CircleExpandableTextPreview } from './CircleExpandableTextPreview';
 import { CircleCareCalendarInviteRsvpBar } from './CircleCareCalendarInviteRsvpBar';
 import { CircleMessageExpandOverlay } from './CircleMessageExpandOverlay';
 import type { CareCalendarAppointmentTask } from '@medxforce/shared';
@@ -681,9 +682,14 @@ function WeekAppointmentDetail({
     .filter(Boolean)
     .join(' · ');
 
-  const detailsContent = (
-    <>{event.details ? <p className="text-sm text-slate-600">{event.details}</p> : null}</>
-  );
+  const detailsContent = event.details ? (
+    <CircleExpandableTextPreview
+      label={ct('fields.details')}
+      text={event.details}
+      t={t}
+      previewChars={Number.MAX_SAFE_INTEGER}
+    />
+  ) : null;
 
   const goingWithBlock = displayAttendees?.length ? (
     <AppointmentDetailSection label={ct('fields.attendeesWith')}>

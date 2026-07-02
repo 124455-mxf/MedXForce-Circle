@@ -29,6 +29,7 @@ import { CircleCareCalendarInviteRsvpBar } from './CircleCareCalendarInviteRsvpB
 import { CircleScheduleImminentBanner } from './CircleScheduleImminentBanner';
 import { CircleCareCalendarAssessmentNudgeHint } from './CircleCareCalendarAssessmentNudgesList';
 import { CircleCareCalendarPrepStatusBadge } from './CircleCareCalendarPrepStatusBadge';
+import { CircleExpandableTextPreview } from './CircleExpandableTextPreview';
 import {
   CircleScheduleAppointmentDetailSheet,
   type CircleScheduleAppointmentSelection,
@@ -492,9 +493,23 @@ function CircleScheduleDayAppointmentCard({
               {event.visitSubtype ? ` · ${ct(`visitSubtype.${event.visitSubtype}`)}` : ''}
               {event.source === 'circle' ? ` · ${ct('fromCircle')}` : ''}
             </p>
-            {event.details ? (
-              <p className="text-sm text-slate-600 mt-1 line-clamp-2">{event.details}</p>
-            ) : null}
+            <div className="pt-1 space-y-0">
+              {event.details ? (
+                <CircleExpandableTextPreview
+                  label={ct('fields.details')}
+                  text={event.details}
+                  t={t}
+                />
+              ) : null}
+              {event.supportingNotes ? (
+                <CircleExpandableTextPreview
+                  label={ct('fields.supportingNotes')}
+                  text={event.supportingNotes}
+                  t={t}
+                  rootClassName={cn(event.details && 'pt-4 mt-3 border-t border-slate-100/90')}
+                />
+              ) : null}
+            </div>
             {assessmentSchedule ? (
               <CircleCareCalendarAssessmentNudgeHint
                 event={event}
@@ -520,7 +535,7 @@ function CircleScheduleDayAppointmentCard({
         </div>
         {showRecordVisit ? (
           <div
-            className="pt-1"
+            className="pt-3"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
@@ -535,7 +550,9 @@ function CircleScheduleDayAppointmentCard({
           </div>
         ) : null}
         {event.attendees?.length ? (
-          <AppointmentAttendeeResponses event={event} dateKey={dateKey} ct={ct} t={t} />
+          <div className="pt-4 mt-4 border-t border-slate-100/90">
+            <AppointmentAttendeeResponses event={event} dateKey={dateKey} ct={ct} t={t} />
+          </div>
         ) : null}
         {db && patientId ? (
           <CircleCareCalendarInviteRsvpBar
