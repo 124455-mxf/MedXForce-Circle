@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Firestore } from 'firebase/firestore';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
@@ -15,6 +15,24 @@ import {
   type CareCalendarMemberInviteContext,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
+
+function attendeesSignature(attendees: CareCalendarAttendee[] | undefined): string {
+  if (!attendees?.length) return '';
+  return attendees
+    .map(
+      (attendee) =>
+        `${attendee.contactId}:${attendee.response ?? 'pending'}:${attendee.respondedAt ?? ''}:${attendee.respondedByUid ?? ''}`,
+    )
+    .join('|');
+}
+
+function entryTimingSignature(timing: {
+  startDateKey: string;
+  startTimeMinutes?: number;
+  endTimeMinutes?: number;
+}): string {
+  return `${timing.startDateKey}|${timing.startTimeMinutes ?? ''}|${timing.endTimeMinutes ?? ''}`;
+}
 
 export function CircleCareCalendarInviteRsvpBar({
   db,
@@ -76,10 +94,19 @@ export function CircleCareCalendarInviteRsvpBar({
     endTimeMinutes,
   });
 
-  const mergedAttendees = useMemo(
-    () => liveAttendees,
-    [liveAttendees],
-  );
+  const inviteContextRef = useRef(inviteContext);
+  inviteContextRef.current = inviteContext;
+  const attendeesFallbackRef = useRef(attendees);
+  attendeesFallbackRef.current = attendees;
+  const inviteeUidMapRef = useRef(inviteeMemberUidByContactId);
+  inviteeUidMapRef.current = inviteeMemberUidByContactId;
+  const timingPropsRef = useRef({ startDateKey, startTimeMinutes, endTimeMinutes });
+  timingPropsRef.current = { startDateKey, startTimeMinutes, endTimeMinutes };
+  const liveAttendeesSigRef = useRef(attendeesSignature(attendees));
+  const entryTimingSigRef = useRef(entryTimingSignature(entryTiming));
+  const responseRef = useRef<CareCalendarAttendeeResponse>('pending');
+
+  const mergedAttendees = liveAttendees;
 
   const resolvedContactId = useMemo(
     () =>
@@ -97,19 +124,6 @@ export function CircleCareCalendarInviteRsvpBar({
   const self = findCareCalendarAttendeeForMember(mergedAttendees, inviteContext);
 
   useEffect(() => {
-    setLiveAttendees(attendees);
-  }, [attendees]);
-
-  useEffect(() => {
-    const selfResponse = self?.response;
-    if (selfResponse === 'accepted' || selfResponse === 'declined') {
-      setResponse(selfResponse);
-    } else {
-      setResponse('pending');
-    }
-  }, [self?.response]);
-
-  useEffect(() => {
     if (!entryId) return;
     const ref = doc(db, 'patients', patientId, 'care_calendar', entryId);
     return onSnapshot(
@@ -119,7 +133,7 @@ export function CircleCareCalendarInviteRsvpBar({
         if (!data) return;
         const rawAttendees = Array.isArray(data.attendees)
           ? (data.attendees as CareCalendarAttendee[])
-          : attendees;
+          : attendeesFallbackRef.current;
         const summary = parseAttendeeResponseSummary(data.attendeeResponseSummary);
         const uidMap =
           data.inviteeMemberUidByContactId &&
@@ -130,38 +144,40 @@ export function CircleCareCalendarInviteRsvpBar({
                   .map(([contactId, uid]) => [String(contactId), String(uid)])
                   .filter(([contactId, uid]) => Boolean(contactId) && Boolean(uid)),
               )
-            : inviteeMemberUidByContactId;
+            : inviteeUidMapRef.current;
         const merged = mergeAttendeeResponses(rawAttendees, summary, uidMap);
-        setLiveAttendees(merged);
-        const liveSelf = findCareCalendarAttendeeForMember(merged, inviteContext);
-        const liveResponse = liveSelf?.response ?? 'pending';
-        if (liveResponse === 'accepted' || liveResponse === 'declined') {
-          setResponse(liveResponse);
-        } else {
-          setResponse('pending');
+        const mergedSig = attendeesSignature(merged);
+        if (mergedSig !== liveAttendeesSigRef.current) {
+          liveAttendeesSigRef.current = mergedSig;
+          setLiveAttendees(merged);
         }
-        setEntryTiming({
-          startDateKey: String(data.startDateKey || startDateKey || ''),
+
+        const liveSelf = findCareCalendarAttendeeForMember(merged, inviteContextRef.current);
+        const liveResponse = liveSelf?.response ?? 'pending';
+        if (liveResponse !== responseRef.current) {
+          responseRef.current = liveResponse;
+          setResponse(liveResponse);
+        }
+
+        const timingProps = timingPropsRef.current;
+        const nextTiming = {
+          startDateKey: String(data.startDateKey || timingProps.startDateKey || ''),
           startTimeMinutes:
-            data.startTimeMinutes != null ? Number(data.startTimeMinutes) : startTimeMinutes,
+            data.startTimeMinutes != null ? Number(data.startTimeMinutes) : timingProps.startTimeMinutes,
           endTimeMinutes:
-            data.endTimeMinutes != null ? Number(data.endTimeMinutes) : endTimeMinutes,
-        });
+            data.endTimeMinutes != null ? Number(data.endTimeMinutes) : timingProps.endTimeMinutes,
+        };
+        const nextTimingSig = entryTimingSignature(nextTiming);
+        if (nextTimingSig !== entryTimingSigRef.current) {
+          entryTimingSigRef.current = nextTimingSig;
+          setEntryTiming(nextTiming);
+        }
       },
       () => {
         // Read may be denied for legacy entries; RSVP still works via attendeeResponseSummary update.
       },
     );
-  }, [
-    attendees,
-    db,
-    endTimeMinutes,
-    entryId,
-    inviteContext,
-    patientId,
-    startDateKey,
-    startTimeMinutes,
-  ]);
+  }, [db, entryId, patientId]);
 
   const isPast =
     eventStatus === 'past' ||
@@ -204,6 +220,7 @@ export function CircleCareCalendarInviteRsvpBar({
         },
       );
     } catch (err) {
+      responseRef.current = 'pending';
       setResponse('pending');
       setError(err instanceof Error ? err.message : t('circle.appointmentInviteRespondFailed'));
     } finally {
