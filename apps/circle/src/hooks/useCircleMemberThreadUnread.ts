@@ -8,6 +8,7 @@ import {
   canViewCircleAppointmentInvites,
   circleMemberThreadPostsCollection,
   isCircleThreadPostHiddenForUser,
+  isPastAppointmentInvitePost,
   mergeAppointmentInvitePostsWithCareCalendar,
   parseCircleMemberThreadPost,
   type CircleMemberThreadPost,
@@ -120,6 +121,17 @@ export function useCircleMemberThreadUnread(
         (post) => !isCircleThreadPostHiddenForUser(hiddenByPostId, post.id, 'restricted'),
       ),
     [hiddenByPostId, restrictedPosts],
+  );
+
+  const careCalendarEntryById = useMemo(
+    () => new Map(careCalendarEntries.map((entry) => [entry.id, entry])),
+    [careCalendarEntries],
+  );
+
+  const suppressPastAppointmentInviteUnread = useMemo(
+    () => (post: CircleMemberThreadPost) =>
+      isPastAppointmentInvitePost(post, careCalendarEntryById),
+    [careCalendarEntryById],
   );
 
   const getOpenPostLastRead = useMemo(
@@ -331,9 +343,20 @@ export function useCircleMemberThreadUnread(
             userId,
             (postId) => getCirclePostThreadLastReadAt(patientId, userId, 'open', postId),
             inviteContext,
+            suppressPastAppointmentInviteUnread,
           )
         : 0,
-    [canOpen, hiddenByPostId, inviteContext, memberRole, openPostsWithInvites, patientId, postReadTick, userId],
+    [
+      canOpen,
+      hiddenByPostId,
+      inviteContext,
+      memberRole,
+      openPostsWithInvites,
+      patientId,
+      postReadTick,
+      suppressPastAppointmentInviteUnread,
+      userId,
+    ],
   );
 
   const restrictedUnreadCount = useMemo(

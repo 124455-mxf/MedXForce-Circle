@@ -54,5 +54,6 @@ export * from './careCalendarAttendees';
 export * from './careCalendarInvite';
 export * from './careCalendarAssessmentNudges';
 export * from './careCalendarAppointmentDisplay';
+export * from './careCalendarScheduleTasks';
 export * from './careCalendarEntryFormSnapshot';
 export * from './dailyCheckIn';

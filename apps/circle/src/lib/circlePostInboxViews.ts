@@ -149,7 +149,9 @@ export function isCirclePostUnread(
   post: CircleMemberThreadPost,
   userUid: string,
   lastReadAt: number,
+  options?: { suppressUnread?: boolean },
 ): boolean {
+  if (options?.suppressUnread) return false;
   if (post.authorUid !== userUid && post.createdAt > lastReadAt) return true;
   if (
     post.lastReplyAt &&
@@ -174,6 +176,7 @@ export function countUnreadPostsForInboxView(
     'contactId' | 'memberDocContactId' | 'inviteContactId' | 'displayName'
   >,
   memberRole?: string,
+  shouldSuppressUnread?: (post: CircleMemberThreadPost) => boolean,
 ): number {
   return filterPostsForInboxView(
     posts,
@@ -184,7 +187,9 @@ export function countUnreadPostsForInboxView(
     inviteContext,
     memberRole,
   ).filter((post) =>
-    isCirclePostUnread(post, userUid, getLastReadAtForPost(post.id)),
+    isCirclePostUnread(post, userUid, getLastReadAtForPost(post.id), {
+      suppressUnread: shouldSuppressUnread?.(post),
+    }),
   ).length;
 }
 
@@ -199,6 +204,7 @@ export function countUnreadPostsForThread(
     CareCalendarMemberInviteContext,
     'contactId' | 'memberDocContactId' | 'inviteContactId' | 'displayName'
   >,
+  shouldSuppressUnread?: (post: CircleMemberThreadPost) => boolean,
 ): number {
   return circlePostInboxViewsForThread(threadKind, memberRole)
     .filter((view): view is CirclePostCategory => view !== 'hidden')
@@ -214,6 +220,7 @@ export function countUnreadPostsForThread(
           getLastReadAtForPost,
           inviteContext,
           memberRole,
+          shouldSuppressUnread,
         ),
       0,
     );

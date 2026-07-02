@@ -24,6 +24,35 @@ import { normalizeMemberRole } from './patientPermissions';
 /** Open prep tasks count appointments occurring within this many days (inclusive). */
 export const SCHEDULE_PREP_TASK_HORIZON_DAYS = 7;
 
+/** Light prep hints on schedule cards (no pulse, no assessment nudges). */
+export const SCHEDULE_PREP_LIGHT_NUDGE_DAYS = 14;
+
+const MS_DAY = 24 * 60 * 60 * 1000;
+
+export function daysBetweenCareCalendarDateKeys(earlierKey: string, laterKey: string): number {
+  const earlier = parseCareCalendarDateKey(earlierKey);
+  const later = parseCareCalendarDateKey(laterKey);
+  return Math.round((later.getTime() - earlier.getTime()) / MS_DAY);
+}
+
+export type PrepNudgeTier = 'none' | 'light' | 'strong';
+
+export function resolvePrepNudgeTier(
+  dateKey: string,
+  startTimeMinutes: number | undefined,
+  endTimeMinutes: number | undefined,
+  now = new Date(),
+): PrepNudgeTier {
+  if (isCareCalendarAppointmentPast(dateKey, startTimeMinutes, endTimeMinutes, now)) {
+    return 'none';
+  }
+  const todayKey = careCalendarDateKey(now);
+  const daysUntil = daysBetweenCareCalendarDateKeys(todayKey, dateKey);
+  if (daysUntil > SCHEDULE_PREP_LIGHT_NUDGE_DAYS) return 'none';
+  if (daysUntil > SCHEDULE_PREP_TASK_HORIZON_DAYS) return 'light';
+  return 'strong';
+}
+
 /** Today view banner: appointments starting within this many minutes. */
 export const SCHEDULE_IMMINENT_MINUTES = 45;
 

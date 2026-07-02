@@ -5,6 +5,7 @@ import type { AssessmentHistoryMap } from '@medxforce/shared';
 import {
   countAppointmentPrepRemaining,
   resolveCareCalendarAppointmentTiming,
+  resolvePrepNudgeTier,
   supportsCareCalendarAppointmentEpisode,
   type CareCalendarDayEvent,
 } from '@medxforce/shared';
@@ -44,19 +45,30 @@ export function CircleCareCalendarPrepStatusBadge({
     return null;
   }
 
-  const prep = countAppointmentPrepRemaining(event, dateKey, { preferences, histories });
+  const tier = resolvePrepNudgeTier(
+    dateKey,
+    event.startTimeMinutes,
+    event.endTimeMinutes,
+    now,
+  );
+  if (tier === 'none') return null;
+
+  const prep = countAppointmentPrepRemaining(event, dateKey, { preferences, histories, now, tier });
 
   if (prep.total > 0) {
+    const pulse = tier === 'strong';
     return (
       <span
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-full font-bold uppercase tracking-wide text-white bg-amber-500 animate-prep-attention',
+          'inline-flex items-center gap-1.5 rounded-full font-bold uppercase tracking-wide text-white bg-amber-500',
+          pulse && 'animate-prep-attention',
+          !pulse && 'bg-amber-400',
           compact ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-0.5 text-[10px]',
           className,
         )}
         title={t('schedulePage.views.prepNeededHint', { count: prep.total })}
       >
-        <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse shrink-0" aria-hidden />
+        <span className={cn('h-1.5 w-1.5 rounded-full bg-white shrink-0', pulse && 'animate-pulse')} aria-hidden />
         {t('schedulePage.views.prepNeeded', { count: prep.total })}
       </span>
     );

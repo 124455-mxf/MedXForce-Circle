@@ -21,6 +21,8 @@ import {
   careCalendarWeekEventBlockClasses,
   careCalendarPrepBorderClasses,
   countAppointmentPrepRemaining,
+  appointmentPrepHighlightIsNeeded,
+  appointmentPrepHighlightIsReady,
   resolveAppointmentPrepHighlight,
   resolveCareCalendarAppointmentTiming,
   type AssessmentHistoryMap,
@@ -479,9 +481,9 @@ function WeekDaysGrid({
                   )}
                   style={{ top, height: Math.max(height, SLOT_HEIGHT_PX - 4) }}
                   title={
-                    prepHighlight === 'needed'
+                    appointmentPrepHighlightIsNeeded(prepHighlight)
                       ? t('schedulePage.views.prepNeededHint', { count: prepRemaining })
-                      : prepHighlight === 'ready'
+                      : appointmentPrepHighlightIsReady(prepHighlight)
                         ? t('schedulePage.views.prepReady')
                         : undefined
                   }

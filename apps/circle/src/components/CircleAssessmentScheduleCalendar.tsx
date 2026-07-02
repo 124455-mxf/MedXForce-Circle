@@ -17,6 +17,7 @@ import {
 } from '@medxforce/shared';
 import { CircleCareCalendarMapsLinks } from './CircleCareCalendarMapsLinks';
 import { CircleScheduleTodayView } from './CircleScheduleTodayView';
+import { CircleScheduleTasksView } from './CircleScheduleTasksView';
 import {
   CircleScheduleAppointmentDetailSheet,
   type CircleScheduleAppointmentSelection,
@@ -55,10 +56,10 @@ type CircleAssessmentScheduleCalendarProps = {
   enableViewModes?: boolean;
 };
 
-type ScheduleViewMode = 'today' | 'week' | 'month';
+type ScheduleViewMode = 'today' | 'week' | 'month' | 'tasks';
 
 const WEEKDAY_KEYS = [0, 1, 2, 3, 4, 5, 6] as const;
-const VIEW_MODES: ScheduleViewMode[] = ['today', 'week', 'month'];
+const VIEW_MODES: ScheduleViewMode[] = ['today', 'week', 'month', 'tasks'];
 const EMPTY_ASSESSMENT_CALENDAR = new Map<string, AssessmentScheduleDayEvent[]>();
 
 function buildMonthGrid(year: number, month: number): (Date | null)[] {
@@ -557,6 +558,21 @@ export function CircleAssessmentScheduleCalendar({
           memberRole={memberRole}
           currentUserUid={currentUserUid}
           assessmentSchedule={assessmentsEnabled ? schedule : undefined}
+        />
+      )}
+
+      {viewMode === 'tasks' && (
+        <CircleScheduleTasksView
+          careEntries={careEntries}
+          preferences={schedule.preferences}
+          histories={schedule.histories}
+          memberRole={memberRole}
+          t={t}
+          compact={compact}
+          onOpenAppointment={(dateKey, event) => {
+            setSelectedDateKey(dateKey);
+            setAppointmentSelection({ dateKey, event });
+          }}
         />
       )}
 

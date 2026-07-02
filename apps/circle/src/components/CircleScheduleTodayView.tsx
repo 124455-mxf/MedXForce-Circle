@@ -13,6 +13,7 @@ import {
   shouldShowAttendeeInviteResponseBadge,
   careCalendarCardTimingBorderClasses,
   careCalendarPrepBorderClasses,
+  careCalendarAppointmentCardSurfaceClasses,
   resolveAppointmentPrepHighlight,
   resolveCareCalendarAppointmentTiming,
   type AppointmentPrepHighlight,
@@ -394,14 +395,12 @@ function CircleScheduleDayAppointmentCard({
         }
       }}
       className={cn(
-        'flex items-stretch gap-4 rounded-2xl border-2 shadow-sm overflow-hidden transition-shadow cursor-pointer',
-        isPast && 'opacity-80 bg-slate-50/80',
-        !isPast && inProgress && 'bg-emerald-50/70 shadow-md shadow-emerald-100',
-        !isPast && upcoming && !inProgress && 'bg-violet-50/80 shadow-md shadow-violet-100/80',
+        'flex items-stretch gap-4 rounded-2xl overflow-hidden transition-shadow cursor-pointer',
+        careCalendarAppointmentCardSurfaceClasses(timing, prepHighlight),
         prepHighlight !== 'none'
           ? careCalendarPrepBorderClasses(prepHighlight, 'card')
           : careCalendarCardTimingBorderClasses(timing, prepHighlight),
-        'hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400',
+        'hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400',
       )}
     >
       <div

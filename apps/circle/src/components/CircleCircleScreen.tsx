@@ -20,6 +20,7 @@ import {
   isAppointmentInviteVisibleToMember,
   isDiscussionThreadPost,
   isSyntheticAppointmentInvitePostId,
+  isPastAppointmentInvitePost,
   mergeAppointmentInvitePostsWithCareCalendar,
   unhideCircleThreadPostForUser,
   type CircleMemberRole,
@@ -331,6 +332,17 @@ export function CircleCircleScreen({
     calendarSubscription,
   );
 
+  const careCalendarEntryById = useMemo(
+    () => new Map(careCalendarEntries.map((entry) => [entry.id, entry])),
+    [careCalendarEntries],
+  );
+
+  const suppressPastAppointmentInviteUnread = useCallback(
+    (post: CircleMemberThreadPost) =>
+      isPastAppointmentInvitePost(post, careCalendarEntryById),
+    [careCalendarEntryById],
+  );
+
   const allPosts = useMemo(
     () =>
       activeThread === 'open' && canViewCircleAppointmentInvites(memberRole)
@@ -482,13 +494,14 @@ export function CircleCircleScreen({
               getPostLastRead,
               memberInviteContext,
               memberRole,
+              activeThread === 'open' ? suppressPastAppointmentInviteUnread : undefined,
             ),
           };
           return acc;
         },
         {} as Record<CirclePostInboxView, { total: number; unread: number }>,
       ),
-    [activeThread, allPosts, getPostLastRead, hiddenByPostId, inboxViews, memberInviteContext, memberRole, postReadTick, user.uid],
+    [activeThread, allPosts, getPostLastRead, hiddenByPostId, inboxViews, memberInviteContext, memberRole, postReadTick, suppressPastAppointmentInviteUnread, user.uid],
   );
 
   const activeTabUnread = inboxTabCounts[inboxView]?.unread ?? 0;
@@ -729,7 +742,9 @@ export function CircleCircleScreen({
   }, [activeThread, db, deleteTarget, patient.patientId, selectedPostId, t]);
 
   const renderInboxRow = (post: CircleMemberThreadPost) => {
-    const unread = isCirclePostUnread(post, user.uid, getPostLastRead(post.id));
+    const unread = isCirclePostUnread(post, user.uid, getPostLastRead(post.id), {
+      suppressUnread: suppressPastAppointmentInviteUnread(post),
+    });
     const title = circlePostInboxTitle(t, post, viewerLanguage, user.uid);
     const authorLine = circlePostInboxRowAuthorLine(t, post, user.uid, ownRoleLabel);
     const snippet = circlePostInboxSnippet(post, viewerLanguage, user.uid, t);
@@ -870,7 +885,9 @@ export function CircleCircleScreen({
 
   if (selectedPost) {
     const isOwn = selectedPost.authorUid === user.uid;
-    const highlightAsUnread = isCirclePostUnread(selectedPost, user.uid, getPostLastRead(selectedPost.id));
+    const highlightAsUnread = isCirclePostUnread(selectedPost, user.uid, getPostLastRead(selectedPost.id), {
+      suppressUnread: suppressPastAppointmentInviteUnread(selectedPost),
+    });
     const canDeleteForEveryone = canDeleteCircleThreadPostForEveryone(selectedPost, {
       uid: user.uid,
       isProxy,
