@@ -115,7 +115,7 @@ interface CircleCircleScreenProps {
   onResumeDropIn?: () => void;
   dropInActive?: boolean;
   dropInChatOpen?: boolean;
-  onRecordVisit?: () => void;
+  onRecordVisit?: (entryId?: string) => void;
   circleInboxIntent?: { thread: CircleMemberThreadKind; view: CirclePostInboxView } | null;
   onCircleInboxIntentConsumed?: () => void;
 }
@@ -943,6 +943,7 @@ export function CircleCircleScreen({
           inviteContactId={memberInviteContext.inviteContactId}
           memberDisplayName={memberInviteContext.displayName}
           memberRole={memberRole}
+          onRecordVisit={onRecordVisit}
         />
         {messageModals}
       </>

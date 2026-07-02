@@ -44,11 +44,16 @@ export async function createVisitCaptureSession(params: {
   patientId: string;
   capturedBy: VisitCaptureCapturedBy;
   consent: { at: number; roomInformed: true };
+  careCalendarEntryId?: string;
 }): Promise<VisitCaptureSession> {
+  const { careCalendarEntryId, ...rest } = params;
   const res = await fetch(`${apiBase()}/api/visit-capture/sessions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
+    body: JSON.stringify({
+      ...rest,
+      ...(careCalendarEntryId?.trim() ? { careCalendarEntryId: careCalendarEntryId.trim() } : {}),
+    }),
   });
   const data = await parseJson<{ success: boolean; session: VisitCaptureSession }>(res);
   return data.session;

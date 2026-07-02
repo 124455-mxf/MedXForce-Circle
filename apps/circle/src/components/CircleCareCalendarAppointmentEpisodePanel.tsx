@@ -1,14 +1,17 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, Mic, X } from 'lucide-react';
 import type { AnalyticsMetricId, AssessmentHistoryMap, CareCalendarDayEvent } from '@medxforce/shared';
 import {
   appointmentTasksForPhase,
   appointmentTasksStatusMatch,
   applyAppointmentTaskStatusChange,
+  canOfferRecordVisitForAppointment,
+  careCalendarDateKey,
   countRecommendedCareCalendarAssessmentNudges,
   getCareCalendarAssessmentNudges,
   openAppointmentTaskCount,
+  resolveCareCalendarAppointmentTiming,
   supportsCareCalendarAppointmentEpisode,
   type CareCalendarAppointmentTask,
 } from '@medxforce/shared';
@@ -33,6 +36,7 @@ type CircleCareCalendarAppointmentEpisodePanelProps = {
   currentUserUid?: string;
   onTasksChange?: (tasks: CareCalendarAppointmentTask[]) => void | Promise<void>;
   detailsContent?: ReactNode;
+  onRecordVisit?: (entryId: string) => void;
 };
 
 export function CircleCareCalendarAppointmentEpisodePanel({
@@ -46,6 +50,7 @@ export function CircleCareCalendarAppointmentEpisodePanel({
   currentUserUid,
   onTasksChange,
   detailsContent,
+  onRecordVisit,
 }: CircleCareCalendarAppointmentEpisodePanelProps) {
   const hasEpisode = supportsCareCalendarAppointmentEpisode(event.kind);
   const [tab, setTab] = useState<EpisodeTab>('details');
@@ -80,6 +85,14 @@ export function CircleCareCalendarAppointmentEpisodePanel({
       getCareCalendarAssessmentNudges(event, appointmentDateKey, 'post', preferences, histories),
     );
   }, [appointmentDateKey, event, histories, preferences]);
+
+  const showRecordVisit = useMemo(() => {
+    if (!onRecordVisit) return false;
+    const timing = resolveCareCalendarAppointmentTiming(event, appointmentDateKey);
+    return canOfferRecordVisitForAppointment(event.kind, timing, {
+      isAppointmentToday: appointmentDateKey === careCalendarDateKey(),
+    });
+  }, [appointmentDateKey, event, onRecordVisit]);
 
   if (!hasEpisode) {
     return <>{detailsContent}</>;
@@ -212,6 +225,16 @@ export function CircleCareCalendarAppointmentEpisodePanel({
               <p className="text-sm text-slate-600 whitespace-pre-wrap">{event.supportingNotes}</p>
             </div>
           )}
+          {showRecordVisit ? (
+            <button
+              type="button"
+              onClick={() => onRecordVisit?.(event.entryId)}
+              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200/80 py-3 px-4"
+            >
+              <Mic size={16} className="shrink-0" aria-hidden />
+              {ct('episode.recordVisit')}
+            </button>
+          ) : null}
         </div>
       )}
 

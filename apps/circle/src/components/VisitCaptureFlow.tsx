@@ -53,6 +53,8 @@ export type VisitCaptureFlowProps = {
   onPublished?: () => void;
   patientId: string;
   capturedBy: VisitCaptureCapturedBy;
+  /** When set, links this capture to a schedule appointment. */
+  careCalendarEntryId?: string | null;
 };
 
 function formatElapsed(ms: number): string {
@@ -68,6 +70,7 @@ export function VisitCaptureFlow({
   onPublished,
   patientId,
   capturedBy,
+  careCalendarEntryId = null,
 }: VisitCaptureFlowProps) {
   const apiConfigured = isVisitCaptureApiConfigured();
   const { language: recorderLanguage, t } = useCircleI18nContext();
@@ -129,6 +132,7 @@ export function VisitCaptureFlow({
         patientId,
         capturedBy,
         consent: { at: Date.now(), roomInformed: true },
+        ...(careCalendarEntryId ? { careCalendarEntryId } : {}),
       });
       setSession(created);
       setStep('recording');

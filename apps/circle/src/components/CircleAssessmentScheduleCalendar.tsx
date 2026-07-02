@@ -54,6 +54,7 @@ type CircleAssessmentScheduleCalendarProps = {
   compact?: boolean;
   hideHeader?: boolean;
   enableViewModes?: boolean;
+  onRecordVisit?: (entryId: string) => void;
 };
 
 type ScheduleViewMode = 'today' | 'week' | 'month' | 'tasks';
@@ -122,6 +123,7 @@ export function CircleAssessmentScheduleCalendar({
   compact = false,
   hideHeader = false,
   enableViewModes = false,
+  onRecordVisit,
 }: CircleAssessmentScheduleCalendarProps) {
   const ct = (key: string, params?: Record<string, unknown>) =>
     t(`dashboard.careCalendar.${key}`, params);
@@ -501,8 +503,9 @@ export function CircleAssessmentScheduleCalendar({
             inviteContactId={inviteContactId}
             memberDisplayName={memberDisplayName}
             memberRole={memberRole}
-            assessmentSchedule={assessmentsEnabled ? schedule : undefined}
+            assessmentSchedule={schedule}
             onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
+            onRecordVisit={onRecordVisit}
           />
         ) : null}
       </div>
@@ -557,7 +560,8 @@ export function CircleAssessmentScheduleCalendar({
           memberDisplayName={memberDisplayName}
           memberRole={memberRole}
           currentUserUid={currentUserUid}
-          assessmentSchedule={assessmentsEnabled ? schedule : undefined}
+          assessmentSchedule={schedule}
+          onRecordVisit={onRecordVisit}
         />
       )}
 
@@ -598,8 +602,9 @@ export function CircleAssessmentScheduleCalendar({
             inviteContactId={inviteContactId}
             memberDisplayName={memberDisplayName}
             memberRole={memberRole}
-            assessmentSchedule={assessmentsEnabled ? schedule : undefined}
+            assessmentSchedule={schedule}
             onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
+            onRecordVisit={onRecordVisit}
           />
           <CircleScheduleSelectedDayDetailPanel
             selectedDateKey={selectedDateKey}
@@ -613,7 +618,8 @@ export function CircleAssessmentScheduleCalendar({
             }
             onEditAppointment={onEditAppointment}
             onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
-            assessmentSchedule={assessmentsEnabled ? schedule : undefined}
+            assessmentSchedule={schedule}
+            onRecordVisit={onRecordVisit}
             db={db}
             patientId={patientId}
             memberContactId={memberContactId}
@@ -686,8 +692,9 @@ export function CircleAssessmentScheduleCalendar({
           inviteContactId={inviteContactId}
           memberDisplayName={memberDisplayName}
           memberRole={memberRole}
-          assessmentSchedule={assessmentsEnabled ? schedule : undefined}
+          assessmentSchedule={schedule}
           onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
+          onRecordVisit={onRecordVisit}
         />
       ) : null}
     </div>

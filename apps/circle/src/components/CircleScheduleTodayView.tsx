@@ -1,8 +1,9 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Users } from 'lucide-react';
+import { ChevronDown, Mic, Users } from 'lucide-react';
 import {
   careCalendarAttendeeRoleLabelKey,
+  canOfferRecordVisitForAppointmentOnDate,
   findImminentCareCalendarDayEvents,
   formatCareCalendarTime,
   formatCareCalendarTimeRange,
@@ -57,6 +58,7 @@ type CircleScheduleTodayViewProps = {
   memberRole?: string;
   currentUserUid?: string;
   assessmentSchedule?: CircleAssessmentScheduleContext;
+  onRecordVisit?: (entryId: string) => void;
 };
 
 export function CircleScheduleTodayView({
@@ -78,6 +80,7 @@ export function CircleScheduleTodayView({
   memberRole,
   currentUserUid,
   assessmentSchedule,
+  onRecordVisit,
 }: CircleScheduleTodayViewProps) {
   const [selection, setSelection] = useState<CircleScheduleAppointmentSelection | null>(null);
   const [pastExpanded, setPastExpanded] = useState(false);
@@ -184,6 +187,7 @@ export function CircleScheduleTodayView({
                       currentUserUid={currentUserUid}
                       assessmentSchedule={assessmentSchedule}
                       dateKey={dateKey}
+                      onRecordVisit={onRecordVisit}
                     />
                   ))}
                 </ul>
@@ -315,6 +319,7 @@ export function CircleScheduleTodayView({
           memberRole={memberRole}
           assessmentSchedule={assessmentSchedule}
           onOpenAssessment={onOpenAssessment}
+          onRecordVisit={onRecordVisit}
         />
       ) : null}
     </div>
@@ -341,6 +346,7 @@ function CircleScheduleDayAppointmentCard({
   now,
   showTimingHighlight = false,
   showPrepBorder = true,
+  onRecordVisit,
 }: {
   event: CareCalendarDayEvent;
   ct: (key: string, params?: Record<string, unknown>) => string;
@@ -361,6 +367,7 @@ function CircleScheduleDayAppointmentCard({
   now?: Date;
   showTimingHighlight?: boolean;
   showPrepBorder?: boolean;
+  onRecordVisit?: (entryId: string) => void;
 }) {
   const timeLabel =
     formatCareCalendarTimeRange(event.startTimeMinutes, event.endTimeMinutes) ||
@@ -382,6 +389,16 @@ function CircleScheduleDayAppointmentCard({
           histories: assessmentSchedule.histories,
         })
       : 'none';
+
+  const showRecordVisit =
+    !!onRecordVisit &&
+    canOfferRecordVisitForAppointmentOnDate(
+      event.kind,
+      dateKey,
+      event.startTimeMinutes,
+      event.endTimeMinutes,
+      now,
+    );
 
   return (
     <li
@@ -501,6 +518,22 @@ function CircleScheduleDayAppointmentCard({
             </button>
           ) : null}
         </div>
+        {showRecordVisit ? (
+          <div
+            className="pt-1"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => onRecordVisit?.(event.entryId)}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200/80"
+            >
+              <Mic size={16} className="shrink-0" aria-hidden />
+              {ct('episode.recordVisit')}
+            </button>
+          </div>
+        ) : null}
         {event.attendees?.length ? (
           <AppointmentAttendeeResponses event={event} dateKey={dateKey} ct={ct} t={t} />
         ) : null}

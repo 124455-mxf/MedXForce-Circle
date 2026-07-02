@@ -42,6 +42,7 @@ export * from './analyticsSummaries';
 export * from './analyticsMetricDetail';
 export * from './remoteSettings';
 export * from './visitCapture';
+export * from './visitCaptureAppointment';
 export * from './visitCaptureExport';
 export * from './patientRemoteCommands';
 export * from './dropIn';

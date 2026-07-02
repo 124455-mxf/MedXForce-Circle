@@ -29,6 +29,7 @@ export function CirclePostBodyRenderer({
   inviteContactId,
   memberDisplayName,
   memberRole,
+  onRecordVisit,
 }: {
   post: CircleMemberThreadPost;
   isOwn: boolean;
@@ -44,6 +45,7 @@ export function CirclePostBodyRenderer({
   inviteContactId?: string;
   memberDisplayName?: string;
   memberRole?: string;
+  onRecordVisit?: (entryId?: string) => void;
 }) {
   const resolvedBoldFirstLine = boldFirstLine ?? circleThreadPostBoldTitleLine(post);
 
@@ -61,6 +63,7 @@ export function CirclePostBodyRenderer({
         memberRole={memberRole}
         t={t}
         disableTruncate={disableTruncate}
+        onRecordVisit={onRecordVisit}
       />
     );
   }

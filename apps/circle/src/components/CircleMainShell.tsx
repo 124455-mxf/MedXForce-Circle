@@ -119,6 +119,7 @@ export function CircleMainShell({
   const { language, t } = useCircleI18nContext();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [visitCaptureOpen, setVisitCaptureOpen] = useState(false);
+  const [visitCaptureEntryId, setVisitCaptureEntryId] = useState<string | null>(null);
   const [circleInboxIntent, setCircleInboxIntent] = useState<{
     thread: CircleMemberThreadKind;
     view: CirclePostInboxView;
@@ -210,6 +211,7 @@ export function CircleMainShell({
   const circleDropInEnabled = !!selectedPatient?.capabilities.remoteSettings;
 
   const handleVisitCapturePublished = useCallback(() => {
+    setVisitCaptureEntryId(null);
     setVisitCaptureOpen(false);
     setCircleInboxIntent({
       thread: visitCapturePublishThreadKind(memberRole),
@@ -217,6 +219,16 @@ export function CircleMainShell({
     });
     handleTabChange('circle');
   }, [handleTabChange, memberRole]);
+
+  const handleOpenVisitCapture = useCallback((careCalendarEntryId?: string) => {
+    setVisitCaptureEntryId(careCalendarEntryId?.trim() || null);
+    setVisitCaptureOpen(true);
+  }, []);
+
+  const handleCloseVisitCapture = useCallback(() => {
+    setVisitCaptureOpen(false);
+    setVisitCaptureEntryId(null);
+  }, []);
 
   const handleOpenCircleFolder = useCallback(
     (thread: CircleMemberThreadKind, folder: CirclePostInboxView) => {
@@ -567,7 +579,7 @@ export function CircleMainShell({
               onOpenRichMediaReactions={handleOpenRichMediaReactions}
               onOpenAnalyticsDetail={handleOpenAnalyticsDetail}
               onOpenVisitCapture={
-                showVisitCapture ? () => setVisitCaptureOpen(true) : undefined
+                showVisitCapture ? () => handleOpenVisitCapture() : undefined
               }
               onRequestDropIn={
                 canReceiveRemoteCommandResponses &&
@@ -607,6 +619,11 @@ export function CircleMainShell({
                 db={db}
                 patient={selectedPatient}
                 onOpenAssessment={handleOpenAnalyticsDetail}
+                onRecordVisit={
+                  showVisitCapture
+                    ? (entryId: string) => handleOpenVisitCapture(entryId)
+                    : undefined
+                }
               />
             </div>
           )}
@@ -640,7 +657,11 @@ export function CircleMainShell({
                 onResumeDropIn={circleDropIn.resumeChat}
                 dropInActive={!!circleDropIn.activeSession}
                 dropInChatOpen={circleDropIn.chatOpen}
-                onRecordVisit={showVisitCapture ? () => setVisitCaptureOpen(true) : undefined}
+                onRecordVisit={
+                  showVisitCapture
+                    ? (entryId?: string) => handleOpenVisitCapture(entryId)
+                    : undefined
+                }
                 circleInboxIntent={circleInboxIntent}
                 onCircleInboxIntentConsumed={handleCircleInboxIntentConsumed}
               />
@@ -695,7 +716,7 @@ export function CircleMainShell({
         {selectedPatient && showVisitCapture ? (
           <VisitCaptureFlow
             open={visitCaptureOpen}
-            onClose={() => setVisitCaptureOpen(false)}
+            onClose={handleCloseVisitCapture}
             onPublished={handleVisitCapturePublished}
             patientId={selectedPatient.patientId}
             capturedBy={{
@@ -704,6 +725,7 @@ export function CircleMainShell({
               role: memberRole,
               app: 'circle',
             }}
+            careCalendarEntryId={visitCaptureEntryId}
           />
         ) : null}
 

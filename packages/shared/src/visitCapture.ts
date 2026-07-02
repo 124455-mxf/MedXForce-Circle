@@ -82,6 +82,8 @@ export interface VisitCaptureSession {
   audioExpiresAt: number;
   publishedPostId?: string;
   errorMessage?: string;
+  /** Linked care calendar entry when recording from an appointment. */
+  careCalendarEntryId?: string;
   createdAt: number;
   updatedAt: number;
 }

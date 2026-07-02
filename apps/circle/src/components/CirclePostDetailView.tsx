@@ -66,6 +66,7 @@ export function CirclePostDetailView({
   inviteContactId,
   memberDisplayName,
   memberRole,
+  onRecordVisit,
 }: {
   post: CircleMemberThreadPost;
   isOwn: boolean;
@@ -98,6 +99,7 @@ export function CirclePostDetailView({
   inviteContactId?: string;
   memberDisplayName?: string;
   memberRole?: string;
+  onRecordVisit?: (entryId?: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
   const [expandedOpen, setExpandedOpen] = useState(false);
@@ -203,6 +205,7 @@ export function CirclePostDetailView({
             inviteContactId={inviteContactId}
             memberDisplayName={memberDisplayName}
             memberRole={memberRole}
+            onRecordVisit={onRecordVisit}
           />
           <div className="mt-6 flex flex-wrap items-center gap-2">
             <button

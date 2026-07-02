@@ -29,6 +29,7 @@ export type CircleDashboardAssessmentScheduleSectionProps = {
   fullPage?: boolean;
   t: (path: string, params?: Record<string, unknown>) => string;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
+  onRecordVisit?: (entryId: string) => void;
 };
 
 export function CircleDashboardAssessmentScheduleSection({
@@ -48,6 +49,7 @@ export function CircleDashboardAssessmentScheduleSection({
   fullPage = false,
   t,
   onOpenAssessment,
+  onRecordVisit,
 }: CircleDashboardAssessmentScheduleSectionProps) {
   const { inviteContext, memberContactId, contact: ownContact, loading: ownContactLoading, inviteContextReady } =
     useCircleMemberInviteContext(db, user, patient);
@@ -175,6 +177,7 @@ export function CircleDashboardAssessmentScheduleSection({
           compact={!fullPage}
           hideHeader={fullPage}
           enableViewModes={fullPage}
+          onRecordVisit={onRecordVisit}
         />
       </div>
       {canManageAppointments && (

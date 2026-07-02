@@ -79,6 +79,7 @@ type CircleScheduleWeekViewProps = {
   memberRole?: string;
   assessmentSchedule?: CircleAssessmentScheduleContext;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
+  onRecordVisit?: (entryId: string) => void;
 };
 
 function buildWeekTimeSlots(): number[] {
@@ -169,6 +170,7 @@ export function CircleScheduleWeekView({
   memberRole,
   assessmentSchedule,
   onOpenAssessment,
+  onRecordVisit,
 }: CircleScheduleWeekViewProps) {
   const [selection, setSelection] = useState<CircleScheduleAppointmentSelection | null>(null);
   const ct = (key: string, params?: Record<string, unknown>) =>
@@ -304,6 +306,7 @@ export function CircleScheduleWeekView({
           memberRole={memberRole}
           assessmentSchedule={assessmentSchedule}
           onOpenAssessment={onOpenAssessment}
+          onRecordVisit={onRecordVisit}
         />
       )}
     </div>
@@ -522,6 +525,7 @@ export function CircleScheduleAppointmentDetailSheet({
   memberRole,
   assessmentSchedule,
   onOpenAssessment,
+  onRecordVisit,
 }: {
   selection: CircleScheduleAppointmentSelection;
   ct: (key: string, params?: Record<string, unknown>) => string;
@@ -539,6 +543,7 @@ export function CircleScheduleAppointmentDetailSheet({
   memberRole?: string;
   assessmentSchedule?: CircleAssessmentScheduleContext;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
+  onRecordVisit?: (entryId: string) => void;
 }) {
   useEffect(() => {
     const previous = document.body.style.overflow;
@@ -581,6 +586,7 @@ export function CircleScheduleAppointmentDetailSheet({
           memberRole={memberRole}
           assessmentSchedule={assessmentSchedule}
           onOpenAssessment={onOpenAssessment}
+          onRecordVisit={onRecordVisit}
         />
       </div>
     </div>,
@@ -620,6 +626,7 @@ function WeekAppointmentDetail({
   memberRole,
   assessmentSchedule,
   onOpenAssessment,
+  onRecordVisit,
 }: {
   selection: CircleScheduleAppointmentSelection;
   ct: (key: string, params?: Record<string, unknown>) => string;
@@ -637,6 +644,7 @@ function WeekAppointmentDetail({
   memberRole?: string;
   assessmentSchedule?: CircleAssessmentScheduleContext;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
+  onRecordVisit?: (entryId: string) => void;
 }) {
   const [expandedOpen, setExpandedOpen] = useState(false);
   const { event, dateKey } = selection;
@@ -789,6 +797,7 @@ function WeekAppointmentDetail({
               : undefined
           }
           detailsContent={detailsContent}
+          onRecordVisit={onRecordVisit}
         />
       </div>
     </>

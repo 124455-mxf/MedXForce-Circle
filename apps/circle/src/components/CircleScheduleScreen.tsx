@@ -20,6 +20,7 @@ type CircleScheduleScreenProps = {
   db: Firestore;
   patient: CirclePatientSummary;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
+  onRecordVisit?: (entryId: string) => void;
 };
 
 export function CircleScheduleScreen({
@@ -27,6 +28,7 @@ export function CircleScheduleScreen({
   db,
   patient,
   onOpenAssessment,
+  onRecordVisit,
 }: CircleScheduleScreenProps) {
   const t = useCircleT();
   const memberRole = normalizeMemberRole(patient.role);
@@ -74,6 +76,7 @@ export function CircleScheduleScreen({
           fullPage
           t={t}
           onOpenAssessment={onOpenAssessment}
+          onRecordVisit={onRecordVisit}
         />
       </div>
     </div>

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Firestore } from 'firebase/firestore';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { Calendar } from 'lucide-react';
+import { Calendar, Mic } from 'lucide-react';
 import {
   APPOINTMENT_INVITE_POST_MARKER,
   appointmentInviteAttendeesFromPost,
+  canOfferRecordVisitForAppointmentOnDate,
   formatCareCalendarAttendeeSummary,
   formatCareCalendarTimeRange,
   hasCareCalendarAddress,
@@ -109,6 +110,7 @@ export function CircleAppointmentInvitePost({
   memberRole,
   t,
   disableTruncate = false,
+  onRecordVisit,
 }: {
   post: CircleMemberThreadPost;
   db: Firestore;
@@ -121,6 +123,7 @@ export function CircleAppointmentInvitePost({
   memberRole?: string;
   t: CircleTranslator;
   disableTruncate?: boolean;
+  onRecordVisit?: (entryId?: string) => void;
 }) {
   const parsed = useMemo(() => parseAppointmentInvitePost(post), [post]);
   const [entry, setEntry] = useState<LoadedCareCalendarEntry | null>(null);
@@ -194,6 +197,27 @@ export function CircleAppointmentInvitePost({
       : '';
 
   const fallbackLines = useMemo(() => fallbackLinesFromPost(post.text), [post.text]);
+
+  const showRecordVisit = useMemo(() => {
+    if (!onRecordVisit || !entryId || !entry?.startDateKey) return false;
+    return canOfferRecordVisitForAppointmentOnDate(
+      entry.kind,
+      entry.startDateKey,
+      entry.startTimeMinutes,
+      entry.endTimeMinutes,
+    );
+  }, [entry, entryId, onRecordVisit]);
+
+  const recordVisitButton = showRecordVisit ? (
+    <button
+      type="button"
+      onClick={() => onRecordVisit?.(entryId)}
+      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200/80"
+    >
+      <Mic size={16} className="shrink-0" aria-hidden />
+      {ct('episode.recordVisit')}
+    </button>
+  ) : null;
 
   if (!parsed && !entryLoaded) {
     return (
@@ -323,6 +347,8 @@ export function CircleAppointmentInvitePost({
           {entry?.address ? <CircleCareCalendarMapsLinks address={entry.address} ct={ct} /> : null}
         </div>
       </div>
+
+      {recordVisitButton}
 
       {entryId ? (
         <CircleCareCalendarInviteRsvpBar

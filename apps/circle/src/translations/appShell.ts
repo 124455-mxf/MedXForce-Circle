@@ -498,6 +498,7 @@ export const appShellEnglish = {
         assessmentNudgesPostTitle: 'Recommended assessments after this visit',
         assessmentNudgeRecommended: 'Recommended',
         assessmentNudgesShort: '{{count}} assessment(s) recommended',
+        recordVisit: 'Record visit',
       },
       errors: {
         titleRequired: 'Please enter a title.',
@@ -1362,6 +1363,7 @@ export const appShellGerman = {
         markDone: 'Mark done',
         markOpen: 'Mark not done',
         dismissTask: 'Dismiss',
+        recordVisit: 'Besuch aufzeichnen',
       },
       errors: {
         titleRequired: 'Bitte einen Titel eingeben.',
@@ -2224,6 +2226,7 @@ export const appShellSpanish = {
         markDone: 'Mark done',
         markOpen: 'Mark not done',
         dismissTask: 'Dismiss',
+        recordVisit: 'Registrar visita',
       },
       errors: {
         titleRequired: 'Introduzca un título.',
@@ -3086,6 +3089,7 @@ export const appShellPolish = {
         markDone: 'Mark done',
         markOpen: 'Mark not done',
         dismissTask: 'Dismiss',
+        recordVisit: 'Nagraj wizytę',
       },
       errors: {
         titleRequired: 'Wprowadź tytuł.',

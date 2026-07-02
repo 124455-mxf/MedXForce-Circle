@@ -1,16 +1,21 @@
 import { doc, setDoc, type Firestore } from 'firebase/firestore';
-import { isFirestoreTransientError } from '@medxforce/shared';
+import {
+  isFirestoreTransientError,
+  isFirestoreWriteQueueExhaustedError,
+} from '@medxforce/shared';
 import {
   isFirestoreBackgroundWritePaused,
-  isFirestoreQuotaError,
+  isFirestoreDailyQuotaError,
+  isFirestoreWriteBackpressureActive,
   pauseFirestoreBackgroundWrites,
+  throttleFirestoreWriteBackpressure,
 } from '../lib/firestoreQuota';
 
 const PRESENCE_HEARTBEAT_MS = 30_000;
 const MIN_BEAT_GAP_MS = 15_000;
 
 function shouldSkipPresenceBeat(): boolean {
-  if (isFirestoreBackgroundWritePaused()) return true;
+  if (isFirestoreBackgroundWritePaused() || isFirestoreWriteBackpressureActive()) return true;
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
   if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return true;
   return false;
@@ -54,11 +59,14 @@ export function startCircleMemberPresenceHeartbeat(
         lastBeatAt = Date.now();
       })
       .catch((err) => {
-        if (isFirestoreQuotaError(err)) {
+        if (isFirestoreDailyQuotaError(err)) {
           pauseFirestoreBackgroundWrites(String(err));
           return;
         }
-        if (isFirestoreTransientError(err)) {
+        if (isFirestoreTransientError(err) || isFirestoreWriteQueueExhaustedError(err)) {
+          if (isFirestoreWriteQueueExhaustedError(err)) {
+            throttleFirestoreWriteBackpressure(60_000);
+          }
           if (Date.now() - lastTransientLogAt > 5 * 60_000) {
             lastTransientLogAt = Date.now();
             console.debug('[circlePresence] transient write error (will retry):', err);

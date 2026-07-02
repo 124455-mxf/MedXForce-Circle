@@ -22,6 +22,7 @@ type CircleScheduleSelectedDayDetailPanelProps = {
   onEditAppointment?: (entryId: string) => void;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
   assessmentSchedule?: CircleAssessmentScheduleContext;
+  onRecordVisit?: (entryId: string) => void;
   db?: Firestore;
   patientId?: string;
   memberContactId?: string;
@@ -44,6 +45,7 @@ export function CircleScheduleSelectedDayDetailPanel({
   onEditAppointment,
   onOpenAssessment,
   assessmentSchedule,
+  onRecordVisit,
   db,
   patientId,
   memberContactId,
@@ -94,6 +96,7 @@ export function CircleScheduleSelectedDayDetailPanel({
                 memberDisplayName={memberDisplayName}
                 memberRole={memberRole}
                 currentUserUid={currentUserUid}
+                onRecordVisit={onRecordVisit}
               />
             ))}
           </ul>
