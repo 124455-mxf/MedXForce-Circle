@@ -12,6 +12,9 @@ import {
   useCirclePatientRepliesByMessageId,
 } from './circlePatientMessagingCore';
 import { useCircleMemberThreadUnread } from './useCircleMemberThreadUnread';
+import { useCircleMemberInviteContext } from './useCircleMemberInviteContext';
+import { useCareCalendarEntries, buildCareCalendarEntriesSubscription } from './useCareCalendarEntries';
+import { countAcceptedAppointmentsTodayForMember } from '@medxforce/shared';
 import {
   computePatientDashboardAttentionTotal,
   type CirclePatientAttentionBadge,
@@ -43,6 +46,20 @@ export function usePatientAttentionBadge(
     patient.patientId,
     user,
     patient.role,
+  );
+
+  const { inviteContext, inviteContextReady } = useCircleMemberInviteContext(db, user, patient);
+  const calendarSubscription = useMemo(
+    () =>
+      buildCareCalendarEntriesSubscription(patient, user.uid, inviteContext, {
+        inviteContextReady,
+      }),
+    [inviteContext, inviteContextReady, patient, user.uid],
+  );
+  const { entries: careCalendarEntries } = useCareCalendarEntries(
+    db,
+    patient.patientId,
+    calendarSubscription,
   );
 
   const [readTick, setReadTick] = useState(0);
@@ -108,6 +125,14 @@ export function usePatientAttentionBadge(
     [messages, repliesByMessageId, patient.patientId, now],
   );
 
+  const acceptedAppointmentsTodayCount = useMemo(
+    () =>
+      inviteContextReady && inviteContext.memberUid
+        ? countAcceptedAppointmentsTodayForMember(careCalendarEntries, inviteContext, new Date(now))
+        : 0,
+    [careCalendarEntries, inviteContext, inviteContextReady, now],
+  );
+
   return useMemo(
     (): CirclePatientAttentionBadge => ({
       totalUnread: computePatientDashboardAttentionTotal({
@@ -118,10 +143,12 @@ export function usePatientAttentionBadge(
         announcementsUnreadCount: circleUnread.announcementsUnreadCount,
         dropInsUnreadCount: circleUnread.dropInsUnreadCount,
         visitCapturesUnreadCount: circleUnread.visitCapturesUnreadCount,
+        acceptedAppointmentsTodayCount,
       }),
       hasUrgentAlert,
     }),
     [
+      acceptedAppointmentsTodayCount,
       circleUnread.announcementsUnreadCount,
       circleUnread.discussionsUnreadCount,
       circleUnread.dropInsUnreadCount,

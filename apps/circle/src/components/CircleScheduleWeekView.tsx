@@ -35,7 +35,7 @@ import { CircleCareCalendarAppointmentEpisodePanel } from './CircleCareCalendarA
 import { CircleExpandableTextPreview } from './CircleExpandableTextPreview';
 import { CircleCareCalendarInviteRsvpBar } from './CircleCareCalendarInviteRsvpBar';
 import { CircleMessageExpandOverlay } from './CircleMessageExpandOverlay';
-import type { CareCalendarAppointmentTask } from '@medxforce/shared';
+import type { CareCalendarAppointmentTask, CareCalendarVisitDebrief } from '@medxforce/shared';
 import type { CircleAssessmentScheduleContext } from '../lib/circleAssessmentScheduleMetrics';
 import type { AnalyticsMetricId } from '@medxforce/shared';
 import {
@@ -70,7 +70,19 @@ type CircleScheduleWeekViewProps = {
     kind: CareCalendarDayEvent['kind'],
     tasks: CareCalendarAppointmentTask[],
   ) => void | Promise<void>;
+  onClinicalReferenceIdsChange?: (
+    entryId: string,
+    kind: CareCalendarDayEvent['kind'],
+    ids: string[],
+  ) => void | Promise<void>;
+  onManageClinicalReferences?: () => void;
+  onVisitDebriefChange?: (
+    entryId: string,
+    kind: CareCalendarDayEvent['kind'],
+    debrief: CareCalendarVisitDebrief,
+  ) => void | Promise<void>;
   currentUserUid?: string;
+  currentUserName?: string;
   patientId?: string;
   db?: Firestore;
   memberContactId?: string;
@@ -161,7 +173,11 @@ export function CircleScheduleWeekView({
   t,
   onEditAppointment,
   onAppointmentTasksChange,
+  onClinicalReferenceIdsChange,
+  onManageClinicalReferences,
+  onVisitDebriefChange,
   currentUserUid,
+  currentUserName,
   patientId,
   db,
   memberContactId,
@@ -189,6 +205,18 @@ export function CircleScheduleWeekView({
   useEffect(() => {
     setMobileDayOffset(defaultMobileDayOffset(weekDays, todayKey));
   }, [weekDays, todayKey]);
+
+  useEffect(() => {
+    if (!selectedDayDateKey) return;
+    const dayIndex = weekDays.findIndex(
+      (day) => careCalendarDateKey(day) === selectedDayDateKey,
+    );
+    if (dayIndex < 0) return;
+    setMobileDayOffset((offset) => {
+      if (dayIndex >= offset && dayIndex < offset + MOBILE_VISIBLE_DAYS) return offset;
+      return Math.max(0, Math.min(dayIndex, weekDays.length - MOBILE_VISIBLE_DAYS));
+    });
+  }, [selectedDayDateKey, weekDays]);
 
   const mobileVisibleDays = weekDays.slice(
     mobileDayOffset,
@@ -297,7 +325,11 @@ export function CircleScheduleWeekView({
               : undefined
           }
           onAppointmentTasksChange={onAppointmentTasksChange}
+          onClinicalReferenceIdsChange={onClinicalReferenceIdsChange}
+          onManageClinicalReferences={onManageClinicalReferences}
+          onVisitDebriefChange={onVisitDebriefChange}
           currentUserUid={currentUserUid}
+          currentUserName={currentUserName}
           patientId={patientId}
           db={db}
           memberContactId={memberContactId}
@@ -363,6 +395,7 @@ function WeekDaysGrid({
         const isToday = dateKey === todayKey;
         const isSelected = dateKey === selectedDayDateKey;
         const assessmentCount = (calendarByDay.get(dateKey) ?? []).length;
+        const careCount = (careByDay.get(dateKey) ?? []).length;
 
         return (
           <button
@@ -403,6 +436,14 @@ function WeekDaysGrid({
                 {assessmentCount}
               </span>
             )}
+            {careCount > 0 && (
+              <span
+                className="inline-block mt-0.5 min-w-[1.1rem] px-1 py-0.5 rounded-full bg-violet-100 text-violet-700 text-[8px] font-bold"
+                title={t('schedulePage.views.weekAppointmentsCount', { count: careCount })}
+              >
+                {careCount}
+              </span>
+            )}
           </button>
         );
       })}
@@ -425,7 +466,7 @@ function WeekDaysGrid({
       </div>
 
       {days.map((date) => {
-        const dateKey = assessmentScheduleDateKey(date);
+        const dateKey = careCalendarDateKey(date);
         const careEvents = careByDay.get(dateKey) ?? [];
         const isToday = dateKey === todayKey;
         const isDaySelected = dateKey === selectedDayDateKey;
@@ -516,7 +557,11 @@ export function CircleScheduleAppointmentDetailSheet({
   onClose,
   onEdit,
   onAppointmentTasksChange,
+  onClinicalReferenceIdsChange,
+  onManageClinicalReferences,
+  onVisitDebriefChange,
   currentUserUid,
+  currentUserName,
   patientId,
   db,
   memberContactId,
@@ -534,7 +579,11 @@ export function CircleScheduleAppointmentDetailSheet({
   onClose: () => void;
   onEdit?: () => void;
   onAppointmentTasksChange?: CircleScheduleWeekViewProps['onAppointmentTasksChange'];
+  onClinicalReferenceIdsChange?: CircleScheduleWeekViewProps['onClinicalReferenceIdsChange'];
+  onManageClinicalReferences?: CircleScheduleWeekViewProps['onManageClinicalReferences'];
+  onVisitDebriefChange?: CircleScheduleWeekViewProps['onVisitDebriefChange'];
   currentUserUid?: string;
+  currentUserName?: string;
   patientId?: string;
   db?: Firestore;
   memberContactId?: string;
@@ -577,7 +626,11 @@ export function CircleScheduleAppointmentDetailSheet({
           onClose={onClose}
           onEdit={onEdit}
           onAppointmentTasksChange={onAppointmentTasksChange}
+          onClinicalReferenceIdsChange={onClinicalReferenceIdsChange}
+          onManageClinicalReferences={onManageClinicalReferences}
+          onVisitDebriefChange={onVisitDebriefChange}
           currentUserUid={currentUserUid}
+          currentUserName={currentUserName}
           patientId={patientId}
           db={db}
           memberContactId={memberContactId}
@@ -617,7 +670,11 @@ function WeekAppointmentDetail({
   onClose,
   onEdit,
   onAppointmentTasksChange,
+  onClinicalReferenceIdsChange,
+  onManageClinicalReferences,
+  onVisitDebriefChange,
   currentUserUid,
+  currentUserName,
   patientId,
   db,
   memberContactId,
@@ -635,7 +692,11 @@ function WeekAppointmentDetail({
   onClose: () => void;
   onEdit?: () => void;
   onAppointmentTasksChange?: CircleScheduleWeekViewProps['onAppointmentTasksChange'];
+  onClinicalReferenceIdsChange?: CircleScheduleWeekViewProps['onClinicalReferenceIdsChange'];
+  onManageClinicalReferences?: CircleScheduleWeekViewProps['onManageClinicalReferences'];
+  onVisitDebriefChange?: CircleScheduleWeekViewProps['onVisitDebriefChange'];
   currentUserUid?: string;
+  currentUserName?: string;
   patientId?: string;
   db?: Firestore;
   memberContactId?: string;
@@ -797,11 +858,25 @@ function WeekAppointmentDetail({
           histories={assessmentSchedule?.histories}
           onOpenAssessment={onOpenAssessment}
           currentUserUid={currentUserUid}
+          currentUserName={currentUserName}
           onTasksChange={
             onAppointmentTasksChange
               ? (tasks) => onAppointmentTasksChange(event.entryId, event.kind, tasks)
               : undefined
           }
+          patientId={patientId}
+          db={db}
+          onClinicalReferenceIdsChange={
+            onClinicalReferenceIdsChange
+              ? (ids) => onClinicalReferenceIdsChange(event.entryId, event.kind, ids)
+              : undefined
+          }
+          onVisitDebriefChange={
+            onVisitDebriefChange
+              ? (debrief) => onVisitDebriefChange(event.entryId, event.kind, debrief)
+              : undefined
+          }
+          onManageClinicalReferences={onManageClinicalReferences}
           detailsContent={detailsContent}
           onRecordVisit={onRecordVisit}
         />

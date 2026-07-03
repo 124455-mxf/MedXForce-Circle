@@ -7,16 +7,15 @@ import {
   getAssessmentScheduleCalendar,
   getCalendarWeekDays,
   getCareCalendarByDay,
-  formatCareCalendarTimeRange,
   parseCareCalendarDateKey,
   careCalendarDateKey,
   type AssessmentScheduleDayEvent,
   type CareCalendarDayEvent,
   type CareCalendarEntry,
   type CareCalendarAppointmentTask,
+  type CareCalendarVisitDebrief,
 } from '@medxforce/shared';
-import { CircleCareCalendarMapsLinks } from './CircleCareCalendarMapsLinks';
-import { CircleScheduleTodayView } from './CircleScheduleTodayView';
+import { CircleScheduleTodayView, CircleScheduleDayAppointmentCard } from './CircleScheduleTodayView';
 import { CircleScheduleTasksView } from './CircleScheduleTasksView';
 import {
   CircleScheduleAppointmentDetailSheet,
@@ -30,6 +29,7 @@ import {
   type CircleAssessmentScheduleContext,
 } from '../lib/circleAssessmentScheduleMetrics';
 import { cn } from '../lib/utils';
+import { useCircleScheduleShowAppointmentDetails } from '../hooks/useCircleScheduleShowAppointmentDetails';
 
 type CircleAssessmentScheduleCalendarProps = {
   schedule: CircleAssessmentScheduleContext;
@@ -43,7 +43,19 @@ type CircleAssessmentScheduleCalendarProps = {
     kind: CareCalendarDayEvent['kind'],
     tasks: CareCalendarAppointmentTask[],
   ) => void | Promise<void>;
+  onClinicalReferenceIdsChange?: (
+    entryId: string,
+    kind: CareCalendarDayEvent['kind'],
+    ids: string[],
+  ) => void | Promise<void>;
+  onManageClinicalReferences?: () => void;
+  onVisitDebriefChange?: (
+    entryId: string,
+    kind: CareCalendarDayEvent['kind'],
+    debrief: CareCalendarVisitDebrief,
+  ) => void | Promise<void>;
   currentUserUid?: string;
+  currentUserName?: string;
   patientId?: string;
   db?: Firestore;
   memberContactId?: string;
@@ -112,7 +124,11 @@ export function CircleAssessmentScheduleCalendar({
   onAddAppointment,
   onEditAppointment,
   onAppointmentTasksChange,
+  onClinicalReferenceIdsChange,
+  onManageClinicalReferences,
+  onVisitDebriefChange,
   currentUserUid,
+  currentUserName,
   patientId,
   db,
   memberContactId,
@@ -476,6 +492,16 @@ export function CircleAssessmentScheduleCalendar({
             onEditAppointment={onEditAppointment}
             onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
             onSelectAppointment={setAppointmentSelection}
+            assessmentSchedule={schedule}
+            onRecordVisit={onRecordVisit}
+            db={db}
+            patientId={patientId}
+            memberContactId={memberContactId}
+            memberDocContactId={memberDocContactId}
+            inviteContactId={inviteContactId}
+            memberDisplayName={memberDisplayName}
+            memberRole={memberRole}
+            currentUserUid={currentUserUid}
           />
         )}
 
@@ -495,7 +521,11 @@ export function CircleAssessmentScheduleCalendar({
                 : undefined
             }
             onAppointmentTasksChange={onAppointmentTasksChange}
+            onClinicalReferenceIdsChange={onClinicalReferenceIdsChange}
+            onManageClinicalReferences={onManageClinicalReferences}
+            onVisitDebriefChange={onVisitDebriefChange}
             currentUserUid={currentUserUid}
+            currentUserName={currentUserName}
             patientId={patientId}
             db={db}
             memberContactId={memberContactId}
@@ -552,6 +582,9 @@ export function CircleAssessmentScheduleCalendar({
           onEditAppointment={onEditAppointment}
           onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
           onAppointmentTasksChange={onAppointmentTasksChange}
+          onClinicalReferenceIdsChange={onClinicalReferenceIdsChange}
+          onManageClinicalReferences={onManageClinicalReferences}
+          onVisitDebriefChange={onVisitDebriefChange}
           db={db}
           patientId={patientId}
           memberContactId={memberContactId}
@@ -560,6 +593,7 @@ export function CircleAssessmentScheduleCalendar({
           memberDisplayName={memberDisplayName}
           memberRole={memberRole}
           currentUserUid={currentUserUid}
+          currentUserName={currentUserName}
           assessmentSchedule={schedule}
           onRecordVisit={onRecordVisit}
         />
@@ -594,7 +628,11 @@ export function CircleAssessmentScheduleCalendar({
             t={t}
             onEditAppointment={onEditAppointment}
             onAppointmentTasksChange={onAppointmentTasksChange}
+            onClinicalReferenceIdsChange={onClinicalReferenceIdsChange}
+            onManageClinicalReferences={onManageClinicalReferences}
+            onVisitDebriefChange={onVisitDebriefChange}
             currentUserUid={currentUserUid}
+            currentUserName={currentUserName}
             patientId={patientId}
             db={db}
             memberContactId={memberContactId}
@@ -628,7 +666,7 @@ export function CircleAssessmentScheduleCalendar({
             memberDisplayName={memberDisplayName}
             memberRole={memberRole}
             currentUserUid={currentUserUid}
-            className="shrink-0 mt-3 tablet-portrait:mt-2 tablet-portrait:flex-1 tablet-portrait:min-h-0 tablet-portrait:overflow-y-auto"
+            className="shrink-0 mt-3 max-h-[min(38dvh,24rem)] overflow-y-auto overscroll-contain md:max-h-none tablet-portrait:mt-2 tablet-portrait:flex-1 tablet-portrait:min-h-0 tablet-portrait:max-h-none tablet-portrait:overflow-y-auto"
           />
         </>
       )}
@@ -664,6 +702,16 @@ export function CircleAssessmentScheduleCalendar({
           onEditAppointment={onEditAppointment}
           onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
           onSelectAppointment={setAppointmentSelection}
+          assessmentSchedule={schedule}
+          onRecordVisit={onRecordVisit}
+          db={db}
+          patientId={patientId}
+          memberContactId={memberContactId}
+          memberDocContactId={memberDocContactId}
+          inviteContactId={inviteContactId}
+          memberDisplayName={memberDisplayName}
+          memberRole={memberRole}
+          currentUserUid={currentUserUid}
           fullSize
         />
       ) : null}
@@ -716,6 +764,16 @@ function MonthCalendarBody({
   onEditAppointment,
   onOpenAssessment,
   onSelectAppointment,
+  assessmentSchedule,
+  onRecordVisit,
+  db,
+  patientId,
+  memberContactId,
+  memberDocContactId,
+  inviteContactId,
+  memberDisplayName,
+  memberRole,
+  currentUserUid,
 }: {
   compact: boolean;
   fullSize?: boolean;
@@ -731,7 +789,21 @@ function MonthCalendarBody({
   onEditAppointment?: (entryId: string) => void;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
   onSelectAppointment?: (selection: CircleScheduleAppointmentSelection) => void;
+  assessmentSchedule?: CircleAssessmentScheduleContext;
+  onRecordVisit?: (entryId: string) => void;
+  db?: Firestore;
+  patientId?: string;
+  memberContactId?: string;
+  memberDocContactId?: string;
+  inviteContactId?: string;
+  memberDisplayName?: string;
+  memberRole?: string;
+  currentUserUid?: string;
 }) {
+  const ct = (key: string, params?: Record<string, unknown>) =>
+    t(`dashboard.careCalendar.${key}`, params);
+  const showAppointmentDetails = useCircleScheduleShowAppointmentDetails();
+  const appointmentCompact = !showAppointmentDetails;
   return (
     <>
       <div className="shrink-0 -mx-0.5 px-0.5">
@@ -830,25 +902,59 @@ function MonthCalendarBody({
           })}
         </p>
         {selectedCareEvents.length > 0 && (
-          <ul className="space-y-1">
-            {selectedCareEvents.map((event) => (
-              <CareAppointmentListItem
-                key={`${event.entryId}-${selectedDateKey}`}
-                event={event}
-                t={t}
-                onOpen={
-                  onSelectAppointment
-                    ? () => onSelectAppointment({ dateKey: selectedDateKey, event })
-                    : undefined
-                }
-                onEdit={() => onEditAppointment?.(event.entryId)}
-                fullSize={fullSize}
-              />
-            ))}
-          </ul>
+          <div className="space-y-2">
+            <p
+              className={cn(
+                'font-bold text-violet-700 uppercase tracking-wider',
+                fullSize ? 'text-xs' : 'text-[10px]',
+              )}
+            >
+              {ct('dayAppointments')}
+            </p>
+            <ul className="space-y-2">
+              {selectedCareEvents.map((event) => (
+                <CircleScheduleDayAppointmentCard
+                  key={`${event.entryId}-${selectedDateKey}`}
+                  event={event}
+                  dateKey={selectedDateKey}
+                  ct={ct}
+                  t={t}
+                  compact={appointmentCompact}
+                  showTimingHighlight={selectedDateKey === todayKey}
+                  assessmentSchedule={assessmentSchedule}
+                  onOpen={
+                    onSelectAppointment
+                      ? () => onSelectAppointment({ dateKey: selectedDateKey, event })
+                      : () => {}
+                  }
+                  onEdit={onEditAppointment ? () => onEditAppointment(event.entryId) : undefined}
+                  db={db}
+                  patientId={patientId}
+                  memberContactId={memberContactId}
+                  memberDocContactId={memberDocContactId}
+                  inviteContactId={inviteContactId}
+                  memberDisplayName={memberDisplayName}
+                  memberRole={memberRole}
+                  currentUserUid={currentUserUid}
+                  onRecordVisit={onRecordVisit}
+                />
+              ))}
+            </ul>
+          </div>
         )}
         {selectedEvents.length > 0 && (
-          <ul className="space-y-1">
+          <div className="space-y-2">
+            {selectedCareEvents.length > 0 ? (
+              <p
+                className={cn(
+                  'font-bold text-slate-500 uppercase tracking-wider',
+                  fullSize ? 'text-xs' : 'text-[10px]',
+                )}
+              >
+                {ct('dayAssessments')}
+              </p>
+            ) : null}
+            <ul className="space-y-2">
             {selectedEvents.map((event) => {
               const metricId = assessmentScheduleIdToAnalyticsMetric(event.id);
               return (
@@ -887,7 +993,8 @@ function MonthCalendarBody({
                 </li>
               );
             })}
-          </ul>
+            </ul>
+          </div>
         )}
         {selectedEvents.length === 0 && selectedCareEvents.length === 0 && (
           <p className={cn('text-slate-400', fullSize ? 'text-sm' : 'text-xs')}>
@@ -896,77 +1003,5 @@ function MonthCalendarBody({
         )}
       </div>
     </>
-  );
-}
-
-function CareAppointmentListItem({
-  event,
-  t,
-  onOpen,
-  onEdit,
-  fullSize = false,
-}: {
-  event: CareCalendarDayEvent;
-  t: CircleAssessmentScheduleCalendarProps['t'];
-  onOpen?: () => void;
-  onEdit?: () => void;
-  fullSize?: boolean;
-}) {
-  const ct = (key: string, params?: Record<string, unknown>) =>
-    t(`dashboard.careCalendar.${key}`, params);
-  const timeLabel = formatCareCalendarTimeRange(event.startTimeMinutes, event.endTimeMinutes);
-
-  return (
-    <li className="rounded-lg bg-violet-50/80 border border-violet-100 px-2 py-1.5 space-y-1">
-      <div className="flex items-start justify-between gap-2">
-        <button
-          type="button"
-          onClick={onOpen}
-          disabled={!onOpen}
-          className={cn(
-            'flex-1 min-w-0 text-left rounded-md -m-0.5 p-0.5',
-            onOpen ? 'hover:bg-violet-100/60 transition-colors' : '',
-          )}
-        >
-          <p className={cn('font-semibold text-slate-800 truncate', fullSize ? 'text-sm' : 'text-xs')}>
-            {event.title}
-          </p>
-          <p
-            className={cn(
-              'font-bold uppercase tracking-wider text-violet-700',
-              fullSize ? 'text-[10px]' : 'text-[9px]',
-            )}
-          >
-            {ct(`kinds.${event.kind}`)}
-            {event.visitSubtype ? ` · ${ct(`visitSubtype.${event.visitSubtype}`)}` : ''}
-            {event.source === 'circle' ? ` · ${ct('fromCircle')}` : ''}
-          </p>
-          {timeLabel && (
-            <p className={cn('text-slate-500', fullSize ? 'text-xs' : 'text-[10px]')}>{timeLabel}</p>
-          )}
-        </button>
-        {onEdit && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-            className={cn(
-              'shrink-0 font-bold text-violet-700 hover:text-violet-800',
-              fullSize ? 'text-xs' : 'text-[10px]',
-            )}
-          >
-            {t('common.edit')}
-          </button>
-        )}
-      </div>
-      {event.details && (
-        <p className={cn('text-slate-600 line-clamp-2', fullSize ? 'text-xs' : 'text-[10px]')}>
-          {event.details}
-        </p>
-      )}
-      {event.address && <CircleCareCalendarMapsLinks address={event.address} ct={ct} />}
-    </li>
   );
 }

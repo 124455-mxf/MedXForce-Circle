@@ -13,6 +13,7 @@ export function computePatientDashboardAttentionTotal(params: {
   announcementsUnreadCount: number;
   dropInsUnreadCount: number;
   visitCapturesUnreadCount: number;
+  acceptedAppointmentsTodayCount?: number;
 }): number {
   const canSeeDropIns = canSeeCircleRestrictedThread(params.memberRole);
   return (
@@ -20,7 +21,8 @@ export function computePatientDashboardAttentionTotal(params: {
     params.discussionsUnreadCount +
     params.announcementsUnreadCount +
     (canSeeDropIns ? params.dropInsUnreadCount : 0) +
-    params.visitCapturesUnreadCount
+    params.visitCapturesUnreadCount +
+    (params.acceptedAppointmentsTodayCount ?? 0)
   );
 }
 

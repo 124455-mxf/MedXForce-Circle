@@ -10,12 +10,14 @@ import {
   Sparkles,
   SlidersHorizontal,
   TestTube2,
+  UserRound,
   Users,
   type LucideIcon,
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import {
   canViewAnalyticsTab,
+  canViewPatientProfileTab,
   canViewRemoteSettingsTab,
   normalizeMemberRole,
   type CircleMemberRole,
@@ -33,6 +35,7 @@ export type CircleMainTab =
   | 'media'
   | 'circle'
   | 'admin'
+  | 'patient-profile'
   | 'analytics'
   | 'diary'
   | 'know'
@@ -381,12 +384,21 @@ export function moreNavItemsForPatient(capabilities: PatientCapabilities): Circl
     });
   }
 
+  if (canViewPatientProfileTab(capabilities)) {
+    items.push({
+      id: 'patient-profile',
+      label: 'Patient profile',
+      icon: UserRound,
+      description: 'Identity, care context & references',
+    });
+  }
+
   if (capabilities.inviteMembers) {
     items.push({
       id: 'admin',
       label: 'Admin',
       icon: Settings2,
-      description: 'Patient management',
+      description: 'Circle & user management',
     });
   }
   if (canViewAnalyticsTab(capabilities)) {
@@ -447,6 +459,7 @@ const NAV_LABEL_KEYS: Record<CircleMainTab, string> = {
   circle: 'nav.circle',
   diary: 'nav.diary',
   admin: 'nav.admin',
+  'patient-profile': 'nav.patientProfile',
   analytics: 'nav.analytics',
   'remote-settings': 'nav.remoteSettings',
   know: 'nav.know',
@@ -455,6 +468,7 @@ const NAV_LABEL_KEYS: Record<CircleMainTab, string> = {
 
 const NAV_DESC_KEYS: Partial<Record<CircleMainTab, string>> = {
   media: 'nav.mediaDesc',
+  'patient-profile': 'nav.patientProfileDesc',
   admin: 'nav.adminDesc',
   analytics: 'nav.analyticsDesc',
   'remote-settings': 'nav.remoteSettingsDesc',

@@ -21,6 +21,7 @@ type CircleScheduleScreenProps = {
   patient: CirclePatientSummary;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
   onRecordVisit?: (entryId: string) => void;
+  onManageClinicalReferences?: () => void;
 };
 
 export function CircleScheduleScreen({
@@ -29,6 +30,7 @@ export function CircleScheduleScreen({
   patient,
   onOpenAssessment,
   onRecordVisit,
+  onManageClinicalReferences,
 }: CircleScheduleScreenProps) {
   const t = useCircleT();
   const memberRole = normalizeMemberRole(patient.role);
@@ -77,6 +79,7 @@ export function CircleScheduleScreen({
           t={t}
           onOpenAssessment={onOpenAssessment}
           onRecordVisit={onRecordVisit}
+          onManageClinicalReferences={onManageClinicalReferences}
         />
       </div>
     </div>

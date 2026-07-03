@@ -2,7 +2,7 @@
 
 const profileEnglish = {
   title: 'Patient profile',
-  hint: 'Read-only for circle members. Proxies with remote settings can edit selected sections.',
+  hint: 'Read-only for family and friends. Care team members with profile access can edit selected sections. Clinical diagnosis and medications are proxy-only.',
   loadError: 'Could not load patient profile.',
   saveError: 'Could not save profile changes.',
   quotaError: 'Firestore daily write limit reached. Try again after midnight Pacific.',
@@ -12,7 +12,7 @@ const profileEnglish = {
   storageUnauthorized:
     'Storage permission denied. Ask the patient to deploy updated Firebase Storage rules, or try again later.',
   firestoreUnauthorized:
-    'Firestore permission denied. Deploy updated Firestore rules so proxies can update profile photos.',
+    'Firestore permission denied. Deploy updated Firestore rules so care team members can update profile photos.',
   photoUploadError: 'Could not upload profile photo.',
   changePhotoAria: 'Change profile photo',
   noProfileSynced:
@@ -24,7 +24,7 @@ const profileEnglish = {
   editableNote:
     'Editable: profile photo (camera on avatar), and sections with a pencil — Identity, Extended, Engagement, Lifestyle, Functional{{clinical}}.',
   editableClinicalSuffix: ', Clinical',
-  readOnlyLimited: 'Profile editing is limited to proxies with remote settings access.',
+  readOnlyLimited: 'Profile editing is limited to care team members with profile access.',
   accountTitle: 'Patient app account',
   accountLoginEmail: 'Login email (Firebase)',
   accountUid: 'Account ID (UID)',
@@ -284,7 +284,7 @@ const myContactPanelEnglish = {
 
 export const adminScreenEnglish = {
   title: 'Admin',
-  subtitle: 'Patient profile and circle management',
+  subtitle: 'Circle access and user management',
   sectionPatientProfile: 'Patient profile',
   sectionUserManagement: 'User management',
   profile: profileEnglish,
@@ -295,7 +295,7 @@ export const adminScreenEnglish = {
 
 const profileGerman = {
   title: 'Patientenprofil',
-  hint: 'Für Circle-Mitglieder schreibgeschützt. Vertreter mit Remote-Einstellungen können ausgewählte Bereiche bearbeiten.',
+  hint: 'Für Familie und Freunde schreibgeschützt. Pflegeteam-Mitglieder mit Profilzugriff können ausgewählte Bereiche bearbeiten. Klinische Diagnose und Medikamente sind nur für Vertreter.',
   loadError: 'Patientenprofil konnte nicht geladen werden.',
   saveError: 'Profiländerungen konnten nicht gespeichert werden.',
   quotaError:
@@ -306,7 +306,7 @@ const profileGerman = {
   storageUnauthorized:
     'Speicherberechtigung verweigert. Bitten Sie den Patienten, aktualisierte Firebase-Speicherregeln bereitzustellen, oder versuchen Sie es später erneut.',
   firestoreUnauthorized:
-    'Firestore-Berechtigung verweigert. Stellen Sie aktualisierte Firestore-Regeln bereit, damit Vertreter Profilfotos aktualisieren können.',
+    'Firestore-Berechtigung verweigert. Stellen Sie aktualisierte Firestore-Regeln bereit, damit das Pflegeteam Profilfotos aktualisieren kann.',
   photoUploadError: 'Profilfoto konnte nicht hochgeladen werden.',
   changePhotoAria: 'Profilfoto ändern',
   noProfileSynced:
@@ -318,7 +318,7 @@ const profileGerman = {
   editableNote:
     'Bearbeitbar: Profilfoto (Kamera am Avatar) und Bereiche mit Stift — Identität, Erweitert, Engagement, Lebensstil, Funktional{{clinical}}.',
   editableClinicalSuffix: ', Klinisch',
-  readOnlyLimited: 'Profilbearbeitung ist auf Vertreter mit Remote-Einstellungszugriff beschränkt.',
+  readOnlyLimited: 'Profilbearbeitung ist auf Pflegeteam-Mitglieder mit Profilzugriff beschränkt.',
   accountTitle: 'Patienten-App-Konto',
   accountLoginEmail: 'Anmelde-E-Mail (Firebase)',
   accountUid: 'Konto-ID (UID)',
@@ -586,7 +586,7 @@ const myContactPanelGerman = {
 
 export const adminScreenGerman = {
   title: 'Administration',
-  subtitle: 'Patientenprofil und Circle-Verwaltung',
+  subtitle: 'Circle-Zugang und Benutzerverwaltung',
   sectionPatientProfile: 'Patientenprofil',
   sectionUserManagement: 'Benutzerverwaltung',
   profile: profileGerman,
@@ -597,7 +597,7 @@ export const adminScreenGerman = {
 
 const profileSpanish = {
   title: 'Perfil del paciente',
-  hint: 'Solo lectura para miembros del Circle. Los representantes con ajustes remotos pueden editar secciones seleccionadas.',
+  hint: 'Solo lectura para familia y amigos. Los miembros del equipo de cuidados con acceso al perfil pueden editar secciones seleccionadas. Diagnóstico clínico y medicamentos solo para representantes.',
   loadError: 'No se pudo cargar el perfil del paciente.',
   saveError: 'No se pudieron guardar los cambios del perfil.',
   quotaError:
@@ -608,7 +608,7 @@ const profileSpanish = {
   storageUnauthorized:
     'Permiso de almacenamiento denegado. Pida al paciente que despliegue reglas de Firebase Storage actualizadas, o inténtelo más tarde.',
   firestoreUnauthorized:
-    'Permiso de Firestore denegado. Despliegue reglas de Firestore actualizadas para que los representantes puedan actualizar fotos de perfil.',
+    'Permiso de Firestore denegado. Despliegue reglas de Firestore actualizadas para que el equipo de cuidados pueda actualizar fotos de perfil.',
   photoUploadError: 'No se pudo subir la foto de perfil.',
   changePhotoAria: 'Cambiar foto de perfil',
   noProfileSynced:
@@ -620,7 +620,7 @@ const profileSpanish = {
   editableNote:
     'Editable: foto de perfil (cámara en el avatar) y secciones con lápiz — Identidad, Extendido, Compromiso, Estilo de vida, Funcional{{clinical}}.',
   editableClinicalSuffix: ', Clínico',
-  readOnlyLimited: 'La edición del perfil está limitada a representantes con acceso a ajustes remotos.',
+  readOnlyLimited: 'La edición del perfil está limitada a miembros del equipo de cuidados con acceso al perfil.',
   accountTitle: 'Cuenta de la app del paciente',
   accountLoginEmail: 'Correo de acceso (Firebase)',
   accountUid: 'ID de cuenta (UID)',
@@ -888,7 +888,7 @@ const myContactPanelSpanish = {
 
 export const adminScreenSpanish = {
   title: 'Administración',
-  subtitle: 'Perfil del paciente y gestión del Circle',
+  subtitle: 'Acceso al Circle y gestión de usuarios',
   sectionPatientProfile: 'Perfil del paciente',
   sectionUserManagement: 'Gestión de usuarios',
   profile: profileSpanish,
@@ -899,7 +899,7 @@ export const adminScreenSpanish = {
 
 const profilePolish = {
   title: 'Profil pacjenta',
-  hint: 'Tylko do odczytu dla członków Circle. Pełnomocnicy z dostępem do ustawień zdalnych mogą edytować wybrane sekcje.',
+  hint: 'Tylko do odczytu dla rodziny i przyjaciół. Członkowie zespołu opieki z dostępem do profilu mogą edytować wybrane sekcje. Rozpoznanie kliniczne i leki tylko dla pełnomocnika.',
   loadError: 'Nie udało się wczytać profilu pacjenta.',
   saveError: 'Nie udało się zapisać zmian profilu.',
   quotaError:
@@ -910,7 +910,7 @@ const profilePolish = {
   storageUnauthorized:
     'Odmowa dostępu do magazynu. Poproś pacjenta o wdrożenie zaktualizowanych reguł Firebase Storage lub spróbuj później.',
   firestoreUnauthorized:
-    'Odmowa dostępu Firestore. Wdróż zaktualizowane reguły Firestore, aby pełnomocnicy mogli aktualizować zdjęcia profilowe.',
+    'Odmowa dostępu Firestore. Wdróż zaktualizowane reguły Firestore, aby zespół opieki mógł aktualizować zdjęcia profilowe.',
   photoUploadError: 'Nie udało się przesłać zdjęcia profilowego.',
   changePhotoAria: 'Zmień zdjęcie profilowe',
   noProfileSynced:
@@ -922,7 +922,7 @@ const profilePolish = {
   editableNote:
     'Edytowalne: zdjęcie profilowe (aparat na awatarze) i sekcje z ołówkiem — Tożsamość, Rozszerzone, Zaangażowanie, Styl życia, Funkcjonalne{{clinical}}.',
   editableClinicalSuffix: ', Kliniczne',
-  readOnlyLimited: 'Edycja profilu jest ograniczona do pełnomocników z dostępem do ustawień zdalnych.',
+  readOnlyLimited: 'Edycja profilu jest ograniczona do członków zespołu opieki z dostępem do profilu.',
   accountTitle: 'Konto aplikacji pacjenta',
   accountLoginEmail: 'E-mail logowania (Firebase)',
   accountUid: 'ID konta (UID)',
@@ -1190,7 +1190,7 @@ const myContactPanelPolish = {
 
 export const adminScreenPolish = {
   title: 'Administracja',
-  subtitle: 'Profil pacjenta i zarządzanie Circle',
+  subtitle: 'Dostęp do Circle i zarządzanie użytkownikami',
   sectionPatientProfile: 'Profil pacjenta',
   sectionUserManagement: 'Zarządzanie użytkownikami',
   profile: profilePolish,

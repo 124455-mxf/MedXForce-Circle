@@ -22,7 +22,9 @@ import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 
 import {
+  canInviteMembers,
   canSeeCareTeamDashboardReminders,
+  canViewPatientProfileTab,
   canViewRemoteSettingsTab,
   canSendPatientRemoteCommands,
   diaryMoodLabel,
@@ -449,7 +451,8 @@ export function CircleDashboardScreen({
   const showRemoteSettings = canViewRemoteSettingsTab(caps);
   const showLiveTile = memberRole !== 'friend';
   const showCircleMap = memberRole !== 'friend' && isWidgetVisible('circle-map');
-  const canOpenFullProfile = memberRole === 'proxy';
+  const canOpenPatientProfile = canViewPatientProfileTab(caps);
+  const canManageTeam = canInviteMembers(caps);
 
   const teamCoverageState = useCircleTeamCoverage(
     db,
@@ -939,7 +942,7 @@ export function CircleDashboardScreen({
           }),
           recencyTint: getUserProfileRecencyUrgency(profileSnapshot),
         }),
-    onClick: () => onGoToTab('admin'),
+    onClick: canOpenPatientProfile ? () => onGoToTab('patient-profile') : undefined,
   });
 
   const visibleLastSevenDayWidgets = lastSevenDayWidgets.filter((widget) =>
@@ -1096,7 +1099,7 @@ export function CircleDashboardScreen({
           firstEngagementLoading={firstEngagementLoading}
           analyticsByMetricId={byMetricId}
           analyticsLoading={analyticsLoading}
-          canOpenPatientProfile={canOpenFullProfile}
+          canOpenPatientProfile={canOpenPatientProfile}
           onGoToTab={onGoToTab}
         />
 
@@ -1113,7 +1116,7 @@ export function CircleDashboardScreen({
             patient={patient}
             snapshot={profileSnapshot}
             loading={profileLoading}
-            onOpenProfile={canOpenFullProfile ? () => onGoToTab('admin') : undefined}
+            onOpenProfile={canOpenPatientProfile ? () => onGoToTab('patient-profile') : undefined}
           />
         ) : null}
 
@@ -1148,7 +1151,7 @@ export function CircleDashboardScreen({
                   galleryPhotos={galleryDashboard.previewPhotos}
                   enabled={showCircleMap}
                   onManageContacts={
-                    memberRole === 'proxy' ? () => onGoToTab('admin') : undefined
+                    canManageTeam ? () => onGoToTab('admin') : undefined
                   }
                 />
               ) : null}

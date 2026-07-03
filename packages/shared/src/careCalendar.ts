@@ -4,6 +4,7 @@ import type {
   CareCalendarAppointmentTask,
   CareCalendarVisitSubtype,
 } from './careCalendarAppointment';
+import type { CareCalendarVisitBrief, CareCalendarVisitDebrief } from './visitBrief';
 
 export type CareCalendarEntryKind = 'doctor' | 'wellness' | 'rehab' | 'other';
 
@@ -70,6 +71,9 @@ export type CareCalendarEntry = {
   visitSubtype?: CareCalendarVisitSubtype;
   supportingNotes?: string;
   appointmentTasks?: CareCalendarAppointmentTask[];
+  clinicalReferenceIds?: string[];
+  visitBrief?: CareCalendarVisitBrief;
+  visitDebrief?: CareCalendarVisitDebrief;
   doctorName?: string;
   source: 'patient' | 'circle';
   createdByUid: string;
@@ -94,6 +98,9 @@ export type CareCalendarDayEvent = {
   visitSubtype?: CareCalendarVisitSubtype;
   supportingNotes?: string;
   appointmentTasks?: CareCalendarAppointmentTask[];
+  clinicalReferenceIds?: string[];
+  visitBrief?: CareCalendarVisitBrief;
+  visitDebrief?: CareCalendarVisitDebrief;
   doctorName?: string;
   recurrence: CareCalendarRecurrence;
   source: 'patient' | 'circle';
@@ -408,6 +415,9 @@ export function getCareCalendarByDay(
         visitSubtype: entry.visitSubtype,
         supportingNotes: entry.supportingNotes,
         appointmentTasks: entry.appointmentTasks,
+        clinicalReferenceIds: entry.clinicalReferenceIds,
+        visitBrief: entry.visitBrief,
+        visitDebrief: entry.visitDebrief,
         doctorName: entry.doctorName,
         recurrence: entry.recurrence,
         source: entry.source,

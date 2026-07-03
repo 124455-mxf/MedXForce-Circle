@@ -401,7 +401,7 @@ export function CircleDashboardCelebrationSection({
       headline: copy.headline,
       body: copy.body,
       dismissKind: 'profileIncomplete',
-      onOpen: canOpenPatientProfile ? () => onGoToTab('admin') : undefined,
+      onOpen: canOpenPatientProfile ? () => onGoToTab('patient-profile') : undefined,
     });
   } else if (previewReminders && careRemindersEnabled) {
     const preview = localizePreviewCareProfileReminder(t, friendlyName);
@@ -412,7 +412,7 @@ export function CircleDashboardCelebrationSection({
       headline: preview.headline,
       body: preview.body,
       isPreview: true,
-      onOpen: canOpenPatientProfile ? () => onGoToTab('admin') : undefined,
+      onOpen: canOpenPatientProfile ? () => onGoToTab('patient-profile') : undefined,
     });
   }
 

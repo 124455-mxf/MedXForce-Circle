@@ -21,6 +21,7 @@ export interface PatientCapabilities {
   viewEngagementTrends: boolean;
   viewCareTrends: boolean;
   viewClinicalData: boolean;
+  manageClinicalReferences: boolean;
   remoteSettings: boolean;
   inviteMembers: boolean;
   messaging: boolean;
@@ -47,6 +48,7 @@ export const ROLE_CAPABILITY_TEMPLATES: Record<CircleMemberRole, PatientCapabili
     viewEngagementTrends: true,
     viewCareTrends: false,
     viewClinicalData: false,
+    manageClinicalReferences: false,
     remoteSettings: false,
     inviteMembers: false,
     messaging: true,
@@ -59,6 +61,7 @@ export const ROLE_CAPABILITY_TEMPLATES: Record<CircleMemberRole, PatientCapabili
     viewEngagementTrends: true,
     viewCareTrends: false,
     viewClinicalData: false,
+    manageClinicalReferences: false,
     remoteSettings: false,
     inviteMembers: false,
     messaging: true,
@@ -71,6 +74,7 @@ export const ROLE_CAPABILITY_TEMPLATES: Record<CircleMemberRole, PatientCapabili
     viewEngagementTrends: true,
     viewCareTrends: true,
     viewClinicalData: false,
+    manageClinicalReferences: true,
     remoteSettings: true,
     inviteMembers: false,
     messaging: true,
@@ -83,6 +87,7 @@ export const ROLE_CAPABILITY_TEMPLATES: Record<CircleMemberRole, PatientCapabili
     viewEngagementTrends: true,
     viewCareTrends: true,
     viewClinicalData: false,
+    manageClinicalReferences: true,
     remoteSettings: true,
     inviteMembers: false,
     messaging: true,
@@ -95,6 +100,7 @@ export const ROLE_CAPABILITY_TEMPLATES: Record<CircleMemberRole, PatientCapabili
     viewEngagementTrends: true,
     viewCareTrends: true,
     viewClinicalData: true,
+    manageClinicalReferences: true,
     remoteSettings: true,
     inviteMembers: true,
     messaging: true,
@@ -107,6 +113,7 @@ export const ROLE_CAPABILITY_TEMPLATES: Record<CircleMemberRole, PatientCapabili
     viewEngagementTrends: true,
     viewCareTrends: true,
     viewClinicalData: false,
+    manageClinicalReferences: false,
     remoteSettings: false,
     inviteMembers: false,
     messaging: true,
@@ -139,7 +146,14 @@ export function mergeMemberCapabilities(
     remoteSettings: base.remoteSettings,
     inviteMembers: base.inviteMembers,
     viewClinicalData: base.viewClinicalData,
+    manageClinicalReferences: base.manageClinicalReferences,
   };
+}
+
+export function canManageClinicalReferences(
+  capabilities: PatientCapabilities | undefined,
+): boolean {
+  return !!capabilities?.manageClinicalReferences;
 }
 
 export function canUploadRichMedia(capabilities: PatientCapabilities | undefined): boolean {
@@ -152,6 +166,11 @@ export function canViewPatientUploads(capabilities: PatientCapabilities | undefi
 
 export function canInviteMembers(capabilities: PatientCapabilities | undefined): boolean {
   return !!capabilities?.inviteMembers;
+}
+
+/** Circle More → Patient profile (non-clinical sections + clinical references). */
+export function canViewPatientProfileTab(capabilities: PatientCapabilities | undefined): boolean {
+  return !!capabilities?.remoteSettings;
 }
 
 /** Patient-deleted threads are visible in Circle only to proxies (not friend/family/caregiver). */

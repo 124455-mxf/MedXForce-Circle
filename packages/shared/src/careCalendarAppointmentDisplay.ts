@@ -3,6 +3,7 @@
 import type { AssessmentHistoryMap } from './assessmentSchedule';
 import {
   appointmentTasksForPhase,
+  normalizeAppointmentTaskAssignee,
   openAppointmentTaskCount,
   supportsCareCalendarAppointmentEpisode,
   type CareCalendarAppointmentTaskAssignee,
@@ -62,7 +63,7 @@ function countOpenTasksForViewerOnEvent(
 ): number {
   const assignees = taskAssigneesForViewer(memberRole);
   const tasks = appointmentTasksForPhase(event.appointmentTasks, phase);
-  return tasks.filter((task) => task.status === 'open' && assignees.includes(task.assignee))
+  return tasks.filter((task) => task.status === 'open' && assignees.includes(normalizeAppointmentTaskAssignee(task.assignee)))
     .length;
 }
 

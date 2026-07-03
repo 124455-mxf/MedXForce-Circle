@@ -2,6 +2,7 @@
 
 import {
   appointmentTasksForPhase,
+  normalizeAppointmentTaskAssignee,
   type CareCalendarAppointmentTask,
   type CareCalendarAppointmentTaskAssignee,
 } from './careCalendarAppointment';
@@ -138,20 +139,18 @@ export function taskAssigneesForScheduleViewer(
 ): CareCalendarAppointmentTaskAssignee[] {
   if (viewerRole === 'patient') return ['patient'];
   const role = normalizeMemberRole(viewerRole);
-  if (role === 'caregiver') return ['caregiver'];
   if (role === 'family') return ['family'];
-  if (role === 'proxy') return ['proxy'];
+  if (role === 'caregiver' || role === 'proxy') return ['care_team'];
   return [];
 }
 
 function taskMatchesScheduleViewer(
   task: CareCalendarAppointmentTask,
   assignees: CareCalendarAppointmentTaskAssignee[],
-  entry: CareCalendarEntry,
-  viewerUid?: string,
+  _entry: CareCalendarEntry,
+  _viewerUid?: string,
 ): boolean {
-  if (assignees.includes(task.assignee)) return true;
-  return task.assignee === 'creator' && !!viewerUid && entry.createdByUid === viewerUid;
+  return assignees.includes(normalizeAppointmentTaskAssignee(task.assignee));
 }
 
 export function entryOccurrencesInHorizon(
@@ -212,6 +211,49 @@ export function countPendingAppointmentInvitesForMember(
     const response = inviteResponseForMember(entry, context);
     if (response !== 'accepted' && response !== 'declined') count++;
   }
+  return count;
+}
+
+/** Accepted invite appointments still on today's schedule (not yet ended). */
+export function countAcceptedAppointmentsTodayForMember(
+  entries: CareCalendarEntry[],
+  context: CareCalendarMemberInviteContext,
+  now = new Date(),
+): number {
+  if (!context.memberUid) return 0;
+
+  const todayKey = careCalendarDateKey(now);
+  const rangeStart = parseCareCalendarDateKey(todayKey);
+  let count = 0;
+
+  for (const entry of entries) {
+    if (entry.cancelledAt) continue;
+    const dateKeys = expandCareEntryDateKeys(entry, rangeStart, rangeStart);
+    if (!dateKeys.includes(todayKey)) continue;
+    if (
+      isCareCalendarAppointmentPast(
+        todayKey,
+        entry.startTimeMinutes,
+        entry.endTimeMinutes,
+        now,
+      )
+    ) {
+      continue;
+    }
+
+    const attendees = mergeAttendeeResponses(
+      entry.attendees,
+      entry.attendeeResponseSummary,
+      entry.inviteeMemberUidByContactId,
+    );
+    const invitedByUid = (entry.inviteeMemberUids ?? []).includes(context.memberUid);
+    const self = findCareCalendarAttendeeForMember(attendees, context);
+    if (!invitedByUid && (!self || !attendeeNeedsAppointmentInvite(self))) continue;
+
+    if (inviteResponseForMember(entry, context) !== 'accepted') continue;
+    count++;
+  }
+
   return count;
 }
 

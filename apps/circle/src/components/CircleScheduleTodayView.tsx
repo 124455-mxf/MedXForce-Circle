@@ -35,6 +35,7 @@ import {
   type CircleScheduleAppointmentSelection,
 } from './CircleScheduleWeekView';
 import { cn } from '../lib/utils';
+import { useCircleScheduleShowAppointmentDetails } from '../hooks/useCircleScheduleShowAppointmentDetails';
 
 type CircleScheduleTodayViewProps = {
   dateKey: string;
@@ -50,6 +51,17 @@ type CircleScheduleTodayViewProps = {
     kind: CareCalendarDayEvent['kind'],
     tasks: import('@medxforce/shared').CareCalendarAppointmentTask[],
   ) => void | Promise<void>;
+  onClinicalReferenceIdsChange?: (
+    entryId: string,
+    kind: CareCalendarDayEvent['kind'],
+    ids: string[],
+  ) => void | Promise<void>;
+  onManageClinicalReferences?: () => void;
+  onVisitDebriefChange?: (
+    entryId: string,
+    kind: CareCalendarDayEvent['kind'],
+    debrief: import('@medxforce/shared').CareCalendarVisitDebrief,
+  ) => void | Promise<void>;
   db?: Firestore;
   patientId?: string;
   memberContactId?: string;
@@ -58,6 +70,7 @@ type CircleScheduleTodayViewProps = {
   memberDisplayName?: string;
   memberRole?: string;
   currentUserUid?: string;
+  currentUserName?: string;
   assessmentSchedule?: CircleAssessmentScheduleContext;
   onRecordVisit?: (entryId: string) => void;
 };
@@ -72,6 +85,9 @@ export function CircleScheduleTodayView({
   onEditAppointment,
   onOpenAssessment,
   onAppointmentTasksChange,
+  onClinicalReferenceIdsChange,
+  onManageClinicalReferences,
+  onVisitDebriefChange,
   db,
   patientId,
   memberContactId,
@@ -80,11 +96,14 @@ export function CircleScheduleTodayView({
   memberDisplayName,
   memberRole,
   currentUserUid,
+  currentUserName,
   assessmentSchedule,
   onRecordVisit,
 }: CircleScheduleTodayViewProps) {
   const [selection, setSelection] = useState<CircleScheduleAppointmentSelection | null>(null);
   const [pastExpanded, setPastExpanded] = useState(false);
+  const showAppointmentDetails = useCircleScheduleShowAppointmentDetails();
+  const appointmentCompact = !showAppointmentDetails;
 
   useEffect(() => {
     setPastExpanded(false);
@@ -173,6 +192,7 @@ export function CircleScheduleTodayView({
                       ct={ct}
                       t={t}
                       now={now}
+                      compact={appointmentCompact}
                       showTimingHighlight={isActualToday}
                       onOpen={() => setSelection({ dateKey, event })}
                       onEdit={
@@ -220,6 +240,7 @@ export function CircleScheduleTodayView({
                           event={event}
                           ct={ct}
                           t={t}
+                          compact={appointmentCompact}
                           onOpen={() => setSelection({ dateKey, event })}
                           onEdit={
                             onEditAppointment ? () => onEditAppointment(event.entryId) : undefined
@@ -310,7 +331,11 @@ export function CircleScheduleTodayView({
               : undefined
           }
           onAppointmentTasksChange={onAppointmentTasksChange}
+          onClinicalReferenceIdsChange={onClinicalReferenceIdsChange}
+          onManageClinicalReferences={onManageClinicalReferences}
+          onVisitDebriefChange={onVisitDebriefChange}
           currentUserUid={currentUserUid}
+          currentUserName={currentUserName}
           patientId={patientId}
           db={db}
           memberContactId={memberContactId}
@@ -347,6 +372,7 @@ function CircleScheduleDayAppointmentCard({
   now,
   showTimingHighlight = false,
   showPrepBorder = true,
+  compact = false,
   onRecordVisit,
 }: {
   event: CareCalendarDayEvent;
@@ -368,6 +394,8 @@ function CircleScheduleDayAppointmentCard({
   now?: Date;
   showTimingHighlight?: boolean;
   showPrepBorder?: boolean;
+  /** Week view day list — title and badges only; tap opens detail sheet. */
+  compact?: boolean;
   onRecordVisit?: (entryId: string) => void;
 }) {
   const timeLabel =
@@ -493,6 +521,7 @@ function CircleScheduleDayAppointmentCard({
               {event.visitSubtype ? ` · ${ct(`visitSubtype.${event.visitSubtype}`)}` : ''}
               {event.source === 'circle' ? ` · ${ct('fromCircle')}` : ''}
             </p>
+            {!compact ? (
             <div className="pt-1 space-y-0">
               {event.details ? (
                 <CircleExpandableTextPreview
@@ -510,7 +539,8 @@ function CircleScheduleDayAppointmentCard({
                 />
               ) : null}
             </div>
-            {assessmentSchedule ? (
+            ) : null}
+            {!compact && assessmentSchedule ? (
               <CircleCareCalendarAssessmentNudgeHint
                 event={event}
                 dateKey={dateKey}
@@ -533,7 +563,7 @@ function CircleScheduleDayAppointmentCard({
             </button>
           ) : null}
         </div>
-        {showRecordVisit ? (
+        {!compact && showRecordVisit ? (
           <div
             className="pt-3"
             onClick={(e) => e.stopPropagation()}
@@ -549,12 +579,12 @@ function CircleScheduleDayAppointmentCard({
             </button>
           </div>
         ) : null}
-        {event.attendees?.length ? (
+        {!compact && event.attendees?.length ? (
           <div className="pt-4 mt-4 border-t border-slate-100/90">
             <AppointmentAttendeeResponses event={event} dateKey={dateKey} ct={ct} t={t} />
           </div>
         ) : null}
-        {db && patientId ? (
+        {!compact && db && patientId ? (
           <CircleCareCalendarInviteRsvpBar
             db={db}
             patientId={patientId}
@@ -575,7 +605,7 @@ function CircleScheduleDayAppointmentCard({
             t={t}
           />
         ) : null}
-        {event.address ? <CircleCareCalendarMapsLinks address={event.address} ct={ct} /> : null}
+        {!compact && event.address ? <CircleCareCalendarMapsLinks address={event.address} ct={ct} /> : null}
       </div>
     </li>
   );

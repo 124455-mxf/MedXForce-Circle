@@ -4,6 +4,7 @@ import { ChevronDown, Mic, MicOff, Plus, Trash2 } from 'lucide-react';
 import type { CareCalendarEntryKind } from '@medxforce/shared';
 import {
   appointmentTasksForPhase,
+  APPOINTMENT_TASK_ASSIGNEE_OPTIONS,
   defaultAppointmentTasksForSubtype,
   newAppointmentTaskId,
   supportsCareCalendarAppointmentEpisode,
@@ -17,14 +18,6 @@ import { useDictation } from '../hooks/useDictation';
 import { cn } from '../lib/utils';
 
 const SUPPORTING_NOTES_MAX = 2000;
-
-const TASK_ASSIGNEES: CareCalendarAppointmentTaskAssignee[] = [
-  'patient',
-  'caregiver',
-  'family',
-  'proxy',
-  'creator',
-];
 
 type CircleCareCalendarAppointmentEpisodeFieldsProps = {
   kind: CareCalendarEntryKind;
@@ -155,7 +148,7 @@ function TaskEditorSection({
                       }
                       className="px-2 py-2 rounded-lg border border-slate-200 bg-white text-sm"
                     >
-                      {TASK_ASSIGNEES.map((assignee) => (
+                      {APPOINTMENT_TASK_ASSIGNEE_OPTIONS.map((assignee) => (
                         <option key={assignee} value={assignee}>
                           {t(`taskAssignees.${assignee}`)}
                         </option>

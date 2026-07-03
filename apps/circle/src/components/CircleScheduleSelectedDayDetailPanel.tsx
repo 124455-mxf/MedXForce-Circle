@@ -10,6 +10,7 @@ import {
 } from '../lib/circleScheduleLayout';
 import { CircleScheduleDayAppointmentCard } from './CircleScheduleTodayView';
 import { cn } from '../lib/utils';
+import { useCircleScheduleShowAppointmentDetails } from '../hooks/useCircleScheduleShowAppointmentDetails';
 
 type CircleScheduleSelectedDayDetailPanelProps = {
   selectedDateKey: string;
@@ -58,6 +59,8 @@ export function CircleScheduleSelectedDayDetailPanel({
 }: CircleScheduleSelectedDayDetailPanelProps) {
   const ct = (key: string, params?: Record<string, unknown>) =>
     t(`dashboard.careCalendar.${key}`, params);
+  const showAppointmentDetails = useCircleScheduleShowAppointmentDetails();
+  const appointmentCompact = !showAppointmentDetails;
 
   const dayLabel = new Date(selectedDateKey + 'T12:00:00').toLocaleDateString(undefined, {
     weekday: 'long',
@@ -84,6 +87,7 @@ export function CircleScheduleSelectedDayDetailPanel({
                 dateKey={selectedDateKey}
                 ct={ct}
                 t={t}
+                compact={appointmentCompact}
                 showTimingHighlight={selectedDateKey === todayKey}
                 assessmentSchedule={assessmentSchedule}
                 onOpen={() => onOpenAppointment(event)}

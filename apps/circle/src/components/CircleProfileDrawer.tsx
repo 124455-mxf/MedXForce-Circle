@@ -7,6 +7,7 @@ import {
   Camera,
   ChevronLeft,
   ChevronRight,
+  Calendar,
   Globe,
   HeartHandshake,
   LayoutGrid,
@@ -22,6 +23,7 @@ import {
 import { CircleSettingsMessagingPanel } from './CircleSettingsMessagingPanel';
 import { CircleSettingsMediaPanel } from './CircleSettingsMediaPanel';
 import { CircleSettingsLocalePanel } from './CircleSettingsLocalePanel';
+import { CircleSettingsSchedulePanel } from './CircleSettingsSchedulePanel';
 import { CircleSettingsCareRelationshipPanel } from './CircleSettingsCareRelationshipPanel';
 import { CircleSettingsUserManagementPanel } from './CircleSettingsUserManagementPanel';
 import { CircleSettingsNotificationPreferencesPanel } from './CircleSettingsNotificationPreferencesPanel';
@@ -98,6 +100,7 @@ export function CircleProfileDrawer({
     | 'messaging'
     | 'media'
     | 'localeDisplay'
+    | 'schedule'
     | 'careRelationship'
     | 'userManagement'
     | 'notifications'
@@ -214,6 +217,7 @@ export function CircleProfileDrawer({
       drawerView === 'messaging' ||
       drawerView === 'media' ||
       drawerView === 'localeDisplay' ||
+      drawerView === 'schedule' ||
       drawerView === 'careRelationship' ||
       drawerView === 'userManagement' ||
       drawerView === 'switchPatient' ||
@@ -282,6 +286,7 @@ export function CircleProfileDrawer({
             {drawerView === 'messaging' && t('drawer.messaging')}
             {drawerView === 'media' && t('drawer.media')}
             {drawerView === 'localeDisplay' && t('drawer.localeDisplay')}
+            {drawerView === 'schedule' && t('drawer.schedule')}
             {drawerView === 'careRelationship' && t('drawer.careRelationship')}
             {drawerView === 'userManagement' && t('drawer.userManagement')}
             {drawerView === 'notifications' && t('drawer.notifications')}
@@ -402,6 +407,18 @@ export function CircleProfileDrawer({
               </div>
               <ChevronRight size={16} className="text-slate-300 shrink-0" />
             </button>
+            <button
+              type="button"
+              onClick={() => setDrawerView('schedule')}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+            >
+              <Calendar size={20} className="text-violet-600" />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-800 text-sm">{t('drawer.schedule')}</p>
+                <p className="text-xs text-slate-400">{t('drawer.scheduleHint')}</p>
+              </div>
+              <ChevronRight size={16} className="text-slate-300 shrink-0" />
+            </button>
           </div>
         )}
 
@@ -420,6 +437,12 @@ export function CircleProfileDrawer({
         {drawerView === 'localeDisplay' && (
           <div className="flex-1 overflow-y-auto">
             <CircleSettingsLocalePanel />
+          </div>
+        )}
+
+        {drawerView === 'schedule' && (
+          <div className="flex-1 overflow-y-auto">
+            <CircleSettingsSchedulePanel />
           </div>
         )}
 

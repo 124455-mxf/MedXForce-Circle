@@ -71,6 +71,18 @@ import {
   dailyCheckInScreenPolish,
   dailyCheckInScreenSpanish,
 } from './translations/dailyCheckInScreen';
+import {
+  clinicalReferencesScreenEnglish,
+  clinicalReferencesScreenGerman,
+  clinicalReferencesScreenPolish,
+  clinicalReferencesScreenSpanish,
+} from './translations/clinicalReferences';
+import {
+  visitBriefScreenEnglish,
+  visitBriefScreenGerman,
+  visitBriefScreenPolish,
+  visitBriefScreenSpanish,
+} from './translations/visitBrief';
 
 type TranslationTree = Record<string, string | TranslationTree>;
 
@@ -124,6 +136,8 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     remoteSettings: remoteSettingsScreenEnglish,
     provision: provisionScreenEnglish,
     dailyCheckIn: dailyCheckInScreenEnglish,
+    ...clinicalReferencesScreenEnglish,
+    ...visitBriefScreenEnglish,
     common: {
       refresh: 'Refresh',
       refreshing: 'Refreshing…',
@@ -183,6 +197,8 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     remoteSettings: remoteSettingsScreenGerman,
     provision: provisionScreenGerman,
     dailyCheckIn: dailyCheckInScreenGerman,
+    ...clinicalReferencesScreenGerman,
+    ...visitBriefScreenGerman,
     common: {
       refresh: 'Aktualisieren',
       refreshing: 'Aktualisiere…',
@@ -242,6 +258,8 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     remoteSettings: remoteSettingsScreenSpanish,
     provision: provisionScreenSpanish,
     dailyCheckIn: dailyCheckInScreenSpanish,
+    ...clinicalReferencesScreenSpanish,
+    ...visitBriefScreenSpanish,
     common: {
       refresh: 'Actualizar',
       refreshing: 'Actualizando…',
@@ -301,6 +319,8 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     remoteSettings: remoteSettingsScreenPolish,
     provision: provisionScreenPolish,
     dailyCheckIn: dailyCheckInScreenPolish,
+    ...clinicalReferencesScreenPolish,
+    ...visitBriefScreenPolish,
     common: {
       refresh: 'Odśwież',
       refreshing: 'Odświeżanie…',

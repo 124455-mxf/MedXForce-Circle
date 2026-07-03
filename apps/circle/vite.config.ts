@@ -75,6 +75,14 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      '/api/visit-brief': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/api/care-calendar': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
       '/api/address-search': {
         target: 'http://localhost:3000',
         changeOrigin: true,

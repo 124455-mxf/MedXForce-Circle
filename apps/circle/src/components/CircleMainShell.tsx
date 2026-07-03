@@ -6,6 +6,7 @@ import type { AnalyticsMetricId, CircleMemberThreadKind, CirclePatientSummary } 
 import {
   canSendPatientRemoteCommands,
   canStartVisitCapture,
+  canViewRemoteSettingsTab,
   normalizeMemberRole,
   repairInactiveAcceptedMemberDocsForUser,
   repairOrphanAcceptedInvitesForUser,
@@ -15,6 +16,7 @@ import { cn } from '../lib/utils';
 import { CircleChromeProvider } from '../lib/circleChromeContext';
 
 import { CircleAdminScreen } from './CircleAdminScreen';
+import { CirclePatientProfileScreen } from './CirclePatientProfileScreen';
 import { CircleAppHeader } from './CircleAppHeader';
 import {
   CircleBottomNav,
@@ -624,6 +626,11 @@ export function CircleMainShell({
                     ? (entryId: string) => handleOpenVisitCapture(entryId)
                     : undefined
                 }
+                onManageClinicalReferences={
+                  canViewRemoteSettingsTab(selectedPatient.capabilities)
+                    ? () => handleGoToTab('patient-profile')
+                    : undefined
+                }
               />
             </div>
           )}
@@ -667,8 +674,16 @@ export function CircleMainShell({
               />
             </div>
           )}
+          {activeTab === 'patient-profile' && (
+            <CirclePatientProfileScreen
+              user={user}
+              db={db}
+              storage={storage}
+              patient={selectedPatient}
+            />
+          )}
           {activeTab === 'admin' && (
-            <CircleAdminScreen user={user} db={db} storage={storage} patient={selectedPatient} />
+            <CircleAdminScreen user={user} db={db} patient={selectedPatient} />
           )}
           {activeTab === 'analytics' && (
             <div className="flex flex-col flex-1 min-h-0">

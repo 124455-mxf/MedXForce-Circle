@@ -8,6 +8,7 @@ import { Camera, ClipboardList, Loader2, UserRound } from 'lucide-react';
 import {
   displayProfileName,
   EMPTY_CIRCLE_PROFILE_SNAPSHOT,
+  canManageClinicalReferences,
   isAcceptedProfilePhotoFile,
   normalizeProfilePhotoFile,
   parseCircleProfileMeta,
@@ -18,6 +19,7 @@ import {
 } from '@medxforce/shared';
 import { CirclePatientProfileEditorModal } from './CirclePatientProfileEditorModal';
 import { CirclePatientProfileReview } from './CirclePatientProfileReview';
+import { CircleClinicalReferencesSection } from './CircleClinicalReferencesSection';
 import { CircleProfilePhotoCropModal } from './CircleProfilePhotoCropModal';
 import { dataUrlToBlob } from '../lib/imageCrop';
 import { isFirestoreQuotaError, pauseFirestoreBackgroundWrites } from '../lib/firestoreQuota';
@@ -81,6 +83,7 @@ export function CirclePatientProfilePanel({
 
   const canEdit = !!patient.capabilities.remoteSettings;
   const showClinical = !!patient.capabilities.viewClinicalData;
+  const showClinicalReferences = canManageClinicalReferences(patient.capabilities);
   const workingSnapshot = snapshot ?? draftSnapshot;
 
   useEffect(() => {
@@ -387,6 +390,18 @@ export function CirclePatientProfilePanel({
             canEdit={canEdit}
             onEditSection={handleEditSection}
           />
+
+          {showClinicalReferences ? (
+            <div className="rounded-2xl border border-violet-100 bg-violet-50/30 p-4">
+              <CircleClinicalReferencesSection
+                db={db}
+                patientId={patient.patientId}
+                user={user}
+                memberRole={patient.role}
+                memberDisplayName={user.displayName || displayProfileName(workingSnapshot, patient.displayName)}
+              />
+            </div>
+          ) : null}
 
           {canEdit && (
             <p className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 leading-relaxed">

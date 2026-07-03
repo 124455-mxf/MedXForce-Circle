@@ -10,7 +10,7 @@ import { CircleCareCalendarEntryModal } from './CircleCareCalendarEntryModal';
 import { useCareCalendarEntries, buildCareCalendarEntriesSubscription } from '../hooks/useCareCalendarEntries';
 import { useCircleMemberInviteContext } from '../hooks/useCircleMemberInviteContext';
 import { updateCareCalendarEntry } from '../services/careCalendarService';
-import type { CareCalendarAppointmentTask, CareCalendarEntry } from '@medxforce/shared';
+import type { CareCalendarAppointmentTask, CareCalendarEntry, CareCalendarVisitDebrief } from '@medxforce/shared';
 
 export type CircleDashboardAssessmentScheduleSectionProps = {
   db: Firestore;
@@ -30,6 +30,7 @@ export type CircleDashboardAssessmentScheduleSectionProps = {
   t: (path: string, params?: Record<string, unknown>) => string;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
   onRecordVisit?: (entryId: string) => void;
+  onManageClinicalReferences?: () => void;
 };
 
 export function CircleDashboardAssessmentScheduleSection({
@@ -50,6 +51,7 @@ export function CircleDashboardAssessmentScheduleSection({
   t,
   onOpenAssessment,
   onRecordVisit,
+  onManageClinicalReferences,
 }: CircleDashboardAssessmentScheduleSectionProps) {
   const { inviteContext, memberContactId, contact: ownContact, loading: ownContactLoading, inviteContextReady } =
     useCircleMemberInviteContext(db, user, patient);
@@ -149,6 +151,22 @@ export function CircleDashboardAssessmentScheduleSection({
     await updateCareCalendarEntry(db, patientId, entryId, { kind, appointmentTasks: tasks });
   };
 
+  const handleClinicalReferenceIdsChange = async (
+    entryId: string,
+    kind: CareCalendarEntry['kind'],
+    ids: string[],
+  ) => {
+    await updateCareCalendarEntry(db, patientId, entryId, { kind, clinicalReferenceIds: ids });
+  };
+
+  const handleVisitDebriefChange = async (
+    entryId: string,
+    kind: CareCalendarEntry['kind'],
+    debrief: CareCalendarVisitDebrief,
+  ) => {
+    await updateCareCalendarEntry(db, patientId, entryId, { kind, visitDebrief: debrief });
+  };
+
   return (
     <>
       <div
@@ -166,7 +184,13 @@ export function CircleDashboardAssessmentScheduleSection({
           onAddAppointment={canManageAppointments ? openCreate : undefined}
           onEditAppointment={canManageAppointments ? openEdit : undefined}
           onAppointmentTasksChange={handleAppointmentTasksChange}
+          onClinicalReferenceIdsChange={
+            canManageAppointments ? handleClinicalReferenceIdsChange : undefined
+          }
+          onVisitDebriefChange={canManageAppointments ? handleVisitDebriefChange : undefined}
+          onManageClinicalReferences={onManageClinicalReferences}
           currentUserUid={user.uid}
+          currentUserName={authorName}
           patientId={patientId}
           db={db}
           memberContactId={memberContactId}

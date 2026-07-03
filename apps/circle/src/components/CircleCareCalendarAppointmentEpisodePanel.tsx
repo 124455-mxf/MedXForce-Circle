@@ -1,11 +1,11 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Check, Mic, X } from 'lucide-react';
+import type { Firestore } from 'firebase/firestore';
+import { Mic } from 'lucide-react';
 import type { AnalyticsMetricId, AssessmentHistoryMap, CareCalendarDayEvent } from '@medxforce/shared';
 import {
   appointmentTasksForPhase,
   appointmentTasksStatusMatch,
-  applyAppointmentTaskStatusChange,
   canOfferRecordVisitForAppointment,
   careCalendarDateKey,
   countRecommendedCareCalendarAssessmentNudges,
@@ -14,8 +14,14 @@ import {
   resolveCareCalendarAppointmentTiming,
   supportsCareCalendarAppointmentEpisode,
   type CareCalendarAppointmentTask,
+  type CareCalendarVisitBrief,
+  type CareCalendarVisitDebrief,
 } from '@medxforce/shared';
 import { CircleCareCalendarAssessmentNudgesList } from './CircleCareCalendarAssessmentNudgesList';
+import { CircleCareCalendarClinicalReferencesPicker } from './CircleCareCalendarClinicalReferencesPicker';
+import { CircleCareCalendarEpisodeTaskList } from './CircleCareCalendarEpisodeTaskList';
+import { CircleCareCalendarVisitBriefPanel } from './CircleCareCalendarVisitBriefPanel';
+import { CircleCareCalendarVisitDebriefPanel } from './CircleCareCalendarVisitDebriefPanel';
 import { CircleExpandableTextPreview } from './CircleExpandableTextPreview';
 import { cn } from '../lib/utils';
 
@@ -35,9 +41,15 @@ type CircleCareCalendarAppointmentEpisodePanelProps = {
   histories?: AssessmentHistoryMap;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
   currentUserUid?: string;
+  currentUserName?: string;
   onTasksChange?: (tasks: CareCalendarAppointmentTask[]) => void | Promise<void>;
   detailsContent?: ReactNode;
   onRecordVisit?: (entryId: string) => void;
+  patientId?: string;
+  db?: Firestore;
+  onClinicalReferenceIdsChange?: (ids: string[]) => void | Promise<void>;
+  onManageClinicalReferences?: () => void;
+  onVisitDebriefChange?: (debrief: CareCalendarVisitDebrief) => void | Promise<void>;
 };
 
 export function CircleCareCalendarAppointmentEpisodePanel({
@@ -49,19 +61,44 @@ export function CircleCareCalendarAppointmentEpisodePanel({
   histories = {},
   onOpenAssessment,
   currentUserUid,
+  currentUserName,
   onTasksChange,
   detailsContent,
   onRecordVisit,
+  patientId,
+  db,
+  onClinicalReferenceIdsChange,
+  onManageClinicalReferences,
+  onVisitDebriefChange,
 }: CircleCareCalendarAppointmentEpisodePanelProps) {
   const hasEpisode = supportsCareCalendarAppointmentEpisode(event.kind);
   const [tab, setTab] = useState<EpisodeTab>('details');
   const [tasksOverride, setTasksOverride] = useState<CareCalendarAppointmentTask[] | null>(null);
+  const [refsOverride, setRefsOverride] = useState<string[] | null>(null);
+  const [briefOverride, setBriefOverride] = useState<CareCalendarVisitBrief | null>(null);
+  const [debriefOverride, setDebriefOverride] = useState<CareCalendarVisitDebrief | null>(null);
 
   const activeTasks = tasksOverride ?? event.appointmentTasks;
+  const activeReferenceIds = refsOverride ?? event.clinicalReferenceIds ?? [];
+  const activeBrief = briefOverride ?? event.visitBrief;
+  const activeDebrief = debriefOverride ?? event.visitDebrief;
 
   useEffect(() => {
     setTasksOverride(null);
+    setRefsOverride(null);
+    setBriefOverride(null);
+    setDebriefOverride(null);
   }, [event.entryId]);
+
+  useEffect(() => {
+    setRefsOverride((current) => {
+      if (!current) return null;
+      const stored = event.clinicalReferenceIds ?? [];
+      return current.length === stored.length && current.every((id, i) => id === stored[i])
+        ? null
+        : current;
+    });
+  }, [event.clinicalReferenceIds]);
 
   useEffect(() => {
     setTasksOverride((current) => {
@@ -69,6 +106,24 @@ export function CircleCareCalendarAppointmentEpisodePanel({
       return appointmentTasksStatusMatch(event.appointmentTasks, current) ? null : current;
     });
   }, [event.appointmentTasks]);
+
+  useEffect(() => {
+    setBriefOverride((current) => {
+      if (!current) return null;
+      const stored = event.visitBrief;
+      return stored?.generatedAt === current.generatedAt ? null : current;
+    });
+  }, [event.visitBrief]);
+
+  useEffect(() => {
+    setDebriefOverride((current) => {
+      if (!current) return null;
+      const stored = event.visitDebrief;
+      return stored?.publishedAt === current.publishedAt && stored.summary === current.summary
+        ? null
+        : current;
+    });
+  }, [event.visitDebrief]);
 
   const openPre = openAppointmentTaskCount(appointmentTasksForPhase(activeTasks, 'pre'));
   const openPost = openAppointmentTaskCount(appointmentTasksForPhase(activeTasks, 'post'));
@@ -87,6 +142,20 @@ export function CircleCareCalendarAppointmentEpisodePanel({
     );
   }, [appointmentDateKey, event, histories, preferences]);
 
+  const assessmentHighlights = useMemo(() => {
+    if (!preferences) return [] as string[];
+    return getCareCalendarAssessmentNudges(
+      event,
+      appointmentDateKey,
+      'pre',
+      preferences,
+      histories,
+    )
+      .filter((nudge) => nudge.recommended)
+      .map((nudge) => t(nudge.titleKey))
+      .slice(0, 12);
+  }, [appointmentDateKey, event, histories, preferences, t]);
+
   const showRecordVisit = useMemo(() => {
     if (!onRecordVisit) return false;
     const timing = resolveCareCalendarAppointmentTiming(event, appointmentDateKey);
@@ -99,79 +168,12 @@ export function CircleCareCalendarAppointmentEpisodePanel({
     return <>{detailsContent}</>;
   }
 
-  const toggleTask = async (taskId: string, nextStatus: 'open' | 'done' | 'dismissed') => {
-    if (!onTasksChange) return;
-    const base = activeTasks ?? [];
-    const next = applyAppointmentTaskStatusChange(base, taskId, nextStatus, currentUserUid);
-    setTasksOverride(next);
-    try {
-      await onTasksChange(next);
-    } catch {
-      setTasksOverride(null);
-    }
-  };
-
-  const renderTaskList = (phase: 'pre' | 'post') => {
-    const tasks = appointmentTasksForPhase(activeTasks, phase);
-    if (!tasks.length) {
-      return <p className="text-sm text-slate-400">{ct('episode.noTasks')}</p>;
-    }
-    return (
-      <ul className="space-y-2">
-        {tasks.map((task) => {
-          const done = task.status === 'done';
-          const dismissed = task.status === 'dismissed';
-          return (
-            <li
-              key={task.id}
-              className={cn(
-                'flex items-start gap-3 p-3 rounded-xl border',
-                done || dismissed ? 'border-slate-100 bg-slate-50/60' : 'border-violet-100 bg-violet-50/40',
-              )}
-            >
-              {onTasksChange && !dismissed && (
-                <button
-                  type="button"
-                  onClick={() => toggleTask(task.id, done ? 'open' : 'done')}
-                  className={cn(
-                    'mt-0.5 shrink-0 w-7 h-7 rounded-lg border flex items-center justify-center',
-                    done
-                      ? 'bg-emerald-500 border-emerald-500 text-white'
-                      : 'border-slate-300 text-slate-400 hover:border-violet-400',
-                  )}
-                  aria-label={done ? ct('episode.markOpen') : ct('episode.markDone')}
-                >
-                  {done ? <Check size={14} /> : null}
-                </button>
-              )}
-              <div className="min-w-0 flex-1">
-                <p
-                  className={cn(
-                    'text-sm font-medium text-slate-800',
-                    (done || dismissed) && 'line-through text-slate-400',
-                  )}
-                >
-                  {task.title}
-                </p>
-                <p className="text-[10px] text-slate-500 mt-0.5 uppercase tracking-wider font-bold">
-                  {ct(`taskAssignees.${task.assignee}`)}
-                </p>
-              </div>
-              {onTasksChange && phase === 'post' && !done && !dismissed && (
-                <button
-                  type="button"
-                  onClick={() => toggleTask(task.id, 'dismissed')}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 shrink-0"
-                  aria-label={ct('episode.dismissTask')}
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    );
+  const taskListProps = {
+    allTasks: activeTasks,
+    ct,
+    currentUserUid,
+    onTasksChange,
+    onDraftTasksChange: setTasksOverride,
   };
 
   return (
@@ -257,7 +259,40 @@ export function CircleCareCalendarAppointmentEpisodePanel({
               onOpenAssessment={onOpenAssessment}
             />
           ) : null}
-          {renderTaskList('pre')}
+          {patientId && db && onClinicalReferenceIdsChange ? (
+            <CircleCareCalendarClinicalReferencesPicker
+              db={db}
+              patientId={patientId}
+              selectedIds={activeReferenceIds}
+              onManageLibrary={onManageClinicalReferences}
+              onChange={async (ids) => {
+                setRefsOverride(ids);
+                try {
+                  await onClinicalReferenceIdsChange(ids);
+                } catch {
+                  setRefsOverride(null);
+                }
+              }}
+            />
+          ) : null}
+          {patientId ? (
+            <CircleCareCalendarVisitBriefPanel
+              patientId={patientId}
+              entryId={event.entryId}
+              appointmentTitle={event.title}
+              brief={activeBrief}
+              assessmentHighlights={assessmentHighlights}
+              generatedByUid={currentUserUid}
+              generatedByName={currentUserName}
+              t={t}
+              onBriefGenerated={(brief) => setBriefOverride(brief)}
+            />
+          ) : null}
+          <CircleCareCalendarEpisodeTaskList
+            phase="pre"
+            tasks={appointmentTasksForPhase(activeTasks, 'pre')}
+            {...taskListProps}
+          />
         </div>
       )}
       {tab === 'followup' && (
@@ -274,7 +309,38 @@ export function CircleCareCalendarAppointmentEpisodePanel({
               onOpenAssessment={onOpenAssessment}
             />
           ) : null}
-          {renderTaskList('post')}
+          <CircleCareCalendarVisitDebriefPanel
+            debrief={activeDebrief}
+            canEdit={!!onVisitDebriefChange}
+            t={t}
+            onSave={
+              onVisitDebriefChange
+                ? async (debrief) => {
+                    setDebriefOverride(debrief);
+                    try {
+                      await onVisitDebriefChange(debrief);
+                    } catch {
+                      setDebriefOverride(null);
+                    }
+                  }
+                : undefined
+            }
+          />
+          <CircleCareCalendarEpisodeTaskList
+            phase="post"
+            tasks={appointmentTasksForPhase(activeTasks, 'post')}
+            {...taskListProps}
+          />
+          {showRecordVisit ? (
+            <button
+              type="button"
+              onClick={() => onRecordVisit?.(event.entryId)}
+              className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-emerald-200 bg-emerald-50 text-emerald-800 text-sm font-bold hover:bg-emerald-100 transition-colors py-3 px-4"
+            >
+              <Mic size={16} className="shrink-0" aria-hidden />
+              {ct('episode.recordVisit')}
+            </button>
+          ) : null}
         </div>
       )}
     </div>

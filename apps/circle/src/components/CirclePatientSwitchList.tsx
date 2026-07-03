@@ -84,7 +84,9 @@ export function CirclePatientSwitchList({
           const isActive = patient.patientId === selectedPatientId;
           const isStartup = patient.patientId === startupPatientId;
           const badge = badgesByPatientId[patient.patientId];
-          const showBadge = !isActive && badge;
+          const needsAttention =
+            !!badge && (badge.hasUrgentAlert || badge.totalUnread > 0);
+          const showBadge = !isActive && needsAttention;
           const accountEmail = patientAccountEmail(patient);
           const canCancel = patient.isPendingProvision === true && !!onCancelPending;
 
