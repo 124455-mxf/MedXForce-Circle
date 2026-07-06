@@ -33,7 +33,11 @@ function parseReference(id: string, data: Record<string, unknown>): ClinicalRefe
   const title = String(data.title ?? '').trim();
   const category = String(data.category ?? '');
   const url = String(data.url ?? '').trim();
-  if (!title || !isClinicalReferenceCategory(category) || !url) return null;
+  const storagePath = data.storagePath ? String(data.storagePath).trim() : '';
+  const fileName = data.fileName ? String(data.fileName).trim() : '';
+  const hasFile = Boolean(storagePath || fileName);
+  if (!title || !isClinicalReferenceCategory(category)) return null;
+  if (!hasFile && !url) return null;
   const addedByRaw = data.addedBy as Record<string, unknown> | undefined;
   const addedBy: ClinicalReferenceAddedBy = {
     uid: String(addedByRaw?.uid ?? ''),
@@ -41,6 +45,7 @@ function parseReference(id: string, data: Record<string, unknown>): ClinicalRefe
     role: (addedByRaw?.role as ClinicalReferenceAddedBy['role']) ?? 'patient',
     app: addedByRaw?.app === 'circle' ? 'circle' : 'patient',
   };
+  const extractionStatus = data.extractionStatus;
   return {
     id,
     patientId: String(data.patientId ?? ''),
@@ -49,6 +54,19 @@ function parseReference(id: string, data: Record<string, unknown>): ClinicalRefe
     url,
     ...(data.note ? { note: String(data.note).trim().slice(0, CLINICAL_REFERENCE_MAX_NOTE) } : {}),
     ...(data.referenceDate ? { referenceDate: String(data.referenceDate).slice(0, 10) } : {}),
+    ...(storagePath ? { storagePath } : {}),
+    ...(fileName ? { fileName } : {}),
+    ...(data.mimeType ? { mimeType: String(data.mimeType) } : {}),
+    ...(data.fileSize != null ? { fileSize: Number(data.fileSize) } : {}),
+    ...(extractionStatus === 'none' ||
+    extractionStatus === 'pending' ||
+    extractionStatus === 'ready' ||
+    extractionStatus === 'failed'
+      ? { extractionStatus }
+      : {}),
+    ...(data.extractedText
+      ? { extractedText: String(data.extractedText).trim().slice(0, 12_000) }
+      : {}),
     source: data.source === 'circle' ? 'circle' : 'patient',
     addedBy,
     createdAt: Number(data.createdAt) || 0,
@@ -90,7 +108,7 @@ export async function createClinicalReference(
 ): Promise<ClinicalReference> {
   requireAuthUid();
   const title = input.title.trim().slice(0, CLINICAL_REFERENCE_MAX_TITLE);
-  const url = normalizeClinicalReferenceUrl(input.url);
+  const url = normalizeClinicalReferenceUrl(input.url ?? '');
   if (!title) throw new Error('Title is required');
   if (!isClinicalReferenceCategory(input.category)) throw new Error('Invalid category');
   if (!isValidClinicalReferenceUrl(url)) throw new Error('Invalid URL');
@@ -103,6 +121,7 @@ export async function createClinicalReference(
     title,
     category: input.category,
     url,
+    extractionStatus: 'none',
     ...(input.note?.trim()
       ? { note: input.note.trim().slice(0, CLINICAL_REFERENCE_MAX_NOTE) }
       : {}),
@@ -124,15 +143,15 @@ export async function updateClinicalReference(
 ): Promise<void> {
   requireAuthUid();
   const title = input.title.trim().slice(0, CLINICAL_REFERENCE_MAX_TITLE);
-  const url = normalizeClinicalReferenceUrl(input.url);
+  const url = normalizeClinicalReferenceUrl(input.url ?? '');
   if (!title) throw new Error('Title is required');
   if (!isClinicalReferenceCategory(input.category)) throw new Error('Invalid category');
-  if (!isValidClinicalReferenceUrl(url)) throw new Error('Invalid URL');
+  if (url && !isValidClinicalReferenceUrl(url)) throw new Error('Invalid URL');
 
   await updateDoc(doc(referencesCollection(db, patientId), refId), {
     title,
     category: input.category,
-    url,
+    ...(url ? { url } : {}),
     note: input.note?.trim().slice(0, CLINICAL_REFERENCE_MAX_NOTE) || null,
     referenceDate: input.referenceDate?.trim().slice(0, 10) || null,
     updatedAt: Date.now(),

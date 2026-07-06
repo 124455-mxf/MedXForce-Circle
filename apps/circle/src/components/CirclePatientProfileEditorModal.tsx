@@ -951,7 +951,7 @@ export function CirclePatientProfileEditorModal({
               onSave(draftToSave);
             }}
             disabled={saving}
-            className="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : null}
             {saving ? t('admin.contact.saving') : t('admin.contact.save')}

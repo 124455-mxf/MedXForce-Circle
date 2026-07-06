@@ -44,11 +44,12 @@ import {
   firstActivePatient,
   hasActivePatientBesides,
   pickPreferredPatientId,
-  pickStartupPatientId,
 } from './lib/circlePatientSelection';
 import { useCircleAccountPhoto } from './hooks/useCircleAccountPhoto';
 import { clearCircleActiveSessionStorage } from './lib/circleSessionStorage';
 import {
+  clearStartupPatientId,
+  loadStartupPatientId,
   readStartupPatientId,
   writeStartupPatientId,
 } from './lib/circleStartupPatient';
@@ -67,6 +68,7 @@ export default function App() {
   const [pendingSwitcherOpen, setPendingSwitcherOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [startupPatientId, setStartupPatientId] = useState<string | null>(null);
+  const [startupPreferenceReady, setStartupPreferenceReady] = useState(false);
   const { language, t, setLanguage } = useCircleI18n(firebase.db, user);
 
   const selectedPatientForSettings = useMemo(() => {
@@ -81,25 +83,42 @@ export default function App() {
   useEffect(() => {
     if (!user?.uid) {
       setStartupPatientId(null);
+      setStartupPreferenceReady(true);
       return;
     }
+    setStartupPreferenceReady(false);
+    // Local cache first for instant UI, then sync from Firestore (cross-device).
     setStartupPatientId(readStartupPatientId(user.uid));
+    let cancelled = false;
+    void loadStartupPatientId(firebase.db, user.uid).then((id) => {
+      if (cancelled) return;
+      setStartupPatientId(id);
+      setStartupPreferenceReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [user?.uid]);
 
   useEffect(() => {
+    if (!startupPreferenceReady) return;
     if (patients.length === 0) {
       setSelectedPatientId(null);
       return;
     }
     if (!selectedPatientId || !patients.some((p) => p.patientId === selectedPatientId)) {
-      setSelectedPatientId(pickStartupPatientId(patients, user?.uid));
+      const preferred =
+        startupPatientId && patients.some((p) => p.patientId === startupPatientId)
+          ? startupPatientId
+          : pickPreferredPatientId(patients);
+      setSelectedPatientId(preferred);
     }
-  }, [patients, selectedPatientId, user?.uid]);
+  }, [patients, selectedPatientId, startupPatientId, startupPreferenceReady]);
 
   const handleSetStartupPatient = (patient: CirclePatientSummary) => {
     if (!user?.uid) return;
-    writeStartupPatientId(user.uid, patient.patientId);
     setStartupPatientId(patient.patientId);
+    void writeStartupPatientId(firebase.db, user.uid, patient.patientId);
   };
 
   const handleDismissPendingSetup = () => {
@@ -122,17 +141,24 @@ export default function App() {
       setPatients(remaining);
       setPendingSwitcherOpen(false);
 
+      const nextStartup =
+        startupPatientId === patient.patientId
+          ? pickPreferredPatientId(remaining)
+          : startupPatientId && remaining.some((p) => p.patientId === startupPatientId)
+            ? startupPatientId
+            : pickPreferredPatientId(remaining);
+
       if (selectedPatientId === patient.patientId) {
-        setSelectedPatientId(pickStartupPatientId(remaining, user.uid));
+        setSelectedPatientId(nextStartup);
       }
 
       if (startupPatientId === patient.patientId) {
-        const nextStartup = pickPreferredPatientId(remaining);
         if (nextStartup) {
-          writeStartupPatientId(user.uid, nextStartup);
           setStartupPatientId(nextStartup);
+          void writeStartupPatientId(firebase.db, user.uid, nextStartup);
         } else {
           setStartupPatientId(null);
+          void clearStartupPatientId(firebase.db, user.uid);
         }
       }
     },

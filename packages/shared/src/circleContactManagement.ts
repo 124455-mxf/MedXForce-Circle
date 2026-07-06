@@ -430,7 +430,12 @@ async function syncInviteForCircleRoleContact(
     email,
     existing.exists ? existing.id : undefined,
   );
-  const accessUnchanged = inviteAccessUnchanged(existingData, role, capabilities, proxyTier);
+  const accessUnchanged = inviteAccessUnchanged(
+    existingData as Record<string, unknown> | undefined,
+    role,
+    capabilities,
+    proxyTier,
+  );
 
   const invitePatch: Record<string, unknown> = {
     displayName: contact.name || undefined,

@@ -34,6 +34,8 @@ export type ClinicalReferenceAddedBy = {
   app: 'patient' | 'circle';
 };
 
+export type ClinicalReferenceExtractionStatus = 'none' | 'pending' | 'ready' | 'failed';
+
 export interface ClinicalReference {
   id: string;
   patientId: string;
@@ -42,6 +44,12 @@ export interface ClinicalReference {
   url: string;
   note?: string;
   referenceDate?: string;
+  storagePath?: string;
+  fileName?: string;
+  mimeType?: string;
+  fileSize?: number;
+  extractionStatus?: ClinicalReferenceExtractionStatus;
+  extractedText?: string;
   source: ClinicalReferenceSource;
   addedBy: ClinicalReferenceAddedBy;
   createdAt: number;
@@ -52,7 +60,7 @@ export interface ClinicalReference {
 export type ClinicalReferenceInput = {
   title: string;
   category: ClinicalReferenceCategory;
-  url: string;
+  url?: string;
   note?: string;
   referenceDate?: string;
 };
@@ -61,6 +69,15 @@ export const CLINICAL_REFERENCE_MAX_TITLE = 200;
 export const CLINICAL_REFERENCE_MAX_NOTE = 2000;
 export const CLINICAL_REFERENCE_MAX_URL = 2048;
 export const CLINICAL_REFERENCE_MAX_PER_APPOINTMENT = 20;
+export const CLINICAL_REFERENCE_MAX_FILE_BYTES = 10 * 1024 * 1024;
+export const CLINICAL_REFERENCE_MAX_EXTRACTED_TEXT = 12_000;
+export const CLINICAL_REFERENCE_UPLOAD_MIME_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'text/plain',
+] as const;
 
 export function createClinicalReferenceId(): string {
   return `cr_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -78,6 +95,20 @@ export function isValidClinicalReferenceUrl(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+export function clinicalReferenceHasFile(
+  ref: Pick<ClinicalReference, 'storagePath' | 'fileName'>,
+): boolean {
+  return Boolean(ref.storagePath?.trim() || ref.fileName?.trim());
+}
+
+export function clinicalReferenceHasOpenableUrl(ref: Pick<ClinicalReference, 'url'>): boolean {
+  return isValidClinicalReferenceUrl(ref.url || '');
+}
+
+export function isAllowedClinicalReferenceUploadMime(mimeType: string): boolean {
+  return (CLINICAL_REFERENCE_UPLOAD_MIME_TYPES as readonly string[]).includes(mimeType);
 }
 
 export function normalizeClinicalReferenceUrl(url: string): string {

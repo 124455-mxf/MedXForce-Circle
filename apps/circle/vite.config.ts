@@ -83,6 +83,14 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      '/api/clinical-references': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/api/patient-summary': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
       '/api/address-search': {
         target: 'http://localhost:3000',
         changeOrigin: true,

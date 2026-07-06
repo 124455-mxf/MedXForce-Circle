@@ -42,7 +42,7 @@ export function CircleScheduleScreen({
 
   if (!scheduleEnabled) {
     return (
-      <div className={circleWorkTabPanelClass}>
+      <div className={circleWorkTabPanelClass(false)}>
         <CircleWorkTabSectionIntro
           icon={Calendar}
           title={t('dashboard.assessmentScheduleCalendar.title')}

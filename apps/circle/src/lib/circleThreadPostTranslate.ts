@@ -14,15 +14,11 @@ export async function buildCircleThreadPostTranslations(
   const uniqueTargets = [...new Set(targetLanguages.filter((lang) => lang !== authorLanguage))];
   if (uniqueTargets.length === 0) return [];
 
-  const entries = await Promise.all(
-    uniqueTargets.map(async (language) => {
-      const translated = (await translatePatientMessageForViewer(trimmed, language)).trim();
-      if (!translated || translated === trimmed) return null;
-      return { language, text: translated, isAuto: true as const };
-    }),
-  );
-
-  return entries.filter(
-    (entry): entry is CircleMemberThreadPostTranslation => entry !== null,
-  );
+  const entries: CircleMemberThreadPostTranslation[] = [];
+  for (const language of uniqueTargets) {
+    const translated = (await translatePatientMessageForViewer(trimmed, language)).trim();
+    if (!translated || translated === trimmed) continue;
+    entries.push({ language, text: translated, isAuto: true });
+  }
+  return entries;
 }

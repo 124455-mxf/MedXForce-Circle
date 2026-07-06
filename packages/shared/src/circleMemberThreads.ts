@@ -54,20 +54,17 @@ function parseCircleMemberThreadPostTranslations(
 ): CircleMemberThreadPostTranslation[] | undefined {
   const raw = data.translations;
   if (!Array.isArray(raw)) return undefined;
-  const parsed = raw
-    .map((entry) => {
-      if (!entry || typeof entry !== 'object') return null;
-      const row = entry as Record<string, unknown>;
-      const language = typeof row.language === 'string' ? row.language.trim() : '';
-      const text = typeof row.text === 'string' ? row.text.trim() : '';
-      if (!language || !text) return null;
-      return {
-        language,
-        text,
-        ...(row.isAuto === true ? { isAuto: true as const } : {}),
-      };
-    })
-    .filter((entry): entry is CircleMemberThreadPostTranslation => entry !== null);
+  const parsed: CircleMemberThreadPostTranslation[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const row = entry as Record<string, unknown>;
+    const language = typeof row.language === 'string' ? row.language.trim() : '';
+    const text = typeof row.text === 'string' ? row.text.trim() : '';
+    if (!language || !text) continue;
+    const item: CircleMemberThreadPostTranslation = { language, text };
+    if (row.isAuto === true) item.isAuto = true;
+    parsed.push(item);
+  }
   return parsed.length > 0 ? parsed : undefined;
 }
 

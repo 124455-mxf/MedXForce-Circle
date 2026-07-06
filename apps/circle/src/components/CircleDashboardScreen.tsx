@@ -942,7 +942,9 @@ export function CircleDashboardScreen({
           }),
           recencyTint: getUserProfileRecencyUrgency(profileSnapshot),
         }),
-    onClick: canOpenPatientProfile ? () => onGoToTab('patient-profile') : undefined,
+    onClick: canOpenPatientProfile
+      ? () => onGoToTab('patient-profile')
+      : () => undefined,
   });
 
   const visibleLastSevenDayWidgets = lastSevenDayWidgets.filter((widget) =>

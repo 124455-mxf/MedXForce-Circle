@@ -50,7 +50,7 @@ export function CircleDashboardCheckInWellnessSection({
 
   const frames = useMemo(() => {
     if (preview) return buildCheckInWellnessPreviewFrames();
-    return buildCheckInWellnessAnimationFramesFromTrend(answerTrend, windowDays);
+    return buildCheckInWellnessAnimationFramesFromTrend(answerTrend);
   }, [answerTrend, preview]);
 
   if (!active) return null;

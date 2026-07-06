@@ -251,6 +251,9 @@ export function CircleVitalityGameAnalyticsDetail({
       </div>
 
       <div className="p-4 space-y-4">
+        <p className="text-[11px] text-slate-500 leading-snug">
+          {t('analytics.vitalityGame.includesSpeechGames')}
+        </p>
 
         <div className="grid grid-cols-2 gap-3">
 

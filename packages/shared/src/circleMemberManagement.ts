@@ -24,6 +24,7 @@ export interface CircleInviteListItem {
   status: CircleInviteStatus;
   updatedAt: number;
   acceptedByUid?: string;
+  contactId?: string;
 }
 
 /** List circle invites for a patient (proxy / patient owner). */
@@ -50,6 +51,7 @@ export async function listCircleInvitesForPatient(
         status,
         updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : 0,
         acceptedByUid: typeof data.acceptedByUid === 'string' ? data.acceptedByUid : undefined,
+        contactId: typeof data.contactId === 'string' ? data.contactId : undefined,
       };
     })
     .filter((item) => item.invitedEmail)

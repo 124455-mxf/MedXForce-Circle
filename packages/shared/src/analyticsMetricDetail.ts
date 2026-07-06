@@ -122,6 +122,19 @@ export type PsychologicalTimelinePoint = {
   energy: number;
 };
 
+export type SpeechLanguageScoreTrend = PsychologicalScoreTrend;
+
+export type SpeechLanguageTimelinePoint = {
+  date: string;
+  label: string;
+  overall: number;
+  spontaneousSpeech: number;
+  naming: number;
+  repetition: number;
+  readingWriting: number;
+  oralMotor: number;
+};
+
 export type AnalyticsMetricDetail =
   | {
       kind: 'alert_attention';
@@ -237,6 +250,19 @@ export type AnalyticsMetricDetail =
       stress: PsychologicalScoreTrend;
       energy: PsychologicalScoreTrend;
       timeline: PsychologicalTimelinePoint[];
+    }
+  | {
+      kind: 'speech_language';
+      count: number;
+      average: number;
+      trend: AnalyticsTrendDirection;
+      overall: SpeechLanguageScoreTrend;
+      spontaneousSpeech: SpeechLanguageScoreTrend;
+      naming: SpeechLanguageScoreTrend;
+      repetition: SpeechLanguageScoreTrend;
+      readingWriting: SpeechLanguageScoreTrend;
+      oralMotor: SpeechLanguageScoreTrend;
+      timeline: SpeechLanguageTimelinePoint[];
     };
 
 function asFiniteNumber(value: unknown): number {
@@ -643,6 +669,43 @@ function parsePsychologicalDetail(raw: Record<string, unknown>): AnalyticsMetric
   };
 }
 
+function parseSpeechLanguageTimeline(raw: unknown): SpeechLanguageTimelinePoint[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(
+      (item): item is SpeechLanguageTimelinePoint =>
+        item != null &&
+        typeof item === 'object' &&
+        typeof (item as SpeechLanguageTimelinePoint).date === 'string',
+    )
+    .map((item) => ({
+      date: item.date,
+      label: typeof item.label === 'string' ? item.label : item.date,
+      overall: asFiniteNumber(item.overall),
+      spontaneousSpeech: asFiniteNumber(item.spontaneousSpeech),
+      naming: asFiniteNumber(item.naming),
+      repetition: asFiniteNumber(item.repetition),
+      readingWriting: asFiniteNumber(item.readingWriting),
+      oralMotor: asFiniteNumber(item.oralMotor),
+    }));
+}
+
+function parseSpeechLanguageDetail(raw: Record<string, unknown>): AnalyticsMetricDetail {
+  return {
+    kind: 'speech_language',
+    count: asFiniteNumber(raw.count),
+    average: asFiniteNumber(raw.average),
+    trend: parseTrend(raw.trend),
+    overall: parsePsychologicalScoreTrend(raw.overall),
+    spontaneousSpeech: parsePsychologicalScoreTrend(raw.spontaneousSpeech),
+    naming: parsePsychologicalScoreTrend(raw.naming),
+    repetition: parsePsychologicalScoreTrend(raw.repetition),
+    readingWriting: parsePsychologicalScoreTrend(raw.readingWriting),
+    oralMotor: parsePsychologicalScoreTrend(raw.oralMotor),
+    timeline: parseSpeechLanguageTimeline(raw.timeline),
+  };
+}
+
 function parseAssessmentCountTimeline(raw: unknown): AssessmentCountTimelinePoint[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const points = raw
@@ -743,6 +806,8 @@ export function parseAnalyticsMetricDetail(raw: unknown): AnalyticsMetricDetail 
       return parseNeurologicalDetail(d);
     case 'psychological':
       return parsePsychologicalDetail(d);
+    case 'speech_language':
+      return parseSpeechLanguageDetail(d);
     case 'diary':
       return parseDiaryDetail(d);
     case 'soul_gallery':

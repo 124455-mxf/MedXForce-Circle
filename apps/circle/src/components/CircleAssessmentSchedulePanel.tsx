@@ -90,6 +90,7 @@ export function CircleAssessmentSchedulePanel({
   const sections = [
     { id: 'physical', titleKey: 'remoteSettings.assessmentSchedule.sections.physical' },
     { id: 'visionHearing', titleKey: 'remoteSettings.assessmentSchedule.sections.visionHearing' },
+    { id: 'speech', titleKey: 'remoteSettings.assessmentSchedule.sections.speech' },
     {
       id: 'neurologicalPhysiological',
       titleKey: 'remoteSettings.assessmentSchedule.sections.neurologicalPhysiological',
@@ -242,62 +243,72 @@ export function CircleAssessmentSchedulePanel({
                       ))}
                     </div>
 
-                    {rule.recurrence.kind === 'weekdays' && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {Array.from({ length: 7 }, (_, day) => {
-                          const active = rule.recurrence.daysOfWeek.includes(day);
+                    {rule.recurrence.kind === 'weekdays'
+                      ? (() => {
+                          const weekdays = rule.recurrence;
                           return (
-                            <button
-                              key={day}
-                              type="button"
-                              disabled={!meta.released || !rule.enabled}
-                              onClick={() => {
-                                const days = active
-                                  ? rule.recurrence.kind === 'weekdays'
-                                    ? rule.recurrence.daysOfWeek.filter((value) => value !== day)
-                                    : []
-                                  : rule.recurrence.kind === 'weekdays'
-                                    ? [...rule.recurrence.daysOfWeek, day].sort((a, b) => a - b)
-                                    : [day];
-                                if (days.length === 0) return;
-                                updateRule(meta.id, { recurrence: { kind: 'weekdays', daysOfWeek: days } });
-                              }}
-                              className={cn(
-                                'w-9 h-9 rounded-full text-[10px] font-bold border',
-                                active
-                                  ? 'bg-blue-600 text-white border-blue-600'
-                                  : 'bg-slate-50 text-slate-600 border-slate-100',
-                              )}
-                            >
-                              {scheduleT(t, `settings.assessmentSchedule.weekdayShort.${day}`)}
-                            </button>
+                            <div className="flex flex-wrap gap-1.5">
+                              {Array.from({ length: 7 }, (_, day) => {
+                                const active = weekdays.daysOfWeek.includes(day);
+                                return (
+                                  <button
+                                    key={day}
+                                    type="button"
+                                    disabled={!meta.released || !rule.enabled}
+                                    onClick={() => {
+                                      const days = active
+                                        ? weekdays.daysOfWeek.filter((value) => value !== day)
+                                        : [...weekdays.daysOfWeek, day].sort((a, b) => a - b);
+                                      if (days.length === 0) return;
+                                      updateRule(meta.id, {
+                                        recurrence: { kind: 'weekdays', daysOfWeek: days },
+                                      });
+                                    }}
+                                    className={cn(
+                                      'w-9 h-9 rounded-full text-[10px] font-bold border',
+                                      active
+                                        ? 'bg-blue-600 text-white border-blue-600'
+                                        : 'bg-slate-50 text-slate-600 border-slate-100',
+                                    )}
+                                  >
+                                    {scheduleT(t, `settings.assessmentSchedule.weekdayShort.${day}`)}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           );
-                        })}
-                      </div>
-                    )}
+                        })()
+                      : null}
 
-                    {rule.recurrence.kind === 'weekly' && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {Array.from({ length: 7 }, (_, day) => (
-                          <button
-                            key={day}
-                            type="button"
-                            disabled={!meta.released || !rule.enabled}
-                            onClick={() =>
-                              updateRule(meta.id, { recurrence: { kind: 'weekly', dayOfWeek: day } })
-                            }
-                            className={cn(
-                              'w-9 h-9 rounded-full text-[10px] font-bold border',
-                              rule.recurrence.dayOfWeek === day
-                                ? 'bg-blue-600 text-white border-blue-600'
-                                : 'bg-slate-50 text-slate-600 border-slate-100',
-                            )}
-                          >
-                            {scheduleT(t, `settings.assessmentSchedule.weekdayShort.${day}`)}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    {rule.recurrence.kind === 'weekly'
+                      ? (() => {
+                          const weekly = rule.recurrence;
+                          return (
+                            <div className="flex flex-wrap gap-1.5">
+                              {Array.from({ length: 7 }, (_, day) => (
+                                <button
+                                  key={day}
+                                  type="button"
+                                  disabled={!meta.released || !rule.enabled}
+                                  onClick={() =>
+                                    updateRule(meta.id, {
+                                      recurrence: { kind: 'weekly', dayOfWeek: day },
+                                    })
+                                  }
+                                  className={cn(
+                                    'w-9 h-9 rounded-full text-[10px] font-bold border',
+                                    weekly.dayOfWeek === day
+                                      ? 'bg-blue-600 text-white border-blue-600'
+                                      : 'bg-slate-50 text-slate-600 border-slate-100',
+                                  )}
+                                >
+                                  {scheduleT(t, `settings.assessmentSchedule.weekdayShort.${day}`)}
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })()
+                      : null}
 
                     {rule.recurrence.kind === 'monthly' && (
                       <label className="flex items-center gap-2 text-xs text-slate-600">

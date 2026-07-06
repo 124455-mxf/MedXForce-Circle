@@ -56,7 +56,7 @@ export function CircleDashboardCheckInWellnessTile({
               {t('dashboard.checkInWellnessRing.title')}
             </p>
             <p className={cn('text-xs text-slate-500', bodyClassName)}>
-              {t('dashboard.checkInWellnessRing.tileSubtitle', { days: averages.windowDays })}
+              {t('dashboard.checkInWellnessRing.tileSubtitle')}
             </p>
           </div>
         </div>
@@ -67,7 +67,7 @@ export function CircleDashboardCheckInWellnessTile({
             frames={frames}
             compact
             t={t}
-            className="h-full cursor-pointer"
+            className="h-full"
           />
         </div>
 

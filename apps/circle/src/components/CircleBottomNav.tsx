@@ -375,15 +375,6 @@ export function primaryNavItemsForPatient(
 export function moreNavItemsForPatient(capabilities: PatientCapabilities): CircleNavItem[] {
   const items: CircleNavItem[] = [];
 
-  if (capabilities.viewCircleMedia || capabilities.richMediaUpload) {
-    items.push({
-      id: 'media',
-      label: 'Media',
-      icon: Image,
-      description: 'Photos & gallery',
-    });
-  }
-
   if (canViewPatientProfileTab(capabilities)) {
     items.push({
       id: 'patient-profile',
@@ -415,6 +406,16 @@ export function moreNavItemsForPatient(capabilities: PatientCapabilities): Circl
       label: 'Remote Settings',
       icon: SlidersHorizontal,
       description: 'Configure patient tablet',
+    });
+  }
+
+  // Media follows Remote Settings for proxy/caregiver (and any role with media access).
+  if (capabilities.viewCircleMedia || capabilities.richMediaUpload) {
+    items.push({
+      id: 'media',
+      label: 'Media',
+      icon: Image,
+      description: 'Photos & gallery',
     });
   }
 

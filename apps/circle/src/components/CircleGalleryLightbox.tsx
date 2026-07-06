@@ -351,11 +351,13 @@ export function CircleGalleryLightbox({
                 window.alert(t('gallery.tagFailed'));
               });
             }}
-            onCreateAndTag={(name, relationship) =>
-              createPersonOnMedia(name, relationship, item.id).catch(() => {
+            onCreateAndTag={async (name, relationship) => {
+              try {
+                await createPersonOnMedia(name, relationship, item.id);
+              } catch {
                 window.alert(t('gallery.tagFailed'));
-              })
-            }
+              }
+            }}
             onClose={() => setShowIdentify(false)}
           />
         ) : null}

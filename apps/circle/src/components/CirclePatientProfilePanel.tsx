@@ -40,6 +40,8 @@ interface CirclePatientProfilePanelProps {
   patient: CirclePatientSummary;
   /** Admin embed: hide section icon/title (shown on collapsible summary instead). */
   compact?: boolean;
+  /** Work-tab embed: chrome/header provided by CirclePatientProfileScreen. */
+  embedded?: boolean;
 }
 
 function buildInitialProfileSnapshot(patient: CirclePatientSummary): CirclePatientProfileSnapshot {
@@ -62,6 +64,7 @@ export function CirclePatientProfilePanel({
   storage,
   patient,
   compact = false,
+  embedded = false,
 }: CirclePatientProfilePanelProps) {
   const t = useCircleT();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -256,9 +259,9 @@ export function CirclePatientProfilePanel({
 
   return (
     <div className={compact ? 'p-4 space-y-4' : 'space-y-4'}>
-      {!compact && (
+      {!compact && !embedded && (
         <div className="flex items-start gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
+          <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
             <UserRound size={20} />
           </div>
           <div className="min-w-0 flex-1">
@@ -273,40 +276,50 @@ export function CirclePatientProfilePanel({
       )}
 
       {!patient.isPendingProvision && (
-        <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 space-y-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-blue-900">
+        <div className="space-y-2">
+          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5">
             {t('admin.profile.accountTitle')}
-          </p>
-          <div className="grid gap-2 text-sm">
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-600 shrink-0">{t('admin.profile.accountLoginEmail')}</span>
+          </h4>
+          <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-3 space-y-2">
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 flex justify-between gap-3">
+              <span className="text-slate-500 shrink-0 text-xs font-bold uppercase tracking-wide">
+                {t('admin.profile.accountLoginEmail')}
+              </span>
               <span className="font-semibold text-slate-900 text-right break-all">
                 {accountInfo?.claimedLoginEmail || t('admin.profile.emptyValue')}
               </span>
             </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-600 shrink-0">{t('admin.profile.accountUid')}</span>
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 flex justify-between gap-3">
+              <span className="text-slate-500 shrink-0 text-xs font-bold uppercase tracking-wide">
+                {t('admin.profile.accountUid')}
+              </span>
               <span className="font-mono text-xs text-slate-800 text-right break-all">
                 {patient.patientId}
               </span>
             </div>
             {accountInfo?.claimedAt ? (
-              <div className="flex justify-between gap-3">
-                <span className="text-slate-600 shrink-0">{t('admin.profile.accountClaimedAt')}</span>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 flex justify-between gap-3">
+                <span className="text-slate-500 shrink-0 text-xs font-bold uppercase tracking-wide">
+                  {t('admin.profile.accountClaimedAt')}
+                </span>
                 <span className="font-medium text-slate-800 text-right">
                   {formatClaimedAt(accountInfo.claimedAt)}
                 </span>
               </div>
             ) : null}
             {accountInfo?.createdByProvisionId ? (
-              <div className="flex justify-between gap-3">
-                <span className="text-slate-600 shrink-0">{t('admin.profile.accountProvisionId')}</span>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 flex justify-between gap-3">
+                <span className="text-slate-500 shrink-0 text-xs font-bold uppercase tracking-wide">
+                  {t('admin.profile.accountProvisionId')}
+                </span>
                 <span className="font-mono text-xs text-slate-800 text-right break-all">
                   {accountInfo.createdByProvisionId}
                 </span>
               </div>
             ) : accountInfo?.provisioningPath === 'proxy_led' ? (
-              <p className="text-xs text-slate-600 leading-relaxed">{t('admin.profile.accountSelfSetup')}</p>
+              <p className="text-xs text-slate-500 leading-relaxed px-1 pt-1">
+                {t('admin.profile.accountSelfSetup')}
+              </p>
             ) : null}
           </div>
         </div>
@@ -335,16 +348,16 @@ export function CirclePatientProfilePanel({
         </div>
       ) : (
         <>
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center gap-4">
+          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center gap-4">
             <div className="relative shrink-0">
               {photoUrl ? (
                 <img
                   src={photoUrl}
                   alt=""
-                  className="w-16 h-16 rounded-2xl object-cover border border-slate-200 bg-white"
+                  className="w-16 h-16 rounded-2xl object-cover border border-slate-100 bg-white"
                 />
               ) : (
-                <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-300">
+                <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300">
                   <UserRound size={28} />
                 </div>
               )}
@@ -354,7 +367,7 @@ export function CirclePatientProfilePanel({
                     type="button"
                     onClick={() => fileRef.current?.click()}
                     disabled={uploadingPhoto || saving}
-                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-md disabled:opacity-50"
+                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-200 disabled:opacity-50 hover:bg-blue-700"
                     aria-label={t('admin.profile.changePhotoAria')}
                   >
                     {uploadingPhoto ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
@@ -387,24 +400,26 @@ export function CirclePatientProfilePanel({
           <CirclePatientProfileReview
             snapshot={workingSnapshot}
             showClinical={showClinical}
+            showReferences={showClinicalReferences}
             canEdit={canEdit}
             onEditSection={handleEditSection}
+            referencesContent={
+              showClinicalReferences ? (
+                <CircleClinicalReferencesSection
+                  db={db}
+                  patientId={patient.patientId}
+                  user={user}
+                  memberRole={patient.role}
+                  memberDisplayName={
+                    user.displayName || displayProfileName(workingSnapshot, patient.displayName)
+                  }
+                />
+              ) : undefined
+            }
           />
 
-          {showClinicalReferences ? (
-            <div className="rounded-2xl border border-violet-100 bg-violet-50/30 p-4">
-              <CircleClinicalReferencesSection
-                db={db}
-                patientId={patient.patientId}
-                user={user}
-                memberRole={patient.role}
-                memberDisplayName={user.displayName || displayProfileName(workingSnapshot, patient.displayName)}
-              />
-            </div>
-          ) : null}
-
           {canEdit && (
-            <p className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 leading-relaxed">
+            <p className="text-xs text-slate-500 bg-blue-50/60 border border-blue-100 rounded-2xl px-3 py-2 leading-relaxed">
               {t('admin.profile.editableNote', {
                 clinical: showClinical ? t('admin.profile.editableClinicalSuffix') : '',
               })}

@@ -70,7 +70,7 @@ function InsightCard({
     >
       {item.overflowCount && item.overflowCount > 0 ? (
         <span className="absolute top-3 right-3 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold tabular-nums text-slate-500">
-          {t('dashboard.totalCount', { count: item.totalCount })}
+          {t('dashboard.totalCount', { count: item.totalCount ?? 0 })}
         </span>
       ) : null}
       <div className="flex items-start gap-2.5">

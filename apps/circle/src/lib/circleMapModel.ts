@@ -27,7 +27,7 @@ function circleRoleLabelKey(role: CircleMemberRole): string {
   return 'dashboard.circleMap.roles.contact';
 }
 
-export type CircleMapViewMode = 'roles' | 'relationships' | 'engagement';
+export type CircleMapViewMode = 'roles' | 'relationships' | 'engagement' | 'members';
 
 export type CircleMapEngagement = {
   messagesSent: number;
@@ -40,6 +40,7 @@ export type CircleMapNode = {
   id: string;
   name: string;
   email: string;
+  recipientKey: string;
   initials: string;
   photoUrl?: string;
   ringKey: string;
@@ -51,6 +52,7 @@ export type CircleMapNode = {
   accent: string;
   isOnline: boolean;
   isMessagingOnly: boolean;
+  canMessage: boolean;
   engagement: CircleMapEngagement;
   angle: number;
   radius: number;
@@ -360,6 +362,12 @@ function engagementAccent(score: number): string {
   return '#cbd5e1';
 }
 
+function canReceiveDirectMessage(contact: Record<string, unknown>): boolean {
+  const email = normalizeInviteEmail(String(contact.email || ''));
+  if (!email) return false;
+  return contact.message !== false;
+}
+
 export function buildCircleMapModel(params: {
   preferences: {
     userName?: string;
@@ -377,6 +385,7 @@ export function buildCircleMapModel(params: {
   mode: CircleMapViewMode;
   t: (key: string, params?: Record<string, unknown>) => string;
 }): CircleMapModel {
+  const layoutMode: CircleMapViewMode = params.mode === 'members' ? 'roles' : params.mode;
   const patientName =
     params.preferences.fullUserDetails?.identity?.nickName?.trim() ||
     params.preferences.fullUserDetails?.identity?.firstName?.trim() ||
@@ -406,7 +415,7 @@ export function buildCircleMapModel(params: {
     );
 
     const ring =
-      params.mode === 'relationships'
+      layoutMode === 'relationships'
         ? {
             key: relationshipRing.key,
             label: relationshipRing.label,
@@ -414,7 +423,7 @@ export function buildCircleMapModel(params: {
             color: relationshipRing.color,
             accent: relationshipRing.accent,
           }
-        : params.mode === 'engagement'
+        : layoutMode === 'engagement'
           ? {
               key: 'engagement',
               label: params.t('dashboard.circleMap.modes.engagement'),
@@ -430,10 +439,12 @@ export function buildCircleMapModel(params: {
               accent: roleRing.accent,
             };
 
+    const recipientKey = getRecipientSelectionKey(contact as { id?: string; email?: string });
     rawPeople.push({
       id: String(contact.id || email || name),
       name: name || email,
       email,
+      recipientKey,
       initials: initialsFromName(name || email),
       photoUrl: resolveCircleMapContactPhoto(contact, {
         photosByEmail: params.photosByEmail,
@@ -449,6 +460,7 @@ export function buildCircleMapModel(params: {
       accent: ring.accent,
       isOnline: !!email && onlineEmails.has(normalizeInviteEmail(email)),
       isMessagingOnly,
+      canMessage: canReceiveDirectMessage(contact),
       engagement,
     });
   };
@@ -476,7 +488,7 @@ export function buildCircleMapModel(params: {
     ring.radius = ringStart + index * ringStep;
   });
 
-  const nodes = layoutNodes(rawPeople, params.mode, rings);
+  const nodes = layoutNodes(rawPeople, layoutMode, rings);
 
   return { patientName, patientPhotoUrl: params.patientPhotoUrl, nodes, rings };
 }
@@ -487,6 +499,7 @@ export function buildCircleMapPreviewModel(t: (key: string) => string): CircleMa
       id: '1',
       name: 'Alex Proxy',
       email: '',
+      recipientKey: '1',
       initials: 'AP',
       ringKey: 'proxy',
       ringLabel: t('dashboard.circleMap.roles.proxy'),
@@ -497,6 +510,7 @@ export function buildCircleMapPreviewModel(t: (key: string) => string): CircleMa
       accent: '#a78bfa',
       isOnline: true,
       isMessagingOnly: false,
+      canMessage: true,
       engagement: { messagesSent: 12, repliesReceived: 9, mediaShared: 4, score: 82 },
       angle: -1.2,
       radius: 58,
@@ -505,6 +519,7 @@ export function buildCircleMapPreviewModel(t: (key: string) => string): CircleMa
       id: '2',
       name: 'Jordan',
       email: '',
+      recipientKey: '2',
       initials: 'JO',
       ringKey: 'family',
       ringLabel: t('dashboard.circleMap.roles.family'),
@@ -515,6 +530,7 @@ export function buildCircleMapPreviewModel(t: (key: string) => string): CircleMa
       accent: '#fb923c',
       isOnline: false,
       isMessagingOnly: false,
+      canMessage: true,
       engagement: { messagesSent: 6, repliesReceived: 4, mediaShared: 8, score: 71 },
       angle: 0.4,
       radius: 94,
@@ -523,6 +539,7 @@ export function buildCircleMapPreviewModel(t: (key: string) => string): CircleMa
       id: '3',
       name: 'Sam',
       email: '',
+      recipientKey: '3',
       initials: 'SA',
       ringKey: 'friend',
       ringLabel: t('dashboard.circleMap.roles.friend'),
@@ -533,6 +550,7 @@ export function buildCircleMapPreviewModel(t: (key: string) => string): CircleMa
       accent: '#2dd4bf',
       isOnline: true,
       isMessagingOnly: false,
+      canMessage: true,
       engagement: { messagesSent: 3, repliesReceived: 2, mediaShared: 1, score: 38 },
       angle: 1.8,
       radius: 130,
@@ -541,6 +559,7 @@ export function buildCircleMapPreviewModel(t: (key: string) => string): CircleMa
       id: '4',
       name: 'Riley',
       email: '',
+      recipientKey: '4',
       initials: 'RI',
       ringKey: 'contact',
       ringLabel: t('dashboard.circleMap.roles.contact'),
@@ -551,6 +570,7 @@ export function buildCircleMapPreviewModel(t: (key: string) => string): CircleMa
       accent: '#94a3b8',
       isOnline: false,
       isMessagingOnly: true,
+      canMessage: false,
       engagement: { messagesSent: 1, repliesReceived: 0, mediaShared: 0, score: 12 },
       angle: 2.6,
       radius: 166,

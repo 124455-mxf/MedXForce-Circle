@@ -133,7 +133,8 @@ const remoteSettingsEnglish = {
     dayOfMonth: 'Day of month',
     sections: {
       physical: 'Physical assessments',
-      visionHearing: 'Vision and hearing',
+      visionHearing: 'Vision Assessment',
+      speech: 'Speech Assessments',
       neurologicalPhysiological: 'Neurological and physiological',
     },
     items: {
@@ -145,7 +146,7 @@ const remoteSettingsEnglish = {
       temperature: 'Temperature',
       balance: 'Balance',
       vision: 'Vision',
-      hearing: 'Hearing',
+      speech: 'Speech & Language',
       neurological: 'Neurological',
       physiological: 'Physiological',
       psychological: 'Psychological',
@@ -318,7 +319,8 @@ const remoteSettingsGerman = {
     dayOfMonth: 'Tag im Monat',
     sections: {
       physical: 'Körperliche Assessments',
-      visionHearing: 'Sehen und Hören',
+      visionHearing: 'Seh-Assessment',
+      speech: 'Sprach-Assessments',
       neurologicalPhysiological: 'Neurologisch und physiologisch',
     },
     items: {
@@ -330,7 +332,7 @@ const remoteSettingsGerman = {
       temperature: 'Temperatur',
       balance: 'Gleichgewicht',
       vision: 'Sehen',
-      hearing: 'Hören',
+      speech: 'Sprache & Sprechen',
       neurological: 'Neurologisch',
       physiological: 'Physiologisch',
       psychological: 'Psychologisch',
@@ -502,7 +504,8 @@ const remoteSettingsSpanish = {
     dayOfMonth: 'Día del mes',
     sections: {
       physical: 'Evaluaciones físicas',
-      visionHearing: 'Visión y audición',
+      visionHearing: 'Evaluación de la visión',
+      speech: 'Evaluaciones del habla',
       neurologicalPhysiological: 'Neurológicas y fisiológicas',
     },
     items: {
@@ -514,7 +517,7 @@ const remoteSettingsSpanish = {
       temperature: 'Temperatura',
       balance: 'Equilibrio',
       vision: 'Visión',
-      hearing: 'Audición',
+      speech: 'Habla y lenguaje',
       neurological: 'Neurológica',
       physiological: 'Fisiológica',
       psychological: 'Psicológica',
@@ -686,7 +689,8 @@ const remoteSettingsPolish = {
     dayOfMonth: 'Dzień miesiąca',
     sections: {
       physical: 'Oceny fizyczne',
-      visionHearing: 'Wzrok i słuch',
+      visionHearing: 'Ocena wzroku',
+      speech: 'Oceny mowy',
       neurologicalPhysiological: 'Neurologiczne i fizjologiczne',
     },
     items: {
@@ -698,7 +702,7 @@ const remoteSettingsPolish = {
       temperature: 'Temperatura',
       balance: 'Równowaga',
       vision: 'Wzrok',
-      hearing: 'Słuch',
+      speech: 'Mowa i język',
       neurological: 'Neurologiczna',
       physiological: 'Fizjologiczna',
       psychological: 'Psychologiczna',

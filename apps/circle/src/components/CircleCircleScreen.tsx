@@ -67,7 +67,6 @@ import {
   isCirclePostUnread,
   circlePostInboxViewsForThread,
   partitionCirclePostInboxViews,
-  summarizeUnreadInboxFolders,
   type CirclePostInboxView,
 } from '../lib/circlePostInboxViews';
 import {
@@ -505,12 +504,6 @@ export function CircleCircleScreen({
   );
 
   const activeTabUnread = inboxTabCounts[inboxView]?.unread ?? 0;
-
-  const unreadFolderBreakdown = useMemo(
-    () =>
-      summarizeUnreadInboxFolders(inboxTabCounts, (view) => circlePostInboxTabLabel(t, view)),
-    [inboxTabCounts, t],
-  );
 
   const authorName = useMemo(
     () => user.displayName?.trim() || user.email?.split('@')[0] || t('circle.circleMemberFallback'),
@@ -994,12 +987,6 @@ export function CircleCircleScreen({
               ) : undefined
             }
           />
-
-          {unreadCount > 0 && unreadFolderBreakdown ? (
-            <p className="text-xs font-semibold text-red-700 leading-snug">
-              {t('circle.unreadWhere', { places: unreadFolderBreakdown })}
-            </p>
-          ) : null}
 
           <div className={circleTabListClass} role="tablist" aria-label={t('circle.threadsAria')}>
             <button

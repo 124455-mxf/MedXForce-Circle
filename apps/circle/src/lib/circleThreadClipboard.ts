@@ -5,7 +5,7 @@ type CircleThreadPostClipboardInput = {
   text: string;
   authorName: string;
   createdAt: number;
-  postKind?: 'visit_capture';
+  postKind?: 'discussion' | 'announcement' | 'visit_capture' | 'drop_in' | 'appointment_invite';
 };
 
 function formatCircleThreadPostPlain(post: CircleThreadPostClipboardInput): string {

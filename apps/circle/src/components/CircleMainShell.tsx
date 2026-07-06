@@ -544,6 +544,7 @@ export function CircleMainShell({
               activeTab === 'diary' ||
               activeTab === 'circle' ||
               activeTab === 'analytics' ||
+              activeTab === 'patient-profile' ||
               activeTab === 'remote-settings'
               ? 'flex flex-col overflow-hidden'
               : 'space-y-4 overflow-y-auto',
@@ -675,12 +676,14 @@ export function CircleMainShell({
             </div>
           )}
           {activeTab === 'patient-profile' && (
-            <CirclePatientProfileScreen
-              user={user}
-              db={db}
-              storage={storage}
-              patient={selectedPatient}
-            />
+            <div className="flex flex-col flex-1 min-h-0">
+              <CirclePatientProfileScreen
+                user={user}
+                db={db}
+                storage={storage}
+                patient={selectedPatient}
+              />
+            </div>
           )}
           {activeTab === 'admin' && (
             <CircleAdminScreen user={user} db={db} patient={selectedPatient} />

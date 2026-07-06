@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { deleteField, doc, getDoc, setDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 
 export interface CircleUserProfile {
@@ -14,6 +14,8 @@ export interface CircleUserProfile {
   managedPatientId?: string;
   /** When true, patient-app Circle presence indicators omit this member. */
   hideOnlineStatusFromPatient?: boolean;
+  /** Patient Circle opens on sign-in (synced across devices). */
+  startupPatientId?: string;
   updatedAt: number;
 }
 
@@ -35,6 +37,10 @@ export async function getCircleUserProfile(
         ? data.languageSource
         : undefined,
     hideOnlineStatusFromPatient: data.hideOnlineStatusFromPatient === true,
+    startupPatientId:
+      typeof data.startupPatientId === 'string' && data.startupPatientId.trim()
+        ? data.startupPatientId.trim()
+        : undefined,
     updatedAt: data.updatedAt ?? 0,
   };
 }
@@ -53,13 +59,22 @@ export async function saveCircleUserProfile(
       | 'managedPatientId'
       | 'hideOnlineStatusFromPatient'
     >
-  >,
+  > & {
+    /** Pass null to clear the synced startup patient preference. */
+    startupPatientId?: string | null;
+  },
 ): Promise<void> {
+  const { startupPatientId, ...rest } = patch;
   await setDoc(
     doc(db, 'circle_profiles', uid),
     {
       uid,
-      ...patch,
+      ...rest,
+      ...(startupPatientId === null
+        ? { startupPatientId: deleteField() }
+        : startupPatientId !== undefined
+          ? { startupPatientId: startupPatientId.trim() }
+          : {}),
       updatedAt: Date.now(),
     },
     { merge: true },

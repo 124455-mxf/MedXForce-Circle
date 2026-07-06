@@ -72,6 +72,7 @@ export async function listProvisionDraftInvites(
         status,
         updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : 0,
         acceptedByUid: typeof data.acceptedByUid === 'string' ? data.acceptedByUid : undefined,
+        contactId: typeof data.contactId === 'string' ? data.contactId : undefined,
       };
     })
     .filter((item) => item.invitedEmail)
@@ -128,7 +129,7 @@ async function syncProvisionDraftInvite(
       displayName: contact.name || undefined,
       contactId: contact.id,
       ...(proxyTier ? { proxyTier } : {}),
-      createdAt: existing.exists
+      createdAt: existing.exists()
         ? (typeof existingData?.createdAt === 'number' ? existingData.createdAt : Date.now())
         : Date.now(),
       updatedAt: Date.now(),

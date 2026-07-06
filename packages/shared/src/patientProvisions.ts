@@ -474,11 +474,12 @@ async function finalizePatientProvisionClaim(
     if (!email || acceptedInviteEmails.has(email)) return;
 
     const inviteId = circleInviteDocId(patientId, email);
+    const role = draft.role ?? 'friend';
     const invite = buildCircleInviteRecord({
       patientId,
       invitedEmail: email,
-      role: draft.role || 'member',
-      capabilities: draft.capabilities || capabilitiesForRole(draft.role || 'member'),
+      role,
+      capabilities: draft.capabilities || capabilitiesForRole(role),
       displayName: draft.displayName,
       contactId: draft.contactId,
       proxyTier:

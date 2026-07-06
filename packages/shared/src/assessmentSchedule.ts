@@ -9,7 +9,8 @@ export type AssessmentHistoryKey =
   | 'vision'
   | 'neurological'
   | 'strengthReflex'
-  | 'psychological';
+  | 'psychological'
+  | 'speech';
 
 export type AssessmentHistoryMap = Partial<Record<AssessmentHistoryKey, { timestamp: number }[]>>;
 
@@ -22,7 +23,7 @@ export type AssessmentScheduleId =
   | 'temperature'
   | 'balance'
   | 'vision'
-  | 'hearing'
+  | 'speech'
   | 'neurological'
   | 'physiological'
   | 'psychological';
@@ -55,7 +56,7 @@ export type RemoteAssessmentSchedule = {
 
 export type SchedulableAssessmentMeta = {
   id: AssessmentScheduleId;
-  sectionId: 'physical' | 'visionHearing' | 'neurologicalPhysiological';
+  sectionId: 'physical' | 'visionHearing' | 'speech' | 'neurologicalPhysiological';
   featureKey: string;
   historyKey: AssessmentHistoryKey | null;
   modal:
@@ -68,6 +69,8 @@ export type SchedulableAssessmentMeta = {
     | 'strengthReflex'
     | 'neurological'
     | 'emotional'
+    | 'balance'
+    | 'speech'
     | null;
   titleKey: string;
   descriptionKey: string;
@@ -156,14 +159,14 @@ export const SCHEDULABLE_ASSESSMENTS: SchedulableAssessmentMeta[] = [
     released: true,
   },
   {
-    id: 'hearing',
-    sectionId: 'visionHearing',
-    featureKey: 'hearingAssessment',
-    historyKey: null,
-    modal: null,
-    titleKey: 'assessments.items.hearing.title',
-    descriptionKey: 'assessments.items.hearing.description',
-    released: false,
+    id: 'speech',
+    sectionId: 'speech',
+    featureKey: 'speechAssessment',
+    historyKey: 'speech',
+    modal: 'speech',
+    titleKey: 'assessments.items.speech.title',
+    descriptionKey: 'assessments.items.speech.description',
+    released: true,
   },
   {
     id: 'neurological',
@@ -353,6 +356,25 @@ export function getCurrentPeriodStart(recurrence: AssessmentRecurrence, date: Da
   }
 }
 
+/**
+ * Early completion credit before a scheduled day:
+ * - monthly: 5 days
+ * - weekly (or a single selected weekday): 2 days
+ * - daily / multiple selected weekdays: none
+ */
+export function graceDaysForRecurrence(recurrence: AssessmentRecurrence): number {
+  if (recurrence.kind === 'monthly') return 5;
+  if (recurrence.kind === 'weekly') return 2;
+  if (recurrence.kind === 'weekdays' && recurrence.daysOfWeek.length <= 1) return 2;
+  return 0;
+}
+
+/** Earliest completion timestamp that still counts for the period containing `date`. */
+export function getPeriodCreditStart(recurrence: AssessmentRecurrence, date: Date): number {
+  const periodStart = getCurrentPeriodStart(recurrence, date);
+  return periodStart - graceDaysForRecurrence(recurrence) * MS_DAY;
+}
+
 export function isAssessmentDueForRecurrence(
   lastCompletedAt: number | null,
   recurrence: AssessmentRecurrence,
@@ -360,7 +382,7 @@ export function isAssessmentDueForRecurrence(
 ): boolean {
   if (!isRecurrenceActiveOnDate(recurrence, now)) return false;
   if (lastCompletedAt === null) return true;
-  return lastCompletedAt < getCurrentPeriodStart(recurrence, now);
+  return lastCompletedAt < getPeriodCreditStart(recurrence, now);
 }
 
 export function getNextDueTimestamp(
@@ -371,9 +393,9 @@ export function getNextDueTimestamp(
   for (let offset = 0; offset < 366; offset += 1) {
     const candidate = addDays(from, offset);
     if (!isRecurrenceActiveOnDate(recurrence, candidate)) continue;
-    const periodStart = getCurrentPeriodStart(recurrence, candidate);
-    if (lastCompletedAt === null || lastCompletedAt < periodStart) {
-      return periodStart;
+    const creditStart = getPeriodCreditStart(recurrence, candidate);
+    if (lastCompletedAt === null || lastCompletedAt < creditStart) {
+      return getCurrentPeriodStart(recurrence, candidate);
     }
   }
   return null;
@@ -393,6 +415,7 @@ function defaultRecurrenceFor(
   if (phase === 'icu' || phase === 'acute' || phase === 'postOp') {
     if (dailyPhysical.includes(assessmentId)) return { kind: 'daily' };
     if (assessmentId === 'neurological' || assessmentId === 'psychological') return { kind: 'daily' };
+    if (assessmentId === 'speech') return { kind: 'daily' };
     if (assessmentId === 'vision') return { kind: 'weekdays', daysOfWeek: [1, 3, 5] };
     return { kind: 'weekly', dayOfWeek: 1 };
   }
@@ -405,6 +428,7 @@ function defaultRecurrenceFor(
       return { kind: 'weekly', dayOfWeek: 1 };
     }
     if (assessmentId === 'psychological') return { kind: 'weekdays', daysOfWeek: [2, 5] };
+    if (assessmentId === 'speech') return { kind: 'weekdays', daysOfWeek: [1, 4] };
     return { kind: 'weekly', dayOfWeek: 3 };
   }
   if (phase === 'maintenance' || phase === 'palliative' || phase === 'preOp') {
@@ -416,10 +440,12 @@ function defaultRecurrenceFor(
       return { kind: 'monthly', dayOfMonth: 1 };
     }
     if (assessmentId === 'psychological') return { kind: 'weekly', dayOfWeek: 5 };
+    if (assessmentId === 'speech') return { kind: 'weekly', dayOfWeek: 2 };
     return { kind: 'monthly', dayOfMonth: 15 };
   }
   if (dailyPhysical.includes(assessmentId)) return { kind: 'daily' };
   if (assessmentId === 'neurological') return { kind: 'weekly', dayOfWeek: 1 };
+  if (assessmentId === 'speech') return { kind: 'weekly', dayOfWeek: 2 };
   return { kind: 'weekly', dayOfWeek: 3 };
 }
 

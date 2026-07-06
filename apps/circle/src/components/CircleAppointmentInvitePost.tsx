@@ -41,18 +41,23 @@ type LoadedCareCalendarEntry = {
 function parseAddressField(raw: unknown): CareCalendarAddress | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
   const row = raw as Record<string, unknown>;
-  const address: CareCalendarAddress = {
-    ...(row.label ? { label: String(row.label) } : {}),
-    ...(row.line1 ? { line1: String(row.line1) } : {}),
-    ...(row.line2 ? { line2: String(row.line2) } : {}),
-    ...(row.city ? { city: String(row.city) } : {}),
-    ...(row.state ? { state: String(row.state) } : {}),
-    ...(row.postalCode ? { postalCode: String(row.postalCode) } : {}),
-    ...(row.country ? { country: String(row.country) } : {}),
-    ...(row.placeId ? { placeId: String(row.placeId) } : {}),
-    ...(row.lat != null ? { lat: Number(row.lat) } : {}),
-    ...(row.lng != null ? { lng: Number(row.lng) } : {}),
-  };
+  const line1 = row.line1 != null ? String(row.line1).trim() : '';
+  const suite = row.suite != null ? String(row.suite).trim() : row.line2 != null ? String(row.line2).trim() : '';
+  const label = String(row.label || line1 || suite || '').trim();
+  if (!label && !line1 && !suite) return undefined;
+  const address: CareCalendarAddress = { label: label || line1 || suite || 'Location' };
+  if (line1) address.line1 = line1;
+  if (suite) address.suite = suite;
+  if (row.city != null && String(row.city).trim()) address.city = String(row.city).trim();
+  if (row.state != null && String(row.state).trim()) address.state = String(row.state).trim();
+  if (row.postalCode != null && String(row.postalCode).trim()) {
+    address.postalCode = String(row.postalCode).trim();
+  }
+  if (row.country != null && String(row.country).trim()) address.country = String(row.country).trim();
+  const lat = row.latitude ?? row.lat;
+  const lng = row.longitude ?? row.lng;
+  if (lat != null && Number.isFinite(Number(lat))) address.latitude = Number(lat);
+  if (lng != null && Number.isFinite(Number(lng))) address.longitude = Number(lng);
   return hasCareCalendarAddress(address) ? address : undefined;
 }
 
@@ -270,7 +275,6 @@ export function CircleAppointmentInvitePost({
             memberDocContactId={memberDocContactId}
             inviteContactId={inviteContactId}
             inviteeContactIds={inviteeContactIds}
-            inviteeMemberUidByContactId={entry?.inviteeMemberUidByContactId}
             memberDisplayName={memberDisplayName}
             memberRole={memberRole}
             t={t}
@@ -280,15 +284,13 @@ export function CircleAppointmentInvitePost({
     );
   }
 
-  const timeRangeLabel = formatCareCalendarTimeRange(
-    entry?.startTimeMinutes,
-    entry?.endTimeMinutes,
-  );
+  const timeRangeLabel =
+    formatCareCalendarTimeRange(entry?.startTimeMinutes, entry?.endTimeMinutes) ?? '';
 
   return (
     <div className="space-y-3">
       <div className="rounded-2xl border border-violet-100 bg-violet-50/60 overflow-hidden">
-        {scheduleLine ? (
+        {scheduleLine && timeRangeLabel ? (
           <div className="flex items-stretch gap-0 border-b border-violet-100">
             <div className="shrink-0 w-16 bg-violet-100/80 border-r border-violet-100 flex flex-col items-center justify-center px-2 py-3">
               <span className="text-xs font-bold text-violet-800 text-center leading-tight">

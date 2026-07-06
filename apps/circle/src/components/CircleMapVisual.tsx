@@ -328,6 +328,7 @@ export function CircleMapModeTabs({ mode, onChange, t, compact }: CircleMapModeT
     { id: 'roles', label: t('dashboard.circleMap.modes.roles') },
     { id: 'relationships', label: t('dashboard.circleMap.modes.relationships') },
     { id: 'engagement', label: t('dashboard.circleMap.modes.engagement') },
+    { id: 'members', label: t('dashboard.circleMap.modes.members') },
   ];
 
   return (

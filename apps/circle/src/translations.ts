@@ -84,7 +84,9 @@ import {
   visitBriefScreenSpanish,
 } from './translations/visitBrief';
 
-type TranslationTree = Record<string, string | TranslationTree>;
+interface TranslationTree {
+  [key: string]: string | TranslationTree;
+}
 
 export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
   English: {
@@ -344,12 +346,13 @@ function resolvePath(tree: TranslationTree, path: string): string | undefined {
 }
 
 export function createCircleTranslator(language: CircleUiLanguage) {
-  return (path: string, params?: Record<string, string | number>) => {
+  return (path: string, params?: Record<string, unknown>) => {
     const primary = resolvePath(CIRCLE_TRANSLATIONS[language], path);
     const english = resolvePath(CIRCLE_TRANSLATIONS.English, path);
     let text = primary ?? english ?? path;
     if (params) {
       for (const [key, value] of Object.entries(params)) {
+        if (value == null) continue;
         text = text.replaceAll(`{{${key}}}`, String(value));
       }
     }
