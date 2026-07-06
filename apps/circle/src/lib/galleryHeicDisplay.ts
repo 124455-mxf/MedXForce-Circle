@@ -18,19 +18,16 @@ export async function resolveGalleryImageUrl(url: string): Promise<string> {
   return objectUrl;
 }
 
-/** Hook for grid/lightbox: resolves HEIC Firebase URLs to JPEG object URLs in-browser. */
-export function useGalleryImageSrc(url: string | undefined, thumbnailUrl?: string): string {
-  const preferredThumb =
-    thumbnailUrl && !isHeicGalleryUrl(thumbnailUrl) ? thumbnailUrl : undefined;
-  const [src, setSrc] = useState(preferredThumb || (url && !isHeicGalleryUrl(url) ? url : ''));
+/** Resolves a single gallery URL (HEIC → JPEG object URL in-browser). */
+function useResolvedGalleryImageUrl(primary: string | undefined): string {
+  const [src, setSrc] = useState(primary && !isHeicGalleryUrl(primary) ? primary : '');
 
   useEffect(() => {
-    const primary = preferredThumb || url;
     if (!primary) {
       setSrc('');
       return;
     }
-    if (preferredThumb || !isHeicGalleryUrl(primary)) {
+    if (!isHeicGalleryUrl(primary)) {
       setSrc(primary);
       return;
     }
@@ -48,7 +45,19 @@ export function useGalleryImageSrc(url: string | undefined, thumbnailUrl?: strin
     return () => {
       cancelled = true;
     };
-  }, [url, preferredThumb]);
+  }, [primary]);
 
   return src;
+}
+
+/** Grid / tile previews: prefers thumbnailUrl when provided. */
+export function useGalleryImageSrc(url: string | undefined, thumbnailUrl?: string): string {
+  const preferredThumb =
+    thumbnailUrl && !isHeicGalleryUrl(thumbnailUrl) ? thumbnailUrl : undefined;
+  return useResolvedGalleryImageUrl(preferredThumb || url);
+}
+
+/** Lightbox / full-screen: always uses the main stored image URL. */
+export function useGalleryFullImageSrc(url: string | undefined): string {
+  return useResolvedGalleryImageUrl(url);
 }

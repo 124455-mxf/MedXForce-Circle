@@ -9,7 +9,7 @@ import { useGalleryPersonTagging } from '../hooks/useGalleryPersonTagging';
 import { CircleGalleryReactionBar } from './CircleGalleryReactionBar';
 import { CircleGalleryIdentifyPanel } from './CircleGalleryIdentifyPanel';
 import { cn } from '../lib/utils';
-import { useGalleryImageSrc } from '../lib/galleryHeicDisplay';
+import { useGalleryFullImageSrc, useGalleryImageSrc } from '../lib/galleryHeicDisplay';
 import {
   buildLightboxMediaFit,
   type LightboxStageBounds,
@@ -272,7 +272,7 @@ export function CircleGalleryLightbox({
     return () => window.removeEventListener('keydown', onKey);
   }, [goNext, goPrev, hasNext, hasPrev, onClose]);
 
-  const imageSrc = useGalleryImageSrc(item?.isVideo ? undefined : item?.url, item?.thumbnailUrl);
+  const imageSrc = useGalleryFullImageSrc(item?.isVideo ? undefined : item?.url);
   const { ref: lightboxStageRef, bounds: lightboxStageBounds } = useLightboxStageBounds<HTMLDivElement>();
 
   const uploaderLabel = resolveGalleryUploaderDisplayName(
