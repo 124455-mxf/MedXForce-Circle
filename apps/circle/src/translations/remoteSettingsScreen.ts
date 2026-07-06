@@ -26,6 +26,19 @@ const remoteSettingsEnglish = {
   communicationShortcuts: 'Communication shortcuts',
   footerHint:
     'Only caregivers and proxies can change these settings. Family and friends cannot access this screen. Individual toggles stay editable after you pick a mode; changing mode resets toggles to that preset.',
+  applicationOverviewTitle: 'Application overview',
+  applicationOverviewDesc: 'Export a shareable summary of the patient tablet configuration.',
+  applicationOverviewHint:
+    'Synced from the patient app when online. Copy, download, or print for care coordination and deployment records.',
+  applicationOverviewOpen: 'View & export',
+  applicationOverviewEmpty:
+    'No overview synced yet. Ask the patient to open the tablet app while online, or export from Settings → General on the device.',
+  applicationOverviewSyncedAt: 'Last synced from patient tablet • {{date}}',
+  applicationOverviewCopy: 'Copy text',
+  applicationOverviewDownload: 'Download',
+  applicationOverviewPrint: 'Print',
+  applicationOverviewCopyFailed: 'Copy failed. Select the text manually.',
+  applicationOverviewPrintFailed: 'Print could not be started.',
   changeModeTitle: 'Change application mode?',
   changeModeBody:
     'Switching to {{mode}} applies that mode\'s preset and updates all toggles below. You can still adjust individual toggles afterward.',
@@ -212,6 +225,19 @@ const remoteSettingsGerman = {
   communicationShortcuts: 'Kommunikations-Kurzbefehle',
   footerHint:
     'Nur Betreuende und Stellvertreter können diese Einstellungen ändern. Familie und Freunde haben keinen Zugriff. Einzelne Schalter bleiben nach Moduswahl editierbar; ein Moduswechsel setzt alle Schalter auf die Voreinstellung zurück.',
+  applicationOverviewTitle: 'Anwendungsübersicht',
+  applicationOverviewDesc: 'Teilbare Zusammenfassung der Patienten-Tablet-Konfiguration exportieren.',
+  applicationOverviewHint:
+    'Synchronisiert aus der Patienten-App, wenn online. Kopieren, herunterladen oder drucken für Pflegekoordination und Bereitstellungsnachweise.',
+  applicationOverviewOpen: 'Anzeigen & exportieren',
+  applicationOverviewEmpty:
+    'Noch keine Übersicht synchronisiert. Bitten Sie den Patienten, die Tablet-App online zu öffnen, oder exportieren Sie unter Einstellungen → Allgemein auf dem Gerät.',
+  applicationOverviewSyncedAt: 'Zuletzt vom Patienten-Tablet synchronisiert • {{date}}',
+  applicationOverviewCopy: 'Text kopieren',
+  applicationOverviewDownload: 'Herunterladen',
+  applicationOverviewPrint: 'Drucken',
+  applicationOverviewCopyFailed: 'Kopieren fehlgeschlagen. Text manuell auswählen.',
+  applicationOverviewPrintFailed: 'Drucken konnte nicht gestartet werden.',
   changeModeTitle: 'Anwendungsmodus ändern?',
   changeModeBody:
     'Der Wechsel zu {{mode}} wendet die Voreinstellung an und aktualisiert alle Schalter unten. Einzelne Schalter können danach weiter angepasst werden.',
@@ -397,6 +423,19 @@ const remoteSettingsSpanish = {
   communicationShortcuts: 'Accesos de comunicación',
   footerHint:
     'Solo cuidadores y apoderados pueden cambiar estos ajustes. Familia y amigos no tienen acceso. Los interruptores siguen editables tras elegir un modo; cambiar el modo restablece los interruptores.',
+  applicationOverviewTitle: 'Descripción general de la aplicación',
+  applicationOverviewDesc: 'Exporte un resumen compartible de la configuración de la tableta del paciente.',
+  applicationOverviewHint:
+    'Sincronizado desde la app del paciente cuando está en línea. Copie, descargue o imprima para coordinación de cuidados y registros de despliegue.',
+  applicationOverviewOpen: 'Ver y exportar',
+  applicationOverviewEmpty:
+    'Aún no hay resumen sincronizado. Pida al paciente que abra la app en la tableta en línea, o exporte desde Ajustes → General en el dispositivo.',
+  applicationOverviewSyncedAt: 'Última sincronización desde la tableta del paciente • {{date}}',
+  applicationOverviewCopy: 'Copiar texto',
+  applicationOverviewDownload: 'Descargar',
+  applicationOverviewPrint: 'Imprimir',
+  applicationOverviewCopyFailed: 'Error al copiar. Seleccione el texto manualmente.',
+  applicationOverviewPrintFailed: 'No se pudo iniciar la impresión.',
   changeModeTitle: '¿Cambiar modo de aplicación?',
   changeModeBody:
     'Cambiar a {{mode}} aplica ese preajuste y actualiza todos los interruptores. Puede ajustarlos individualmente después.',
@@ -582,6 +621,19 @@ const remoteSettingsPolish = {
   communicationShortcuts: 'Skróty komunikacji',
   footerHint:
     'Tylko opiekunowie i pełnomocnicy mogą zmieniać te ustawienia. Rodzina i przyjaciele nie mają dostępu. Przełączniki pozostają edytowalne po wyborze trybu.',
+  applicationOverviewTitle: 'Przegląd aplikacji',
+  applicationOverviewDesc: 'Eksportuj udostępnialne podsumowanie konfiguracji tabletu pacjenta.',
+  applicationOverviewHint:
+    'Synchronizowane z aplikacji pacjenta, gdy jest online. Kopiuj, pobieraj lub drukuj na potrzeby koordynacji opieki i dokumentacji wdrożenia.',
+  applicationOverviewOpen: 'Wyświetl i eksportuj',
+  applicationOverviewEmpty:
+    'Brak zsynchronizowanego przeglądu. Poproś pacjenta o otwarcie aplikacji na tablecie online lub eksport z Ustawienia → Ogólne na urządzeniu.',
+  applicationOverviewSyncedAt: 'Ostatnia synchronizacja z tabletu pacjenta • {{date}}',
+  applicationOverviewCopy: 'Kopiuj tekst',
+  applicationOverviewDownload: 'Pobierz',
+  applicationOverviewPrint: 'Drukuj',
+  applicationOverviewCopyFailed: 'Kopiowanie nie powiodło się. Zaznacz tekst ręcznie.',
+  applicationOverviewPrintFailed: 'Nie udało się rozpocząć drukowania.',
   changeModeTitle: 'Zmienić tryb aplikacji?',
   changeModeBody:
     'Przełączenie na {{mode}} stosuje ustawienie wstępne i aktualizuje wszystkie przełączniki poniżej.',

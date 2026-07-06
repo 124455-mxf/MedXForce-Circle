@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader2, LayoutDashboard, Shield, SlidersHorizontal } from 'lucide-react';
+import { Loader2, LayoutDashboard, Shield, SlidersHorizontal, FileText } from 'lucide-react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import {
@@ -52,7 +52,9 @@ import { CircleCollapsibleSection } from './CircleCollapsibleSection';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 import { CircleAssessmentSchedulePanel } from './CircleAssessmentSchedulePanel';
 import { CircleDailyCheckInQuestionsPanel } from './CircleDailyCheckInQuestionsPanel';
+import { CircleApplicationOverviewModal } from './CircleApplicationOverviewModal';
 import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfileSnapshot';
+import { useCircleApplicationOverview } from '../hooks/useCircleApplicationOverview';
 
 function ToggleRow({
   label,
@@ -164,7 +166,9 @@ export function CircleRemoteSettingsScreen({
   const compactChrome = useCircleCompactChrome();
   const t = useCircleT();
   const [pendingMode, setPendingMode] = useState<RemoteAppMode | null>(null);
+  const [overviewOpen, setOverviewOpen] = useState(false);
   const { snapshot: profileSnapshot } = useCirclePatientProfileSnapshot(db, patient.patientId);
+  const { overview, loading: overviewLoading } = useCircleApplicationOverview(db, patient.patientId);
   const treatmentPhase = profileSnapshot?.clinical?.treatmentPhase;
 
   const patch = (next: PatientRemoteSettingsDoc) => {
@@ -182,6 +186,52 @@ export function CircleRemoteSettingsScreen({
   const storedDashboardPreset =
     effectiveDashboardPreset === 'custom' ? null : effectiveDashboardPreset;
   const patientSetDashboardLayout = settings?.source === 'patient';
+
+  const handleCopyOverview = async () => {
+    const text = overview?.text ?? '';
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      window.alert(t('remoteSettings.applicationOverviewCopyFailed'));
+    }
+  };
+
+  const handleDownloadOverview = () => {
+    const text = overview?.text ?? '';
+    if (!text) return;
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `medxforce-application-overview-${patient.patientId.slice(0, 8)}.txt`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrintOverview = () => {
+    const text = overview?.text ?? '';
+    if (!text) return;
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute(
+      'style',
+      'position:fixed;width:0;height:0;border:0;visibility:hidden;pointer-events:none;',
+    );
+    document.body.appendChild(iframe);
+    const win = iframe.contentWindow;
+    if (!win) {
+      iframe.remove();
+      window.alert(t('remoteSettings.applicationOverviewPrintFailed'));
+      return;
+    }
+    const html = `<!doctype html><html><head><meta charset="utf-8" /><title>Application Overview</title><style>body{margin:0;padding:24px;font-family:ui-monospace,monospace}pre{white-space:pre-wrap}</style></head><body><pre>${text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</pre></body></html>`;
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
+    setTimeout(() => iframe.remove(), 800);
+  };
 
   if (loading || !settings) {
     return (
@@ -536,6 +586,50 @@ export function CircleRemoteSettingsScreen({
             </CircleCollapsibleSection>
           </div>
 
+          <section className="space-y-2">
+            <SectionLabel>{t('remoteSettings.applicationOverviewTitle')}</SectionLabel>
+            <div className="p-4 rounded-2xl border border-slate-100 bg-white space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <FileText size={18} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-normal text-slate-800">
+                    {t('remoteSettings.applicationOverviewDesc')}
+                  </p>
+                  <p className="text-xs text-slate-400 leading-snug mt-1">
+                    {t('remoteSettings.applicationOverviewHint')}
+                  </p>
+                  {overview?.updatedAt ? (
+                    <p className="text-[10px] text-slate-400 mt-2">
+                      {t('remoteSettings.applicationOverviewSyncedAt', {
+                        date: new Date(overview.updatedAt).toLocaleString(),
+                      })}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              {overviewLoading ? (
+                <p className="text-xs text-slate-400 flex items-center gap-2">
+                  <Loader2 size={14} className="animate-spin" />
+                  …
+                </p>
+              ) : overview?.text ? (
+                <button
+                  type="button"
+                  onClick={() => setOverviewOpen(true)}
+                  className="w-full py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-colors"
+                >
+                  {t('remoteSettings.applicationOverviewOpen')}
+                </button>
+              ) : (
+                <p className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2">
+                  {t('remoteSettings.applicationOverviewEmpty')}
+                </p>
+              )}
+            </div>
+          </section>
+
           <p className="text-[10px] text-slate-400 text-center leading-relaxed px-2 pb-2">
             {t('remoteSettings.footerHint')}
           </p>
@@ -570,6 +664,17 @@ export function CircleRemoteSettingsScreen({
           </div>
         </div>
       )}
+
+      <CircleApplicationOverviewModal
+        isOpen={overviewOpen}
+        overviewText={overview?.text ?? ''}
+        syncedAt={overview?.updatedAt}
+        t={t}
+        onClose={() => setOverviewOpen(false)}
+        onCopy={handleCopyOverview}
+        onDownload={handleDownloadOverview}
+        onPrint={handlePrintOverview}
+      />
     </div>
   );
 }
