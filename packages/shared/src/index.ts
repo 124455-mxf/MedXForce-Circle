@@ -42,6 +42,7 @@ export * from './circleMemberThreadReplies';
 export * from './analyticsSummaries';
 export * from './analyticsMetricDetail';
 export * from './remoteSettings';
+export * from './applicationOverview';
 export * from './visitCapture';
 export * from './visitCaptureAppointment';
 export * from './clinicalReferences';
