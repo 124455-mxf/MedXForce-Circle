@@ -826,7 +826,7 @@ export const appShellEnglish = {
       primaryDiagnosis: 'Primary diagnosis',
       dateOfOnset: 'Date of onset',
       occupation: 'Occupational profile',
-      treatmentPhase: 'Current treatment phase',
+      treatmentPhase: 'Where I am in recovery',
     },
     patientSection: {
       patientApp: 'Patient app',
@@ -860,11 +860,11 @@ export const appShellEnglish = {
     treatmentPhase: {
       icu: 'ICU',
       acute: 'Acute',
-      vitality: 'Vitality',
-      maintenance: 'Maintenance',
+      rehab: 'Active recovery',
+      maintenance: 'Daily life',
       palliative: 'Palliative',
-      'pre-op': 'Pre-op',
-      'post-op': 'Post-op',
+      preOp: 'Pre-op',
+      postOp: 'Post-op',
     },
   },
   profile: {
@@ -1784,7 +1784,7 @@ export const appShellGerman = {
       primaryDiagnosis: 'Hauptdiagnose',
       dateOfOnset: 'Beginn der Erkrankung',
       occupation: 'Berufsprofil',
-      treatmentPhase: 'Aktuelle Behandlungsphase',
+      treatmentPhase: 'Wo ich in der Genesung stehe',
     },
     patientSection: {
       patientApp: 'Patienten-App',
@@ -1818,11 +1818,11 @@ export const appShellGerman = {
     treatmentPhase: {
       icu: 'Intensivstation',
       acute: 'Akut',
-      vitality: 'Vitalität',
-      maintenance: 'Erhaltung',
+      rehab: 'Aktive Genesung',
+      maintenance: 'Alltag',
       palliative: 'Palliativ',
-      'pre-op': 'Präoperativ',
-      'post-op': 'Postoperativ',
+      preOp: 'Präoperativ',
+      postOp: 'Postoperativ',
     },
   },
   profileNotifications: {
@@ -2742,7 +2742,7 @@ export const appShellSpanish = {
       primaryDiagnosis: 'Diagnóstico principal',
       dateOfOnset: 'Fecha de inicio',
       occupation: 'Perfil ocupacional',
-      treatmentPhase: 'Fase de tratamiento actual',
+      treatmentPhase: 'Dónde estoy en mi recuperación',
     },
     patientSection: {
       patientApp: 'App del paciente',
@@ -2776,11 +2776,11 @@ export const appShellSpanish = {
     treatmentPhase: {
       icu: 'UCI',
       acute: 'Agudo',
-      vitality: 'Vitalidad',
-      maintenance: 'Mantenimiento',
+      rehab: 'Recuperación activa',
+      maintenance: 'Vida diaria',
       palliative: 'Paliativo',
-      'pre-op': 'Preoperatorio',
-      'post-op': 'Postoperatorio',
+      preOp: 'Preoperatorio',
+      postOp: 'Postoperatorio',
     },
   },
   profileNotifications: {
@@ -3700,7 +3700,7 @@ export const appShellPolish = {
       primaryDiagnosis: 'Główna diagnoza',
       dateOfOnset: 'Data początku',
       occupation: 'Profil zawodowy',
-      treatmentPhase: 'Aktualna faza leczenia',
+      treatmentPhase: 'Gdzie jestem w rekonwalescencji',
     },
     patientSection: {
       patientApp: 'Aplikacja pacjenta',
@@ -3734,11 +3734,11 @@ export const appShellPolish = {
     treatmentPhase: {
       icu: 'OIOM',
       acute: 'Ostry',
-      vitality: 'Witalność',
-      maintenance: 'Utrzymanie',
+      rehab: 'Aktywna rekonwalescencja',
+      maintenance: 'Codzienne życie',
       palliative: 'Paliatywna',
-      'pre-op': 'Przedoperacyjna',
-      'post-op': 'Pooperacyjna',
+      preOp: 'Przedoperacyjna',
+      postOp: 'Pooperacyjna',
     },
   },
   profileNotifications: {

@@ -1,5 +1,7 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 
+import { formatTreatmentPhaseLabelEn } from '@medxforce/shared';
+
 export type PatientAiSummarySourceKind =
   | 'profile'
   | 'document'
@@ -79,7 +81,7 @@ export function patientAiSummaryPlainText(summary: PatientAiSummary): string {
     lines.push(`DOB: ${summary.identity.dob}${age}`);
   }
   if (summary.identity.treatmentPhase) {
-    lines.push(`Treatment phase: ${summary.identity.treatmentPhase}`);
+    lines.push(`Recovery stage: ${formatTreatmentPhaseLabelEn(summary.identity.treatmentPhase)}`);
   }
   lines.push('');
   lines.push(summary.overview);
@@ -220,7 +222,9 @@ export function patientAiSummaryRichHtml(summary: PatientAiSummary): string {
   const dobAge = identity.dob
     ? `${identity.dob}${identity.ageYears != null ? ` · age ${identity.ageYears}` : ''}`
     : 'Not on profile';
-  const phase = identity.treatmentPhase || 'Not on profile';
+  const phase = identity.treatmentPhase
+    ? formatTreatmentPhaseLabelEn(identity.treatmentPhase)
+    : 'Not on profile';
   const trends = summary.trends ?? [];
   const sources = summary.sources ?? [];
   const warnings = summary.documentWarnings ?? [];
@@ -234,7 +238,7 @@ export function patientAiSummaryRichHtml(summary: PatientAiSummary): string {
 <span style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#7c3aed;">Patient</span><br>
 <b>Name:</b> ${escapeHtml(name)}<br>
 <b>DOB / age:</b> ${escapeHtml(dobAge)}<br>
-<b>Treatment phase:</b> ${escapeHtml(phase)}
+<b>Recovery stage:</b> ${escapeHtml(phase)}
 </p>`;
 
   const warningsHtml = warnings.length

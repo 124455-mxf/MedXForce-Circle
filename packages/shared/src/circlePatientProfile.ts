@@ -520,7 +520,7 @@ const FIELD_LABELS: Record<string, string> = {
   'extended.languagesSpoken': 'Languages spoken',
   'clinical.primaryDiagnosis': 'Primary diagnosis',
   'clinical.dateOfOnset': 'Date of onset',
-  'clinical.treatmentPhase': 'Treatment phase',
+  'clinical.treatmentPhase': 'Where I am in recovery',
   'clinical.allergies': 'Allergies',
   'clinical.surgicalHistory': 'Surgical history',
   'clinical.comorbidities': 'Comorbidities',

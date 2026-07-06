@@ -1,5 +1,10 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 
+import {
+  normalizeTreatmentPhaseForSchedule,
+  type TreatmentPhaseValue,
+} from './treatmentPhase';
+
 export type AssessmentHistoryKey =
   | 'pain'
   | 'impact'
@@ -208,8 +213,6 @@ export const TREATMENT_PHASES = [
   'rehab',
   'maintenance',
   'palliative',
-  'preOp',
-  'postOp',
 ] as const;
 
 export type TreatmentPhase = (typeof TREATMENT_PHASES)[number];
@@ -412,7 +415,7 @@ function defaultRecurrenceFor(
     'numbness',
     'temperature',
   ];
-  if (phase === 'icu' || phase === 'acute' || phase === 'postOp') {
+  if (phase === 'icu' || phase === 'acute') {
     if (dailyPhysical.includes(assessmentId)) return { kind: 'daily' };
     if (assessmentId === 'neurological' || assessmentId === 'psychological') return { kind: 'daily' };
     if (assessmentId === 'speech') return { kind: 'daily' };
@@ -431,7 +434,7 @@ function defaultRecurrenceFor(
     if (assessmentId === 'speech') return { kind: 'weekdays', daysOfWeek: [1, 4] };
     return { kind: 'weekly', dayOfWeek: 3 };
   }
-  if (phase === 'maintenance' || phase === 'palliative' || phase === 'preOp') {
+  if (phase === 'maintenance' || phase === 'palliative') {
     if (assessmentId === 'impact' || assessmentId === 'physical') {
       return { kind: 'weekdays', daysOfWeek: [1, 4] };
     }
@@ -452,9 +455,8 @@ function defaultRecurrenceFor(
 export function buildDefaultAssessmentScheduleRules(
   phase?: string | null,
 ): Record<AssessmentScheduleId, AssessmentScheduleRule> {
-  const normalizedPhase = TREATMENT_PHASES.includes(phase as TreatmentPhase)
-    ? (phase as TreatmentPhase)
-    : 'rehab';
+  const normalizedPhase: TreatmentPhaseValue =
+    normalizeTreatmentPhaseForSchedule(phase) ?? 'rehab';
   const rules = {} as Record<AssessmentScheduleId, AssessmentScheduleRule>;
   for (const meta of SCHEDULABLE_ASSESSMENTS) {
     rules[meta.id] = {

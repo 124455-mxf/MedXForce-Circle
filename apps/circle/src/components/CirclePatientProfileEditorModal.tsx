@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2, X } from 'lucide-react';
 import {
   REMOTE_PRIMARY_LANGUAGE_OPTIONS,
+  TREATMENT_PHASE_VALUES,
   type CirclePatientProfileSnapshot,
   type CircleProfileMedItem,
   type RemotePrimaryLanguage,
@@ -13,6 +14,7 @@ import {
 } from '../lib/circleLanguages';
 import { CirclePatientLanguageConfirmModal } from './CirclePatientLanguageConfirmModal';
 import { useCircleT } from '../lib/circleI18nContext';
+import { treatmentPhaseLabelT } from '../lib/dashboardI18n';
 import { profileEditorSectionTitleI18n } from '../lib/adminScreenI18n';
 
 type EditableSection =
@@ -768,9 +770,11 @@ export function CirclePatientProfileEditorModal({
                 />
               </label>
               <label className="block space-y-1">
-                <span className="text-xs font-bold text-slate-500 uppercase">Treatment phase</span>
-                <input
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200"
+                <span className="text-xs font-bold text-slate-500 uppercase">
+                  {t('admin.profile.fieldTreatmentPhase')}
+                </span>
+                <select
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
                   value={draft.clinical.treatmentPhase}
                   onChange={(e) =>
                     setDraft({
@@ -778,7 +782,14 @@ export function CirclePatientProfileEditorModal({
                       clinical: { ...draft.clinical, treatmentPhase: e.target.value },
                     })
                   }
-                />
+                >
+                  <option value="">{t('dashboard.notSet')}</option>
+                  {TREATMENT_PHASE_VALUES.map((phase) => (
+                    <option key={phase} value={phase}>
+                      {treatmentPhaseLabelT(t, phase)}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className="block space-y-1">
                 <span className="text-xs font-bold text-slate-500 uppercase">Surgical history</span>

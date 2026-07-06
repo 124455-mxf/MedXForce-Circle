@@ -1,16 +1,7 @@
 import type { CirclePatientProfileSnapshot } from '@medxforce/shared';
+import { formatTreatmentPhaseLabelEn } from '@medxforce/shared';
 
 import type { AlertAttentionRecencyUrgency } from './circleDashboardStats';
-
-const TREATMENT_PHASE_LABELS: Record<string, string> = {
-  icu: 'ICU',
-  acute: 'Acute',
-  vitality: 'Vitality',
-  maintenance: 'Maintenance',
-  palliative: 'Palliative',
-  'pre-op': 'Pre-op',
-  'post-op': 'Post-op',
-};
 
 function hasText(value: string | undefined | null): boolean {
   return !!value?.trim();
@@ -113,8 +104,7 @@ export function getCircleProfileCompletenessLabel(
 export function formatTreatmentPhaseLabel(phase: string | undefined | null): string {
   const raw = phase?.trim() ?? '';
   if (!raw) return 'Not set';
-  const key = raw.toLowerCase();
-  return TREATMENT_PHASE_LABELS[key] ?? raw;
+  return formatTreatmentPhaseLabelEn(raw) || raw;
 }
 
 export function formatAssistiveDeviceLabel(devices: string[] | undefined | null): string {

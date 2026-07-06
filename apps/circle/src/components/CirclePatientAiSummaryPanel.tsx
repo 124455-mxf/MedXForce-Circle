@@ -28,6 +28,7 @@ import {
 } from '../lib/patientAiSummary';
 import { generatePatientAiSummary } from '../services/clinicalReferenceUploadApi';
 import { useCircleT, type CircleTranslator } from '../lib/circleI18nContext';
+import { treatmentPhaseLabelT } from '../lib/dashboardI18n';
 
 function SummarySectionCard({
   icon: Icon,
@@ -295,7 +296,9 @@ function PatientAiSummaryBody({
               {t('clinicalReferences.patientSummary.fieldTreatmentPhase')}
             </p>
             <p className="text-sm font-bold text-slate-900 mt-0.5">
-              {identity.treatmentPhase || t('clinicalReferences.patientSummary.notOnProfile')}
+              {identity.treatmentPhase
+                ? treatmentPhaseLabelT(t, identity.treatmentPhase)
+                : t('clinicalReferences.patientSummary.notOnProfile')}
             </p>
           </div>
         </div>

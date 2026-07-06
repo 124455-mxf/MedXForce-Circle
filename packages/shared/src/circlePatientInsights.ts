@@ -1,4 +1,5 @@
 import type { CirclePatientProfileSnapshot } from './circlePatientProfile';
+import { formatTreatmentPhaseLabelEn } from './treatmentPhase';
 import { displayProfileName } from './circlePatientProfile';
 import { normalizeMemberRole } from './patientPermissions';
 
@@ -39,17 +40,7 @@ export const CIRCLE_PATIENT_INSIGHT_LABELS: Record<CirclePatientInsightKey, stri
   primaryDiagnosis: 'Primary diagnosis',
   dateOfOnset: 'Date of onset',
   occupation: 'Occupational profile',
-  treatmentPhase: 'Current treatment phase',
-};
-
-const TREATMENT_PHASE_LABELS: Record<string, string> = {
-  icu: 'ICU',
-  acute: 'Acute',
-  vitality: 'Vitality',
-  maintenance: 'Maintenance',
-  palliative: 'Palliative',
-  'pre-op': 'Pre-op',
-  'post-op': 'Post-op',
+  treatmentPhase: 'Where I am in recovery',
 };
 
 function hasText(value: string | undefined | null): boolean {
@@ -80,9 +71,7 @@ function daysBetween(from: Date, to: Date): number {
 }
 
 export function formatTreatmentPhaseForInsights(phase: string | undefined | null): string {
-  const raw = phase?.trim() ?? '';
-  if (!raw) return '';
-  return TREATMENT_PHASE_LABELS[raw.toLowerCase()] ?? raw;
+  return formatTreatmentPhaseLabelEn(phase);
 }
 
 export function formatInsightList(values: string[] | undefined | null): string {

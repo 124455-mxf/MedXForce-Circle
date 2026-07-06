@@ -140,10 +140,10 @@ export function profileCompletenessLabelT(
 export function treatmentPhaseLabelT(t: CircleTranslator, phase: string | undefined | null): string {
   const raw = phase?.trim() ?? '';
   if (!raw) return t('dashboard.notSet');
-  const key = raw.toLowerCase().replace(/\s+/g, '-');
-  const path = `dashboard.treatmentPhase.${key}`;
+  const path = `dashboard.treatmentPhase.${raw}`;
   const translated = t(path);
-  return translated === path ? raw : translated;
+  if (translated !== path) return translated;
+  return raw;
 }
 
 export function assistiveDevicesLabelT(

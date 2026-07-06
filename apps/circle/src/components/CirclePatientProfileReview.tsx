@@ -19,6 +19,7 @@ import {
   fitnessLevelLabelI18n,
   yesNoLabelI18n,
 } from '../lib/adminScreenI18n';
+import { treatmentPhaseLabelT } from '../lib/dashboardI18n';
 import {
   CirclePatientProfileSectionNav,
   type CirclePatientProfileNavSection,
@@ -289,7 +290,7 @@ function buildSections(
           ),
         },
         { label: t('admin.profile.fieldDateOfOnset'), value: textValue(snapshot.clinical.dateOfOnset, empty) },
-        { label: t('admin.profile.fieldTreatmentPhase'), value: textValue(snapshot.clinical.treatmentPhase, empty) },
+        { label: t('admin.profile.fieldTreatmentPhase'), value: snapshot.clinical.treatmentPhase ? treatmentPhaseLabelT(t, snapshot.clinical.treatmentPhase) : empty },
         {
           label: t('admin.profile.fieldSurgicalHistory'),
           value: textValue(snapshot.clinical.surgicalHistory, empty),

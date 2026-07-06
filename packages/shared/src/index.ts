@@ -31,6 +31,7 @@ export * from './circleInvitePreview';
 export * from './circlePatientProfile';
 export * from './circlePatientProfileService';
 export * from './circlePatientInsights';
+export * from './treatmentPhase';
 export * from './diaryEntries';
 export * from './circleMessageInboxHide';
 export * from './messageReplyVisibility';
