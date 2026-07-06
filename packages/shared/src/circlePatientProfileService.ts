@@ -26,14 +26,54 @@ import {
   parsePatientRemoteSettings,
   REMOTE_PRIMARY_LANGUAGE_OPTIONS,
   remoteSettingsDocRef,
+  setRemoteAppMode,
+  setRemoteDashboardPreset,
   writeRemoteSettings,
   type RemotePrimaryLanguage,
 } from './remoteSettings';
+import { recommendRemoteSettingsForTreatmentPhase } from './treatmentPhase';
 
 function primaryLanguageFromProfileLanguage(raw: string): RemotePrimaryLanguage {
   const short = String(raw || '').split(' ')[0];
   if (short === 'German' || short === 'Spanish' || short === 'Polish') return short;
   return 'English';
+}
+
+async function syncRemoteSettingsForTreatmentPhase(
+  db: Firestore,
+  patientId: string,
+  treatmentPhase: string,
+  actorUid: string,
+  actorDisplayName: string,
+  updatedAt: number,
+): Promise<void> {
+  const recommendation = recommendRemoteSettingsForTreatmentPhase(treatmentPhase);
+  if (!recommendation) return;
+
+  const rsSnap = await getDoc(remoteSettingsDocRef(db, patientId));
+  const base = rsSnap.exists()
+    ? parsePatientRemoteSettings(patientId, rsSnap.data() as Record<string, unknown>)
+    : createDefaultRemoteSettings(patientId);
+  if (!base) return;
+
+  const next = setRemoteDashboardPreset(
+    setRemoteAppMode(base, recommendation.appMode),
+    recommendation.dashboardPreset,
+  );
+
+  const currentMode = base.appMode ?? 'hospital';
+  const currentPreset = base.dashboardLayout?.preset ?? 'balanced';
+  const nextPreset = next.dashboardLayout?.preset ?? 'balanced';
+  if (currentMode === next.appMode && currentPreset === nextPreset) return;
+
+  await writeRemoteSettings(db, {
+    ...next,
+    patientId,
+    updatedAt,
+    updatedByUid: actorUid,
+    updatedByName: actorDisplayName.trim() || 'Circle proxy',
+    source: 'circle',
+  });
 }
 
 async function syncRemoteSettingsPrimaryLanguage(
@@ -182,6 +222,34 @@ export async function updateCirclePatientProfileFromProxy(
       return;
     }
 
+    const treatmentPhaseChanged =
+      String(previousSnapshot?.clinical.treatmentPhase ?? '').trim() !==
+      String(snapshot.clinical.treatmentPhase ?? '').trim();
+    if (treatmentPhaseChanged && snapshot.clinical.treatmentPhase.trim()) {
+      const updatedAt = Date.now();
+      await setDoc(
+        patientRef,
+        {
+          profileSnapshot: firestoreSnapshot,
+          updatedAt,
+        },
+        { merge: true },
+      );
+      try {
+        await syncRemoteSettingsForTreatmentPhase(
+          db,
+          patientId,
+          snapshot.clinical.treatmentPhase,
+          actorUid,
+          actorDisplayName || patientDisplayName,
+          updatedAt,
+        );
+      } catch (err) {
+        console.warn('[updateCirclePatientProfileFromProxy] remote settings treatment phase', err);
+      }
+      return;
+    }
+
     await setDoc(
       patientRef,
       {
@@ -225,6 +293,21 @@ export async function updateCirclePatientProfileFromProxy(
       );
     } catch (err) {
       console.warn('[updateCirclePatientProfileFromProxy] remote settings language', err);
+    }
+  }
+
+  if (changedLabels.includes('Where I am in recovery')) {
+    try {
+      await syncRemoteSettingsForTreatmentPhase(
+        db,
+        patientId,
+        snapshot.clinical.treatmentPhase,
+        actorUid,
+        actorDisplayName || patientDisplayName,
+        meta.updatedAt,
+      );
+    } catch (err) {
+      console.warn('[updateCirclePatientProfileFromProxy] remote settings treatment phase', err);
     }
   }
 

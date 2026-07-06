@@ -54,3 +54,30 @@ export function formatTreatmentPhaseLabelEn(phase: string | undefined | null): s
   if (!raw) return '';
   return TREATMENT_PHASE_LABELS_EN[raw] ?? TREATMENT_PHASE_LABELS_EN[raw.toLowerCase()] ?? raw;
 }
+
+export type TreatmentPhaseRemoteRecommendation = {
+  appMode: 'intensive_care' | 'hospital' | 'user';
+  dashboardPreset: 'minimal' | 'balanced' | 'insights' | 'spark';
+};
+
+/** Suggested application mode + dashboard preset when a proxy updates recovery phase from Circle. */
+export function recommendRemoteSettingsForTreatmentPhase(
+  phase?: string | null,
+): TreatmentPhaseRemoteRecommendation | null {
+  const normalized = normalizeTreatmentPhaseForSchedule(phase);
+  if (!normalized) return null;
+  switch (normalized) {
+    case 'icu':
+      return { appMode: 'intensive_care', dashboardPreset: 'minimal' };
+    case 'acute':
+      return { appMode: 'hospital', dashboardPreset: 'minimal' };
+    case 'rehab':
+      return { appMode: 'user', dashboardPreset: 'spark' };
+    case 'maintenance':
+      return { appMode: 'user', dashboardPreset: 'balanced' };
+    case 'palliative':
+      return { appMode: 'user', dashboardPreset: 'minimal' };
+    default:
+      return null;
+  }
+}
