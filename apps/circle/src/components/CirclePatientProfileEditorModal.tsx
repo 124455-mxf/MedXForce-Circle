@@ -3,6 +3,7 @@ import { Loader2, Plus, Trash2, X } from 'lucide-react';
 import {
   REMOTE_PRIMARY_LANGUAGE_OPTIONS,
   TREATMENT_PHASE_VALUES,
+  recommendRemoteSettingsForTreatmentPhase,
   type CirclePatientProfileSnapshot,
   type CircleProfileMedItem,
   type RemotePrimaryLanguage,
@@ -13,9 +14,14 @@ import {
   resolveIdentityPrimaryLanguage,
 } from '../lib/circleLanguages';
 import { CirclePatientLanguageConfirmModal } from './CirclePatientLanguageConfirmModal';
+import { CirclePatientRecoveryPhaseConfirmModal } from './CirclePatientRecoveryPhaseConfirmModal';
 import { useCircleT } from '../lib/circleI18nContext';
 import { treatmentPhaseLabelT } from '../lib/dashboardI18n';
 import { profileEditorSectionTitleI18n } from '../lib/adminScreenI18n';
+import {
+  remoteSettingsAppModeLabel,
+  remoteSettingsDashboardPresetLabel,
+} from '../lib/remoteSettingsScreenI18n';
 
 type EditableSection =
   | 'identity'
@@ -216,17 +222,60 @@ export function CirclePatientProfileEditorModal({
   const t = useCircleT();
   const [draft, setDraft] = useState(snapshot);
   const [pendingLanguage, setPendingLanguage] = useState<RemotePrimaryLanguage | null>(null);
+  const [pendingRecoveryPhase, setPendingRecoveryPhase] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setDraft(snapshot);
     setPendingLanguage(null);
+    setPendingRecoveryPhase(null);
     // Only seed draft when the modal opens — not on every Firestore snapshot echo.
   }, [open]);
 
   if (!open) return null;
 
   const title = profileEditorSectionTitleI18n(t, section);
+  const patientName =
+    patientDisplayName?.trim() ||
+    `${draft.identity.firstName || ''} ${draft.identity.lastName || ''}`.trim() ||
+    'the patient';
+
+  const buildDraftToSave = (): CirclePatientProfileSnapshot => {
+    if (!pendingLanguage) return draft;
+    return {
+      ...draft,
+      identity: {
+        ...draft.identity,
+        language: identityLanguageLabel(pendingLanguage),
+      },
+    };
+  };
+
+  const shouldConfirmRecoveryPhase = (draftToSave: CirclePatientProfileSnapshot): boolean => {
+    const newPhase = draftToSave.clinical.treatmentPhase.trim();
+    if (!newPhase) return false;
+    if (String(snapshot.clinical.treatmentPhase ?? '').trim() === newPhase) return false;
+    return !!recommendRemoteSettingsForTreatmentPhase(newPhase);
+  };
+
+  const commitSave = (draftToSave: CirclePatientProfileSnapshot) => {
+    setPendingLanguage(null);
+    setPendingRecoveryPhase(null);
+    onSave(draftToSave);
+  };
+
+  const attemptSave = () => {
+    const draftToSave = buildDraftToSave();
+    if (shouldConfirmRecoveryPhase(draftToSave)) {
+      setPendingRecoveryPhase(draftToSave.clinical.treatmentPhase.trim());
+      return;
+    }
+    commitSave(draftToSave);
+  };
+
+  const recoveryRecommendation = pendingRecoveryPhase
+    ? recommendRemoteSettingsForTreatmentPhase(pendingRecoveryPhase)
+    : null;
 
   return (
     <div className="fixed inset-0 z-[140] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm">
@@ -947,20 +996,7 @@ export function CirclePatientProfileEditorModal({
           </button>
           <button
             type="button"
-            onClick={() => {
-              let draftToSave = draft;
-              if (pendingLanguage) {
-                draftToSave = {
-                  ...draft,
-                  identity: {
-                    ...draft.identity,
-                    language: identityLanguageLabel(pendingLanguage),
-                  },
-                };
-                setPendingLanguage(null);
-              }
-              onSave(draftToSave);
-            }}
+            onClick={attemptSave}
             disabled={saving}
             className="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
           >
@@ -973,11 +1009,7 @@ export function CirclePatientProfileEditorModal({
       <CirclePatientLanguageConfirmModal
         open={pendingLanguage !== null}
         saving={saving}
-        patientName={
-          patientDisplayName?.trim() ||
-          `${draft.identity.firstName || ''} ${draft.identity.lastName || ''}`.trim() ||
-          'the patient'
-        }
+        patientName={patientName}
         languageLabel={pendingLanguage ? identityLanguageLabel(pendingLanguage) : ''}
         onCancel={() => setPendingLanguage(null)}
         onConfirm={() => {
@@ -991,8 +1023,36 @@ export function CirclePatientProfileEditorModal({
           };
           setPendingLanguage(null);
           setDraft(next);
+          if (shouldConfirmRecoveryPhase(next)) {
+            setPendingRecoveryPhase(next.clinical.treatmentPhase.trim());
+            return;
+          }
           onSave(next);
         }}
+      />
+
+      <CirclePatientRecoveryPhaseConfirmModal
+        open={pendingRecoveryPhase !== null && !!recoveryRecommendation}
+        saving={saving}
+        patientName={patientName}
+        phaseLabel={
+          pendingRecoveryPhase ? treatmentPhaseLabelT(t, pendingRecoveryPhase) : ''
+        }
+        appModeLabel={
+          recoveryRecommendation
+            ? remoteSettingsAppModeLabel(t, recoveryRecommendation.appMode)
+            : ''
+        }
+        dashboardLabel={
+          recoveryRecommendation
+            ? remoteSettingsDashboardPresetLabel(t, recoveryRecommendation.dashboardPreset)
+            : ''
+        }
+        onConfirm={() => {
+          if (!pendingRecoveryPhase || saving) return;
+          commitSave(buildDraftToSave());
+        }}
+        onCancel={() => setPendingRecoveryPhase(null)}
       />
     </div>
   );

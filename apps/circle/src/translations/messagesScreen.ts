@@ -6,7 +6,7 @@ export const messagesScreenEnglish = {
   emptyLoadError: 'We could not load messages. Try refreshing the page.',
   emptyHint: 'When your loved one sends you something in MedXForce, it will appear here.',
   subtitleCommunicationLog:
-    'Daily spoken and saved notes from Intensive Care mode — read only.',
+    'Daily spoken and saved notes from ICU mode — read only.',
   subtitleArchived: 'Archived on the patient tablet — you can still reply.',
   subtitleDeleted: 'Deleted on the patient tablet — read only, no replies.',
   subtitleAlert: 'Unread alerts also appear in In/Out until you acknowledge them.',
@@ -25,7 +25,7 @@ export const messagesScreenEnglish = {
   sectionAttention: 'Attention',
   sectionDirectMessages: 'Direct messages',
   emptyCommunicationLog:
-    'No communication summaries yet. These appear when your loved one uses Intensive Care mode with auto-send enabled and speaks or saves notes during the day.',
+    'No communication summaries yet. These appear when your loved one uses ICU mode with auto-send enabled and speaks or saves notes during the day.',
   emptyArchived: 'No archived conversations.',
   emptyDeleted: 'No deleted conversations.',
   emptyAlert: 'No alerts yet. New alerts appear in In/Out until you acknowledge them.',
@@ -103,7 +103,7 @@ export const messagesScreenGerman = {
   emptyHint:
     'Wenn Ihr Angehöriger Ihnen etwas in MedXForce sendet, erscheint es hier.',
   subtitleCommunicationLog:
-    'Tägliche gesprochene und gespeicherte Notizen aus dem Intensivmodus — nur lesen.',
+    'Tägliche gesprochene und gespeicherte Notizen aus dem ICU-Modus — nur lesen.',
   subtitleArchived:
     'Auf dem Patienten-Tablet archiviert — Sie können weiter antworten.',
   subtitleDeleted:
@@ -127,7 +127,7 @@ export const messagesScreenGerman = {
   sectionAttention: 'Aufmerksamkeit',
   sectionDirectMessages: 'Direktnachrichten',
   emptyCommunicationLog:
-    'Noch keine Kommunikationszusammenfassungen. Diese erscheinen, wenn Ihr Angehöriger den Intensivmodus mit Auto-Senden nutzt und tagsüber spricht oder Notizen speichert.',
+    'Noch keine Kommunikationszusammenfassungen. Diese erscheinen, wenn Ihr Angehöriger den ICU-Modus mit Auto-Senden nutzt und tagsüber spricht oder Notizen speichert.',
   emptyArchived: 'Keine archivierten Unterhaltungen.',
   emptyDeleted: 'Keine gelöschten Unterhaltungen.',
   emptyAlert:
@@ -209,7 +209,7 @@ export const messagesScreenSpanish = {
   emptyLoadError: 'No se pudieron cargar los mensajes. Intente actualizar la página.',
   emptyHint: 'Cuando su ser querido le envíe algo en MedXForce, aparecerá aquí.',
   subtitleCommunicationLog:
-    'Notas diarias habladas y guardadas del modo de cuidados intensivos — solo lectura.',
+    'Notas diarias habladas y guardadas del modo UCI — solo lectura.',
   subtitleArchived:
     'Archivado en la tableta del paciente — aún puede responder.',
   subtitleDeleted:
@@ -233,7 +233,7 @@ export const messagesScreenSpanish = {
   sectionAttention: 'Atención',
   sectionDirectMessages: 'Mensajes directos',
   emptyCommunicationLog:
-    'Aún no hay resúmenes de comunicación. Aparecen cuando su ser querido usa el modo de cuidados intensivos con envío automático y habla o guarda notas durante el día.',
+    'Aún no hay resúmenes de comunicación. Aparecen cuando su ser querido usa el modo UCI con envío automático y habla o guarda notas durante el día.',
   emptyArchived: 'No hay conversaciones archivadas.',
   emptyDeleted: 'No hay conversaciones eliminadas.',
   emptyAlert:
@@ -315,7 +315,7 @@ export const messagesScreenPolish = {
   emptyLoadError: 'Nie udało się załadować wiadomości. Odśwież stronę.',
   emptyHint: 'Gdy bliska osoba wyśle Ci coś w MedXForce, pojawi się to tutaj.',
   subtitleCommunicationLog:
-    'Codzienne notatki mówione i zapisane z trybu intensywnej opieki — tylko do odczytu.',
+    'Codzienne notatki mówione i zapisane z trybu OIOM — tylko do odczytu.',
   subtitleArchived:
     'Zarchiwizowane na tablecie pacjenta — nadal możesz odpowiadać.',
   subtitleDeleted:
@@ -339,7 +339,7 @@ export const messagesScreenPolish = {
   sectionAttention: 'Uwaga',
   sectionDirectMessages: 'Wiadomości bezpośrednie',
   emptyCommunicationLog:
-    'Brak podsumowań komunikacji. Pojawiają się, gdy bliska osoba używa trybu intensywnej opieki z auto-wysyłką i mówi lub zapisuje notatki w ciągu dnia.',
+    'Brak podsumowań komunikacji. Pojawiają się, gdy bliska osoba używa trybu OIOM z auto-wysyłką i mówi lub zapisuje notatki w ciągu dnia.',
   emptyArchived: 'Brak zarchiwizowanych rozmów.',
   emptyDeleted: 'Brak usuniętych rozmów.',
   emptyAlert:

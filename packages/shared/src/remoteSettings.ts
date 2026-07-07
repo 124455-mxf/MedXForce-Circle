@@ -165,18 +165,18 @@ export type RemoteFeatureToggleDef = {
 export const REMOTE_APP_MODES: { key: RemoteAppMode; label: string; description: string }[] = [
   {
     key: 'intensive_care',
-    label: 'Intensive Care',
-    description: 'Critical care layout with specialized monitoring and alerts.',
+    label: 'ICU',
+    description: 'Critical care — communication-first, minimal distractions, caregiver-controlled.',
   },
   {
     key: 'hospital',
     label: 'Hospital',
-    description: 'Acute care and assisted living environments.',
+    description: 'Acute care and active recovery — structured support in hospital or rehab.',
   },
   {
     key: 'user',
-    label: 'Individual',
-    description: 'Home use and independent living.',
+    label: 'Daily Life',
+    description: 'Home and everyday life — full features with sensible safety defaults.',
   },
 ];
 

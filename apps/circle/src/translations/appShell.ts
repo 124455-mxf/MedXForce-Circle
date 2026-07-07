@@ -722,9 +722,9 @@ export const appShellEnglish = {
     dashboardViewCustom: 'View: custom (device)',
     dashboardViewPreset: 'View: {{label}}',
     appModes: {
-      intensive_care: 'Intensive Care',
+      intensive_care: 'ICU',
       hospital: 'Hospital',
-      user: 'Individual',
+      user: 'Daily Life',
       custom: 'Custom',
     },
     daysSinceOnset: {
@@ -871,6 +871,12 @@ export const appShellEnglish = {
     patientLanguageConfirmTitle: 'Change patient app language?',
     patientLanguageConfirmDesc:
       "This will change {{name}}'s MedXForce patient app language to {{language}}. Menus and content in the patient app will switch to that language.",
+    recoveryPhaseConfirmTitle: 'Update patient tablet layout?',
+    recoveryPhaseConfirmDesc:
+      "Changing {{name}}'s recovery stage to {{phase}} will update their patient tablet application mode and dashboard layout.",
+    recoveryPhaseConfirmAppMode: 'Application mode',
+    recoveryPhaseConfirmDashboard: 'Dashboard layout',
+    recoveryPhaseConfirmSave: 'Save & update tablet',
   },
   profileNotifications: {
     titlePatientApp: 'Patient app',
@@ -1680,9 +1686,9 @@ export const appShellGerman = {
     dashboardViewCustom: 'Ansicht: individuell (Gerät)',
     dashboardViewPreset: 'Ansicht: {{label}}',
     appModes: {
-      intensive_care: 'Intensivpflege',
+      intensive_care: 'Intensivstation (ICU)',
       hospital: 'Krankenhaus',
-      user: 'Einzelperson',
+      user: 'Alltag',
       custom: 'Individuell',
     },
     daysSinceOnset: {
@@ -1917,6 +1923,12 @@ export const appShellGerman = {
     patientLanguageConfirmTitle: 'Patienten-App-Sprache ändern?',
     patientLanguageConfirmDesc:
       'Die MedXForce-Patienten-App-Sprache von {{name}} wird auf {{language}} geändert. Menüs und Inhalte in der Patienten-App erscheinen in dieser Sprache.',
+    recoveryPhaseConfirmTitle: 'Tablet-Layout des Patienten aktualisieren?',
+    recoveryPhaseConfirmDesc:
+      'Wenn der Genesungsstand von {{name}} auf {{phase}} geändert wird, werden Anwendungsmodus und Dashboard-Layout auf dem Patienten-Tablet angepasst.',
+    recoveryPhaseConfirmAppMode: 'Anwendungsmodus',
+    recoveryPhaseConfirmDashboard: 'Dashboard-Layout',
+    recoveryPhaseConfirmSave: 'Speichern & Tablet aktualisieren',
   },
 };
 
@@ -2638,9 +2650,9 @@ export const appShellSpanish = {
     dashboardViewCustom: 'Vista: personalizada (dispositivo)',
     dashboardViewPreset: 'Vista: {{label}}',
     appModes: {
-      intensive_care: 'Cuidados intensivos',
+      intensive_care: 'UCI',
       hospital: 'Hospital',
-      user: 'Individual',
+      user: 'Vida diaria',
       custom: 'Personalizado',
     },
     daysSinceOnset: {
@@ -2875,6 +2887,12 @@ export const appShellSpanish = {
     patientLanguageConfirmTitle: '¿Cambiar idioma de la app del paciente?',
     patientLanguageConfirmDesc:
       'Esto cambiará el idioma de la app MedXForce del paciente {{name}} a {{language}}. Los menús y el contenido de la app del paciente usarán ese idioma.',
+    recoveryPhaseConfirmTitle: '¿Actualizar el diseño de la tablet del paciente?',
+    recoveryPhaseConfirmDesc:
+      'Cambiar la etapa de recuperación de {{name}} a {{phase}} actualizará el modo de aplicación y el diseño del panel en la tablet del paciente.',
+    recoveryPhaseConfirmAppMode: 'Modo de aplicación',
+    recoveryPhaseConfirmDashboard: 'Diseño del panel',
+    recoveryPhaseConfirmSave: 'Guardar y actualizar tablet',
   },
 };
 
@@ -3596,9 +3614,9 @@ export const appShellPolish = {
     dashboardViewCustom: 'Widok: własny (urządzenie)',
     dashboardViewPreset: 'Widok: {{label}}',
     appModes: {
-      intensive_care: 'Intensywna opieka',
+      intensive_care: 'OIOM',
       hospital: 'Szpital',
-      user: 'Indywidualny',
+      user: 'Codzienne życie',
       custom: 'Niestandardowy',
     },
     daysSinceOnset: {
@@ -3833,5 +3851,11 @@ export const appShellPolish = {
     patientLanguageConfirmTitle: 'Zmienić język aplikacji pacjenta?',
     patientLanguageConfirmDesc:
       'To zmieni język aplikacji MedXForce pacjenta {{name}} na {{language}}. Menu i treści w aplikacji pacjenta będą w tym języku.',
+    recoveryPhaseConfirmTitle: 'Zaktualizować układ tabletu pacjenta?',
+    recoveryPhaseConfirmDesc:
+      'Zmiana etapu rekonwalescencji {{name}} na {{phase}} zaktualizuje tryb aplikacji i układ panelu na tablecie pacjenta.',
+    recoveryPhaseConfirmAppMode: 'Tryb aplikacji',
+    recoveryPhaseConfirmDashboard: 'Układ panelu',
+    recoveryPhaseConfirmSave: 'Zapisz i zaktualizuj tablet',
   },
 };

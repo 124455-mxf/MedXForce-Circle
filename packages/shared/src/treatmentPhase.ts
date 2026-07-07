@@ -72,7 +72,7 @@ export function recommendRemoteSettingsForTreatmentPhase(
     case 'acute':
       return { appMode: 'hospital', dashboardPreset: 'minimal' };
     case 'rehab':
-      return { appMode: 'user', dashboardPreset: 'spark' };
+      return { appMode: 'hospital', dashboardPreset: 'spark' };
     case 'maintenance':
       return { appMode: 'user', dashboardPreset: 'balanced' };
     case 'palliative':
