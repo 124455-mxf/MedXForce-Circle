@@ -4,7 +4,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import type { FirebaseStorage } from 'firebase/storage';
-import { Camera, ClipboardList, Loader2, UserRound } from 'lucide-react';
+import { Camera, ChevronDown, ClipboardList, Loader2, UserRound } from 'lucide-react';
 import {
   displayProfileName,
   EMPTY_CIRCLE_PROFILE_SNAPSHOT,
@@ -24,6 +24,45 @@ import { CircleProfilePhotoCropModal } from './CircleProfilePhotoCropModal';
 import { dataUrlToBlob } from '../lib/imageCrop';
 import { isFirestoreQuotaError, pauseFirestoreBackgroundWrites } from '../lib/firestoreQuota';
 import { useCircleT } from '../lib/circleI18nContext';
+import { cn } from '../lib/utils';
+
+function accountInfoCollapsedStorageKey(patientId: string): string {
+  return `circle:patientAccountCollapsed:${patientId}`;
+}
+
+function readAccountInfoCollapsed(patientId: string): boolean {
+  try {
+    return localStorage.getItem(accountInfoCollapsedStorageKey(patientId)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function AccountInfoField({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 space-y-1">
+      <span className="block text-slate-500 text-[10px] font-bold uppercase tracking-wide leading-snug">
+        {label}
+      </span>
+      <span
+        className={cn(
+          'block break-all leading-snug',
+          mono ? 'font-mono text-xs text-slate-800' : 'text-sm font-semibold text-slate-900',
+        )}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
 
 type EditableSection =
   | 'identity'
@@ -83,6 +122,9 @@ export function CirclePatientProfilePanel({
   const [error, setError] = useState<string | null>(null);
   const [editSection, setEditSection] = useState<EditableSection | null>(null);
   const [fileToCrop, setFileToCrop] = useState<File | null>(null);
+  const [accountCollapsed, setAccountCollapsed] = useState(() =>
+    readAccountInfoCollapsed(patient.patientId),
+  );
 
   const canEdit = !!patient.capabilities.remoteSettings;
   const showClinical = !!patient.capabilities.viewClinicalData;
@@ -277,51 +319,69 @@ export function CirclePatientProfilePanel({
 
       {!patient.isPendingProvision && (
         <div className="space-y-2">
-          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5">
-            {t('admin.profile.accountTitle')}
-          </h4>
-          <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-3 space-y-2">
-            <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 flex justify-between gap-3">
-              <span className="text-slate-500 shrink-0 text-xs font-bold uppercase tracking-wide">
-                {t('admin.profile.accountLoginEmail')}
-              </span>
-              <span className="font-semibold text-slate-900 text-right break-all">
-                {accountInfo?.claimedLoginEmail || t('admin.profile.emptyValue')}
-              </span>
+          <button
+            type="button"
+            onClick={() => {
+              setAccountCollapsed((collapsed) => {
+                const next = !collapsed;
+                try {
+                  localStorage.setItem(accountInfoCollapsedStorageKey(patient.patientId), next ? '1' : '0');
+                } catch {
+                  /* ignore */
+                }
+                return next;
+              });
+            }}
+            className="w-full flex items-center justify-between gap-2 px-0.5 text-left"
+            aria-expanded={!accountCollapsed}
+            aria-label={
+              accountCollapsed
+                ? t('admin.profile.accountShowAria')
+                : t('admin.profile.accountHideAria')
+            }
+          >
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              {t('admin.profile.accountTitle')}
+            </h4>
+            <ChevronDown
+              size={16}
+              className={cn(
+                'shrink-0 text-slate-400 transition-transform',
+                accountCollapsed && '-rotate-90',
+              )}
+              aria-hidden
+            />
+          </button>
+          {!accountCollapsed ? (
+            <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-3 space-y-2">
+              <AccountInfoField
+                label={t('admin.profile.accountLoginEmail')}
+                value={accountInfo?.claimedLoginEmail || t('admin.profile.emptyValue')}
+              />
+              <AccountInfoField
+                label={t('admin.profile.accountUid')}
+                value={patient.patientId}
+                mono
+              />
+              {accountInfo?.claimedAt ? (
+                <AccountInfoField
+                  label={t('admin.profile.accountClaimedAt')}
+                  value={formatClaimedAt(accountInfo.claimedAt) || t('admin.profile.emptyValue')}
+                />
+              ) : null}
+              {accountInfo?.createdByProvisionId ? (
+                <AccountInfoField
+                  label={t('admin.profile.accountProvisionId')}
+                  value={accountInfo.createdByProvisionId}
+                  mono
+                />
+              ) : accountInfo?.provisioningPath === 'proxy_led' ? (
+                <p className="text-xs text-slate-500 leading-relaxed px-1 pt-1">
+                  {t('admin.profile.accountSelfSetup')}
+                </p>
+              ) : null}
             </div>
-            <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 flex justify-between gap-3">
-              <span className="text-slate-500 shrink-0 text-xs font-bold uppercase tracking-wide">
-                {t('admin.profile.accountUid')}
-              </span>
-              <span className="font-mono text-xs text-slate-800 text-right break-all">
-                {patient.patientId}
-              </span>
-            </div>
-            {accountInfo?.claimedAt ? (
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 flex justify-between gap-3">
-                <span className="text-slate-500 shrink-0 text-xs font-bold uppercase tracking-wide">
-                  {t('admin.profile.accountClaimedAt')}
-                </span>
-                <span className="font-medium text-slate-800 text-right">
-                  {formatClaimedAt(accountInfo.claimedAt)}
-                </span>
-              </div>
-            ) : null}
-            {accountInfo?.createdByProvisionId ? (
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 flex justify-between gap-3">
-                <span className="text-slate-500 shrink-0 text-xs font-bold uppercase tracking-wide">
-                  {t('admin.profile.accountProvisionId')}
-                </span>
-                <span className="font-mono text-xs text-slate-800 text-right break-all">
-                  {accountInfo.createdByProvisionId}
-                </span>
-              </div>
-            ) : accountInfo?.provisioningPath === 'proxy_led' ? (
-              <p className="text-xs text-slate-500 leading-relaxed px-1 pt-1">
-                {t('admin.profile.accountSelfSetup')}
-              </p>
-            ) : null}
-          </div>
+          ) : null}
         </div>
       )}
 
@@ -390,9 +450,11 @@ export function CirclePatientProfilePanel({
               <p className="text-lg font-bold text-slate-800">
                 {displayProfileName(workingSnapshot, patient.displayName)}
               </p>
-              {workingSnapshot.identity.email && (
-                <p className="text-sm text-slate-500 truncate">{workingSnapshot.identity.email}</p>
-              )}
+              {workingSnapshot.identity.email &&
+              workingSnapshot.identity.email.trim().toLowerCase() !==
+                (accountInfo?.claimedLoginEmail?.trim().toLowerCase() ?? '') ? (
+                <p className="text-sm text-slate-500 break-all">{workingSnapshot.identity.email}</p>
+              ) : null}
               {metaSummary && <p className="text-xs text-slate-500">{metaSummary}</p>}
             </div>
           </div>
