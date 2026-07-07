@@ -287,6 +287,77 @@ export function countOpenPreTasksForMemberInHorizon(
   return count;
 }
 
+function countPatientAppointmentOccurrencesInRange(
+  entries: CareCalendarEntry[],
+  options: {
+    minDateKey: string;
+    maxDateKey: string;
+    skipPastOnMinDate?: boolean;
+    now?: Date;
+  },
+): number {
+  const now = options.now ?? new Date();
+  const rangeStart = parseCareCalendarDateKey(options.minDateKey);
+  const rangeEnd = parseCareCalendarDateKey(options.maxDateKey);
+  let count = 0;
+
+  for (const entry of entries) {
+    if (entry.cancelledAt) continue;
+    const dateKeys = expandCareEntryDateKeys(entry, rangeStart, rangeEnd);
+    for (const dateKey of dateKeys) {
+      if (dateKey < options.minDateKey || dateKey > options.maxDateKey) continue;
+      if (
+        options.skipPastOnMinDate &&
+        dateKey === options.minDateKey &&
+        isCareCalendarAppointmentPast(
+          dateKey,
+          entry.startTimeMinutes,
+          entry.endTimeMinutes,
+          now,
+        )
+      ) {
+        continue;
+      }
+      count += 1;
+    }
+  }
+
+  return count;
+}
+
+/** Patient appointments still on today's schedule (not yet ended). */
+export function countPatientAppointmentsRemainingToday(
+  entries: CareCalendarEntry[],
+  now = new Date(),
+): number {
+  const todayKey = careCalendarDateKey(now);
+  return countPatientAppointmentOccurrencesInRange(entries, {
+    minDateKey: todayKey,
+    maxDateKey: todayKey,
+    skipPastOnMinDate: true,
+    now,
+  });
+}
+
+/** Patient appointments on future days within the next N days (excludes today). */
+export function countPatientAppointmentsUpcomingWithinDays(
+  entries: CareCalendarEntry[],
+  windowDays = SCHEDULE_PREP_TASK_HORIZON_DAYS,
+  now = new Date(),
+): number {
+  if (windowDays <= 0) return 0;
+  const todayKey = careCalendarDateKey(now);
+  const tomorrow = parseCareCalendarDateKey(todayKey);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const end = new Date(tomorrow);
+  end.setDate(end.getDate() + windowDays - 1);
+  return countPatientAppointmentOccurrencesInRange(entries, {
+    minDateKey: careCalendarDateKey(tomorrow),
+    maxDateKey: careCalendarDateKey(end),
+    now,
+  });
+}
+
 export function countScheduleTabBadge(
   entries: CareCalendarEntry[],
   options: {

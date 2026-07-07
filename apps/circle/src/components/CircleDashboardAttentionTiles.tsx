@@ -19,6 +19,10 @@ import {
 } from '../lib/circleDashboardStats';
 import { cn } from '../lib/utils';
 import { formatCircleBadgeCount } from './CircleCountBadge';
+import {
+  CircleDashboardScheduleNudgeTiles,
+} from './CircleDashboardScheduleNudgeTiles';
+import type { CircleScheduleNudgeCounts } from '../lib/circleDashboardScheduleNudges';
 
 export type CircleInboxFolder = 'discussion' | 'announcements' | 'drop_ins' | 'visit_captures';
 
@@ -113,6 +117,9 @@ export function CircleDashboardAttentionTiles({
   onOpenCircleFolder,
   onOpenCheckIns,
   onOpenRichMediaReactions,
+  scheduleNudgeCounts,
+  scheduleAssessmentsEnabled = true,
+  onOpenSchedule,
 }: {
   memberRole: string;
   messageUnreadCount: number;
@@ -136,6 +143,9 @@ export function CircleDashboardAttentionTiles({
   onOpenCircleFolder?: (thread: CircleMemberThreadKind, folder: CircleInboxFolder) => void;
   onOpenCheckIns?: () => void;
   onOpenRichMediaReactions?: () => void;
+  scheduleNudgeCounts?: CircleScheduleNudgeCounts | null;
+  scheduleAssessmentsEnabled?: boolean;
+  onOpenSchedule?: () => void;
 }) {
   const t = useCircleT();
   const canSeeDropIns = canSeeCircleRestrictedThread(memberRole);
@@ -238,7 +248,17 @@ export function CircleDashboardAttentionTiles({
     visitCapturesUnreadCount;
 
   const showPatientActivitySection =
-    dailyCheckInsCompletedCount > 0 || richMediaReactionsCount > 0;
+    dailyCheckInsCompletedCount > 0
+    || richMediaReactionsCount > 0
+    || (
+      scheduleNudgeCounts != null
+      && (
+        scheduleNudgeCounts.dueAssessments > 0
+        || scheduleNudgeCounts.upcomingAssessments > 0
+        || scheduleNudgeCounts.appointmentsToday > 0
+        || scheduleNudgeCounts.upcomingAppointments > 0
+      )
+    );
 
   if (unreadTiles.length === 0 && !showPatientActivitySection) return null;
 
@@ -296,6 +316,13 @@ export function CircleDashboardAttentionTiles({
                 }}
                 variant="recency"
                 recencyTint={richMediaReactionsRecencyTint}
+              />
+            ) : null}
+            {scheduleNudgeCounts ? (
+              <CircleDashboardScheduleNudgeTiles
+                counts={scheduleNudgeCounts}
+                assessmentsEnabled={scheduleAssessmentsEnabled}
+                onOpenSchedule={onOpenSchedule}
               />
             ) : null}
           </div>

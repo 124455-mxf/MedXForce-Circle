@@ -24,12 +24,14 @@ import type { Firestore } from 'firebase/firestore';
 import {
   canInviteMembers,
   canSeeCareTeamDashboardReminders,
+  canSeePatientScheduleNudgeTiles,
   canViewPatientProfileTab,
   canViewRemoteSettingsTab,
   canSendPatientRemoteCommands,
   diaryMoodLabel,
   isPatientInsightsPreviewRemindersEnabled,
   normalizeMemberRole,
+  shouldHideDeclinedAppointmentForContact,
   type AnalyticsMetricId,
   type CirclePatientSummary,
   type CircleMemberThreadKind,
@@ -80,6 +82,10 @@ import { useMemberDiaryActivity } from '../hooks/useMemberDiaryActivity';
 import { usePatientFirstEngagementAt } from '../hooks/usePatientFirstEngagementAt';
 import type { CirclePatientRemoteCommandAwaiting } from '../hooks/useCirclePatientRemoteCommand';
 import { useCirclePatientThreadsContext } from '../context/CirclePatientThreadsContext';
+import { useCareCalendarEntries, buildCareCalendarEntriesSubscription } from '../hooks/useCareCalendarEntries';
+import { useCircleMemberInviteContext } from '../hooks/useCircleMemberInviteContext';
+import { buildCircleAssessmentScheduleContext } from '../lib/circleAssessmentScheduleMetrics';
+import { computeCircleScheduleNudgeCounts, buildPreviewScheduleNudgeCounts } from '../lib/circleDashboardScheduleNudges';
 
 import {
   isCircleProfileDataComplete,
@@ -496,11 +502,77 @@ export function CircleDashboardScreen({
   }, [patientPresence.online]);
 
   const { byMetricId, loading: analyticsLoading } = useCircleAnalyticsSummaries(db, patient);
-
   const { snapshot: profileSnapshot, loading: profileLoading } = useCirclePatientProfileSnapshot(
     db,
     patient.patientId,
   );
+  const showScheduleNudgeTiles = canSeePatientScheduleNudgeTiles(memberRole);
+  const { inviteContext, memberContactId, inviteContextReady } = useCircleMemberInviteContext(
+    db,
+    user,
+    patient,
+  );
+  const calendarSubscription = useMemo(
+    () =>
+      buildCareCalendarEntriesSubscription(patient, user.uid, inviteContext, {
+        inviteContextReady,
+      }),
+    [inviteContext, inviteContextReady, patient, user.uid],
+  );
+  const { entries: careCalendarEntries } = useCareCalendarEntries(
+    db,
+    showScheduleNudgeTiles ? patient.patientId : undefined,
+    calendarSubscription,
+  );
+  const visibleCareCalendarEntries = useMemo(
+    () =>
+      careCalendarEntries.filter(
+        (entry) =>
+          !shouldHideDeclinedAppointmentForContact(
+            entry.attendees,
+            memberContactId,
+            inviteContext,
+          ),
+      ),
+    [careCalendarEntries, inviteContext, memberContactId],
+  );
+  const assessmentScheduleContext = useMemo(
+    () =>
+      buildCircleAssessmentScheduleContext({
+        byMetricId,
+        treatmentPhase: profileSnapshot?.clinical?.treatmentPhase,
+        appMode: remoteSettings?.appMode,
+        healthAssessmentsEnabled: remoteSettings?.featuresVisibility?.healthAssessments,
+        remoteAssessmentSchedule: remoteSettings?.assessmentSchedule,
+      }),
+    [
+      byMetricId,
+      profileSnapshot?.clinical?.treatmentPhase,
+      remoteSettings?.appMode,
+      remoteSettings?.assessmentSchedule,
+      remoteSettings?.featuresVisibility?.healthAssessments,
+    ],
+  );
+  const previewReminders = useMemo(() => isPatientInsightsPreviewRemindersEnabled(), []);
+  const previewOfflineAlert = previewReminders ? buildPreviewPatientOfflineAlert() : null;
+
+  const scheduleNudgeCounts = useMemo(() => {
+    if (!showScheduleNudgeTiles) return null;
+    const live = computeCircleScheduleNudgeCounts({
+      assessmentSchedule: assessmentScheduleContext,
+      careEntries: visibleCareCalendarEntries,
+      assessmentsEnabled: remoteSettings?.featuresVisibility?.healthAssessments !== false,
+    });
+    return previewReminders ? buildPreviewScheduleNudgeCounts(live) : live;
+  }, [
+    assessmentScheduleContext,
+    previewReminders,
+    remoteSettings?.featuresVisibility?.healthAssessments,
+    showScheduleNudgeTiles,
+    visibleCareCalendarEntries,
+  ]);
+  const scheduleAssessmentsEnabled =
+    remoteSettings?.featuresVisibility?.healthAssessments !== false;
 
   const diaryPreview = useDiaryDashboardPreview(db, patient.patientId, user, DASHBOARD_STATS_DAYS);
   const memberDiaryActivity = useMemberDiaryActivity(db, patient.patientId, user.uid);
@@ -570,9 +642,6 @@ export function CircleDashboardScreen({
   const lastSevenDayWidgets: DashboardWidgetSpec[] = [];
   const youWidgets: DashboardWidgetSpec[] = [];
   const patientAppWidgets: DashboardWidgetSpec[] = [];
-
-  const previewReminders = useMemo(() => isPatientInsightsPreviewRemindersEnabled(), []);
-  const previewOfflineAlert = previewReminders ? buildPreviewPatientOfflineAlert() : null;
 
   const patientOfflineAlertDays =
     previewOfflineAlert?.daysAway ??
@@ -1084,6 +1153,9 @@ export function CircleDashboardScreen({
           onOpenRichMediaReactions={
             onOpenRichMediaReactions ?? (() => onGoToTab('media'))
           }
+          scheduleNudgeCounts={showScheduleNudgeTiles ? scheduleNudgeCounts : null}
+          scheduleAssessmentsEnabled={scheduleAssessmentsEnabled}
+          onOpenSchedule={() => onGoToTab('schedule')}
         />
 
         <CircleDashboardCelebrationSection

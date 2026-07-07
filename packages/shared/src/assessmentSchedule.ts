@@ -383,9 +383,14 @@ export function isAssessmentDueForRecurrence(
   recurrence: AssessmentRecurrence,
   now = new Date(),
 ): boolean {
-  if (!isRecurrenceActiveOnDate(recurrence, now)) return false;
-  if (lastCompletedAt === null) return true;
-  return lastCompletedAt < getPeriodCreditStart(recurrence, now);
+  for (let offset = -14; offset < 366; offset += 1) {
+    const candidate = addDays(now, offset);
+    if (!isRecurrenceActiveOnDate(recurrence, candidate)) continue;
+    const creditStart = getPeriodCreditStart(recurrence, candidate);
+    if (lastCompletedAt !== null && lastCompletedAt >= creditStart) continue;
+    return now.getTime() >= creditStart;
+  }
+  return false;
 }
 
 export function getNextDueTimestamp(
@@ -402,6 +407,18 @@ export function getNextDueTimestamp(
     }
   }
   return null;
+}
+
+/** When early completion next becomes available (null if no grace or already due). */
+export function getNextEarlyCompletionTimestamp(
+  lastCompletedAt: number | null,
+  recurrence: AssessmentRecurrence,
+  from = new Date(),
+): number | null {
+  if (graceDaysForRecurrence(recurrence) === 0) return null;
+  const nextPeriodStart = getNextDueTimestamp(lastCompletedAt, recurrence, from);
+  if (nextPeriodStart == null) return null;
+  return getPeriodCreditStart(recurrence, new Date(nextPeriodStart));
 }
 
 function defaultRecurrenceFor(
@@ -531,10 +548,10 @@ export function getScheduledDueAssessments(
   },
   histories: AssessmentHistoryMap,
   remoteAssessmentSchedule?: RemoteAssessmentSchedule,
+  now = new Date(),
 ): DueAssessmentScheduleItem[] {
   if (!preferences.featuresVisibility?.healthAssessments) return [];
   const rules = resolveEffectiveAssessmentScheduleRules({ preferences, remoteAssessmentSchedule });
-  const now = new Date();
   const due: DueAssessmentScheduleItem[] = [];
 
   for (const meta of SCHEDULABLE_ASSESSMENTS) {
@@ -564,10 +581,10 @@ export function countUpcomingScheduledAssessmentsWithinDays(
   histories: AssessmentHistoryMap,
   windowDays = 7,
   remoteAssessmentSchedule?: RemoteAssessmentSchedule,
+  now = new Date(),
 ): number {
   if (!preferences.featuresVisibility?.healthAssessments) return 0;
   const rules = resolveEffectiveAssessmentScheduleRules({ preferences, remoteAssessmentSchedule });
-  const now = new Date();
   const windowEnd = now.getTime() + windowDays * MS_DAY;
   let count = 0;
 
@@ -578,8 +595,11 @@ export function countUpcomingScheduledAssessmentsWithinDays(
     if (!meta.historyKey) continue;
     const latest = latestTimestamp(histories[meta.historyKey] ?? []);
     if (isAssessmentDueForRecurrence(latest, rule.recurrence, now)) continue;
-    const nextDue = getNextDueTimestamp(latest, rule.recurrence, now);
-    if (nextDue != null && nextDue <= windowEnd) count += 1;
+    const nextCreditStart = getNextEarlyCompletionTimestamp(latest, rule.recurrence, now);
+    const nowMs = now.getTime();
+    if (nextCreditStart != null && nextCreditStart > nowMs && nextCreditStart <= windowEnd) {
+      count += 1;
+    }
   }
   return count;
 }
