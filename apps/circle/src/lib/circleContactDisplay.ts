@@ -4,9 +4,11 @@ import type {
   CircleManagedContact,
   ProxyTier,
 } from '@medxforce/shared';
-import { normalizeInviteEmail } from '@medxforce/shared';
+import { circleMemberRoleFromManagedContact, normalizeInviteEmail } from '@medxforce/shared';
 import type { CircleTranslator } from './circleI18nContext';
 import { translateCircleMemberAccessLabel, contactKindLabelI18n } from './adminScreenI18n';
+
+export type ContactInvitePeopleStatus = 'pending' | 'missing';
 
 export const CONTACT_KIND_BADGE: Record<CircleContactKind, string> = {
   caregiver: 'bg-violet-50 text-violet-700 border-violet-100',
@@ -40,6 +42,38 @@ export function inviteForContactEmail(
     (item) =>
       item.status !== 'revoked' && normalizeInviteEmail(item.invitedEmail) === email,
   );
+}
+
+function contactHasInvitableCircleAccess(contact: CircleManagedContact): boolean {
+  if (contact.kind === 'contact') return false;
+  if (!circleMemberRoleFromManagedContact(contact)) return false;
+  const email = contact.email.trim().toLowerCase();
+  return !!email && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+}
+
+/** People-tab hint: pending invite or missing invite after contact save. */
+export function resolveContactInvitePeopleStatus(
+  contact: CircleManagedContact,
+  members: CircleInviteListItem[],
+): ContactInvitePeopleStatus | null {
+  if (!contactHasInvitableCircleAccess(contact)) return null;
+
+  const email = normalizeInviteEmail(contact.email);
+  const invite = members.find(
+    (item) => normalizeInviteEmail(item.invitedEmail) === email,
+  );
+  if (invite?.status === 'pending') return 'pending';
+  if (invite?.status === 'accepted') return null;
+  return 'missing';
+}
+
+export function contactInvitePeopleStatusBadgeClass(
+  status: ContactInvitePeopleStatus,
+): string {
+  if (status === 'pending') {
+    return 'bg-amber-50 text-amber-800 border-amber-100';
+  }
+  return 'bg-rose-50 text-rose-700 border-rose-100';
 }
 
 export function resolvedContactAccess(

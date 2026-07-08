@@ -75,6 +75,14 @@ export function inviteStatusLabelI18n(
   return t('admin.users.statusPending');
 }
 
+export function contactInvitePeopleStatusLabelI18n(
+  t: CircleTranslator,
+  status: 'pending' | 'missing',
+): string {
+  if (status === 'pending') return t('admin.users.peopleInvitePending');
+  return t('admin.users.peopleInviteMissing');
+}
+
 export function relationshipLabelI18n(t: CircleTranslator, relationship: string): string {
   const key = RELATIONSHIP_KEYS[relationship.trim()];
   return key ? t(key) : relationship;
