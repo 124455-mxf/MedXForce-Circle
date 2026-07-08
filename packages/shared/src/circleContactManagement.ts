@@ -5,6 +5,7 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import {
+  buildCircleInviteRecord,
   circleInviteRefForPatientEmail,
   lookupCircleInviteByPatientEmail,
   type CircleInviteStatus,
@@ -469,17 +470,23 @@ async function syncInviteForCircleRoleContact(
     return;
   }
 
-  await setDoc(
-    inviteRef,
-    {
-      patientId,
-      invitedEmail: email,
-      status: 'pending',
-      createdAt: existing.exists ? existingData?.createdAt ?? Date.now() : Date.now(),
-      ...invitePatch,
-    },
-    { merge: true },
-  );
+  if (!existing.exists || existingStatus === 'revoked') {
+    await setDoc(
+      inviteRef,
+      buildCircleInviteRecord({
+        patientId,
+        invitedEmail: email,
+        role,
+        capabilities,
+        displayName: contact.name,
+        contactId: contact.id,
+        ...(proxyTier ? { proxyTier } : {}),
+      }),
+    );
+    return;
+  }
+
+  await setDoc(inviteRef, { status: 'pending', ...invitePatch }, { merge: true });
 }
 
 export function parsePatientManagedContacts(
