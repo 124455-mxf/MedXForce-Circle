@@ -346,6 +346,9 @@ export function primaryNavItemsForPatient(
   const memberRole = options.memberRole ? normalizeMemberRole(options.memberRole) : undefined;
   const showSchedule =
     memberRole !== 'friend' && options.healthAssessmentsEnabled !== false;
+  const showMediaInPrimary =
+    memberRole === 'friend' &&
+    (capabilities.viewCircleMedia || capabilities.richMediaUpload);
 
   const items: CircleNavItem[] = [{ id: 'dashboard', label: 'Home', icon: LayoutDashboard }];
 
@@ -355,6 +358,14 @@ export function primaryNavItemsForPatient(
 
   if (showSchedule) {
     items.push({ id: 'schedule', label: 'Schedule', icon: Calendar });
+  }
+
+  if (showMediaInPrimary) {
+    items.push({
+      id: 'media',
+      label: 'Media',
+      icon: Image,
+    });
   }
 
   items.push({
@@ -372,7 +383,15 @@ export function primaryNavItemsForPatient(
   return items;
 }
 
-export function moreNavItemsForPatient(capabilities: PatientCapabilities): CircleNavItem[] {
+export function moreNavItemsForPatient(
+  capabilities: PatientCapabilities,
+  options: CircleNavBuildOptions = {},
+): CircleNavItem[] {
+  const memberRole = options.memberRole ? normalizeMemberRole(options.memberRole) : undefined;
+  const mediaInPrimary =
+    memberRole === 'friend' &&
+    (capabilities.viewCircleMedia || capabilities.richMediaUpload);
+
   const items: CircleNavItem[] = [];
 
   if (canViewPatientProfileTab(capabilities)) {
@@ -410,7 +429,7 @@ export function moreNavItemsForPatient(capabilities: PatientCapabilities): Circl
   }
 
   // Media follows Remote Settings for proxy/caregiver (and any role with media access).
-  if (capabilities.viewCircleMedia || capabilities.richMediaUpload) {
+  if ((capabilities.viewCircleMedia || capabilities.richMediaUpload) && !mediaInPrimary) {
     items.push({
       id: 'media',
       label: 'Media',
@@ -441,7 +460,7 @@ export function allNavItemsForPatient(
   capabilities: PatientCapabilities,
   options: CircleNavBuildOptions = {},
 ): CircleNavItem[] {
-  return [...primaryNavItemsForPatient(capabilities, options), ...moreNavItemsForPatient(capabilities)];
+  return [...primaryNavItemsForPatient(capabilities, options), ...moreNavItemsForPatient(capabilities, options)];
 }
 
 /** @deprecated Use primaryNavItemsForPatient + moreNavItemsForPatient */

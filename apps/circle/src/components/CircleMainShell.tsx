@@ -358,8 +358,8 @@ export function CircleMainShell({
 
   const moreNavItems = useMemo(() => {
     if (!selectedPatient) return [];
-    return localizeNavItems(moreNavItemsForPatient(selectedPatient.capabilities), t);
-  }, [selectedPatient, t]);
+    return localizeNavItems(moreNavItemsForPatient(selectedPatient.capabilities, navBuildOptions), t);
+  }, [selectedPatient, navBuildOptions, t]);
 
   const allNavItems = useMemo(() => {
     if (!selectedPatient) return [];
