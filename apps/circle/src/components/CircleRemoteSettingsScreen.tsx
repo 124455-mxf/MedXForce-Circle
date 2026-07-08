@@ -5,12 +5,15 @@ import type { Firestore } from 'firebase/firestore';
 import {
   REMOTE_APP_MODES,
   REMOTE_DASHBOARD_PRESETS,
+  REMOTE_ASSESSMENT_VISIBILITY_TOGGLES,
   REMOTE_FEATURE_TOGGLES,
   REMOTE_PRIMARY_LANGUAGE_OPTIONS,
   REMOTE_PROXY_SECTIONS,
   REMOTE_QUICK_SETTING_TOGGLES,
   REMOTE_VISIBLE_AREA_TOGGLES,
+  getRemoteFeatureToggleEnabled,
   getRemoteSettingValue,
+  isRemoteFeatureToggleDisabled,
   isRemoteSettingsCustomized,
   resolveEffectiveRemoteDashboardPreset,
   setRemoteAppMode,
@@ -24,6 +27,7 @@ import {
   type PatientRemoteSettingsDoc,
   type RemoteAppMode,
   type RemoteDashboardPreset,
+  type RemoteFeatureToggleDef,
   type RemotePrimaryLanguage,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
@@ -60,15 +64,22 @@ function ToggleRow({
   label,
   description,
   enabled,
+  disabled = false,
   onToggle,
 }: {
   label: string;
   description?: string;
   enabled: boolean;
+  disabled?: boolean;
   onToggle: () => void;
 }) {
   return (
-    <div className="flex items-start justify-between gap-3 p-3 rounded-2xl border border-slate-100 bg-white">
+    <div
+      className={cn(
+        'flex items-start justify-between gap-3 p-3 rounded-2xl border border-slate-100 bg-white',
+        disabled && 'opacity-50',
+      )}
+    >
       <div className="min-w-0 flex-1">
         <p className="text-sm font-normal text-slate-800">{label}</p>
         {description ? (
@@ -78,11 +89,14 @@ function ToggleRow({
       <button
         type="button"
         onClick={onToggle}
+        disabled={disabled}
         className={cn(
           'w-12 h-7 rounded-full transition-all duration-300 relative shrink-0',
           enabled ? 'bg-blue-600' : 'bg-slate-300',
+          disabled && 'cursor-not-allowed',
         )}
         aria-pressed={enabled}
+        aria-disabled={disabled}
       >
         <span
           className={cn(
@@ -126,29 +140,31 @@ function ProxyToggleList({
   t,
 }: {
   settings: PatientRemoteSettingsDoc;
-  paths: { path: string; label: string; description?: string }[];
+  paths: RemoteFeatureToggleDef[];
   patch: (next: PatientRemoteSettingsDoc) => void;
   t: ReturnType<typeof useCircleT>;
 }) {
   return (
     <div className="grid grid-cols-1 gap-2">
-      {paths.map((item) => (
-        <ToggleRow
-          key={item.path}
-          label={remoteSettingsToggleLabel(t, item.path, item.label)}
-          description={remoteSettingsToggleDescription(t, item.path, item.description)}
-          enabled={getRemoteSettingValue(settings, item.path) ?? false}
-          onToggle={() =>
-            patch(
-              setRemoteSettingValue(
-                settings,
-                item.path,
-                !(getRemoteSettingValue(settings, item.path) ?? false),
-              ),
-            )
-          }
-        />
-      ))}
+      {paths.map((item) => {
+        const disabled = isRemoteFeatureToggleDisabled(settings, item);
+        const enabled = getRemoteFeatureToggleEnabled(settings, item.path);
+        return (
+          <ToggleRow
+            key={item.path}
+            label={remoteSettingsToggleLabel(t, item.path, item.label)}
+            description={remoteSettingsToggleDescription(t, item.path, item.description)}
+            enabled={enabled}
+            disabled={disabled}
+            onToggle={() => {
+              if (disabled) return;
+              patch(
+                setRemoteSettingValue(settings, item.path, !enabled),
+              );
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -418,10 +434,17 @@ export function CircleRemoteSettingsScreen({
             ))}
 
             <CircleCollapsibleSection title={t('remoteSettings.sections.featuresVisibility')}>
-              <div className="p-4">
+              <div className="p-4 space-y-4">
                 <ProxyToggleList
                   settings={settings}
                   paths={REMOTE_FEATURE_TOGGLES}
+                  patch={patch}
+                  t={t}
+                />
+                <SectionLabel>{t('remoteSettings.sections.individualAssessments')}</SectionLabel>
+                <ProxyToggleList
+                  settings={settings}
+                  paths={REMOTE_ASSESSMENT_VISIBILITY_TOGGLES}
                   patch={patch}
                   t={t}
                 />

@@ -43,16 +43,66 @@ export type RemoteDailyCheckInSettings = {
   questions?: DailyCheckInQuestion[];
 };
 
+export type RemoteActivityVisibility = {
+  enabled?: boolean;
+  mind?: boolean;
+  soul?: boolean;
+  body?: {
+    enabled?: boolean;
+    motion?: boolean;
+    verbal?: boolean;
+  };
+};
+
+/** Per-assessment visibility flags (Settings → Features → Health Assessments). */
+export const REMOTE_ASSESSMENT_VISIBILITY_KEYS = [
+  'impactAssessment',
+  'painAssessment',
+  'strengthReflexAssessment',
+  'mobilityAssessment',
+  'numbnessAssessment',
+  'temperatureAssessment',
+  'balanceAssessment',
+  'visionAssessment',
+  'speechAssessment',
+  'neurologicalAssessment',
+  'physiologicalAssessment',
+  'psychologicalAssessment',
+  'strokeSelfAssessment',
+  'diaryAssessment',
+] as const;
+
+export type RemoteAssessmentVisibilityKey = (typeof REMOTE_ASSESSMENT_VISIBILITY_KEYS)[number];
+
+export const REMOTE_ASSESSMENT_VISIBILITY_DEFAULTS: Record<RemoteAssessmentVisibilityKey, boolean> = {
+  impactAssessment: true,
+  painAssessment: true,
+  strengthReflexAssessment: true,
+  mobilityAssessment: true,
+  numbnessAssessment: true,
+  temperatureAssessment: true,
+  balanceAssessment: false,
+  visionAssessment: true,
+  speechAssessment: true,
+  neurologicalAssessment: true,
+  physiologicalAssessment: false,
+  psychologicalAssessment: true,
+  strokeSelfAssessment: false,
+  diaryAssessment: false,
+};
+
 export type RemoteFeaturesVisibility = {
   dashboard?: boolean;
+  dropIn?: boolean;
   communication?: boolean;
   messaging?: boolean;
   aiCompanion?: boolean;
   healthAssessments?: boolean;
+  schedule?: boolean;
   analytics?: boolean;
   journeyDiary?: boolean;
-  activity?: { enabled?: boolean };
-};
+  activity?: RemoteActivityVisibility;
+} & Partial<Record<RemoteAssessmentVisibilityKey, boolean>>;
 
 export type RemoteVisibleAreas = {
   phrases?: boolean;
@@ -160,6 +210,8 @@ export type RemoteFeatureToggleDef = {
   label: string;
   description?: string;
   nested?: 'activity.enabled' | 'journeyDiary.allowViewSharedEntries';
+  /** Parent toggle must be on before this toggle is editable. */
+  requiresEnabledPath?: string;
 };
 
 export const REMOTE_APP_MODES: { key: RemoteAppMode; label: string; description: string }[] = [
@@ -183,16 +235,142 @@ export const REMOTE_APP_MODES: { key: RemoteAppMode; label: string; description:
 export const REMOTE_FEATURE_TOGGLES: RemoteFeatureToggleDef[] = [
   { path: 'showUserInSidebar', label: 'Show user', description: 'User profile in the left sidebar.' },
   { path: 'featuresVisibility.dashboard', label: 'Dashboard', description: 'Dashboard tab in the sidebar.' },
+  {
+    path: 'featuresVisibility.dropIn',
+    label: 'Drop-in',
+    description: 'Allow Circle members to start a live drop-in session with the patient.',
+  },
   { path: 'featuresVisibility.communication', label: 'Communication', description: 'Primary communication interface.' },
   { path: 'featuresVisibility.messaging', label: 'Messaging', description: 'Caregiver messaging features.' },
   { path: 'featuresVisibility.aiCompanion', label: 'MedIsOn Companion', description: 'Companion conversational interface.' },
-  { path: 'featuresVisibility.activity.enabled', label: 'Vitality', description: 'Vitality tab in the sidebar.', nested: 'activity.enabled' },
+  {
+    path: 'featuresVisibility.activity.enabled',
+    label: 'Vitality',
+    description: 'Vitality tab in the sidebar.',
+    nested: 'activity.enabled',
+  },
+  {
+    path: 'featuresVisibility.activity.mind',
+    label: 'Mind',
+    description: 'Mind games and cognitive activities inside Vitality.',
+    requiresEnabledPath: 'featuresVisibility.activity.enabled',
+  },
+  {
+    path: 'featuresVisibility.activity.body.enabled',
+    label: 'Body',
+    description: 'Physical exercises and movement inside Vitality.',
+    requiresEnabledPath: 'featuresVisibility.activity.enabled',
+  },
+  {
+    path: 'featuresVisibility.activity.soul',
+    label: 'Soul',
+    description: 'Gallery, music, and uplifting content inside Vitality.',
+    requiresEnabledPath: 'featuresVisibility.activity.enabled',
+  },
   { path: 'featuresVisibility.journeyDiary', label: 'Journal', description: 'Journal tab on the dashboard.' },
-  { path: 'journeyDiary.allowViewSharedEntries', label: 'View shared journal entries', description: 'Include entries shared by the circle.', nested: 'journeyDiary.allowViewSharedEntries' },
+  {
+    path: 'journeyDiary.allowViewSharedEntries',
+    label: 'View shared journal entries',
+    description: 'Include entries shared by the circle.',
+    nested: 'journeyDiary.allowViewSharedEntries',
+  },
   { path: 'featuresVisibility.healthAssessments', label: 'Assessments', description: 'Assessments tab in the sidebar.' },
+  {
+    path: 'featuresVisibility.schedule',
+    label: 'Schedule',
+    description: 'Care calendar tab for scheduled assessments.',
+    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+  },
   { path: 'featuresVisibility.analytics', label: 'Analytics', description: 'Statistics and analytics tab.' },
   { path: 'showQuickSettings', label: 'Quick Settings', description: 'Quick Settings gear in the sidebar.' },
   { path: 'showSettingsInSidebar', label: 'Settings', description: 'Settings tab in the sidebar.' },
+];
+
+export const REMOTE_ASSESSMENT_VISIBILITY_TOGGLES: RemoteFeatureToggleDef[] = [
+  {
+    path: 'featuresVisibility.impactAssessment',
+    label: 'Impact',
+    description: 'Show the impact assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+  },
+  {
+    path: 'featuresVisibility.painAssessment',
+    label: 'Pain',
+    description: 'Show the pain assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+  },
+  {
+    path: 'featuresVisibility.strengthReflexAssessment',
+    label: 'Strength & reflex',
+    description: 'Show the strength and reflex assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+  },
+  {
+    path: 'featuresVisibility.mobilityAssessment',
+    label: 'Mobility',
+    description: 'Show the mobility assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+  },
+  {
+    path: 'featuresVisibility.numbnessAssessment',
+    label: 'Numbness',
+    description: 'Show the numbness assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+  },
+  {
+    path: 'featuresVisibility.temperatureAssessment',
+    label: 'Temperature',
+    description: 'Show the temperature assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+  },
+  {
+    path: 'featuresVisibility.balanceAssessment',
+    label: 'Balance',
+    description: 'Show the balance assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+  },
+  {
+    path: 'featuresVisibility.visionAssessment',
+    label: 'Vision',
+    description: 'Show the vision assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+  },
+  {
+    path: 'featuresVisibility.speechAssessment',
+    label: 'Speech & Language',
+    description: 'Show the speech and language assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+  },
+  {
+    path: 'featuresVisibility.neurologicalAssessment',
+    label: 'Neurological',
+    description: 'Show the neurological assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+  },
+  {
+    path: 'featuresVisibility.physiologicalAssessment',
+    label: 'Physiological',
+    description: 'Show the physiological assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+  },
+  {
+    path: 'featuresVisibility.psychologicalAssessment',
+    label: 'Psychological',
+    description: 'Show the psychological assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+  },
+  {
+    path: 'featuresVisibility.strokeSelfAssessment',
+    label: 'Stroke self-assessment',
+    description: 'Show the stroke self-assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+  },
+  {
+    path: 'featuresVisibility.diaryAssessment',
+    label: 'Diary assessment',
+    description: 'Show the diary-linked assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+  },
 ];
 
 export const REMOTE_QUICK_SETTING_TOGGLES: { path: string; label: string; description?: string }[] = [
@@ -356,6 +534,183 @@ function parseDailyCheckIn(raw: unknown): RemoteDailyCheckInSettings | undefined
   };
 }
 
+function parseRemoteActivityBody(raw: unknown): RemoteActivityVisibility['body'] | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const d = raw as Record<string, unknown>;
+  const enabled = asBool(d.enabled);
+  const motion = asBool(d.motion);
+  const verbal = asBool(d.verbal);
+  if (enabled === undefined && motion === undefined && verbal === undefined) return undefined;
+  return stripUndefinedDeep({ enabled, motion, verbal });
+}
+
+function parseRemoteActivity(raw: unknown): RemoteActivityVisibility | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const d = raw as Record<string, unknown>;
+  const enabled = asBool(d.enabled);
+  const mind = asBool(d.mind);
+  const soul = asBool(d.soul);
+  const body = parseRemoteActivityBody(d.body);
+  if (enabled === undefined && mind === undefined && soul === undefined && !body) return undefined;
+  return stripUndefinedDeep({ enabled, mind, soul, body });
+}
+
+function parseRemoteAssessmentVisibility(
+  fv: Record<string, unknown>,
+): Partial<Record<RemoteAssessmentVisibilityKey, boolean>> {
+  const out: Partial<Record<RemoteAssessmentVisibilityKey, boolean>> = {};
+  for (const key of REMOTE_ASSESSMENT_VISIBILITY_KEYS) {
+    const value = asBool(fv[key]);
+    if (value !== undefined) out[key] = value;
+  }
+  return out;
+}
+
+function buildRemoteFeaturesVisibilityFromPreferences(
+  fv: Record<string, unknown>,
+): RemoteFeaturesVisibility {
+  const activity = (fv.activity ?? {}) as Record<string, unknown>;
+  const body = (activity.body ?? {}) as Record<string, unknown>;
+  const healthAssessments = !!fv.healthAssessments;
+  const assessmentVisibility = Object.fromEntries(
+    REMOTE_ASSESSMENT_VISIBILITY_KEYS.map((key) => {
+      const raw = fv[key];
+      const value =
+        raw === undefined
+          ? REMOTE_ASSESSMENT_VISIBILITY_DEFAULTS[key]
+          : !!raw;
+      return [key, value];
+    }),
+  ) as Record<RemoteAssessmentVisibilityKey, boolean>;
+
+  return {
+    dashboard: !!fv.dashboard,
+    dropIn: fv.dropIn !== false,
+    communication: !!fv.communication,
+    messaging: !!fv.messaging,
+    aiCompanion: !!fv.aiCompanion,
+    healthAssessments,
+    schedule: healthAssessments && fv.schedule !== false,
+    analytics: !!fv.analytics,
+    journeyDiary: !!fv.journeyDiary,
+    activity: {
+      enabled: !!activity.enabled,
+      mind: activity.mind !== false,
+      soul: activity.soul !== false,
+      body: {
+        enabled: body.enabled !== false,
+        motion: body.motion !== false,
+        verbal: body.verbal !== false,
+      },
+    },
+    ...assessmentVisibility,
+  };
+}
+
+function remoteActivityPresetForMode(mode: RemoteAppMode): RemoteActivityVisibility {
+  if (mode === 'user') {
+    return {
+      enabled: true,
+      mind: true,
+      soul: true,
+      body: { enabled: true, motion: true, verbal: true },
+    };
+  }
+  return {
+    enabled: false,
+    mind: false,
+    soul: false,
+    body: { enabled: false, motion: false, verbal: false },
+  };
+}
+
+function remoteAssessmentPresetForMode(
+  mode: RemoteAppMode,
+): Record<RemoteAssessmentVisibilityKey, boolean> {
+  if (mode === 'user') {
+    return Object.fromEntries(
+      REMOTE_ASSESSMENT_VISIBILITY_KEYS.map((key) => [key, true]),
+    ) as Record<RemoteAssessmentVisibilityKey, boolean>;
+  }
+  return Object.fromEntries(
+    REMOTE_ASSESSMENT_VISIBILITY_KEYS.map((key) => [key, false]),
+  ) as Record<RemoteAssessmentVisibilityKey, boolean>;
+}
+
+function remoteFeaturesVisibilityPresetForMode(mode: RemoteAppMode): RemoteFeaturesVisibility {
+  const activity = remoteActivityPresetForMode(mode);
+  const assessments = remoteAssessmentPresetForMode(mode);
+  const healthAssessments = mode === 'user';
+
+  return {
+    dashboard: mode === 'user',
+    dropIn: mode === 'user',
+    communication: true,
+    messaging: mode === 'user',
+    aiCompanion: mode !== 'intensive_care',
+    healthAssessments,
+    schedule: healthAssessments,
+    analytics: mode === 'user',
+    journeyDiary: false,
+    activity,
+    ...assessments,
+  };
+}
+
+function readFeaturesVisibilityValue(
+  fv: RemoteFeaturesVisibility | undefined,
+  key: string,
+): boolean | undefined {
+  if (!fv) return undefined;
+  if (key === 'activity.enabled') return fv.activity?.enabled;
+  if (key === 'activity.mind') {
+    if (!fv.activity?.enabled) return fv.activity?.mind;
+    if (fv.activity.mind === undefined) return true;
+    return fv.activity.mind;
+  }
+  if (key === 'activity.soul') {
+    if (!fv.activity?.enabled) return fv.activity?.soul;
+    if (fv.activity.soul === undefined) return true;
+    return fv.activity.soul;
+  }
+  if (key === 'activity.body.enabled') {
+    if (!fv.activity?.enabled) return fv.activity?.body?.enabled;
+    if (fv.activity.body?.enabled === undefined) return true;
+    return fv.activity.body.enabled;
+  }
+  if (key === 'dropIn') {
+    if (fv.dropIn === undefined) return true;
+    return fv.dropIn;
+  }
+  if (key === 'schedule') {
+    if (!fv.healthAssessments) return false;
+    if (fv.schedule === undefined) return true;
+    return fv.schedule;
+  }
+  if ((REMOTE_ASSESSMENT_VISIBILITY_KEYS as readonly string[]).includes(key)) {
+    const assessmentKey = key as RemoteAssessmentVisibilityKey;
+    const value = fv[assessmentKey];
+    if (value === undefined) return REMOTE_ASSESSMENT_VISIBILITY_DEFAULTS[assessmentKey];
+    return value;
+  }
+  return fv[key as keyof RemoteFeaturesVisibility] as boolean | undefined;
+}
+
+export function getRemoteFeatureToggleEnabled(
+  doc: RemoteSettingsPayload,
+  path: string,
+): boolean {
+  return getRemoteSettingValue(doc, path) ?? false;
+}
+
+export function isRemoteFeatureToggleDisabled(
+  doc: RemoteSettingsPayload,
+  item: RemoteFeatureToggleDef,
+): boolean {
+  if (!item.requiresEnabledPath) return false;
+  return !getRemoteFeatureToggleEnabled(doc, item.requiresEnabledPath);
+}
+
 export function parsePatientRemoteSettings(
   patientId: string,
   data: Record<string, unknown> | undefined,
@@ -367,10 +722,8 @@ export function parsePatientRemoteSettings(
       ? (fvRaw as Record<string, unknown>)
       : undefined;
   const activityRaw = fv?.activity;
-  const activity =
-    activityRaw && typeof activityRaw === 'object'
-      ? { enabled: asBool((activityRaw as Record<string, unknown>).enabled) }
-      : undefined;
+  const activity = parseRemoteActivity(activityRaw);
+  const assessmentVisibility = fv ? parseRemoteAssessmentVisibility(fv) : {};
   const vaRaw = data.visibleAreas;
   const visibleAreas =
     vaRaw && typeof vaRaw === 'object'
@@ -414,13 +767,16 @@ export function parsePatientRemoteSettings(
     featuresVisibility: fv
       ? {
           dashboard: asBool(fv.dashboard),
+          dropIn: asBool(fv.dropIn),
           communication: asBool(fv.communication),
           messaging: asBool(fv.messaging),
           aiCompanion: asBool(fv.aiCompanion),
           healthAssessments: asBool(fv.healthAssessments),
+          schedule: asBool(fv.schedule),
           analytics: asBool(fv.analytics),
           journeyDiary: asBool(fv.journeyDiary),
           activity,
+          ...assessmentVisibility,
         }
       : undefined,
     journeyDiary,
@@ -462,7 +818,6 @@ export function extractRemoteSettingsFromPreferences(
   meta: { uid: string; displayName: string; source?: RemoteSettingsSource },
 ): PatientRemoteSettingsDoc {
   const fv = (preferences.featuresVisibility ?? {}) as Record<string, unknown>;
-  const activity = (fv.activity ?? {}) as Record<string, unknown>;
   const dailyRaw = preferences.dailyCheckIn as Record<string, unknown> | undefined;
   const quietRaw = dailyRaw?.quietHours as Record<string, unknown> | undefined;
   const visibleAreas = (preferences.visibleAreas ?? {}) as Record<string, unknown>;
@@ -483,16 +838,7 @@ export function extractRemoteSettingsFromPreferences(
     showUserInSidebar: !!preferences.showUserInSidebar,
     showQuickSettings: preferences.showQuickSettings !== false,
     showSettingsInSidebar: preferences.showSettingsInSidebar !== false,
-    featuresVisibility: {
-      dashboard: !!fv.dashboard,
-      communication: !!fv.communication,
-      messaging: !!fv.messaging,
-      aiCompanion: !!fv.aiCompanion,
-      healthAssessments: !!fv.healthAssessments,
-      analytics: !!fv.analytics,
-      journeyDiary: !!fv.journeyDiary,
-      activity: { enabled: !!activity.enabled },
-    },
+    featuresVisibility: buildRemoteFeaturesVisibilityFromPreferences(fv),
     journeyDiary: {
       allowViewSharedEntries: !!journeyDiary?.allowViewSharedEntries,
     },
@@ -577,8 +923,7 @@ export function getRemoteSettingValue(
   }
   if (path.startsWith('featuresVisibility.')) {
     const key = path.slice('featuresVisibility.'.length);
-    if (key === 'activity.enabled') return doc.featuresVisibility?.activity?.enabled;
-    return doc.featuresVisibility?.[key as keyof RemoteFeaturesVisibility] as boolean | undefined;
+    return readFeaturesVisibilityValue(doc.featuresVisibility, key);
   }
   return undefined;
 }
@@ -615,13 +960,38 @@ export function setRemoteSettingValue(
     next.journeyDiary = { ...next.journeyDiary, allowViewSharedEntries: value };
   } else if (path.startsWith('featuresVisibility.')) {
     const key = path.slice('featuresVisibility.'.length);
+    const current = next.featuresVisibility ?? {};
     if (key === 'activity.enabled') {
       next.featuresVisibility = {
-        ...next.featuresVisibility,
-        activity: { ...(next.featuresVisibility?.activity ?? {}), enabled: value },
+        ...current,
+        activity: { ...(current.activity ?? {}), enabled: value },
+      };
+    } else if (key === 'activity.mind') {
+      next.featuresVisibility = {
+        ...current,
+        activity: { ...(current.activity ?? {}), mind: value },
+      };
+    } else if (key === 'activity.soul') {
+      next.featuresVisibility = {
+        ...current,
+        activity: { ...(current.activity ?? {}), soul: value },
+      };
+    } else if (key === 'activity.body.enabled') {
+      next.featuresVisibility = {
+        ...current,
+        activity: {
+          ...(current.activity ?? {}),
+          body: { ...(current.activity?.body ?? {}), enabled: value },
+        },
+      };
+    } else if (key === 'healthAssessments') {
+      next.featuresVisibility = {
+        ...current,
+        healthAssessments: value,
+        ...(value ? {} : { schedule: false }),
       };
     } else {
-      next.featuresVisibility = { ...next.featuresVisibility, [key]: value };
+      next.featuresVisibility = { ...current, [key]: value };
     }
   }
   return next;
@@ -728,16 +1098,7 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
       showAiSuggestions: false,
       speakOnSelection: true,
       showFrequentlyUsed: false,
-      featuresVisibility: {
-        dashboard: false,
-        communication: true,
-        messaging: false,
-        aiCompanion: false,
-        healthAssessments: false,
-        analytics: false,
-        journeyDiary: false,
-        activity: { enabled: false },
-      },
+      featuresVisibility: remoteFeaturesVisibilityPresetForMode('intensive_care'),
       journeyDiary: { allowViewSharedEntries: false },
       dailyCheckIn: { enabled: true, quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS } },
       visibleAreas: { phrases: false, categories: false, emojis: false, unicode: true },
@@ -758,16 +1119,7 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
       showAiSuggestions: true,
       speakOnSelection: true,
       showFrequentlyUsed: true,
-      featuresVisibility: {
-        dashboard: true,
-        communication: true,
-        messaging: true,
-        aiCompanion: true,
-        healthAssessments: true,
-        analytics: true,
-        journeyDiary: false,
-        activity: { enabled: true },
-      },
+      featuresVisibility: remoteFeaturesVisibilityPresetForMode('user'),
       journeyDiary: { allowViewSharedEntries: false },
       dailyCheckIn: {
         enabled: false,
@@ -790,16 +1142,7 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
     showAiSuggestions: true,
     speakOnSelection: false,
     showFrequentlyUsed: true,
-    featuresVisibility: {
-      dashboard: false,
-      communication: true,
-      messaging: false,
-      aiCompanion: true,
-      healthAssessments: false,
-      analytics: false,
-      journeyDiary: false,
-      activity: { enabled: false },
-    },
+    featuresVisibility: remoteFeaturesVisibilityPresetForMode('hospital'),
     journeyDiary: { allowViewSharedEntries: false },
     dailyCheckIn: { enabled: true, quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS } },
     visibleAreas: visibleAll,
@@ -821,6 +1164,17 @@ export function isRemoteSettingsCustomized(doc: PatientRemoteSettingsDoc): boole
   const preset = remotePresetPayloadForMode(mode);
 
   for (const item of REMOTE_FEATURE_TOGGLES) {
+    if (
+      !remoteBoolMatches(
+        getRemoteSettingValue(doc, item.path),
+        getRemoteSettingValue(preset, item.path),
+      )
+    ) {
+      return true;
+    }
+  }
+
+  for (const item of REMOTE_ASSESSMENT_VISIBILITY_TOGGLES) {
     if (
       !remoteBoolMatches(
         getRemoteSettingValue(doc, item.path),
