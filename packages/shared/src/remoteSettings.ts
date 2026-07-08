@@ -278,8 +278,7 @@ export const REMOTE_FEATURE_TOGGLES: RemoteFeatureToggleDef[] = [
   {
     path: 'featuresVisibility.schedule',
     label: 'Schedule',
-    description: 'Care calendar tab for scheduled assessments.',
-    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+    description: 'Care calendar tab for appointments and scheduled assessments.',
   },
   { path: 'featuresVisibility.analytics', label: 'Analytics', description: 'Statistics and analytics tab.' },
   { path: 'showQuickSettings', label: 'Quick Settings', description: 'Quick Settings gear in the sidebar.' },
@@ -291,85 +290,85 @@ export const REMOTE_ASSESSMENT_VISIBILITY_TOGGLES: RemoteFeatureToggleDef[] = [
     path: 'featuresVisibility.impactAssessment',
     label: 'Impact',
     description: 'Show the impact assessment on the tablet.',
-    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+    requiresEnabledPath: 'featuresVisibility.schedule',
   },
   {
     path: 'featuresVisibility.painAssessment',
     label: 'Pain',
     description: 'Show the pain assessment on the tablet.',
-    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+    requiresEnabledPath: 'featuresVisibility.schedule',
   },
   {
     path: 'featuresVisibility.strengthReflexAssessment',
     label: 'Strength & reflex',
     description: 'Show the strength and reflex assessment on the tablet.',
-    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+    requiresEnabledPath: 'featuresVisibility.schedule',
   },
   {
     path: 'featuresVisibility.mobilityAssessment',
     label: 'Mobility',
     description: 'Show the mobility assessment on the tablet.',
-    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+    requiresEnabledPath: 'featuresVisibility.schedule',
   },
   {
     path: 'featuresVisibility.numbnessAssessment',
     label: 'Numbness',
     description: 'Show the numbness assessment on the tablet.',
-    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+    requiresEnabledPath: 'featuresVisibility.schedule',
   },
   {
     path: 'featuresVisibility.temperatureAssessment',
     label: 'Temperature',
     description: 'Show the temperature assessment on the tablet.',
-    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+    requiresEnabledPath: 'featuresVisibility.schedule',
   },
   {
     path: 'featuresVisibility.balanceAssessment',
     label: 'Balance',
     description: 'Show the balance assessment on the tablet.',
-    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+    requiresEnabledPath: 'featuresVisibility.schedule',
   },
   {
     path: 'featuresVisibility.visionAssessment',
     label: 'Vision',
     description: 'Show the vision assessment on the tablet.',
-    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+    requiresEnabledPath: 'featuresVisibility.schedule',
   },
   {
     path: 'featuresVisibility.speechAssessment',
     label: 'Speech & Language',
     description: 'Show the speech and language assessment on the tablet.',
-    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+    requiresEnabledPath: 'featuresVisibility.schedule',
   },
   {
     path: 'featuresVisibility.neurologicalAssessment',
     label: 'Neurological',
     description: 'Show the neurological assessment on the tablet.',
-    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+    requiresEnabledPath: 'featuresVisibility.schedule',
   },
   {
     path: 'featuresVisibility.physiologicalAssessment',
     label: 'Physiological',
     description: 'Show the physiological assessment on the tablet.',
-    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+    requiresEnabledPath: 'featuresVisibility.schedule',
   },
   {
     path: 'featuresVisibility.psychologicalAssessment',
     label: 'Psychological',
     description: 'Show the psychological assessment on the tablet.',
-    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+    requiresEnabledPath: 'featuresVisibility.schedule',
   },
   {
     path: 'featuresVisibility.strokeSelfAssessment',
     label: 'Stroke self-assessment',
     description: 'Show the stroke self-assessment on the tablet.',
-    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+    requiresEnabledPath: 'featuresVisibility.schedule',
   },
   {
     path: 'featuresVisibility.diaryAssessment',
     label: 'Diary assessment',
     description: 'Show the diary-linked assessment on the tablet.',
-    requiresEnabledPath: 'featuresVisibility.healthAssessments',
+    requiresEnabledPath: 'featuresVisibility.schedule',
   },
 ];
 
@@ -590,7 +589,7 @@ function buildRemoteFeaturesVisibilityFromPreferences(
     messaging: !!fv.messaging,
     aiCompanion: !!fv.aiCompanion,
     healthAssessments,
-    schedule: healthAssessments && fv.schedule !== false,
+    schedule: fv.schedule !== false,
     analytics: !!fv.analytics,
     journeyDiary: !!fv.journeyDiary,
     activity: {
@@ -641,6 +640,7 @@ function remoteFeaturesVisibilityPresetForMode(mode: RemoteAppMode): RemoteFeatu
   const activity = remoteActivityPresetForMode(mode);
   const assessments = remoteAssessmentPresetForMode(mode);
   const healthAssessments = mode === 'user';
+  const schedule = mode !== 'intensive_care';
 
   return {
     dashboard: mode === 'user',
@@ -649,7 +649,7 @@ function remoteFeaturesVisibilityPresetForMode(mode: RemoteAppMode): RemoteFeatu
     messaging: mode === 'user',
     aiCompanion: mode !== 'intensive_care',
     healthAssessments,
-    schedule: healthAssessments,
+    schedule,
     analytics: mode === 'user',
     journeyDiary: false,
     activity,
@@ -683,7 +683,6 @@ function readFeaturesVisibilityValue(
     return fv.dropIn;
   }
   if (key === 'schedule') {
-    if (!fv.healthAssessments) return false;
     if (fv.schedule === undefined) return true;
     return fv.schedule;
   }
@@ -988,7 +987,6 @@ export function setRemoteSettingValue(
       next.featuresVisibility = {
         ...current,
         healthAssessments: value,
-        ...(value ? {} : { schedule: false }),
       };
     } else {
       next.featuresVisibility = { ...current, [key]: value };
