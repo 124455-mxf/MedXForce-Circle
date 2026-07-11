@@ -72,18 +72,18 @@ function ScheduleNudgeTile({
 
 export function CircleDashboardScheduleNudgeTiles({
   counts,
-  assessmentsEnabled = true,
+  scheduleEnabled = true,
   onOpenSchedule,
 }: {
   counts: CircleScheduleNudgeCounts;
-  assessmentsEnabled?: boolean;
+  scheduleEnabled?: boolean;
   onOpenSchedule?: () => void;
 }) {
   const t = useCircleT();
   const hint = t('dashboard.attentionScheduleNudgeHint');
 
   const showAssessments =
-    assessmentsEnabled && (counts.dueAssessments > 0 || counts.upcomingAssessments > 0);
+    scheduleEnabled && (counts.dueAssessments > 0 || counts.upcomingAssessments > 0);
   const showAppointments =
     counts.appointmentsToday > 0 || counts.upcomingAppointments > 0;
 

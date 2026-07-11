@@ -20,6 +20,7 @@ import {
   type CareCalendarVisitSubtype,
 } from './careCalendarAppointment';
 import { SCHEDULE_PREP_TASK_HORIZON_DAYS } from './careCalendarScheduleActions';
+import { isScheduleEnabled } from './activeTab';
 
 export type CareCalendarAssessmentNudgePhase = 'pre' | 'post';
 
@@ -128,7 +129,7 @@ export function getCareCalendarAssessmentNudges(
   remoteAssessmentSchedule?: RemoteAssessmentSchedule,
   now = new Date(),
 ): CareCalendarAssessmentNudge[] {
-  if (!preferences.featuresVisibility?.healthAssessments) return [];
+  if (!isScheduleEnabled(preferences)) return [];
   if (!supportsCareCalendarAppointmentEpisode(event.kind)) return [];
   if (!event.visitSubtype) return [];
 

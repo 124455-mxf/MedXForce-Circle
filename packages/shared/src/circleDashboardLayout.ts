@@ -1,4 +1,9 @@
-import { doc, getDoc, setDoc, type Firestore } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  setDoc,
+  type Firestore,
+} from 'firebase/firestore';
 import type { CircleMemberRole, PatientCapabilities } from './patientPermissions';
 import { canViewRemoteSettingsTab } from './remoteSettings';
 
@@ -16,6 +21,7 @@ export type CircleDashboardWidgetKey =
   | 'check-in-wellness-ring'
   | 'assessment-schedule-calendar'
   | 'gallery-engagement'
+  | 'media-gallery'
   | 'remote-settings'
   | 'user-profile'
   | 'patient-locale'
@@ -48,6 +54,7 @@ export const ALL_CUSTOMIZABLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
   'check-in-wellness-ring',
   'assessment-schedule-calendar',
   'gallery-engagement',
+  'media-gallery',
   'remote-settings',
   'user-profile',
   'patient-locale',
@@ -111,7 +118,7 @@ export const CIRCLE_DASHBOARD_WIDGET_SECTIONS: Record<
     'assessments',
   ],
   you: ['diary', 'circle', 'gallery-engagement'],
-  stayConnected: ['circle-map', 'check-in-wellness-ring'],
+  stayConnected: ['media-gallery', 'circle-map', 'check-in-wellness-ring'],
   patientApp: ['remote-settings', 'user-profile'],
 };
 
@@ -177,7 +184,8 @@ export function resolveEffectiveHiddenDashboardWidgets(
   return defaultHiddenDashboardWidgetsForRole(role);
 }
 
-export function memberDashboardLayoutRef(
+/** Legacy field on members/{uid}; prefer prefs/dashboard for reads/writes. */
+export function memberDashboardLayoutLegacyRef(
   db: Firestore,
   patientId: string,
   memberUid: string,
@@ -185,14 +193,47 @@ export function memberDashboardLayoutRef(
   return doc(db, 'patients', patientId, 'members', memberUid);
 }
 
+/**
+ * Per-member dashboard customize prefs.
+ * Kept off the member root doc so layout saves are not blocked by crowded member update rules.
+ */
+export function memberDashboardLayoutRef(
+  db: Firestore,
+  patientId: string,
+  memberUid: string,
+) {
+  return doc(db, 'patients', patientId, 'members', memberUid, 'prefs', 'dashboard');
+}
+
+export function parsePrefsDashboardLayout(
+  data: Record<string, unknown> | undefined,
+): { layout: CircleDashboardLayout | null; hasStoredLayout: boolean } {
+  if (!data || !Object.prototype.hasOwnProperty.call(data, 'hiddenWidgets')) {
+    return { layout: null, hasStoredLayout: false };
+  }
+  return {
+    layout: {
+      hiddenWidgets: sanitizeHiddenDashboardWidgets(data.hiddenWidgets),
+    },
+    hasStoredLayout: true,
+  };
+}
+
 export async function readMemberDashboardLayout(
   db: Firestore,
   patientId: string,
   memberUid: string,
 ): Promise<{ layout: CircleDashboardLayout | null; hasStoredLayout: boolean }> {
-  const snap = await getDoc(memberDashboardLayoutRef(db, patientId, memberUid));
-  if (!snap.exists()) return { layout: null, hasStoredLayout: false };
-  return parseMemberDashboardLayout(snap.data() as Record<string, unknown>);
+  const prefsSnap = await getDoc(memberDashboardLayoutRef(db, patientId, memberUid));
+  if (prefsSnap.exists()) {
+    return parsePrefsDashboardLayout(prefsSnap.data() as Record<string, unknown>);
+  }
+
+  const legacySnap = await getDoc(
+    memberDashboardLayoutLegacyRef(db, patientId, memberUid),
+  );
+  if (!legacySnap.exists()) return { layout: null, hasStoredLayout: false };
+  return parseMemberDashboardLayout(legacySnap.data() as Record<string, unknown>);
 }
 
 export async function writeMemberDashboardLayout(
@@ -205,10 +246,11 @@ export async function writeMemberDashboardLayout(
     hiddenWidgets: sanitizeHiddenDashboardWidgets(hiddenWidgets),
   };
 
+  // Dedicated prefs doc — create/merge is allowed for the signed-in member only.
   await setDoc(
     memberDashboardLayoutRef(db, patientId, memberUid),
     {
-      dashboardLayout: layout,
+      hiddenWidgets: layout.hiddenWidgets,
       updatedAt: Date.now(),
     },
     { merge: true },
@@ -238,6 +280,8 @@ export function isCircleDashboardWidgetAvailable(
     case 'assessment-schedule-calendar':
       return true;
     case 'gallery-engagement':
+      return caps?.viewCircleMedia !== false || caps?.richMediaUpload !== false;
+    case 'media-gallery':
       return caps?.viewCircleMedia !== false || caps?.richMediaUpload !== false;
     case 'remote-settings':
       return canViewRemoteSettingsTab(caps);

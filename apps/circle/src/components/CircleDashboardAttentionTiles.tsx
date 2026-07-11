@@ -118,7 +118,7 @@ export function CircleDashboardAttentionTiles({
   onOpenCheckIns,
   onOpenRichMediaReactions,
   scheduleNudgeCounts,
-  scheduleAssessmentsEnabled = true,
+  scheduleEnabled = true,
   onOpenSchedule,
 }: {
   memberRole: string;
@@ -144,7 +144,7 @@ export function CircleDashboardAttentionTiles({
   onOpenCheckIns?: () => void;
   onOpenRichMediaReactions?: () => void;
   scheduleNudgeCounts?: CircleScheduleNudgeCounts | null;
-  scheduleAssessmentsEnabled?: boolean;
+  scheduleEnabled?: boolean;
   onOpenSchedule?: () => void;
 }) {
   const t = useCircleT();
@@ -321,7 +321,7 @@ export function CircleDashboardAttentionTiles({
             {scheduleNudgeCounts ? (
               <CircleDashboardScheduleNudgeTiles
                 counts={scheduleNudgeCounts}
-                assessmentsEnabled={scheduleAssessmentsEnabled}
+                scheduleEnabled={scheduleEnabled}
                 onOpenSchedule={onOpenSchedule}
               />
             ) : null}

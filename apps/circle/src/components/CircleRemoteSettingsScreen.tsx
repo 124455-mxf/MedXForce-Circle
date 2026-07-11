@@ -29,6 +29,7 @@ import {
   type RemoteDashboardPreset,
   type RemoteFeatureToggleDef,
   type RemotePrimaryLanguage,
+  recordCareDiaryMilestones,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 import {
@@ -193,7 +194,14 @@ export function CircleRemoteSettingsScreen({
 
   const applyModeChange = (mode: RemoteAppMode) => {
     if (!settings) return;
+    const previousMode = settings.appMode || '';
     patch(setRemoteAppMode(settings, mode));
+    void recordCareDiaryMilestones(db, {
+      patientId: patient.patientId,
+      authorUid: user.uid,
+      language: settings.primaryLanguage,
+      appMode: { from: previousMode, to: mode },
+    }).catch((err) => console.warn('[careDiaryMilestone]', err));
     setPendingMode(null);
   };
 

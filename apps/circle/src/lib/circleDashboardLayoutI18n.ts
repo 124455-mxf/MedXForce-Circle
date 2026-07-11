@@ -13,6 +13,7 @@ export const DASHBOARD_WIDGET_TITLE_KEYS: Record<CircleDashboardWidgetKey, strin
   'check-in-wellness-ring': 'dashboard.checkInWellnessRing.title',
   'assessment-schedule-calendar': 'dashboard.assessmentScheduleCalendar.title',
   'gallery-engagement': 'dashboard.yourPhotos',
+  'media-gallery': 'dashboard.mediaGallery',
   'remote-settings': 'dashboard.remoteSettings',
   'user-profile': 'dashboard.userProfile',
   'patient-locale': 'dashboard.sectionPatientLocale',

@@ -343,9 +343,9 @@ export function CircleMainShell({
   const navBuildOptions = useMemo(
     () => ({
       memberRole,
-      healthAssessmentsEnabled: remoteSettings?.featuresVisibility?.healthAssessments,
+      scheduleEnabled: remoteSettings?.featuresVisibility?.schedule,
     }),
-    [memberRole, remoteSettings?.featuresVisibility?.healthAssessments],
+    [memberRole, remoteSettings?.featuresVisibility?.schedule],
   );
 
   const primaryNavItems = useMemo(() => {

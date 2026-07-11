@@ -542,7 +542,7 @@ export function CircleDashboardScreen({
         byMetricId,
         treatmentPhase: profileSnapshot?.clinical?.treatmentPhase,
         appMode: remoteSettings?.appMode,
-        healthAssessmentsEnabled: remoteSettings?.featuresVisibility?.healthAssessments,
+        scheduleEnabled: remoteSettings?.featuresVisibility?.schedule,
         remoteAssessmentSchedule: remoteSettings?.assessmentSchedule,
       }),
     [
@@ -550,7 +550,7 @@ export function CircleDashboardScreen({
       profileSnapshot?.clinical?.treatmentPhase,
       remoteSettings?.appMode,
       remoteSettings?.assessmentSchedule,
-      remoteSettings?.featuresVisibility?.healthAssessments,
+      remoteSettings?.featuresVisibility?.schedule,
     ],
   );
   const previewReminders = useMemo(() => isPatientInsightsPreviewRemindersEnabled(), []);
@@ -561,18 +561,18 @@ export function CircleDashboardScreen({
     const live = computeCircleScheduleNudgeCounts({
       assessmentSchedule: assessmentScheduleContext,
       careEntries: visibleCareCalendarEntries,
-      assessmentsEnabled: remoteSettings?.featuresVisibility?.healthAssessments !== false,
+      scheduleEnabled: remoteSettings?.featuresVisibility?.schedule !== false,
     });
     return previewReminders ? buildPreviewScheduleNudgeCounts(live) : live;
   }, [
     assessmentScheduleContext,
     previewReminders,
-    remoteSettings?.featuresVisibility?.healthAssessments,
+    remoteSettings?.featuresVisibility?.schedule,
     showScheduleNudgeTiles,
     visibleCareCalendarEntries,
   ]);
-  const scheduleAssessmentsEnabled =
-    remoteSettings?.featuresVisibility?.healthAssessments !== false;
+  const scheduleEnabledForNudges =
+    remoteSettings?.featuresVisibility?.schedule !== false;
 
   const diaryPreview = useDiaryDashboardPreview(db, patient.patientId, user, DASHBOARD_STATS_DAYS);
   const memberDiaryActivity = useMemberDiaryActivity(db, patient.patientId, user.uid);
@@ -921,9 +921,10 @@ export function CircleDashboardScreen({
   const unseenGalleryCount =
     soulDetail?.unseenMediaCount ?? soulDetail?.unseenPhotoCount ?? 0;
 
-  const familyGalleryWidget: DashboardWidgetSpec | null = canSeeGallery
+  const familyGalleryWidget: DashboardWidgetSpec | null =
+    canSeeGallery && isWidgetVisible('media-gallery')
     ? {
-        key: 'family-gallery',
+        key: 'media-gallery',
         title: t('dashboard.mediaGallery'),
         icon: Heart,
         ...(galleryDashboard.loading
@@ -1154,7 +1155,7 @@ export function CircleDashboardScreen({
             onOpenRichMediaReactions ?? (() => onGoToTab('media'))
           }
           scheduleNudgeCounts={showScheduleNudgeTiles ? scheduleNudgeCounts : null}
-          scheduleAssessmentsEnabled={scheduleAssessmentsEnabled}
+          scheduleEnabled={scheduleEnabledForNudges}
           onOpenSchedule={() => onGoToTab('schedule')}
         />
 

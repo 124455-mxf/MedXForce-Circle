@@ -336,7 +336,7 @@ export function CircleBottomNav({
 
 export type CircleNavBuildOptions = {
   memberRole?: CircleMemberRole;
-  healthAssessmentsEnabled?: boolean;
+  scheduleEnabled?: boolean;
 };
 
 export function primaryNavItemsForPatient(
@@ -345,7 +345,7 @@ export function primaryNavItemsForPatient(
 ): CircleNavItem[] {
   const memberRole = options.memberRole ? normalizeMemberRole(options.memberRole) : undefined;
   const showSchedule =
-    memberRole !== 'friend' && options.healthAssessmentsEnabled !== false;
+    memberRole !== 'friend' && options.scheduleEnabled !== false;
   const showMediaInPrimary =
     memberRole === 'friend' &&
     (capabilities.viewCircleMedia || capabilities.richMediaUpload);

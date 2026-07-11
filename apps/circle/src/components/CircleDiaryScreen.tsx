@@ -8,6 +8,7 @@ import {
   Pencil,
   Plus,
   ScrollText,
+  Sparkles,
   Star,
   Trash2,
   Users,
@@ -79,27 +80,33 @@ function DiaryTimelineEntry({
   onDelete: () => void;
 }) {
   const t = useCircleT();
-  const isPatientAuthor = entry.authorUid === entry.patientId;
-  const isCareTeamEntry = !isPatientAuthor;
+  const isSystem = entry.entryKind === 'system';
+  const isPatientAuthor = !isSystem && entry.authorUid === entry.patientId;
+  const isCareTeamEntry = !isSystem && !isPatientAuthor;
   const mood = diaryMoodLabelI18n(t, entry.mood);
   const shared = isDiaryEntrySharedWithCircle(entry);
-  const authorLabel = isPatientAuthor ? patientDisplayName : entry.authorName;
+  const showMilestone = isSystem || entry.isMilestone;
+  const authorLabel = isSystem
+    ? t('diary.badgeCareMilestone')
+    : isPatientAuthor
+      ? patientDisplayName
+      : entry.authorName;
 
   return (
     <li className="relative pl-6">
       <span
         className={cn(
           'absolute top-2 rounded-full border-2 border-white shadow',
-          entry.isMilestone
+          showMilestone
             ? '-left-[11px] w-5 h-5 bg-rose-500 ring-2 ring-rose-300 shadow-md animate-pulse'
             : '-left-[8px] w-3.5 h-3.5',
-          !entry.isMilestone && (isPatientAuthor ? 'bg-violet-500' : isOwn ? 'bg-blue-500' : 'bg-slate-400'),
+          !showMilestone && (isSystem ? 'bg-violet-500' : isPatientAuthor ? 'bg-violet-500' : isOwn ? 'bg-blue-500' : 'bg-slate-400'),
         )}
       />
       <article
         className={cn(
           'rounded-2xl border shadow-sm p-4 space-y-3 [@media(max-height:740px)]:p-3 [@media(max-height:740px)]:space-y-2',
-          entry.isMilestone
+          showMilestone
             ? 'bg-violet-50/50 border-violet-200'
             : 'bg-white border-slate-100',
           isCareTeamEntry && 'ml-2 sm:ml-4 border-l-4 border-l-blue-200',
@@ -111,6 +118,11 @@ function DiaryTimelineEntry({
               {formatDiaryDate(entry.experienceAt)}
             </p>
             <p className="text-sm font-semibold text-slate-800 mt-0.5">{authorLabel}</p>
+            {isSystem && (
+              <p className="text-[10px] font-bold uppercase tracking-wide text-violet-500 mt-0.5">
+                {t('diary.badgeMilestone')}
+              </p>
+            )}
             {isCareTeamEntry && (
               <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mt-0.5">
                 {t('diary.badgeCircleMember')}
@@ -128,9 +140,9 @@ function DiaryTimelineEntry({
                 {mood}
               </span>
             )}
-            {entry.isMilestone && (
+            {showMilestone && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 text-[10px] font-bold uppercase">
-                <Star size={10} />
+                {isSystem ? <Sparkles size={10} /> : <Star size={10} />}
                 {t('diary.badgeMilestone')}
               </span>
             )}
@@ -155,7 +167,7 @@ function DiaryTimelineEntry({
                   : t('diary.badgeShared')
                 : t('diary.badgePrivate')}
             </span>
-            {isOwn && (
+            {isOwn && !isSystem && (
               <div className="flex items-center gap-0.5">
                 <button
                   type="button"

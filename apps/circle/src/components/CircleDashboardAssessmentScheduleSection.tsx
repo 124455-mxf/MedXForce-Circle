@@ -23,7 +23,7 @@ export type CircleDashboardAssessmentScheduleSectionProps = {
   byMetricId: Map<string, PatientAnalyticsSummary>;
   treatmentPhase?: string | null;
   appMode?: string | null;
-  healthAssessmentsEnabled?: boolean;
+  scheduleEnabled?: boolean;
   remoteAssessmentSchedule?: RemoteAssessmentSchedule;
   enabled: boolean;
   fullPage?: boolean;
@@ -44,7 +44,7 @@ export function CircleDashboardAssessmentScheduleSection({
   byMetricId,
   treatmentPhase,
   appMode,
-  healthAssessmentsEnabled,
+  scheduleEnabled,
   remoteAssessmentSchedule,
   enabled,
   fullPage = false,
@@ -100,8 +100,8 @@ export function CircleDashboardAssessmentScheduleSection({
   const [initialDateKey, setInitialDateKey] = useState<string | undefined>();
 
   const canReadRemoteSettings = canViewRemoteSettingsTab(capabilities);
-  const effectiveHealthAssessmentsEnabled =
-    canReadRemoteSettings && healthAssessmentsEnabled !== false;
+  const effectiveScheduleEnabled =
+    canReadRemoteSettings && scheduleEnabled !== false;
 
   const schedule = useMemo(
     () =>
@@ -109,7 +109,7 @@ export function CircleDashboardAssessmentScheduleSection({
         byMetricId,
         treatmentPhase,
         appMode: canReadRemoteSettings ? appMode : undefined,
-        healthAssessmentsEnabled: effectiveHealthAssessmentsEnabled,
+        scheduleEnabled: effectiveScheduleEnabled,
         remoteAssessmentSchedule: canReadRemoteSettings ? remoteAssessmentSchedule : undefined,
       }),
     [
@@ -117,7 +117,7 @@ export function CircleDashboardAssessmentScheduleSection({
       treatmentPhase,
       appMode,
       canReadRemoteSettings,
-      effectiveHealthAssessmentsEnabled,
+      effectiveScheduleEnabled,
       remoteAssessmentSchedule,
     ],
   );

@@ -4,6 +4,7 @@ import {
   normalizeTreatmentPhaseForSchedule,
   type TreatmentPhaseValue,
 } from './treatmentPhase';
+import { isScheduleEnabled } from './activeTab';
 
 export type AssessmentHistoryKey =
   | 'pain'
@@ -383,7 +384,10 @@ export function isAssessmentDueForRecurrence(
   recurrence: AssessmentRecurrence,
   now = new Date(),
 ): boolean {
-  for (let offset = -14; offset < 366; offset += 1) {
+  // Only look from "now" forward. Past missed days stay visible on the calendar
+  // for that date, but do not keep nagging in "due now" until the next
+  // early-completion window (or scheduled day) opens.
+  for (let offset = 0; offset < 366; offset += 1) {
     const candidate = addDays(now, offset);
     if (!isRecurrenceActiveOnDate(recurrence, candidate)) continue;
     const creditStart = getPeriodCreditStart(recurrence, candidate);
@@ -550,7 +554,7 @@ export function getScheduledDueAssessments(
   remoteAssessmentSchedule?: RemoteAssessmentSchedule,
   now = new Date(),
 ): DueAssessmentScheduleItem[] {
-  if (!preferences.featuresVisibility?.healthAssessments) return [];
+  if (!isScheduleEnabled(preferences)) return [];
   const rules = resolveEffectiveAssessmentScheduleRules({ preferences, remoteAssessmentSchedule });
   const due: DueAssessmentScheduleItem[] = [];
 
@@ -583,7 +587,7 @@ export function countUpcomingScheduledAssessmentsWithinDays(
   remoteAssessmentSchedule?: RemoteAssessmentSchedule,
   now = new Date(),
 ): number {
-  if (!preferences.featuresVisibility?.healthAssessments) return 0;
+  if (!isScheduleEnabled(preferences)) return 0;
   const rules = resolveEffectiveAssessmentScheduleRules({ preferences, remoteAssessmentSchedule });
   const windowEnd = now.getTime() + windowDays * MS_DAY;
   let count = 0;
@@ -631,7 +635,7 @@ export function getAssessmentScheduleCalendar(
   remoteAssessmentSchedule?: RemoteAssessmentSchedule,
 ): Map<string, AssessmentScheduleDayEvent[]> {
   const result = new Map<string, AssessmentScheduleDayEvent[]>();
-  if (!preferences.featuresVisibility?.healthAssessments) return result;
+  if (!isScheduleEnabled(preferences)) return result;
 
   const rules = resolveEffectiveAssessmentScheduleRules({ preferences, remoteAssessmentSchedule });
   const todayStart = startOfDay(new Date());
@@ -751,7 +755,7 @@ export function getAssessmentCardScheduleFooter(
   t: (key: string, params?: Record<string, unknown>) => string,
 ): { text: string; color: string } | null {
   if (!isAssessmentScheduleId(cardId)) return null;
-  if (!preferences.featuresVisibility?.healthAssessments) return null;
+  if (!isScheduleEnabled(preferences)) return null;
 
   const meta = SCHEDULABLE_ASSESSMENTS.find((item) => item.id === cardId);
   if (!meta?.released || !meta.historyKey) return null;

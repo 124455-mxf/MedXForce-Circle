@@ -52,15 +52,15 @@ export function assessmentScheduleIdToAnalyticsMetric(
 export function buildCircleAssessmentSchedulePreferences(params: {
   treatmentPhase?: string | null;
   appMode?: string | null;
-  healthAssessmentsEnabled?: boolean;
+  scheduleEnabled?: boolean;
 }): {
-  featuresVisibility: { healthAssessments: boolean };
+  featuresVisibility: { schedule: boolean };
   appMode?: string;
   fullUserDetails: { clinical: { treatmentPhase?: string } };
 } {
   return {
     featuresVisibility: {
-      healthAssessments: params.healthAssessmentsEnabled !== false,
+      schedule: params.scheduleEnabled !== false,
     },
     appMode: params.appMode ?? undefined,
     fullUserDetails: {
@@ -79,14 +79,14 @@ export function buildCircleAssessmentScheduleContext(params: {
   byMetricId: Map<string, PatientAnalyticsSummary>;
   treatmentPhase?: string | null;
   appMode?: string | null;
-  healthAssessmentsEnabled?: boolean;
+  scheduleEnabled?: boolean;
   remoteAssessmentSchedule?: RemoteAssessmentSchedule;
 }): CircleAssessmentScheduleContext {
   return {
     preferences: buildCircleAssessmentSchedulePreferences({
       treatmentPhase: params.treatmentPhase,
       appMode: params.appMode,
-      healthAssessmentsEnabled: params.healthAssessmentsEnabled,
+      scheduleEnabled: params.scheduleEnabled,
     }),
     remoteAssessmentSchedule: params.remoteAssessmentSchedule,
     histories: buildAssessmentHistoryMapFromAnalytics(params.byMetricId),

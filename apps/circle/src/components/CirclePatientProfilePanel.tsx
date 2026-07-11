@@ -14,6 +14,7 @@ import {
   parseCircleProfileMeta,
   parseCircleProfileSnapshot,
   updateCirclePatientProfileFromProxy,
+  recordCareDiaryMilestones,
   type CirclePatientProfileSnapshot,
   type CirclePatientSummary,
 } from '@medxforce/shared';
@@ -179,6 +180,8 @@ export function CirclePatientProfilePanel({
     async (next: CirclePatientProfileSnapshot) => {
       setSaving(true);
       setError(null);
+      const previousPhase = workingSnapshot?.clinical?.treatmentPhase?.trim() || '';
+      const nextPhase = next.clinical.treatmentPhase?.trim() || '';
       try {
         await updateCirclePatientProfileFromProxy(
           db,
@@ -188,6 +191,12 @@ export function CirclePatientProfilePanel({
           patient.displayName,
           user.displayName || undefined,
         );
+        void recordCareDiaryMilestones(db, {
+          patientId: patient.patientId,
+          authorUid: user.uid,
+          language: next.identity.language || workingSnapshot?.identity.language,
+          treatmentPhase: { from: previousPhase, to: nextPhase },
+        }).catch((err) => console.warn('[careDiaryMilestone]', err));
         setDraftSnapshot(null);
         setEditSection(null);
       } catch (err) {
@@ -202,7 +211,7 @@ export function CirclePatientProfilePanel({
         setSaving(false);
       }
     },
-    [db, patient.displayName, patient.patientId, t, user.uid],
+    [db, patient.displayName, patient.patientId, t, user.uid, workingSnapshot],
   );
 
   const handleEditSection = (sectionId: string) => {

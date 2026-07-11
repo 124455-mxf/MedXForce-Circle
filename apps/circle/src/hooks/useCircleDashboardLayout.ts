@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { onSnapshot, type Firestore } from 'firebase/firestore';
+import { getDoc, onSnapshot, type Firestore } from 'firebase/firestore';
 import {
   defaultHiddenDashboardWidgetsForRole,
   FRIEND_NEVER_VISIBLE_DASHBOARD_WIDGETS,
   isCircleDashboardWidgetKey,
   isCircleDashboardWidgetVisibleForRole,
+  memberDashboardLayoutLegacyRef,
   memberDashboardLayoutRef,
   parseMemberDashboardLayout,
+  parsePrefsDashboardLayout,
   resolveEffectiveHiddenDashboardWidgets,
   writeMemberDashboardLayout,
   type CircleDashboardLayout,
@@ -31,17 +33,42 @@ export function useCircleDashboardLayout(
       return undefined;
     }
 
-    return onSnapshot(
+    let cancelled = false;
+
+    const unsub = onSnapshot(
       memberDashboardLayoutRef(db, patientId, memberUid),
       (snap) => {
-        if (!snap.exists()) {
-          setParsed({ layout: null, hasStoredLayout: false });
+        if (cancelled) return;
+        if (snap.exists()) {
+          setParsed(parsePrefsDashboardLayout(snap.data() as Record<string, unknown>));
           return;
         }
-        setParsed(parseMemberDashboardLayout(snap.data() as Record<string, unknown>));
+
+        // Migrate: fall back to legacy members/{uid}.dashboardLayout once.
+        void getDoc(memberDashboardLayoutLegacyRef(db, patientId, memberUid))
+          .then((legacySnap) => {
+            if (cancelled) return;
+            if (!legacySnap.exists()) {
+              setParsed({ layout: null, hasStoredLayout: false });
+              return;
+            }
+            setParsed(
+              parseMemberDashboardLayout(legacySnap.data() as Record<string, unknown>),
+            );
+          })
+          .catch(() => {
+            if (!cancelled) setParsed({ layout: null, hasStoredLayout: false });
+          });
       },
-      () => setParsed({ layout: null, hasStoredLayout: false }),
+      () => {
+        if (!cancelled) setParsed({ layout: null, hasStoredLayout: false });
+      },
     );
+
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, [db, memberUid, patientId]);
 
   const hiddenWidgets = useMemo(() => {

@@ -7,6 +7,7 @@ import {
   getAssessmentScheduleCalendar,
   getCalendarWeekDays,
   getCareCalendarByDay,
+  isScheduleEnabled,
   parseCareCalendarDateKey,
   careCalendarDateKey,
   type AssessmentScheduleDayEvent,
@@ -216,7 +217,7 @@ export function CircleAssessmentScheduleCalendar({
   );
 
   const monthCells = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
-  const assessmentsEnabled = schedule.preferences.featuresVisibility.healthAssessments;
+  const assessmentsEnabled = isScheduleEnabled(schedule.preferences);
   const visibleCalendarByDay = assessmentsEnabled ? calendarByDay : EMPTY_ASSESSMENT_CALENDAR;
   const visibleMonthCalendarByDay = assessmentsEnabled ? monthCalendarByDay : EMPTY_ASSESSMENT_CALENDAR;
 

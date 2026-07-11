@@ -4,6 +4,7 @@ import {
   countPatientAppointmentsUpcomingWithinDays,
   countUpcomingScheduledAssessmentsWithinDays,
   getScheduledDueAssessments,
+  isScheduleEnabled,
   type CareCalendarEntry,
 } from '@medxforce/shared';
 import type { CircleAssessmentScheduleContext } from './circleAssessmentScheduleMetrics';
@@ -20,16 +21,16 @@ export type CircleScheduleNudgeCounts = {
 export function computeCircleScheduleNudgeCounts(params: {
   assessmentSchedule?: CircleAssessmentScheduleContext | null;
   careEntries: CareCalendarEntry[];
-  assessmentsEnabled?: boolean;
+  scheduleEnabled?: boolean;
   now?: Date;
 }): CircleScheduleNudgeCounts {
   const now = params.now ?? new Date();
-  const assessmentsEnabled = params.assessmentsEnabled !== false;
+  const scheduleEnabled = params.scheduleEnabled !== false;
   const schedule = params.assessmentSchedule;
 
   let dueAssessments = 0;
   let upcomingAssessments = 0;
-  if (assessmentsEnabled && schedule?.preferences.featuresVisibility.healthAssessments) {
+  if (scheduleEnabled && schedule && isScheduleEnabled(schedule.preferences)) {
     dueAssessments = getScheduledDueAssessments(
       schedule.preferences,
       schedule.histories,

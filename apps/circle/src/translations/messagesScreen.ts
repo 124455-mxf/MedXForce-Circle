@@ -94,6 +94,13 @@ export const messagesScreenEnglish = {
   patientLanguagePillTitle: 'Patient app language',
   familyMemberFallback: 'Family member',
   showMoreInbox: 'Show {{remaining}} more',
+  sectionRecent: 'Last 7 days',
+  inboxOlderUnread: '{{count}} unread',
+  inboxOlderAlert_one: '{{count}} older alert',
+  inboxOlderAlert_other: '{{count}} older alerts',
+  inboxOlderAttention_one: '{{count}} older attention request',
+  inboxOlderAttention_other: '{{count}} older attention requests',
+  inboxHideOlder: 'Hide',
 };
 
 export const messagesScreenGerman = {
@@ -201,6 +208,13 @@ export const messagesScreenGerman = {
   patientLanguagePillTitle: 'Patienten-App-Sprache',
   familyMemberFallback: 'Familienmitglied',
   showMoreInbox: '{{remaining}} weitere anzeigen',
+  sectionRecent: 'Letzte 7 Tage',
+  inboxOlderUnread: '{{count}} ungelesen',
+  inboxOlderAlert_one: '{{count}} älterer Alarm',
+  inboxOlderAlert_other: '{{count}} ältere Alarme',
+  inboxOlderAttention_one: '{{count}} ältere Aufmerksamkeitsanfrage',
+  inboxOlderAttention_other: '{{count}} ältere Aufmerksamkeitsanfragen',
+  inboxHideOlder: 'Ausblenden',
 };
 
 export const messagesScreenSpanish = {
@@ -307,6 +321,13 @@ export const messagesScreenSpanish = {
   patientLanguagePillTitle: 'Idioma de la app del paciente',
   familyMemberFallback: 'Familiar',
   showMoreInbox: 'Mostrar {{remaining}} más',
+  sectionRecent: 'Últimos 7 días',
+  inboxOlderUnread: '{{count}} sin leer',
+  inboxOlderAlert_one: '{{count}} alerta anterior',
+  inboxOlderAlert_other: '{{count}} alertas anteriores',
+  inboxOlderAttention_one: '{{count}} solicitud de atención anterior',
+  inboxOlderAttention_other: '{{count}} solicitudes de atención anteriores',
+  inboxHideOlder: 'Ocultar',
 };
 
 export const messagesScreenPolish = {
@@ -412,4 +433,11 @@ export const messagesScreenPolish = {
   patientLanguagePillTitle: 'Język aplikacji pacjenta',
   familyMemberFallback: 'Członek rodziny',
   showMoreInbox: 'Pokaż jeszcze {{remaining}}',
+  sectionRecent: 'Ostatnie 7 dni',
+  inboxOlderUnread: '{{count}} nieprzeczytanych',
+  inboxOlderAlert_one: '{{count}} starszy alarm',
+  inboxOlderAlert_other: '{{count}} starszych alarmów',
+  inboxOlderAttention_one: '{{count}} starsza prośba o uwagę',
+  inboxOlderAttention_other: '{{count}} starszych próśb o uwagę',
+  inboxHideOlder: 'Ukryj',
 };

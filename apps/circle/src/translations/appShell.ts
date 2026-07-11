@@ -611,7 +611,7 @@ export const appShellEnglish = {
     attentionDropInsClear: 'No new drop-ins',
     attentionCareTeamOnly: 'Care team only',
     attentionVisitCaptures: 'Doctor visits',
-    attentionCheckInsCompleted: 'completed this week',
+    attentionCheckInsCompleted: 'in the last 7 days',
     attentionAssessments: 'Assessments',
     attentionAssessmentsDueNow: 'Due now',
     attentionAssessmentsUpcoming: 'Upcoming within {{days}} days',
@@ -707,7 +707,7 @@ export const appShellEnglish = {
     viewAllInProfile: 'View all in profile',
     preview: 'Preview',
     previewRemindersHint:
-      'Preview mode — sample birthday, onset, participation, care-team, reachability, and schedule nudge tiles. Remove ?previewReminders=1 from the URL when done.',
+      'Preview mode — sample welcome message, birthday, onset, participation, care-team, reachability, and schedule nudge tiles. Remove ?previewReminders=1 from the URL when done.',
     previewRemindersCollapsed: 'Preview: birthday & onset reminders',
     previewOfflineAlertHint:
       'Preview — sample “not in patient app” alert (6 days away). Remove ?previewReminders=1 when done.',
@@ -1582,7 +1582,7 @@ export const appShellGerman = {
     attentionDropInsClear: 'Keine neuen Drop-ins',
     attentionCareTeamOnly: 'Nur Pflegeteam',
     attentionVisitCaptures: 'Arztbesuche',
-    attentionCheckInsCompleted: 'diese Woche abgeschlossen',
+    attentionCheckInsCompleted: 'in den letzten 7 Tagen',
     attentionAssessments: 'Beurteilungen',
     attentionAssessmentsDueNow: 'Jetzt fällig',
     attentionAssessmentsUpcoming: 'Anstehend in {{days}} Tagen',
@@ -1678,7 +1678,7 @@ export const appShellGerman = {
     viewAllInProfile: 'Alle im Profil anzeigen',
     preview: 'Vorschau',
     previewRemindersHint:
-      'Vorschaumodus — Beispiele für Geburtstags-, Beginn-, Beteiligungs-, Betreuungs-, Erreichbarkeits- und Zeitplan-Hinweis-Kacheln. Entfernen Sie ?previewReminders=1 aus der URL, wenn Sie fertig sind.',
+      'Vorschaumodus — Beispiele für Willkommensnachricht, Geburtstags-, Beginn-, Beteiligungs-, Betreuungs-, Erreichbarkeits- und Zeitplan-Hinweis-Kacheln. Entfernen Sie ?previewReminders=1 aus der URL, wenn Sie fertig sind.',
     previewRemindersCollapsed: 'Vorschau: Geburtstags- & Beginn-Erinnerungen',
     previewOfflineAlertHint:
       'Vorschau — Beispiel „Nicht in der Patienten-App“ (6 Tage). ?previewReminders=1 entfernen, wenn fertig.',
@@ -2553,7 +2553,7 @@ export const appShellSpanish = {
     attentionDropInsClear: 'Sin entradas nuevas',
     attentionCareTeamOnly: 'Solo equipo de cuidados',
     attentionVisitCaptures: 'Visitas médicas',
-    attentionCheckInsCompleted: 'completados esta semana',
+    attentionCheckInsCompleted: 'en los últimos 7 días',
     attentionAssessments: 'Evaluaciones',
     attentionAssessmentsDueNow: 'Vencen ahora',
     attentionAssessmentsUpcoming: 'Próximas en {{days}} días',
@@ -2649,7 +2649,7 @@ export const appShellSpanish = {
     viewAllInProfile: 'Ver todo en el perfil',
     preview: 'Vista previa',
     previewRemindersHint:
-      'Modo vista previa — muestras de cumpleaños, inicio, participación, equipo de cuidado, disponibilidad y recordatorios de agenda. Quite ?previewReminders=1 de la URL cuando termine.',
+      'Modo vista previa — muestras de bienvenida, cumpleaños, inicio, participación, equipo de cuidado, disponibilidad y recordatorios de agenda. Quite ?previewReminders=1 de la URL cuando termine.',
     previewRemindersCollapsed: 'Vista previa: recordatorios de cumpleaños e inicio',
     previewOfflineAlertHint:
       'Vista previa — alerta de ejemplo “sin app del paciente” (6 días). Quite ?previewReminders=1 al terminar.',
@@ -3524,7 +3524,7 @@ export const appShellPolish = {
     attentionDropInsClear: 'Brak nowych drop-inów',
     attentionCareTeamOnly: 'Tylko zespół opieki',
     attentionVisitCaptures: 'Wizyty u lekarza',
-    attentionCheckInsCompleted: 'ukończone w tym tygodniu',
+    attentionCheckInsCompleted: 'w ostatnich 7 dniach',
     attentionAssessments: 'Oceny',
     attentionAssessmentsDueNow: 'Do zrobienia teraz',
     attentionAssessmentsUpcoming: 'Nadchodzące w {{days}} dni',
@@ -3620,7 +3620,7 @@ export const appShellPolish = {
     viewAllInProfile: 'Zobacz wszystko w profilu',
     preview: 'Podgląd',
     previewRemindersHint:
-      'Tryb podglądu — przykładowe kafelki urodzin, początku, udziału, opieki, dostępności i harmonogramu. Usuń ?previewReminders=1 z adresu URL po zakończeniu.',
+      'Tryb podglądu — przykładowe kafelki powitania, urodzin, początku, udziału, opieki, dostępności i harmonogramu. Usuń ?previewReminders=1 z adresu URL po zakończeniu.',
     previewRemindersCollapsed: 'Podgląd: przypomnienia urodzin i początku',
     previewOfflineAlertHint:
       'Podgląd — przykładowy alert „poza aplikacją pacjenta” (6 dni). Usuń ?previewReminders=1 po zakończeniu.',

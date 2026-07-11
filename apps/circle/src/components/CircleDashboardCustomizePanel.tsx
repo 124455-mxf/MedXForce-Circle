@@ -152,7 +152,13 @@ export function CircleDashboardCustomizePanel({
       setSaved(true);
     } catch (err) {
       console.warn('[CircleDashboardCustomizePanel]', err);
-      setError(t('settings.dashboardCustomizeSaveFailed'));
+      const detail =
+        err && typeof err === 'object' && 'code' in err && typeof (err as { code: unknown }).code === 'string'
+          ? ` (${(err as { code: string }).code})`
+          : err instanceof Error && err.message
+            ? ` (${err.message})`
+            : '';
+      setError(`${t('settings.dashboardCustomizeSaveFailed')}${detail}`);
     } finally {
       setSaving(false);
     }
@@ -168,7 +174,13 @@ export function CircleDashboardCustomizePanel({
       setSaved(true);
     } catch (err) {
       console.warn('[CircleDashboardCustomizePanel] reset', err);
-      setError(t('settings.dashboardCustomizeSaveFailed'));
+      const detail =
+        err && typeof err === 'object' && 'code' in err && typeof (err as { code: unknown }).code === 'string'
+          ? ` (${(err as { code: string }).code})`
+          : err instanceof Error && err.message
+            ? ` (${err.message})`
+            : '';
+      setError(`${t('settings.dashboardCustomizeSaveFailed')}${detail}`);
     } finally {
       setSaving(false);
     }

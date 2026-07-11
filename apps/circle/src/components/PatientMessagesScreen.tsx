@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import type { User } from 'firebase/auth';
-import { ChevronLeft, ChevronDown, ClipboardList, Mail, Maximize2, MessageSquare, Mic, Save, Trash2, User as UserIcon, Users, AlertCircle, Bell } from 'lucide-react';
+import { ChevronLeft, ChevronDown, ChevronUp, ClipboardList, Mail, Maximize2, MessageSquare, Mic, Save, Trash2, User as UserIcon, Users, AlertCircle, Bell } from 'lucide-react';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import {
@@ -100,6 +100,7 @@ import {
   messageMatchesInboxView,
   type CircleMessagesInboxView,
 } from '../lib/circleMessageInboxViews';
+import { splitInboxMessagesByRecency } from '../lib/circleMessageInboxRecency';
 import {
   circleUrgencyInboxRowClass,
   circleUrgencyLeftAccentClass,
@@ -365,6 +366,7 @@ export function PatientMessagesScreen({
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [inboxView, setInboxView] = useState<CircleMessagesInboxView>('in_out');
+  const [olderInboxExpanded, setOlderInboxExpanded] = useState(false);
   const [readTick, setReadTick] = useState(0);
   const compactChrome = useCircleCompactChrome();
 
@@ -752,6 +754,13 @@ export function PatientMessagesScreen({
     );
   };
 
+  const [visibleInboxLimit, setVisibleInboxLimit] = useState(INBOX_LIST_STEP);
+
+  useEffect(() => {
+    setVisibleInboxLimit(INBOX_LIST_STEP);
+    setOlderInboxExpanded(false);
+  }, [inboxView, patient.patientId]);
+
   const sortedDirectMessages = useMemo(() => {
     return [...bucketDirectMessages].sort((a, b) => {
       const aUnread = isInboxThreadUnread(a);
@@ -761,18 +770,32 @@ export function PatientMessagesScreen({
     });
   }, [bucketDirectMessages, patient.patientId, repliesByMessageId, readTick]);
 
-  const [visibleInboxLimit, setVisibleInboxLimit] = useState(INBOX_LIST_STEP);
+  const inboxUsesRecencySections = inboxView === 'alert' || inboxView === 'attention';
 
-  useEffect(() => {
-    setVisibleInboxLimit(INBOX_LIST_STEP);
-  }, [inboxView, patient.patientId]);
+  const inboxRecencySplit = useMemo(() => {
+    if (!inboxUsesRecencySections) {
+      return { recent: sortedDirectMessages, older: [] as CircleThreadMessage[] };
+    }
+    return splitInboxMessagesByRecency(sortedDirectMessages);
+  }, [inboxUsesRecencySections, sortedDirectMessages]);
 
-  const pagedDirectMessages = useMemo(
-    () => sortedDirectMessages.slice(0, visibleInboxLimit),
-    [sortedDirectMessages, visibleInboxLimit],
-  );
+  const olderInboxUnreadCount = useMemo(() => {
+    if (!inboxUsesRecencySections) return 0;
+    return inboxRecencySplit.older.filter((msg) => isInboxThreadUnread(msg)).length;
+  }, [inboxRecencySplit.older, inboxUsesRecencySections, patient.patientId, repliesByMessageId, readTick]);
 
-  const hasMoreInboxMessages = sortedDirectMessages.length > visibleInboxLimit;
+  const pagedDirectMessages = useMemo(() => {
+    if (inboxUsesRecencySections) return inboxRecencySplit.recent;
+    return sortedDirectMessages.slice(0, visibleInboxLimit);
+  }, [
+    inboxRecencySplit.recent,
+    inboxUsesRecencySections,
+    sortedDirectMessages,
+    visibleInboxLimit,
+  ]);
+
+  const hasMoreInboxMessages =
+    !inboxUsesRecencySections && sortedDirectMessages.length > visibleInboxLimit;
 
   const latestPatientReplyId = useMemo(() => {
     for (let i = visibleReplies.length - 1; i >= 0; i--) {
@@ -1222,22 +1245,92 @@ export function PatientMessagesScreen({
                   </p>
                 </div>
               ) : null}
-              <ul className="divide-y divide-slate-200 bg-white">
-                {pagedDirectMessages.map((msg) => renderInboxRow(msg))}
-              </ul>
-              {hasMoreInboxMessages ? (
-                <div className="px-3 py-2 bg-white border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => setVisibleInboxLimit((count) => count + INBOX_LIST_STEP)}
-                    className="w-full rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                  >
-                    {t('messages.showMoreInbox', {
-                      remaining: sortedDirectMessages.length - visibleInboxLimit,
-                    })}
-                  </button>
-                </div>
-              ) : null}
+              {inboxUsesRecencySections ? (
+                <>
+                  {inboxRecencySplit.recent.length > 0 &&
+                  inboxRecencySplit.older.length > 0 ? (
+                    <div className="px-3 py-1.5 bg-white border-b border-slate-100">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                        {t('messages.sectionRecent')}
+                      </p>
+                    </div>
+                  ) : null}
+                  {inboxRecencySplit.recent.length > 0 ? (
+                    <ul className="divide-y divide-slate-200 bg-white">
+                      {inboxRecencySplit.recent.map((msg) => renderInboxRow(msg))}
+                    </ul>
+                  ) : null}
+                  {inboxRecencySplit.older.length > 0 ? (
+                    <div className="border-t border-slate-200 bg-slate-50/80">
+                      <button
+                        type="button"
+                        onClick={() => setOlderInboxExpanded((expanded) => !expanded)}
+                        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-slate-100/80"
+                        aria-expanded={olderInboxExpanded}
+                      >
+                        <span className="text-sm font-semibold text-slate-600">
+                          {inboxView === 'alert'
+                            ? messagesCountLabel(
+                                t,
+                                inboxRecencySplit.older.length,
+                                'messages.inboxOlderAlert_one',
+                                'messages.inboxOlderAlert_other',
+                              )
+                            : messagesCountLabel(
+                                t,
+                                inboxRecencySplit.older.length,
+                                'messages.inboxOlderAttention_one',
+                                'messages.inboxOlderAttention_other',
+                              )}
+                          {olderInboxUnreadCount > 0
+                            ? ` (${t('messages.inboxOlderUnread', { count: olderInboxUnreadCount })})`
+                            : ''}
+                        </span>
+                        {olderInboxExpanded ? (
+                          <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" aria-hidden />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" aria-hidden />
+                        )}
+                      </button>
+                      {olderInboxExpanded ? (
+                        <>
+                          <ul className="divide-y divide-slate-200 bg-white border-t border-slate-100">
+                            {inboxRecencySplit.older.map((msg) => renderInboxRow(msg))}
+                          </ul>
+                          <div className="px-3 py-2 bg-white border-t border-slate-100">
+                            <button
+                              type="button"
+                              onClick={() => setOlderInboxExpanded(false)}
+                              className="w-full rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                            >
+                              {t('messages.inboxHideOlder')}
+                            </button>
+                          </div>
+                        </>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <ul className="divide-y divide-slate-200 bg-white">
+                    {pagedDirectMessages.map((msg) => renderInboxRow(msg))}
+                  </ul>
+                  {hasMoreInboxMessages ? (
+                    <div className="px-3 py-2 bg-white border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => setVisibleInboxLimit((count) => count + INBOX_LIST_STEP)}
+                        className="w-full rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                      >
+                        {t('messages.showMoreInbox', {
+                          remaining: sortedDirectMessages.length - visibleInboxLimit,
+                        })}
+                      </button>
+                    </div>
+                  ) : null}
+                </>
+              )}
             </>
           ) : (
             <div className="p-8 text-center text-sm text-slate-500">
