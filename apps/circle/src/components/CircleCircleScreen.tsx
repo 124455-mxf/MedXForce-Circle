@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
-import { Loader2, CalendarClock, Megaphone, MessageCircle, Shield, Stethoscope, Trash2, Undo2, Users } from 'lucide-react';
+import { Loader2, CalendarClock, ClipboardList, Megaphone, MessageCircle, Shield, Stethoscope, Trash2, Undo2, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
   canDeleteCircleThreadPostForEveryone,
@@ -99,6 +99,11 @@ import { useCircleMemberOnboarding } from '../hooks/useCircleMemberOnboarding';
 import { CircleOnboardingWelcomeCard } from './CircleOnboardingWelcomeCard';
 import { useCircleMemberInviteContext } from '../hooks/useCircleMemberInviteContext';
 import { useCareCalendarEntries, buildCareCalendarEntriesSubscription } from '../hooks/useCareCalendarEntries';
+import { useCareTransitionReadiness } from '../hooks/useCareTransitionReadiness';
+import { CircleCareTransitionReadinessBanner } from './CircleCareTransitionReadinessBanner';
+import { CircleCareTransitionReadinessPanel } from './CircleCareTransitionReadinessPanel';
+import { CircleMessageExpandOverlay } from './CircleMessageExpandOverlay';
+import { careTransitionOpenItemCount } from '@medxforce/shared';
 
 interface CircleCircleScreenProps {
   user: User;
@@ -123,6 +128,8 @@ function circlePostInboxSubtitle(t: ReturnType<typeof useCircleT>, view: CircleP
   switch (view) {
     case 'announcements':
       return t('circle.inboxSubtitleAnnouncement');
+    case 'care_transition':
+      return t('circle.inboxSubtitleCareTransition');
     case 'drop_ins':
       return t('circle.inboxSubtitleDropIns');
     case 'visit_captures':
@@ -146,6 +153,8 @@ function circlePostInboxEmptyMessage(
       return canPostAnnouncement
         ? t('circle.inboxEmptyAnnouncement')
         : t('circle.inboxEmptyAnnouncementReadOnly');
+    case 'care_transition':
+      return t('circle.inboxEmptyCareTransition');
     case 'drop_ins':
       return t('circle.inboxEmptyDropIns');
     case 'visit_captures':
@@ -163,6 +172,8 @@ function circlePostInboxTabLabel(t: ReturnType<typeof useCircleT>, view: CircleP
   switch (view) {
     case 'announcements':
       return t('circle.tabAnnouncement');
+    case 'care_transition':
+      return t('circle.tabCareTransition');
     case 'drop_ins':
       return t('circle.tabDropIns');
     case 'visit_captures':
@@ -180,6 +191,8 @@ function circlePostInboxTabIcon(view: CirclePostInboxView): LucideIcon | null {
   switch (view) {
     case 'announcements':
       return Megaphone;
+    case 'care_transition':
+      return ClipboardList;
     case 'visit_captures':
       return Stethoscope;
     case 'appointments':
@@ -196,6 +209,8 @@ function circlePostInboxTabIconClass(view: CirclePostInboxView, active: boolean)
   switch (view) {
     case 'announcements':
       return 'text-violet-600';
+    case 'care_transition':
+      return 'text-amber-700';
     case 'visit_captures':
       return 'text-teal-600';
     case 'appointments':
@@ -237,7 +252,9 @@ export function CircleCircleScreen({
   const { language: viewerLanguage } = useCircleI18nContext();
   const { settings: remoteSettings } = useCircleRemoteSettingsFromShell();
   const patientLanguage = normalizeCircleUiLanguage(remoteSettings?.primaryLanguage);
-  const memberLanguages = useCirclePatientMemberLanguages(db, patient.patientId, user.uid);
+  const memberLanguages = useCirclePatientMemberLanguages(db, patient.patientId, user.uid, {
+    pendingProvision: patient.isPendingProvision === true,
+  });
   const memberRole = patient.role as CircleMemberRole;
   const { inviteContext: memberInviteContext, memberContactId, inviteContextReady } = useCircleMemberInviteContext(
     db,
@@ -270,6 +287,25 @@ export function CircleCircleScreen({
   const [deleteTarget, setDeleteTarget] = useState<CircleMemberThreadPost | null>(null);
   const [actionPending, setActionPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [careTransitionOpen, setCareTransitionOpen] = useState(false);
+
+  const {
+    state: careTransitionState,
+    loading: careTransitionLoading,
+    openItemCount: careTransitionOpenCount,
+  } = useCareTransitionReadiness(db, patient.patientId, user.uid, memberRole, t);
+
+  const showCareTransitionUnderAnnouncements = useMemo(() => {
+    if (inboxView !== 'announcements' || careTransitionLoading || !careTransitionState?.activePackId) {
+      return false;
+    }
+    return careTransitionOpenCount > 0;
+  }, [
+    careTransitionLoading,
+    careTransitionOpenCount,
+    careTransitionState?.activePackId,
+    inboxView,
+  ]);
 
   const postReadTick = useSyncExternalStore(
     subscribeCirclePostThreadRead,
@@ -359,10 +395,13 @@ export function CircleCircleScreen({
   const showCircleOnboarding =
     showOnboardingWelcome && activeThread === 'open' && inboxView === 'discussion';
 
-  const inboxViews = useMemo(
-    () => circlePostInboxViewsForThread(activeThread, memberRole),
-    [activeThread, memberRole],
-  );
+  const inboxViews = useMemo(() => {
+    const views = circlePostInboxViewsForThread(activeThread, memberRole);
+    if (!careTransitionState?.activePackId) {
+      return views.filter((view) => view !== 'care_transition');
+    }
+    return views;
+  }, [activeThread, careTransitionState?.activePackId, memberRole]);
 
   useEffect(() => {
     if (!inboxViews.includes(inboxView)) {
@@ -470,38 +509,56 @@ export function CircleCircleScreen({
     selectedPostIsDiscussion,
   );
 
-  const inboxTabCounts = useMemo(
-    () =>
-      inboxViews.reduce(
-        (acc, view) => {
-          acc[view] = {
-            total: countPostsForInboxView(
-              allPosts,
-              view,
-              hiddenByPostId,
-              activeThread,
-              user.uid,
-              memberInviteContext,
-              memberRole,
-            ),
-            unread: countUnreadPostsForInboxView(
-              allPosts,
-              view,
-              hiddenByPostId,
-              activeThread,
-              user.uid,
-              getPostLastRead,
-              memberInviteContext,
-              memberRole,
-              activeThread === 'open' ? suppressPastAppointmentInviteUnread : undefined,
-            ),
-          };
-          return acc;
-        },
-        {} as Record<CirclePostInboxView, { total: number; unread: number }>,
-      ),
-    [activeThread, allPosts, getPostLastRead, hiddenByPostId, inboxViews, memberInviteContext, memberRole, postReadTick, suppressPastAppointmentInviteUnread, user.uid],
-  );
+  const inboxTabCounts = useMemo(() => {
+    const counts = inboxViews.reduce(
+      (acc, view) => {
+        acc[view] = {
+          total: countPostsForInboxView(
+            allPosts,
+            view,
+            hiddenByPostId,
+            activeThread,
+            user.uid,
+            memberInviteContext,
+            memberRole,
+          ),
+          unread: countUnreadPostsForInboxView(
+            allPosts,
+            view,
+            hiddenByPostId,
+            activeThread,
+            user.uid,
+            getPostLastRead,
+            memberInviteContext,
+            memberRole,
+            activeThread === 'open' ? suppressPastAppointmentInviteUnread : undefined,
+          ),
+        };
+        return acc;
+      },
+      {} as Record<CirclePostInboxView, { total: number; unread: number }>,
+    );
+    if (careTransitionState?.activePackId) {
+      counts.care_transition = {
+        total: Math.max(careTransitionOpenCount, 1),
+        unread: careTransitionOpenCount,
+      };
+    }
+    return counts;
+  }, [
+    activeThread,
+    allPosts,
+    careTransitionOpenCount,
+    careTransitionState?.activePackId,
+    getPostLastRead,
+    hiddenByPostId,
+    inboxViews,
+    memberInviteContext,
+    memberRole,
+    postReadTick,
+    suppressPastAppointmentInviteUnread,
+    user.uid,
+  ]);
 
   const activeTabUnread = inboxTabCounts[inboxView]?.unread ?? 0;
 
@@ -944,7 +1001,7 @@ export function CircleCircleScreen({
   }
 
   const showComposer =
-    inboxView === 'discussion' || (inboxView === 'announcements' && canPostAnnouncement);
+    (inboxView === 'discussion' || (inboxView === 'announcements' && canPostAnnouncement));
 
   const composerPlaceholder =
     inboxView === 'announcements'
@@ -1090,17 +1147,25 @@ export function CircleCircleScreen({
           </CircleHorizontalScrollStrip>
 
           <div className="flex items-start justify-between gap-2">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              {t('circle.inboxListHeading')}
-            </p>
-            {activeTabUnread > 0 && (
-              <button
-                type="button"
-                onClick={handleMarkTabRead}
-                className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-red-700 hover:text-red-900 px-2 py-1 rounded-lg hover:bg-red-100/80"
-              >
-                {t('circle.markAllRead')}
-              </button>
+            {inboxView === 'care_transition' ? (
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                {t('circle.tabCareTransition')}
+              </p>
+            ) : (
+              <>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  {t('circle.inboxListHeading')}
+                </p>
+                {activeTabUnread > 0 ? (
+                  <button
+                    type="button"
+                    onClick={handleMarkTabRead}
+                    className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-red-700 hover:text-red-900 px-2 py-1 rounded-lg hover:bg-red-100/80"
+                  >
+                    {t('circle.markAllRead')}
+                  </button>
+                ) : null}
+              </>
             )}
           </div>
         </div>
@@ -1123,7 +1188,28 @@ export function CircleCircleScreen({
             </div>
           ) : null}
 
-          {loading ? (
+          {showCareTransitionUnderAnnouncements ? (
+            <div className="mb-3">
+              <CircleCareTransitionReadinessBanner
+                patient={patient}
+                state={careTransitionState}
+                loading={careTransitionLoading}
+                onOpen={() => setCareTransitionOpen(true)}
+              />
+            </div>
+          ) : null}
+
+          {inboxView === 'care_transition' ? (
+            <div className="rounded-3xl border border-slate-100 bg-white overflow-hidden">
+              <CircleCareTransitionReadinessPanel
+                user={user}
+                db={db}
+                patient={patient}
+                compact
+                onExpand={() => setCareTransitionOpen(true)}
+              />
+            </div>
+          ) : loading ? (
             <div className="py-12 flex justify-center text-slate-400 [@media(max-height:740px)]:py-8">
               <Loader2 size={24} className="animate-spin" />
             </div>
@@ -1171,6 +1257,21 @@ export function CircleCircleScreen({
       </div>
 
       {messageModals}
+
+      <CircleMessageExpandOverlay
+        open={careTransitionOpen}
+        title={t('careTransition.title')}
+        subtitle={t('careTransition.subtitle', { name: patient.displayName })}
+        onClose={() => setCareTransitionOpen(false)}
+        t={t}
+      >
+        <CircleCareTransitionReadinessPanel
+          user={user}
+          db={db}
+          patient={patient}
+          hideHeader
+        />
+      </CircleMessageExpandOverlay>
     </div>
   );
 }

@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Plus, Trash2, X } from 'lucide-react';
 import {
   REMOTE_PRIMARY_LANGUAGE_OPTIONS,
   TREATMENT_PHASE_VALUES,
+  canonicalizeProfileCountry,
+  listProfileCountryOptions,
+  normalizeCountryCode,
   recommendRemoteSettingsForTreatmentPhase,
   type CirclePatientProfileSnapshot,
   type CircleProfileMedItem,
@@ -15,7 +18,7 @@ import {
 } from '../lib/circleLanguages';
 import { CirclePatientLanguageConfirmModal } from './CirclePatientLanguageConfirmModal';
 import { CirclePatientRecoveryPhaseConfirmModal } from './CirclePatientRecoveryPhaseConfirmModal';
-import { useCircleT } from '../lib/circleI18nContext';
+import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import { treatmentPhaseLabelT } from '../lib/dashboardI18n';
 import { profileEditorSectionTitleI18n } from '../lib/adminScreenI18n';
 import {
@@ -220,9 +223,12 @@ export function CirclePatientProfileEditorModal({
   onSave,
 }: CirclePatientProfileEditorModalProps) {
   const t = useCircleT();
+  const { language } = useCircleI18nContext();
   const [draft, setDraft] = useState(snapshot);
   const [pendingLanguage, setPendingLanguage] = useState<RemotePrimaryLanguage | null>(null);
   const [pendingRecoveryPhase, setPendingRecoveryPhase] = useState<string | null>(null);
+  const countryOptions = useMemo(() => listProfileCountryOptions(language), [language]);
+  const selectedCountryCode = normalizeCountryCode(draft.identity.country) ?? '';
 
   useEffect(() => {
     if (!open) return;
@@ -402,17 +408,34 @@ export function CirclePatientProfileEditorModal({
                   />
                 </label>
                 <label className="block space-y-1">
-                  <span className="text-xs font-bold text-slate-500 uppercase">Country</span>
-                  <input
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200"
-                    value={draft.identity.country}
+                  <span className="text-xs font-bold text-slate-500 uppercase">
+                    {t('admin.profile.fields.identity_country')}
+                  </span>
+                  <select
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
+                    value={selectedCountryCode}
                     onChange={(e) =>
                       setDraft({
                         ...draft,
-                        identity: { ...draft.identity, country: e.target.value },
+                        identity: {
+                          ...draft.identity,
+                          country: canonicalizeProfileCountry(e.target.value),
+                        },
                       })
                     }
-                  />
+                  >
+                    <option value="">{t('careTransition.countryNotSet')}</option>
+                    {draft.identity.country.trim() && !selectedCountryCode ? (
+                      <option value={draft.identity.country}>
+                        {draft.identity.country} ({t('careTransition.countryLegacy')})
+                      </option>
+                    ) : null}
+                    {countryOptions.map((option) => (
+                      <option key={option.code} value={option.code}>
+                        {option.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
             </>

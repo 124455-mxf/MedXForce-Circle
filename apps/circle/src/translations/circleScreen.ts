@@ -20,6 +20,7 @@ export const circleScreenEnglish = {
   restoreToInbox: 'Restore',
   tabDiscussion: 'Discussion',
   tabAnnouncement: 'Announcement',
+  tabCareTransition: 'Care transition',
   tabDropIns: 'Drop-ins',
   tabVisitCaptures: 'Visit captures',
   tabAppointments: 'Appointments',
@@ -28,6 +29,8 @@ export const circleScreenEnglish = {
   inboxSubtitleDiscussion: 'Tap a post to read and reply. Type below to post to everyone.',
   inboxSubtitleAnnouncement:
     'One-way updates from proxies and caregivers. To comment, start a discussion.',
+  inboxSubtitleCareTransition:
+    'Shared checklist for the current care stage. Mark items done or dismiss what does not apply.',
   inboxSubtitleDropIns: 'Tap a drop-in to read the full transcript.',
   inboxSubtitleVisitCaptures: 'Tap a visit capture to read the summary and transcript.',
   inboxSubtitleAppointments: 'Tap an appointment invite to view details and accept or decline.',
@@ -37,6 +40,7 @@ export const circleScreenEnglish = {
   inboxEmptyAnnouncement: 'No announcements yet.',
   inboxEmptyAnnouncementReadOnly:
     'Proxies and caregivers post announcements here. To share feedback, start a discussion.',
+  inboxEmptyCareTransition: 'No open care transition tasks right now.',
   inboxEmptyDropIns: 'No drop-ins yet.',
   inboxEmptyVisitCaptures: 'No visit captures yet.',
   inboxEmptyAppointments: 'No appointment invites yet.',
@@ -144,6 +148,7 @@ export const circleScreenGerman = {
   restoreToInbox: 'Wiederherstellen',
   tabDiscussion: 'Diskussion',
   tabAnnouncement: 'Ankündigung',
+  tabCareTransition: 'Übergangsbereitschaft',
   tabDropIns: 'Drop-ins',
   tabVisitCaptures: 'Besuchsaufzeichnungen',
   tabAppointments: 'Termine',
@@ -153,6 +158,8 @@ export const circleScreenGerman = {
     'Tippen Sie auf einen Beitrag zum Lesen. Unten tippen, um an alle zu posten.',
   inboxSubtitleAnnouncement:
     'Einweg-Updates von Vertretern und Betreuenden. Zum Kommentieren eine Diskussion starten.',
+  inboxSubtitleCareTransition:
+    'Gemeinsame Checkliste für die aktuelle Versorgungsstufe. Erledigt markieren oder nicht Zutreffendes ausblenden.',
   inboxSubtitleDropIns: 'Tippen Sie auf ein Drop-in für das vollständige Transkript.',
   inboxSubtitleVisitCaptures:
     'Tippen Sie auf eine Besuchsaufzeichnung für Zusammenfassung und Transkript.',
@@ -166,6 +173,7 @@ export const circleScreenGerman = {
   inboxEmptyAnnouncement: 'Noch keine Ankündigungen.',
   inboxEmptyAnnouncementReadOnly:
     'Vertreter und Betreuende posten hier Ankündigungen. Für Feedback starten Sie eine Diskussion.',
+  inboxEmptyCareTransition: 'Gerade keine offenen Aufgaben zur Übergangsbereitschaft.',
   inboxEmptyDropIns: 'Noch keine Drop-ins.',
   inboxEmptyVisitCaptures: 'Noch keine Besuchsaufzeichnungen.',
   inboxEmptyAppointments: 'Noch keine Termineinladungen.',
@@ -277,6 +285,7 @@ export const circleScreenSpanish = {
   restoreToInbox: 'Restaurar',
   tabDiscussion: 'Discusión',
   tabAnnouncement: 'Anuncio',
+  tabCareTransition: 'Transición de cuidado',
   tabDropIns: 'Drop-ins',
   tabVisitCaptures: 'Capturas de visita',
   tabAppointments: 'Citas',
@@ -286,6 +295,8 @@ export const circleScreenSpanish = {
     'Toque una publicación para leer. Escriba abajo para publicar a todos.',
   inboxSubtitleAnnouncement:
     'Actualizaciones unidireccionales de representantes y cuidadores. Para comentar, inicie una discusión.',
+  inboxSubtitleCareTransition:
+    'Lista compartida para la etapa de cuidado actual. Marque lo hecho u oculte lo que no aplica.',
   inboxSubtitleDropIns: 'Toque un drop-in para leer la transcripción completa.',
   inboxSubtitleVisitCaptures:
     'Toque una captura de visita para leer el resumen y la transcripción.',
@@ -299,6 +310,7 @@ export const circleScreenSpanish = {
   inboxEmptyAnnouncement: 'Aún no hay anuncios.',
   inboxEmptyAnnouncementReadOnly:
     'Representantes y cuidadores publican anuncios aquí. Para comentar, inicie una discusión.',
+  inboxEmptyCareTransition: 'No hay tareas abiertas de transición de cuidado ahora.',
   inboxEmptyDropIns: 'Aún no hay drop-ins.',
   inboxEmptyVisitCaptures: 'Aún no hay capturas de visita.',
   inboxEmptyAppointments: 'Aún no hay invitaciones a citas.',
@@ -410,6 +422,7 @@ export const circleScreenPolish = {
   restoreToInbox: 'Przywróć',
   tabDiscussion: 'Dyskusja',
   tabAnnouncement: 'Ogłoszenie',
+  tabCareTransition: 'Gotowość przejścia',
   tabDropIns: 'Drop-iny',
   tabVisitCaptures: 'Nagrania wizyt',
   tabAppointments: 'Wizyty',
@@ -419,6 +432,8 @@ export const circleScreenPolish = {
     'Dotknij posta, aby przeczytać. Wpisz poniżej, aby opublikować dla wszystkich.',
   inboxSubtitleAnnouncement:
     'Jednokierunkowe aktualizacje od pełnomocników i opiekunów. Aby skomentować, rozpocznij dyskusję.',
+  inboxSubtitleCareTransition:
+    'Wspólna lista dla bieżącego etapu opieki. Oznacz jako zrobione lub ukryj to, co nie dotyczy.',
   inboxSubtitleDropIns: 'Dotknij drop-inu, aby przeczytać pełną transkrypcję.',
   inboxSubtitleVisitCaptures:
     'Dotknij nagrania wizyty, aby przeczytać podsumowanie i transkrypcję.',
@@ -432,6 +447,7 @@ export const circleScreenPolish = {
   inboxEmptyAnnouncement: 'Brak ogłoszeń.',
   inboxEmptyAnnouncementReadOnly:
     'Pełnomocnicy i opiekunowie publikują tu ogłoszenia. Aby się wypowiedzieć, rozpocznij dyskusję.',
+  inboxEmptyCareTransition: 'Brak otwartych zadań gotowości przejścia.',
   inboxEmptyDropIns: 'Brak drop-inów.',
   inboxEmptyVisitCaptures: 'Brak nagrań wizyt.',
   inboxEmptyAppointments: 'Brak zaproszeń na wizyty.',

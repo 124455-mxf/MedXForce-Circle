@@ -32,6 +32,8 @@ export * from './circlePatientProfile';
 export * from './circlePatientProfileService';
 export * from './circlePatientInsights';
 export * from './treatmentPhase';
+export * from './countries';
+export * from './careTransitionReadiness';
 export * from './diaryEntries';
 export * from './diaryCareMilestones';
 export * from './circleMessageInboxHide';

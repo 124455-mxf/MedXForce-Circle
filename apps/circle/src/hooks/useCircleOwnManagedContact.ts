@@ -138,14 +138,26 @@ export function useCircleOwnManagedContact(
     let latestPatient: Record<string, unknown> | undefined;
     let latestMember: Record<string, unknown> | undefined;
 
-    const unsubPatient = onSnapshot(patientRef, (snap) => {
-      latestPatient = snap.exists() ? (snap.data() as Record<string, unknown>) : undefined;
-      apply(latestPatient, latestMember);
-    });
-    const unsubMember = onSnapshot(memberRef, (snap) => {
-      latestMember = snap.exists() ? (snap.data() as Record<string, unknown>) : undefined;
-      apply(latestPatient, latestMember);
-    });
+    const unsubPatient = onSnapshot(
+      patientRef,
+      (snap) => {
+        latestPatient = snap.exists() ? (snap.data() as Record<string, unknown>) : undefined;
+        apply(latestPatient, latestMember);
+      },
+      (err) => {
+        console.warn('[useCircleOwnManagedContact] patient listener', err);
+      },
+    );
+    const unsubMember = onSnapshot(
+      memberRef,
+      (snap) => {
+        latestMember = snap.exists() ? (snap.data() as Record<string, unknown>) : undefined;
+        apply(latestPatient, latestMember);
+      },
+      (err) => {
+        console.warn('[useCircleOwnManagedContact] member listener', err);
+      },
+    );
 
     return () => {
       unsubPatient();

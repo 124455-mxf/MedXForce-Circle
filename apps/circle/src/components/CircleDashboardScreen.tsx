@@ -41,6 +41,9 @@ import {
 import type { CircleMainTab } from './CircleBottomNav';
 
 import { CircleProfileChangeBanner } from './CircleProfileChangeBanner';
+import { CircleCareTransitionReadinessBanner } from './CircleCareTransitionReadinessBanner';
+import { CircleCareTransitionReadinessPanel } from './CircleCareTransitionReadinessPanel';
+import { CircleMessageExpandOverlay } from './CircleMessageExpandOverlay';
 import { CircleDashboardWelcomeSection } from './CircleDashboardWelcomeSection';
 import { CirclePatientInsightsSection } from './CirclePatientInsightsSection';
 import { CircleDashboardCelebrationSection } from './CircleDashboardCelebrationSection';
@@ -64,6 +67,7 @@ import { CircleTeamCoverageProvider } from '../context/CircleTeamCoverageContext
 import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfileSnapshot';
 
 import { useCircleDashboardLayout } from '../hooks/useCircleDashboardLayout';
+import { useCareTransitionReadiness } from '../hooks/useCareTransitionReadiness';
 import {
   useCircleGalleryDashboardFromShell,
   useCirclePatientPresenceFromShell,
@@ -453,6 +457,11 @@ export function CircleDashboardScreen({
     user.uid,
     memberRole,
   );
+  const {
+    state: careTransitionState,
+    loading: careTransitionLoading,
+  } = useCareTransitionReadiness(db, patient.patientId, user.uid, memberRole, t);
+  const [careTransitionOpen, setCareTransitionOpen] = useState(false);
   const showEngagementStats = caps.viewEngagementTrends !== false;
   const showRemoteSettings = canViewRemoteSettingsTab(caps);
   const showLiveTile = memberRole !== 'friend';
@@ -1063,6 +1072,13 @@ export function CircleDashboardScreen({
 
       <CircleProfileChangeBanner user={user} db={db} patient={patient} />
 
+      <CircleCareTransitionReadinessBanner
+        patient={patient}
+        state={careTransitionState}
+        loading={careTransitionLoading}
+        onOpen={() => setCareTransitionOpen(true)}
+      />
+
       <CircleDashboardWelcomeSection user={user} db={db} patient={patient} />
 
       <CirclePatientCommandConfirmModal
@@ -1260,6 +1276,21 @@ export function CircleDashboardScreen({
           />
         ) : null}
       </div>
+
+      <CircleMessageExpandOverlay
+        open={careTransitionOpen}
+        title={t('careTransition.title')}
+        subtitle={t('careTransition.subtitle', { name: patient.displayName })}
+        onClose={() => setCareTransitionOpen(false)}
+        t={t}
+      >
+        <CircleCareTransitionReadinessPanel
+          user={user}
+          db={db}
+          patient={patient}
+          hideHeader
+        />
+      </CircleMessageExpandOverlay>
     </div>
     </CircleTeamCoverageProvider>
   );

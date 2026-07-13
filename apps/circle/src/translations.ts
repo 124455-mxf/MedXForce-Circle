@@ -83,6 +83,12 @@ import {
   visitBriefScreenPolish,
   visitBriefScreenSpanish,
 } from './translations/visitBrief';
+import {
+  careTransitionContentEnglish,
+  careTransitionContentGerman,
+  careTransitionContentPolish,
+  careTransitionContentSpanish,
+} from './translations/careTransitionContent';
 
 interface TranslationTree {
   [key: string]: string | TranslationTree;
@@ -140,6 +146,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     dailyCheckIn: dailyCheckInScreenEnglish,
     ...clinicalReferencesScreenEnglish,
     ...visitBriefScreenEnglish,
+    careTransitionContent: careTransitionContentEnglish,
     common: {
       refresh: 'Refresh',
       refreshing: 'Refreshing…',
@@ -201,6 +208,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     dailyCheckIn: dailyCheckInScreenGerman,
     ...clinicalReferencesScreenGerman,
     ...visitBriefScreenGerman,
+    careTransitionContent: careTransitionContentGerman,
     common: {
       refresh: 'Aktualisieren',
       refreshing: 'Aktualisiere…',
@@ -262,6 +270,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     dailyCheckIn: dailyCheckInScreenSpanish,
     ...clinicalReferencesScreenSpanish,
     ...visitBriefScreenSpanish,
+    careTransitionContent: careTransitionContentSpanish,
     common: {
       refresh: 'Actualizar',
       refreshing: 'Actualizando…',
@@ -323,6 +332,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     dailyCheckIn: dailyCheckInScreenPolish,
     ...clinicalReferencesScreenPolish,
     ...visitBriefScreenPolish,
+    careTransitionContent: careTransitionContentPolish,
     common: {
       refresh: 'Odśwież',
       refreshing: 'Odświeżanie…',

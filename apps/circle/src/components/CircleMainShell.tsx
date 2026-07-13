@@ -200,11 +200,16 @@ export function CircleMainShell({
 
   useEffect(() => {
     if (!selectedPatient?.patientId || !user.uid) return;
+    if (selectedPatient.isPendingProvision === true) return;
     void (async () => {
-      await repairOrphanAcceptedInvitesForUser(db, user.uid);
-      await repairInactiveAcceptedMemberDocsForUser(db, user.uid);
+      try {
+        await repairOrphanAcceptedInvitesForUser(db, user.uid);
+        await repairInactiveAcceptedMemberDocsForUser(db, user.uid);
+      } catch (err) {
+        console.warn('[CircleMainShell] member repair skipped', err);
+      }
     })();
-  }, [db, selectedPatient?.patientId, user.uid]);
+  }, [db, selectedPatient?.isPendingProvision, selectedPatient?.patientId, user.uid]);
 
   const memberRole = selectedPatient ? normalizeMemberRole(selectedPatient.role) : 'friend';
   const showVisitCapture = !!selectedPatient && canStartVisitCapture(memberRole);
@@ -255,7 +260,9 @@ export function CircleMainShell({
 
   const patientPresence = usePatientOnlinePresence(db, selectedPatient?.patientId);
 
-  const memberLanguages = useCirclePatientMemberLanguages(db, selectedPatient?.patientId, user.uid);
+  const memberLanguages = useCirclePatientMemberLanguages(db, selectedPatient?.patientId, user.uid, {
+    pendingProvision: selectedPatient?.isPendingProvision === true,
+  });
   const remoteSettingsState = useCircleRemoteSettings(db, selectedPatient, user);
   const { settings: remoteSettings } = remoteSettingsState;
   const patientLanguage = normalizeCircleUiLanguage(remoteSettings?.primaryLanguage);

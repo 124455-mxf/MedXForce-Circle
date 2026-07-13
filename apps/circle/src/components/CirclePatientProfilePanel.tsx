@@ -15,12 +15,21 @@ import {
   parseCircleProfileSnapshot,
   updateCirclePatientProfileFromProxy,
   recordCareDiaryMilestones,
+  suggestedPackForPhaseTransition,
+  canManageCareTransitionPack,
+  careTransitionRegionFromCountry,
+  canonicalizeProfileCountry,
+  normalizeMemberRole,
+  readCareTransitionReadinessState,
+  writeCareTransitionReadinessState,
+  ensureCareTransitionAnnouncementPosted,
   type CirclePatientProfileSnapshot,
   type CirclePatientSummary,
 } from '@medxforce/shared';
 import { CirclePatientProfileEditorModal } from './CirclePatientProfileEditorModal';
 import { CirclePatientProfileReview } from './CirclePatientProfileReview';
 import { CircleClinicalReferencesSection } from './CircleClinicalReferencesSection';
+import { CircleCareTransitionReadinessPanel } from './CircleCareTransitionReadinessPanel';
 import { CircleProfilePhotoCropModal } from './CircleProfilePhotoCropModal';
 import { dataUrlToBlob } from '../lib/imageCrop';
 import { isFirestoreQuotaError, pauseFirestoreBackgroundWrites } from '../lib/firestoreQuota';
@@ -182,11 +191,18 @@ export function CirclePatientProfilePanel({
       setError(null);
       const previousPhase = workingSnapshot?.clinical?.treatmentPhase?.trim() || '';
       const nextPhase = next.clinical.treatmentPhase?.trim() || '';
+      const normalizedNext: CirclePatientProfileSnapshot = {
+        ...next,
+        identity: {
+          ...next.identity,
+          country: canonicalizeProfileCountry(next.identity.country),
+        },
+      };
       try {
         await updateCirclePatientProfileFromProxy(
           db,
           patient.patientId,
-          next,
+          normalizedNext,
           user.uid,
           patient.displayName,
           user.displayName || undefined,
@@ -194,9 +210,67 @@ export function CirclePatientProfilePanel({
         void recordCareDiaryMilestones(db, {
           patientId: patient.patientId,
           authorUid: user.uid,
-          language: next.identity.language || workingSnapshot?.identity.language,
+          language: normalizedNext.identity.language || workingSnapshot?.identity.language,
           treatmentPhase: { from: previousPhase, to: nextPhase },
         }).catch((err) => console.warn('[careDiaryMilestone]', err));
+
+        if (
+          previousPhase !== nextPhase &&
+          canManageCareTransitionPack(normalizeMemberRole(patient.role))
+        ) {
+          const packId = suggestedPackForPhaseTransition(previousPhase, nextPhase);
+          if (packId) {
+            void readCareTransitionReadinessState(db, patient.patientId)
+              .then(async (current) => {
+                const written = await writeCareTransitionReadinessState(
+                  db,
+                  patient.patientId,
+                  {
+                    ...current,
+                    activePackId: packId,
+                    doneIds: [],
+                    dismissedIds: [],
+                    packActivatedAt: Date.now(),
+                    announcedPackId: null,
+                    announcementPostId: null,
+                  },
+                  user.uid,
+                );
+                await ensureCareTransitionAnnouncementPosted(db, {
+                  patientId: patient.patientId,
+                  packId,
+                  state: written,
+                  authorUid: user.uid,
+                  authorName: user.displayName || 'Care team',
+                  authorRole: normalizeMemberRole(patient.role),
+                });
+              })
+              .catch((err) => console.warn('[careTransitionReadiness]', err));
+          }
+        }
+
+        // Keep care-transition region aligned with profile country unless manually overridden.
+        const previousCountry = workingSnapshot?.identity?.country ?? '';
+        const nextCountry = normalizedNext.identity.country ?? '';
+        if (
+          previousCountry !== nextCountry &&
+          canManageCareTransitionPack(normalizeMemberRole(patient.role))
+        ) {
+          void readCareTransitionReadinessState(db, patient.patientId)
+            .then(async (current) => {
+              if (current.regionManual) return;
+              const region = careTransitionRegionFromCountry(nextCountry);
+              if (region === current.region) return;
+              await writeCareTransitionReadinessState(
+                db,
+                patient.patientId,
+                { ...current, region, regionManual: false },
+                user.uid,
+              );
+            })
+            .catch((err) => console.warn('[careTransitionReadiness] region sync', err));
+        }
+
         setDraftSnapshot(null);
         setEditSection(null);
       } catch (err) {
@@ -211,7 +285,7 @@ export function CirclePatientProfilePanel({
         setSaving(false);
       }
     },
-    [db, patient.displayName, patient.patientId, t, user.uid, workingSnapshot],
+    [db, patient.displayName, patient.patientId, patient.role, t, user.uid, workingSnapshot],
   );
 
   const handleEditSection = (sectionId: string) => {
@@ -503,6 +577,15 @@ export function CirclePatientProfilePanel({
               {t('admin.profile.readOnlyLimited')}
             </p>
           )}
+
+          <section className="rounded-3xl border border-slate-100 bg-white overflow-hidden">
+            <CircleCareTransitionReadinessPanel
+              user={user}
+              db={db}
+              patient={patient}
+              compact
+            />
+          </section>
         </>
       )}
 
