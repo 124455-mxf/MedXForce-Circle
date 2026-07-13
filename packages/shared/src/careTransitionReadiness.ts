@@ -339,6 +339,26 @@ export const CARE_TRANSITION_PACKS: CareTransitionPack[] = [
         roles: ["proxy", "caregiver"],
         regions: "all",
       },
+      {
+        id: "r5",
+        title: "Expect emotional and personality changes",
+        why:
+          "After stroke or brain injury, mood swings, sudden tears or laughter, low confidence, or fear are common — not “being difficult.” Orient the circle so reactions stay kind.",
+        when: "First rehab week",
+        roles: ["proxy", "caregiver", "family"],
+        regions: "all",
+        knowCourseIds: ["know-emotional-changes"],
+      },
+      {
+        id: "r6",
+        title: "Support dignity — help without taking over",
+        why:
+          "Doing everything for the patient can speed logistics but slow recovery and self-worth. Ask before assisting; celebrate small wins.",
+        when: "Ongoing in rehab",
+        roles: ["family", "caregiver", "proxy"],
+        regions: "all",
+        knowCourseIds: ["know-rehab-partner"],
+      },
     ],
     suggestedKnow: [
       {
@@ -347,6 +367,13 @@ export const CARE_TRANSITION_PACKS: CareTransitionPack[] = [
         duration: "14 min",
         audience: "Family & caregivers",
         href: "https://know.medxforce.example/courses/rehab-partner",
+      },
+      {
+        id: "know-emotional-changes",
+        title: "After stroke / TBI: emotional changes families should expect",
+        duration: "12 min",
+        audience: "Whole circle",
+        href: "https://know.medxforce.example/courses/emotional-changes",
       },
     ],
   },
@@ -426,6 +453,16 @@ export const CARE_TRANSITION_PACKS: CareTransitionPack[] = [
         roles: ["proxy", "caregiver", "family"],
         regions: "all",
       },
+      {
+        id: "h9",
+        title: "Brief the circle on mood and confidence at home",
+        why:
+          "Leaving hospital can spike anxiety and grief about “who I am now.” One short family note reduces surprise and blame.",
+        when: "Before or day of return",
+        roles: ["proxy", "family", "caregiver"],
+        regions: "all",
+        knowCourseIds: ["know-emotional-changes"],
+      },
     ],
     suggestedKnow: [
       {
@@ -441,6 +478,13 @@ export const CARE_TRANSITION_PACKS: CareTransitionPack[] = [
         duration: "11 min",
         audience: "Family",
         href: "https://know.medxforce.example/courses/home-safety",
+      },
+      {
+        id: "know-emotional-changes",
+        title: "After stroke / TBI: emotional changes families should expect",
+        duration: "12 min",
+        audience: "Whole circle",
+        href: "https://know.medxforce.example/courses/emotional-changes",
       },
     ],
   },
@@ -486,6 +530,25 @@ export const CARE_TRANSITION_PACKS: CareTransitionPack[] = [
         roles: ["proxy", "family"],
         regions: "all",
       },
+      {
+        id: "s5",
+        title: "Watch for lasting low mood, fear, or withdrawal",
+        why:
+          "Depression and PTSD-like symptoms are common after stroke. Persistent hopelessness, panic, or shutting out the circle should be raised with the clinical team — Circle members notice; they do not diagnose.",
+        when: "First weeks home",
+        roles: ["proxy", "family", "caregiver"],
+        regions: "all",
+        knowCourseIds: ["know-emotional-changes"],
+      },
+      {
+        id: "s6",
+        title: "Protect confidence in everyday moments",
+        why:
+          "Rushing, correcting, or speaking over the patient deepens shame. Slow down, wait for answers, and invite participation in small decisions.",
+        when: "Ongoing",
+        roles: ["family", "caregiver", "proxy"],
+        regions: "all",
+      },
     ],
     suggestedKnow: [
       {
@@ -501,6 +564,13 @@ export const CARE_TRANSITION_PACKS: CareTransitionPack[] = [
         duration: "9 min",
         audience: "Proxy & family",
         href: "https://know.medxforce.example/courses/caregiver-burnout",
+      },
+      {
+        id: "know-emotional-changes",
+        title: "After stroke / TBI: emotional changes families should expect",
+        duration: "12 min",
+        audience: "Whole circle",
+        href: "https://know.medxforce.example/courses/emotional-changes",
       },
     ],
   },

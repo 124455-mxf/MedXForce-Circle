@@ -165,6 +165,18 @@ export const careTransitionContentEnglish = {
       why: 'Stairs, bathroom, who lives at home — discharge planning starts before discharge.',
       when: 'Mid rehab',
     },
+    r5: {
+      title: 'Expect emotional and personality changes',
+      why:
+        'After stroke or brain injury, mood swings, sudden tears or laughter, low confidence, or fear are common — not “being difficult.” Orient the circle so reactions stay kind.',
+      when: 'First rehab week',
+    },
+    r6: {
+      title: 'Support dignity — help without taking over',
+      why:
+        'Doing everything for the patient can speed logistics but slow recovery and self-worth. Ask before assisting; celebrate small wins.',
+      when: 'Ongoing in rehab',
+    },
     h1: {
       title: 'Confirm discharge date and ride home',
       why: 'Transport is often the forgotten blocker on the day.',
@@ -205,6 +217,12 @@ export const careTransitionContentEnglish = {
       why: 'Primary contact + after-hours number written in one place.',
       when: 'Discharge day',
     },
+    h9: {
+      title: 'Brief the circle on mood and confidence at home',
+      why:
+        'Leaving hospital can spike anxiety and grief about “who I am now.” One short family note reduces surprise and blame.',
+      when: 'Before or day of return',
+    },
     s1: {
       title: 'Agree a week-1 check-in cadence',
       why: 'Prevent silent struggles in the first lonely week.',
@@ -223,6 +241,18 @@ export const careTransitionContentEnglish = {
     s4: {
       title: 'Watch for caregiver burnout signals',
       why: 'Rotate coverage before someone collapses.',
+      when: 'Ongoing',
+    },
+    s5: {
+      title: 'Watch for lasting low mood, fear, or withdrawal',
+      why:
+        'Depression and PTSD-like symptoms are common after stroke. Persistent hopelessness, panic, or shutting out the circle should be raised with the clinical team — Circle members notice; they do not diagnose.',
+      when: 'First weeks home',
+    },
+    s6: {
+      title: 'Protect confidence in everyday moments',
+      why:
+        'Rushing, correcting, or speaking over the patient deepens shame. Slow down, wait for answers, and invite participation in small decisions.',
       when: 'Ongoing',
     },
   },
@@ -250,6 +280,10 @@ export const careTransitionContentEnglish = {
     'know-rehab-partner': {
       title: 'How to support rehab without taking over',
       audience: 'Family & caregivers',
+    },
+    'know-emotional-changes': {
+      title: 'After stroke / TBI: emotional changes families should expect',
+      audience: 'Whole circle',
     },
     'know-home-discharge': {
       title: 'Home discharge: wheelchair, meds, and the first 72 hours',
@@ -438,6 +472,18 @@ export const careTransitionContentGerman = {
       why: 'Treppen, Bad, wer zu Hause wohnt — Entlassungsplanung beginnt vor der Entlassung.',
       when: 'Mitte der Reha',
     },
+    r5: {
+      title: 'Mit emotionalen und Persönlichkeitsveränderungen rechnen',
+      why:
+        'Nach Schlaganfall oder Hirnverletzung sind Stimmungsschwankungen, plötzliches Weinen oder Lachen, Unsicherheit oder Angst häufig — nicht „schwierig sein“. Den Circle so vorbereiten, dass Reaktionen freundlich bleiben.',
+      when: 'Erste Reha-Woche',
+    },
+    r6: {
+      title: 'Würde wahren — helfen, ohne zu übernehmen',
+      why:
+        'Alles für den Patienten zu erledigen beschleunigt Organisation, kann aber Genesung und Selbstwert bremsen. Vor dem Helfen fragen; kleine Fortschritte feiern.',
+      when: 'Laufend in der Reha',
+    },
     h1: {
       title: 'Entlassungsdatum und Heimfahrt bestätigen',
       why: 'Transport ist oft der vergessene Blockierer am Tag selbst.',
@@ -478,6 +524,12 @@ export const careTransitionContentGerman = {
       why: 'Hauptkontakt + Notfallnummer außerhalb der Zeiten an einem Ort notiert.',
       when: 'Entlassungstag',
     },
+    h9: {
+      title: 'Circle zu Stimmung und Selbstvertrauen zu Hause briefen',
+      why:
+        'Das Verlassen des Krankenhauses kann Angst und Trauer über „wer bin ich jetzt?“ verstärken. Eine kurze Familiennotiz mindert Überraschung und Vorwürfe.',
+      when: 'Vor oder am Tag der Rückkehr',
+    },
     s1: {
       title: 'Check-in-Rhythmus für Woche 1 vereinbaren',
       why: 'Stille Überforderung in der ersten einsamen Woche verhindern.',
@@ -496,6 +548,18 @@ export const careTransitionContentGerman = {
     s4: {
       title: 'Auf Burnout-Zeichen bei Betreuungspersonen achten',
       why: 'Abdeckung rotieren, bevor jemand zusammenbricht.',
+      when: 'Laufend',
+    },
+    s5: {
+      title: 'Auf anhaltende Niedergeschlagenheit, Angst oder Rückzug achten',
+      why:
+        'Depression und PTSD-ähnliche Symptome sind nach Schlaganfall häufig. Anhaltende Hoffnungslosigkeit, Panik oder Abschottung vom Circle dem klinischen Team melden — Circle-Mitglieder bemerken; sie diagnostizieren nicht.',
+      when: 'Erste Wochen zu Hause',
+    },
+    s6: {
+      title: 'Selbstvertrauen im Alltag schützen',
+      why:
+        'Hetzen, Korrigieren oder Über-den-Patienten-Sprechen verstärkt Scham. Tempo drosseln, Antworten abwarten und zu kleinen Entscheidungen einladen.',
       when: 'Laufend',
     },
   },
@@ -523,6 +587,10 @@ export const careTransitionContentGerman = {
     'know-rehab-partner': {
       title: 'Reha unterstützen, ohne zu übernehmen',
       audience: 'Familie & Betreuungspersonen',
+    },
+    'know-emotional-changes': {
+      title: 'Nach Schlaganfall / SHT: emotionale Veränderungen, die Familien erwarten sollten',
+      audience: 'Gesamter Circle',
     },
     'know-home-discharge': {
       title: 'Entlassung nach Hause: Rollstuhl, Medikamente und die ersten 72 Stunden',
@@ -711,6 +779,18 @@ export const careTransitionContentSpanish = {
       why: 'Escaleras, baño, quién vive en casa — la planificación del alta empieza antes del alta.',
       when: 'Mitad de la rehabilitación',
     },
+    r5: {
+      title: 'Esperar cambios emocionales y de personalidad',
+      why:
+        'Tras un ictus o lesión cerebral, los cambios de humor, llanto o risa repentinos, baja confianza o miedo son frecuentes — no es “ponerse difícil.” Oriente al círculo para que las reacciones sigan siendo amables.',
+      when: 'Primera semana de rehabilitación',
+    },
+    r6: {
+      title: 'Apoyar la dignidad — ayudar sin tomar el control',
+      why:
+        'Hacerlo todo por el paciente puede acelerar la logística pero frenar la recuperación y la autoestima. Pregunte antes de ayudar; celebre logros pequeños.',
+      when: 'Continuo en rehabilitación',
+    },
     h1: {
       title: 'Confirmar la fecha de alta y el transporte a casa',
       why: 'El transporte suele ser el bloqueo olvidado del día.',
@@ -751,6 +831,12 @@ export const careTransitionContentSpanish = {
       why: 'Contacto principal + número fuera de horario escrito en un solo lugar.',
       when: 'Día del alta',
     },
+    h9: {
+      title: 'Informar al círculo sobre el estado de ánimo y la confianza en casa',
+      why:
+        'Salir del hospital puede disparar ansiedad y duelo por “quién soy ahora.” Una nota breve a la familia reduce sorpresas y culpas.',
+      when: 'Antes o el día del regreso',
+    },
     s1: {
       title: 'Acordar un ritmo de check-in en la semana 1',
       why: 'Evitar luchas silenciosas en la primera semana solitaria.',
@@ -769,6 +855,18 @@ export const careTransitionContentSpanish = {
     s4: {
       title: 'Vigilar señales de agotamiento del cuidador',
       why: 'Rotar la cobertura antes de que alguien se derrumbe.',
+      when: 'Continuo',
+    },
+    s5: {
+      title: 'Vigilar ánimo bajo persistente, miedo o aislamiento',
+      why:
+        'La depresión y síntomas similares al TEPT son frecuentes tras un ictus. Desesperanza persistente, pánico o cerrarse al círculo deben comunicarse al equipo clínico — los miembros del Circle notan; no diagnostican.',
+      when: 'Primeras semanas en casa',
+    },
+    s6: {
+      title: 'Proteger la confianza en los momentos cotidianos',
+      why:
+        'Apresurar, corregir o hablar por encima del paciente profundiza la vergüenza. Vaya más despacio, espere las respuestas e invite a participar en decisiones pequeñas.',
       when: 'Continuo',
     },
   },
@@ -796,6 +894,10 @@ export const careTransitionContentSpanish = {
     'know-rehab-partner': {
       title: 'Cómo apoyar la rehabilitación sin tomar el control',
       audience: 'Familia y cuidadores',
+    },
+    'know-emotional-changes': {
+      title: 'Tras un ictus / TCE: cambios emocionales que las familias deben esperar',
+      audience: 'Todo el círculo',
     },
     'know-home-discharge': {
       title: 'Alta a casa: silla de ruedas, medicamentos y las primeras 72 horas',
@@ -984,6 +1086,18 @@ export const careTransitionContentPolish = {
       why: 'Schody, łazienka, kto mieszka w domu — planowanie wypisu zaczyna się przed wypisem.',
       when: 'W połowie rehabilitacji',
     },
+    r5: {
+      title: 'Spodziewać się zmian emocjonalnych i osobowości',
+      why:
+        'Po udarze lub urazie mózgu wahania nastroju, nagły płacz lub śmiech, niska pewność siebie albo lęk są częste — to nie „bycie trudnym.” Przygotować krąg, by reakcje pozostały życzliwe.',
+      when: 'Pierwszy tydzień rehabilitacji',
+    },
+    r6: {
+      title: 'Chronić godność — pomagać bez przejmowania kontroli',
+      why:
+        'Robienie wszystkiego za pacjenta przyspiesza logistykę, ale może spowolnić powrót do sprawności i poczucie wartości. Pytać przed pomocą; świętować małe sukcesy.',
+      when: 'Na bieżąco w rehabilitacji',
+    },
     h1: {
       title: 'Potwierdzić datę wypisu i dojazd do domu',
       why: 'Transport to często zapomniana przeszkoda w dniu wypisu.',
@@ -1024,6 +1138,12 @@ export const careTransitionContentPolish = {
       why: 'Główny kontakt + numer poza godzinami pracy zapisane w jednym miejscu.',
       when: 'Dzień wypisu',
     },
+    h9: {
+      title: 'Poinformować krąg o nastroju i pewności siebie w domu',
+      why:
+        'Opuszczenie szpitala może nasilić lęk i żałobę po „kim jestem teraz.” Krótka notatka dla rodziny zmniejsza zaskoczenie i obwinianie.',
+      when: 'Przed powrotem lub w dniu powrotu',
+    },
     s1: {
       title: 'Uzgodnić rytm check-inów w tygodniu 1',
       why: 'Zapobiegać cichemu zmaganiu się w pierwszym samotnym tygodniu.',
@@ -1042,6 +1162,18 @@ export const careTransitionContentPolish = {
     s4: {
       title: 'Obserwować sygnały wypalenia opiekuna',
       why: 'Rotować pokrycie, zanim ktoś się załamie.',
+      when: 'Na bieżąco',
+    },
+    s5: {
+      title: 'Obserwować trwały niski nastrój, lęk lub wycofanie',
+      why:
+        'Depresja i objawy podobne do PTSD są częste po udarze. Trwałą beznadziejność, panikę lub odcinanie się od kręgu zgłaszać zespołowi klinicznemu — członkowie Circle zauważają; nie diagnozują.',
+      when: 'Pierwsze tygodnie w domu',
+    },
+    s6: {
+      title: 'Chronić pewność siebie w codziennych chwilach',
+      why:
+        'Pośpiech, poprawianie lub mówienie za pacjenta pogłębia wstyd. Zwolnić, poczekać na odpowiedzi i zapraszać do małych decyzji.',
       when: 'Na bieżąco',
     },
   },
@@ -1069,6 +1201,10 @@ export const careTransitionContentPolish = {
     'know-rehab-partner': {
       title: 'Jak wspierać rehabilitację bez przejmowania kontroli',
       audience: 'Rodzina i opiekunowie',
+    },
+    'know-emotional-changes': {
+      title: 'Po udarze / urazie mózgu: zmiany emocjonalne, których rodziny powinny się spodziewać',
+      audience: 'Cały krąg',
     },
     'know-home-discharge': {
       title: 'Wypis do domu: wózek, leki i pierwsze 72 godziny',
