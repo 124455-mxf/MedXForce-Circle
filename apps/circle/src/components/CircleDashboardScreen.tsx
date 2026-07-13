@@ -1074,6 +1074,7 @@ export function CircleDashboardScreen({
 
       <CircleCareTransitionReadinessBanner
         patient={patient}
+        readerUid={user.uid}
         state={careTransitionState}
         loading={careTransitionLoading}
         onOpen={() => setCareTransitionOpen(true)}

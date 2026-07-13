@@ -1192,6 +1192,7 @@ export function CircleCircleScreen({
             <div className="mb-3">
               <CircleCareTransitionReadinessBanner
                 patient={patient}
+                readerUid={user.uid}
                 state={careTransitionState}
                 loading={careTransitionLoading}
                 onOpen={() => setCareTransitionOpen(true)}

@@ -24,6 +24,7 @@ import {
 import { useCareTransitionReadiness } from '../hooks/useCareTransitionReadiness';
 import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfileSnapshot';
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
+import { formatCareTransitionPackStartedAt } from '../lib/careTransitionBannerDismiss';
 import {
   buildLocalizedTaskCopyText,
   localizeCareTransitionItem,
@@ -44,25 +45,6 @@ type CircleCareTransitionReadinessPanelProps = {
   /** Open the full-screen checklist modal */
   onExpand?: () => void;
 };
-
-function formatPackStartedAt(ms: number, language: string): string {
-  const locale =
-    language === 'German'
-      ? 'de'
-      : language === 'Spanish'
-        ? 'es'
-        : language === 'Polish'
-          ? 'pl'
-          : 'en';
-  try {
-    return new Intl.DateTimeFormat(locale, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date(ms));
-  } catch {
-    return new Date(ms).toLocaleString();
-  }
-}
 
 export function CircleCareTransitionReadinessPanel({
   user,
@@ -157,7 +139,7 @@ export function CircleCareTransitionReadinessPanel({
   const startedLabel =
     state?.packActivatedAt && state.packActivatedAt > 0
       ? t('careTransition.startedAt', {
-          date: formatPackStartedAt(state.packActivatedAt, language),
+          date: formatCareTransitionPackStartedAt(state.packActivatedAt, language),
         })
       : null;
 
