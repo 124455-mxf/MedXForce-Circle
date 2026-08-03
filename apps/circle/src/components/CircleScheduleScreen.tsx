@@ -38,8 +38,8 @@ export function CircleScheduleScreen({
   const { snapshot: profileSnapshot } = useCirclePatientProfileSnapshot(db, patient.patientId);
   const { settings: remoteSettings } = useCircleRemoteSettingsFromShell();
 
-  const scheduleTabEnabled =
-    memberRole !== 'friend' && remoteSettings?.featuresVisibility?.schedule !== false;
+  // Circle Schedule is for the care team — independent of patient-tablet Schedule visibility.
+  const scheduleTabEnabled = memberRole !== 'friend';
 
   if (!scheduleTabEnabled) {
     return (
@@ -73,7 +73,7 @@ export function CircleScheduleScreen({
           byMetricId={byMetricId}
           treatmentPhase={profileSnapshot?.clinical?.treatmentPhase}
           appMode={remoteSettings?.appMode}
-          scheduleEnabled={remoteSettings?.featuresVisibility?.schedule}
+          scheduleEnabled
           remoteAssessmentSchedule={remoteSettings?.assessmentSchedule}
           enabled={scheduleTabEnabled}
           fullPage

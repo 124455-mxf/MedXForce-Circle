@@ -350,9 +350,8 @@ export function CircleMainShell({
   const navBuildOptions = useMemo(
     () => ({
       memberRole,
-      scheduleEnabled: remoteSettings?.featuresVisibility?.schedule,
     }),
-    [memberRole, remoteSettings?.featuresVisibility?.schedule],
+    [memberRole],
   );
 
   const primaryNavItems = useMemo(() => {

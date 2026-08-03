@@ -336,6 +336,10 @@ export function CircleBottomNav({
 
 export type CircleNavBuildOptions = {
   memberRole?: CircleMemberRole;
+  /**
+   * @deprecated Ignored. Circle Schedule stays available for care roles so proxies can
+   * manage appointments even when the patient tablet Schedule tab is off.
+   */
   scheduleEnabled?: boolean;
 };
 
@@ -344,8 +348,8 @@ export function primaryNavItemsForPatient(
   options: CircleNavBuildOptions = {},
 ): CircleNavItem[] {
   const memberRole = options.memberRole ? normalizeMemberRole(options.memberRole) : undefined;
-  const showSchedule =
-    memberRole !== 'friend' && options.scheduleEnabled !== false;
+  // Care calendar in Circle is independent of patient-tablet Schedule visibility.
+  const showSchedule = memberRole !== 'friend';
   const showMediaInPrimary =
     memberRole === 'friend' &&
     (capabilities.viewCircleMedia || capabilities.richMediaUpload);

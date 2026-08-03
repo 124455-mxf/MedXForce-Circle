@@ -138,7 +138,7 @@ const remoteSettingsEnglish = {
     showUserInSidebar: 'User profile in the left sidebar.',
     dashboard: 'Dashboard tab in the sidebar.',
     dropIn: 'Allow Circle members to start a live drop-in session with the patient.',
-    schedule: 'Care calendar tab for appointments and scheduled assessments.',
+    schedule: 'Patient tablet care calendar tab. Circle Schedule stays available for proxies and caregivers.',
     communicationTab: 'Primary communication interface.',
     messagingTab: 'Caregiver messaging features.',
     aiCompanion: 'Companion conversational interface.',
@@ -381,7 +381,8 @@ const remoteSettingsGerman = {
     showUserInSidebar: 'Benutzerprofil in der linken Seitenleiste.',
     dashboard: 'Dashboard-Tab in der Seitenleiste.',
     dropIn: 'Circle-Mitglieder dürfen eine Live-Drop-in-Sitzung mit dem Patienten starten.',
-    schedule: 'Kalender-Tab für Termine und geplante Assessments.',
+    schedule:
+      'Kalender-Tab auf dem Patiententablet. Circle-Terminplan bleibt für Stellvertreter und Betreuungspersonen verfügbar.',
     communicationTab: 'Primäre Kommunikationsoberfläche.',
     messagingTab: 'Nachrichtenfunktionen für Betreuende.',
     aiCompanion: 'Begleiter-Gesprächsoberfläche.',
@@ -623,7 +624,8 @@ const remoteSettingsSpanish = {
     showUserInSidebar: 'Perfil de usuario en la barra lateral izquierda.',
     dashboard: 'Pestaña Panel en la barra lateral.',
     dropIn: 'Permitir que miembros de Circle inicien una sesión drop-in en vivo con el paciente.',
-    schedule: 'Pestaña de calendario para citas y evaluaciones programadas.',
+    schedule:
+      'Pestaña de calendario en la tableta del paciente. El calendario de Circle sigue disponible para apoderados y cuidadores.',
     communicationTab: 'Interfaz principal de comunicación.',
     messagingTab: 'Funciones de mensajería para cuidadores.',
     aiCompanion: 'Interfaz de conversación del companion.',
@@ -865,7 +867,8 @@ const remoteSettingsPolish = {
     showUserInSidebar: 'Profil użytkownika w lewym panelu.',
     dashboard: 'Zakładka Panel w bocznym menu.',
     dropIn: 'Zezwól członkom Circle na rozpoczęcie sesji drop-in na żywo z pacjentem.',
-    schedule: 'Zakładka kalendarza dla wizyt i zaplanowanych ocen.',
+    schedule:
+      'Zakładka kalendarza na tablecie pacjenta. Harmonogram Circle pozostaje dostępny dla pełnomocników i opiekunów.',
     communicationTab: 'Główny interfejs komunikacji.',
     messagingTab: 'Funkcje wiadomości dla opiekunów.',
     aiCompanion: 'Interfejs rozmowy z companionem.',
