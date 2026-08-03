@@ -360,6 +360,12 @@ export function primaryNavItemsForPatient(
     items.push({ id: 'messages', label: 'Messages', icon: MessageSquare });
   }
 
+  items.push({
+    id: 'circle',
+    label: 'Circle',
+    icon: Users,
+  });
+
   if (showSchedule) {
     items.push({ id: 'schedule', label: 'Schedule', icon: Calendar });
   }
@@ -376,12 +382,6 @@ export function primaryNavItemsForPatient(
     id: 'diary',
     label: 'Diary',
     icon: ScrollText,
-  });
-
-  items.push({
-    id: 'circle',
-    label: 'Circle',
-    icon: Users,
   });
 
   return items;
