@@ -83,6 +83,7 @@ export async function revokeCircleInviteByEmail(
 
   const actorUid = options.actorUid?.trim();
   const acceptedByUid = typeof data?.acceptedByUid === 'string' ? data.acceptedByUid.trim() : '';
+  // Soft-block self-revoke in the Circle access list (UI also hides Revoke on "YOU").
   if (actorUid && acceptedByUid && actorUid === acceptedByUid) {
     return false;
   }
@@ -94,6 +95,7 @@ export async function revokeCircleInviteByEmail(
   });
 
   if (acceptedByUid) {
+    // Requires firestore.rules: invite managers may delete other members' docs.
     batch.delete(doc(db, 'patients', patientId, 'members', acceptedByUid));
   }
 
