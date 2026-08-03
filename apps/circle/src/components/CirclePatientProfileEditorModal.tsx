@@ -409,7 +409,7 @@ export function CirclePatientProfileEditorModal({
                 </label>
                 <label className="block space-y-1">
                   <span className="text-xs font-bold text-slate-500 uppercase">
-                    {t('admin.profile.fields.identity_country')}
+                    {t('admin.profile.fieldCountry')}
                   </span>
                   <select
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
