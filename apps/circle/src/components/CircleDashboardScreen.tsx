@@ -327,12 +327,16 @@ function LivePatientWidget({
                   {t('dashboard.dropIn')}
                 </button>
               ) : dropInFeatureEnabled === false ? (
-                <div className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 space-y-0.5">
-                  <p className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400">
-                    <MessageCircle size={14} className="shrink-0" aria-hidden />
+                <div className="w-full space-y-1">
+                  <div
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/80 border border-slate-200 text-slate-400 text-xs font-bold cursor-not-allowed select-none"
+                    aria-disabled="true"
+                    title={t('dashboard.dropInDisabledHint')}
+                  >
+                    <MessageCircle size={14} className="shrink-0 opacity-70" aria-hidden />
                     {t('dashboard.dropIn')}
-                  </p>
-                  <p className="text-[10px] text-slate-500 leading-snug">
+                  </div>
+                  <p className="text-[9px] font-medium text-center text-slate-400 leading-tight px-0.5">
                     {t('dashboard.dropInDisabledHint')}
                   </p>
                 </div>
