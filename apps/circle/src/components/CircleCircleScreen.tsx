@@ -113,6 +113,8 @@ interface CircleCircleScreenProps {
   openUnreadCount: number;
   restrictedUnreadCount: number;
   canInitiateDropIn?: boolean;
+  /** When false, Drop-in folder action shows a Remote Settings hint instead of start. */
+  patientDropInFeatureEnabled?: boolean;
   patientOnline?: boolean;
   patientDoNotDisturb?: boolean;
   onStartDropIn?: () => void;
@@ -238,6 +240,7 @@ export function CircleCircleScreen({
   openUnreadCount,
   restrictedUnreadCount,
   canInitiateDropIn = false,
+  patientDropInFeatureEnabled = true,
   patientOnline = false,
   patientDoNotDisturb = false,
   onStartDropIn,
@@ -420,6 +423,7 @@ export function CircleCircleScreen({
     }
     if (dropInActive && !dropInChatOpen) return 'drop_in_resume';
     if (dropInActive && dropInChatOpen) return null;
+    if (!patientDropInFeatureEnabled) return 'drop_in_disabled';
     if (!patientOnline) return 'drop_in_offline';
     if (patientDoNotDisturb) return 'drop_in_dnd';
     return onStartDropIn ? 'drop_in_start' : null;
@@ -431,6 +435,7 @@ export function CircleCircleScreen({
     inboxView,
     onStartDropIn,
     patientDoNotDisturb,
+    patientDropInFeatureEnabled,
     patientOnline,
   ]);
 

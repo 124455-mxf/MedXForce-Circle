@@ -7,6 +7,7 @@ export type CirclePostFolderActionVariant =
   | 'drop_in_resume'
   | 'drop_in_offline'
   | 'drop_in_dnd'
+  | 'drop_in_disabled'
   | 'record_visit';
 
 interface CirclePostFolderActionCardProps {
@@ -23,7 +24,8 @@ export function CirclePostFolderActionCard({
   className,
 }: CirclePostFolderActionCardProps) {
   const isDropIn = variant.startsWith('drop_in_');
-  const isBlocked = variant === 'drop_in_offline' || variant === 'drop_in_dnd';
+  const isBlocked =
+    variant === 'drop_in_offline' || variant === 'drop_in_dnd' || variant === 'drop_in_disabled';
   const isResume = variant === 'drop_in_resume';
   const isActionable = !isBlocked && !!onAction;
 
@@ -37,6 +39,8 @@ export function CirclePostFolderActionCard({
         return t('circle.folderActionDropInOfflineTitle');
       case 'drop_in_dnd':
         return t('circle.folderActionDropInDndTitle');
+      case 'drop_in_disabled':
+        return t('dashboard.dropIn');
       case 'record_visit':
         return t('circle.folderActionRecordVisit');
       default:
@@ -54,6 +58,8 @@ export function CirclePostFolderActionCard({
         return t('circle.folderActionDropInOfflineHint');
       case 'drop_in_dnd':
         return t('circle.folderActionDropInDndHint');
+      case 'drop_in_disabled':
+        return t('dashboard.dropInDisabledHint');
       case 'record_visit':
         return t('circle.folderActionRecordVisitHint');
       default:

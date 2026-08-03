@@ -163,6 +163,8 @@ interface CircleDashboardScreenProps {
   onResumeDropIn?: () => void;
   dropInActive?: boolean;
   dropInChatOpen?: boolean;
+  /** When false, Drop-in is shown disabled with a Remote Settings hint. */
+  dropInFeatureEnabled?: boolean;
   remoteCommandAwaiting: CirclePatientRemoteCommandAwaiting;
 }
 
@@ -226,6 +228,7 @@ function LivePatientWidget({
   onResumeDropIn,
   dropInActive = false,
   dropInChatOpen = false,
+  dropInFeatureEnabled = true,
   t,
 }: {
   onlineDurationLabel: string;
@@ -240,6 +243,7 @@ function LivePatientWidget({
   onResumeDropIn?: () => void;
   dropInActive?: boolean;
   dropInChatOpen?: boolean;
+  dropInFeatureEnabled?: boolean;
   t: ReturnType<typeof useCircleT>;
 }) {
   const showResumeDropIn = dropInActive && !dropInChatOpen && !!onResumeDropIn;
@@ -322,6 +326,16 @@ function LivePatientWidget({
                   <MessageCircle size={14} className="shrink-0" aria-hidden />
                   {t('dashboard.dropIn')}
                 </button>
+              ) : dropInFeatureEnabled === false ? (
+                <div className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 space-y-0.5">
+                  <p className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                    <MessageCircle size={14} className="shrink-0" aria-hidden />
+                    {t('dashboard.dropIn')}
+                  </p>
+                  <p className="text-[10px] text-slate-500 leading-snug">
+                    {t('dashboard.dropInDisabledHint')}
+                  </p>
+                </div>
               ) : null}
               <button
                 type="button"
@@ -439,6 +453,7 @@ export function CircleDashboardScreen({
   onResumeDropIn,
   dropInActive,
   dropInChatOpen,
+  dropInFeatureEnabled = true,
   remoteCommandAwaiting,
 }: CircleDashboardScreenProps) {
   const t = useCircleT();
@@ -1130,6 +1145,7 @@ export function CircleDashboardScreen({
                   setConfirmCommandType('open_quick_answers');
                 }}
                 onDropIn={showRemotePrompts ? onRequestDropIn : undefined}
+                dropInFeatureEnabled={dropInFeatureEnabled}
                 onResumeDropIn={onResumeDropIn}
                 dropInActive={dropInActive}
                 dropInChatOpen={dropInChatOpen}

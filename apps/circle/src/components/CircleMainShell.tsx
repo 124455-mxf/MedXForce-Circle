@@ -266,6 +266,14 @@ export function CircleMainShell({
   const remoteSettingsState = useCircleRemoteSettings(db, selectedPatient, user);
   const { settings: remoteSettings } = remoteSettingsState;
   const patientLanguage = normalizeCircleUiLanguage(remoteSettings?.primaryLanguage);
+  // Match patient tablet: wait for settings, then follow featuresVisibility.dropIn.
+  const patientDropInFeatureEnabled =
+    remoteSettings != null && remoteSettings.featuresVisibility?.dropIn !== false;
+  const canStartDropInRequest =
+    canReceiveRemoteCommandResponses &&
+    patientDropInFeatureEnabled &&
+    patientPresence.online &&
+    !isPatientDoNotDisturbSection(patientPresence.activeSection);
 
   const circleDropIn = useCircleDropIn(
     db,
@@ -284,9 +292,10 @@ export function CircleMainShell({
   );
 
   const openDropInConfirmModal = useCallback(() => {
+    if (!patientDropInFeatureEnabled) return;
     setDropInSentThisOpen(false);
     setDropInConfirmOpen(true);
-  }, []);
+  }, [patientDropInFeatureEnabled]);
 
   const closeDropInConfirmModal = useCallback(() => {
     setDropInConfirmOpen(false);
@@ -590,13 +599,8 @@ export function CircleMainShell({
               onOpenVisitCapture={
                 showVisitCapture ? () => handleOpenVisitCapture() : undefined
               }
-              onRequestDropIn={
-                canReceiveRemoteCommandResponses &&
-                patientPresence.online &&
-                !isPatientDoNotDisturbSection(patientPresence.activeSection)
-                  ? openDropInConfirmModal
-                  : undefined
-              }
+              onRequestDropIn={canStartDropInRequest ? openDropInConfirmModal : undefined}
+              dropInFeatureEnabled={patientDropInFeatureEnabled}
               onResumeDropIn={circleDropIn.resumeChat}
               dropInActive={!!circleDropIn.activeSession}
               dropInChatOpen={circleDropIn.chatOpen}
@@ -665,9 +669,10 @@ export function CircleMainShell({
                 openUnreadCount={circleThreadUnread.openUnreadCount}
                 restrictedUnreadCount={circleThreadUnread.restrictedUnreadCount}
                 canInitiateDropIn={canReceiveRemoteCommandResponses}
+                patientDropInFeatureEnabled={patientDropInFeatureEnabled}
                 patientOnline={patientPresence.online}
                 patientDoNotDisturb={isPatientDoNotDisturbSection(patientPresence.activeSection)}
-                onStartDropIn={openDropInConfirmModal}
+                onStartDropIn={canStartDropInRequest ? openDropInConfirmModal : undefined}
                 onResumeDropIn={circleDropIn.resumeChat}
                 dropInActive={!!circleDropIn.activeSession}
                 dropInChatOpen={circleDropIn.chatOpen}
