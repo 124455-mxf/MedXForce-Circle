@@ -126,6 +126,8 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     patients: {
       yourPatients: 'Your patients',
+      checkingAccess: 'Checking your Circle access…',
+      checkingAccessHint: 'Looking up invites and patient links for this account. This can take a moment.',
       noInvitesYet:
         'No active invites yet. In the patient app, open Settings → Family & Friends, confirm your email is saved, click Done, then tap Refresh here.',
     },
@@ -188,6 +190,9 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     patients: {
       yourPatients: 'Ihre Patienten',
+      checkingAccess: 'Circle-Zugang wird geprüft…',
+      checkingAccessHint:
+        'Einladungen und Patientenverknüpfungen für dieses Konto werden gesucht. Das kann einen Moment dauern.',
       noInvitesYet:
         'Noch keine aktiven Einladungen. Öffnen Sie in der Patienten-App Einstellungen → Familie & Freunde, speichern Sie Ihre E-Mail, tippen Sie auf Fertig und dann hier auf Aktualisieren.',
     },
@@ -250,6 +255,9 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     patients: {
       yourPatients: 'Sus pacientes',
+      checkingAccess: 'Comprobando su acceso a Circle…',
+      checkingAccessHint:
+        'Buscando invitaciones y vínculos de pacientes para esta cuenta. Puede tardar un momento.',
       noInvitesYet:
         'Aún no hay invitaciones activas. En la app del paciente, abra Ajustes → Familia y amigos, confirme su correo, pulse Hecho y luego Actualizar aquí.',
     },
@@ -312,6 +320,9 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     patients: {
       yourPatients: 'Twoi pacjenci',
+      checkingAccess: 'Sprawdzanie dostępu do Circle…',
+      checkingAccessHint:
+        'Szukamy zaproszeń i powiązań z pacjentami dla tego konta. To może chwilę potrwać.',
       noInvitesYet:
         'Brak aktywnych zaproszeń. W aplikacji pacjenta otwórz Ustawienia → Rodzina i przyjaciele, zapisz e-mail, naciśnij Gotowe, a potem Odśwież tutaj.',
     },

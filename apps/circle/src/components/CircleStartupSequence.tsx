@@ -6,8 +6,8 @@ export const STARTUP_BRAND_COLOR = '#F9A142';
 
 const STEPS = [
   'Starting MedXForce Circle',
-  'Loading your circle',
-  'Preparing your messages',
+  'Checking your access',
+  'Preparing your workspace',
 ] as const;
 
 type CircleStartupSequenceProps = {

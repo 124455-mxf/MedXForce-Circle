@@ -9,7 +9,7 @@ import {
   signOut,
   type User,
 } from 'firebase/auth';
-import { LogOut, Users } from 'lucide-react';
+import { Loader2, LogOut, Users } from 'lucide-react';
 import { MedXForceBrandLogo } from './components/MedXForceBrandLogo';
 import {
   acceptPendingCircleInvites,
@@ -443,7 +443,49 @@ export default function App() {
     </div>
   ) : (
     <div className="flex flex-col h-dvh max-h-dvh overflow-hidden box-border max-w-2xl mx-auto w-full pt-4 px-3 pb-2.5 sm:pt-5 sm:px-4 sm:pb-3 [@media(max-height:740px)]:pt-3.5 [@media(max-height:740px)]:px-2.5 [@media(max-height:740px)]:pb-2">
-      {patients.length === 0 ? (
+      {patientsHydrating && patients.length === 0 ? (
+        <>
+          <div className="flex items-center gap-3 shrink-0 mb-6">
+            <div className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shrink-0">
+              <MedXForceBrandLogo />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl font-bold text-slate-800">{t('auth.title')}</h1>
+              <p className="text-xs text-slate-500 truncate">{t('common.friendsFamily')}</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-5">
+            <div className="flex items-center gap-2 text-slate-700">
+              <Users size={18} />
+              <h2 className="font-bold">{t('patients.yourPatients')}</h2>
+            </div>
+            <div className="flex flex-col items-center text-center gap-3 py-6">
+              <Loader2 size={28} className="animate-spin text-blue-600" aria-hidden />
+              <p className="text-sm font-semibold text-slate-800">{t('patients.checkingAccess')}</p>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-sm">
+                {t('patients.checkingAccessHint')}
+              </p>
+              <div
+                className="mt-2 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-slate-100"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={t('patients.checkingAccess')}
+              >
+                <div className="h-full w-2/5 rounded-full bg-blue-500 animate-pulse" />
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleSignOut()}
+              className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-blue-600"
+            >
+              <LogOut size={16} />
+              {t('common.signOut')}
+            </button>
+          </div>
+        </>
+      ) : patients.length === 0 ? (
         <>
           <div className="flex items-center gap-3 shrink-0 mb-6">
             <div className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shrink-0">
