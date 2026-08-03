@@ -234,6 +234,10 @@ export function formatDashboardPatientDashboardViewLineT(
   if (loading) return t('dashboard.dashboardViewLoading');
   if (!doc) return t('dashboard.dashboardViewUnknown');
 
+  if (doc.featuresVisibility?.dashboard !== true) {
+    return t('dashboard.dashboardViewNone');
+  }
+
   const preset = resolveEffectiveRemoteDashboardPreset(doc);
   if (preset === 'custom') {
     return t('dashboard.dashboardViewCustom');

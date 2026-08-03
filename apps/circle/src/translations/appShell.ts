@@ -785,6 +785,7 @@ export const appShellEnglish = {
     modePreset: 'Mode: {{label}}',
     dashboardViewLoading: 'View: …',
     dashboardViewUnknown: 'View: unknown',
+    dashboardViewNone: 'View: no dashboard',
     dashboardViewCustom: 'View: custom (device)',
     dashboardViewPreset: 'View: {{label}}',
     appModes: {
@@ -1815,6 +1816,7 @@ export const appShellGerman = {
     modePreset: 'Modus: {{label}}',
     dashboardViewLoading: 'Ansicht: …',
     dashboardViewUnknown: 'Ansicht: unbekannt',
+    dashboardViewNone: 'Ansicht: kein Dashboard',
     dashboardViewCustom: 'Ansicht: individuell (Gerät)',
     dashboardViewPreset: 'Ansicht: {{label}}',
     appModes: {
@@ -2845,6 +2847,7 @@ export const appShellSpanish = {
     modePreset: 'Modo: {{label}}',
     dashboardViewLoading: 'Vista: …',
     dashboardViewUnknown: 'Vista: desconocida',
+    dashboardViewNone: 'Vista: sin panel',
     dashboardViewCustom: 'Vista: personalizada (dispositivo)',
     dashboardViewPreset: 'Vista: {{label}}',
     appModes: {
@@ -3875,6 +3878,7 @@ export const appShellPolish = {
     modePreset: 'Tryb: {{label}}',
     dashboardViewLoading: 'Widok: …',
     dashboardViewUnknown: 'Widok: nieznany',
+    dashboardViewNone: 'Widok: bez panelu',
     dashboardViewCustom: 'Widok: własny (urządzenie)',
     dashboardViewPreset: 'Widok: {{label}}',
     appModes: {

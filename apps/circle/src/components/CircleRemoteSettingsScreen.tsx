@@ -33,6 +33,11 @@ import {
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 import {
+  remoteAppModeCardClass,
+  remoteAppModeCurrentBadgeClass,
+  remoteAppModeIconClass,
+} from '../lib/appModeUi';
+import {
   circleSectionBodyClass,
   circleSectionBodyPaddingClass,
   circleSectionHeaderStackClass,
@@ -206,9 +211,10 @@ export function CircleRemoteSettingsScreen({
   };
 
   const customized = settings ? isRemoteSettingsCustomized(settings) : false;
+  const dashboardTabEnabled = settings?.featuresVisibility?.dashboard === true;
   const effectiveDashboardPreset = resolveEffectiveRemoteDashboardPreset(settings);
   const storedDashboardPreset =
-    effectiveDashboardPreset === 'custom' ? null : effectiveDashboardPreset;
+    dashboardTabEnabled && effectiveDashboardPreset !== 'custom' ? effectiveDashboardPreset : null;
   const patientSetDashboardLayout = settings?.source === 'patient';
 
   const handleCopyOverview = async () => {
@@ -326,18 +332,21 @@ export function CircleRemoteSettingsScreen({
                     }}
                     className={cn(
                       'w-full text-left p-4 rounded-2xl border transition-colors',
-                      active
-                        ? 'border-blue-300 bg-blue-50/70'
-                        : 'border-slate-100 bg-white hover:border-slate-200',
+                      remoteAppModeCardClass(mode.key, active),
                     )}
                   >
                     <div className="flex items-center gap-2">
-                      <Shield size={16} className={active ? 'text-blue-600' : 'text-slate-400'} />
-                      <p className="text-sm font-normal text-slate-800">
+                      <Shield size={16} className={remoteAppModeIconClass(mode.key, active)} />
+                      <p className="text-sm font-bold text-slate-800">
                         {remoteSettingsAppModeLabel(t, mode.key)}
                       </p>
                       {active && (
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
+                        <span
+                          className={cn(
+                            'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full',
+                            remoteAppModeCurrentBadgeClass(mode.key),
+                          )}
+                        >
                           {t('remoteSettings.current')}
                         </span>
                       )}
@@ -345,6 +354,11 @@ export function CircleRemoteSettingsScreen({
                     <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                       {remoteSettingsAppModeDescription(t, mode.key)}
                     </p>
+                    {mode.key === 'intensive_care' ? (
+                      <p className="text-[11px] font-semibold text-red-700/80 mt-1.5 leading-relaxed">
+                        {t('remoteSettings.modes.intensiveCareDashboardHint')}
+                      </p>
+                    ) : null}
                   </button>
                 );
               })}
@@ -360,6 +374,22 @@ export function CircleRemoteSettingsScreen({
                 </span>
               ) : null}
             </div>
+            {!dashboardTabEnabled ? (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <LayoutDashboard size={16} className="text-slate-500" />
+                  <p className="text-sm font-bold text-slate-800">
+                    {t('remoteSettings.dashboardPresets.none')}
+                  </p>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded-full">
+                    {t('remoteSettings.current')}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {t('remoteSettings.dashboardPresets.noneDesc')}
+                </p>
+              </div>
+            ) : null}
             <div className="space-y-2">
               {REMOTE_DASHBOARD_PRESETS.map((preset) => {
                 const active = storedDashboardPreset === preset.key;
@@ -375,6 +405,7 @@ export function CircleRemoteSettingsScreen({
                       active
                         ? 'border-violet-300 bg-violet-50/70'
                         : 'border-slate-100 bg-white hover:border-slate-200',
+                      !dashboardTabEnabled && 'opacity-60',
                     )}
                   >
                     <div className="flex items-center gap-2">

@@ -59,12 +59,16 @@ const remoteSettingsEnglish = {
   modes: {
     intensiveCare: 'ICU',
     intensiveCareDesc: 'Critical care — communication-first, minimal distractions, caregiver-controlled.',
+    intensiveCareDashboardHint: 'Dashboard tab off by default (turn on under Features if needed).',
     hospital: 'Hospital',
     hospitalDesc: 'Acute care and active recovery — structured support in hospital or rehab.',
     user: 'Daily Life',
     userDesc: 'Home and everyday life — full features with sensible safety defaults.',
   },
   dashboardPresets: {
+    none: 'No dashboard',
+    noneDesc:
+      'The Dashboard tab is hidden on the tablet. ICU and Hospital modes use this by default until Dashboard is enabled under Features & visibility.',
     minimal: 'Essentials',
     minimalDesc: 'Communication, check-in, and time — a calm, focused dashboard.',
     balanced: 'Balanced',
@@ -297,12 +301,17 @@ const remoteSettingsGerman = {
   modes: {
     intensiveCare: 'Intensivstation (ICU)',
     intensiveCareDesc: 'Intensivpflege — kommunikationsorientiert, wenig Ablenkung, betreuergesteuert.',
+    intensiveCareDashboardHint:
+      'Dashboard-Tab standardmäßig aus (bei Bedarf unter Funktionen einschalten).',
     hospital: 'Krankenhaus',
     hospitalDesc: 'Akutpflege und aktive Genesung — strukturierte Unterstützung im Krankenhaus oder in der Reha.',
     user: 'Alltag',
     userDesc: 'Zuhause und Alltag — voller Funktionsumfang mit sinnvollen Sicherheitsstandards.',
   },
   dashboardPresets: {
+    none: 'Kein Dashboard',
+    noneDesc:
+      'Der Dashboard-Tab ist auf dem Tablet ausgeblendet. ICU- und Krankenhaus-Modus nutzen das standardmäßig, bis Dashboard unter Funktionen & Sichtbarkeit aktiviert wird.',
     minimal: 'Essentials',
     minimalDesc: 'Kommunikation, Check-in und Uhrzeit — ein ruhiges, fokussiertes Dashboard.',
     balanced: 'Ausgewogen',
@@ -534,12 +543,17 @@ const remoteSettingsSpanish = {
   modes: {
     intensiveCare: 'UCI',
     intensiveCareDesc: 'Cuidados críticos — comunicación primero, mínimas distracciones, control del cuidador.',
+    intensiveCareDashboardHint:
+      'Pestaña Panel desactivada por defecto (actívela en Funciones si hace falta).',
     hospital: 'Hospital',
     hospitalDesc: 'Cuidados agudos y recuperación activa — apoyo en hospital o rehabilitación.',
     user: 'Vida diaria',
     userDesc: 'Hogar y vida cotidiana — funciones completas con valores de seguridad sensatos.',
   },
   dashboardPresets: {
+    none: 'Sin panel',
+    noneDesc:
+      'La pestaña Panel está oculta en la tableta. Los modos UCI y Hospital lo usan por defecto hasta que se active Panel en Funciones y visibilidad.',
     minimal: 'Esenciales',
     minimalDesc: 'Comunicación, registro diario y hora — un panel tranquilo y enfocado.',
     balanced: 'Equilibrado',
@@ -771,12 +785,17 @@ const remoteSettingsPolish = {
   modes: {
     intensiveCare: 'OIOM',
     intensiveCareDesc: 'Opieka krytyczna — komunikacja na pierwszym miejscu, minimum rozproszeń, kontrola opiekuna.',
+    intensiveCareDashboardHint:
+      'Zakładka Panel domyślnie wyłączona (włącz w Funkcjach, jeśli potrzeba).',
     hospital: 'Szpital',
     hospitalDesc: 'Opieka ostrzowa i aktywna rekonwalescencja — wsparcie w szpitalu lub rehabilitacji.',
     user: 'Codzienne życie',
     userDesc: 'Dom i codzienność — pełne funkcje z rozsądnymi ustawieniami bezpieczeństwa.',
   },
   dashboardPresets: {
+    none: 'Bez panelu',
+    noneDesc:
+      'Zakładka Panel jest ukryta na tablecie. Tryby OIOM i Szpital używają tego domyślnie, dopóki Panel nie zostanie włączony w Funkcjach i widoczności.',
     minimal: 'Essentials',
     minimalDesc: 'Komunikacja, check-in i czas — spokojny, skupiony panel.',
     balanced: 'Zbalansowany',
