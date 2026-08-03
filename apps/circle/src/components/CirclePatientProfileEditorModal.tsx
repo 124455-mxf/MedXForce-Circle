@@ -362,6 +362,7 @@ export function CirclePatientProfileEditorModal({
               <label className="block space-y-1">
                 <span className="text-xs font-bold text-slate-500 uppercase">Date of birth</span>
                 <input
+                  type="date"
                   className="w-full px-4 py-3 rounded-xl border border-slate-200"
                   value={draft.identity.dob}
                   onChange={(e) =>
@@ -831,6 +832,7 @@ export function CirclePatientProfileEditorModal({
               <label className="block space-y-1">
                 <span className="text-xs font-bold text-slate-500 uppercase">Date of onset</span>
                 <input
+                  type="date"
                   className="w-full px-4 py-3 rounded-xl border border-slate-200"
                   value={draft.clinical.dateOfOnset}
                   onChange={(e) =>
@@ -1068,7 +1070,9 @@ export function CirclePatientProfileEditorModal({
         }
         dashboardLabel={
           recoveryRecommendation
-            ? remoteSettingsDashboardPresetLabel(t, recoveryRecommendation.dashboardPreset)
+            ? recoveryRecommendation.dashboardEnabled
+              ? remoteSettingsDashboardPresetLabel(t, recoveryRecommendation.dashboardPreset)
+              : t('remoteSettings.dashboardPresets.none')
             : ''
         }
         onConfirm={() => {

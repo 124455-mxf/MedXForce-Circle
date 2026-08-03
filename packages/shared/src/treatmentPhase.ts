@@ -57,8 +57,23 @@ export function formatTreatmentPhaseLabelEn(phase: string | undefined | null): s
 
 export type TreatmentPhaseRemoteRecommendation = {
   appMode: 'intensive_care' | 'hospital' | 'user';
+  /** Stored fallback layout if Dashboard is later turned on. */
   dashboardPreset: 'minimal' | 'balanced' | 'insights' | 'spark';
+  /** False for Intensive care / Hospital — Dashboard tab stays off by mode. */
+  dashboardEnabled: boolean;
 };
+
+function recommendationFor(
+  appMode: TreatmentPhaseRemoteRecommendation['appMode'],
+  dashboardPreset: TreatmentPhaseRemoteRecommendation['dashboardPreset'],
+): TreatmentPhaseRemoteRecommendation {
+  return {
+    appMode,
+    dashboardPreset,
+    // Only Daily Life mode enables the patient Dashboard tab by default.
+    dashboardEnabled: appMode === 'user',
+  };
+}
 
 /** Suggested application mode + dashboard preset when a proxy updates recovery phase from Circle. */
 export function recommendRemoteSettingsForTreatmentPhase(
@@ -68,15 +83,15 @@ export function recommendRemoteSettingsForTreatmentPhase(
   if (!normalized) return null;
   switch (normalized) {
     case 'icu':
-      return { appMode: 'intensive_care', dashboardPreset: 'minimal' };
+      return recommendationFor('intensive_care', 'minimal');
     case 'acute':
-      return { appMode: 'hospital', dashboardPreset: 'minimal' };
+      return recommendationFor('hospital', 'minimal');
     case 'rehab':
-      return { appMode: 'hospital', dashboardPreset: 'spark' };
+      return recommendationFor('hospital', 'spark');
     case 'maintenance':
-      return { appMode: 'user', dashboardPreset: 'balanced' };
+      return recommendationFor('user', 'balanced');
     case 'palliative':
-      return { appMode: 'user', dashboardPreset: 'minimal' };
+      return recommendationFor('user', 'minimal');
     default:
       return null;
   }
