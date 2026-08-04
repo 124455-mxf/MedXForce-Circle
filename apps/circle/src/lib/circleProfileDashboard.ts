@@ -7,16 +7,38 @@ function hasText(value: string | undefined | null): boolean {
   return !!value?.trim();
 }
 
+export type CoreCircleProfileField =
+  | 'firstName'
+  | 'lastName'
+  | 'dob'
+  | 'language'
+  | 'sex';
+
+const CORE_CIRCLE_PROFILE_FIELDS: CoreCircleProfileField[] = [
+  'firstName',
+  'lastName',
+  'dob',
+  'language',
+  'sex',
+];
+
 /** Minimum fields needed to operate well with the patient. */
 export function isCoreCircleProfileComplete(snapshot: CirclePatientProfileSnapshot): boolean {
-  const { firstName, lastName, dob, language } = snapshot.identity;
-  return (
-    hasText(firstName) &&
-    hasText(lastName) &&
-    hasText(dob) &&
-    hasText(language) &&
-    hasText(snapshot.extended.sex)
-  );
+  return getMissingCoreCircleProfileFields(snapshot).length === 0;
+}
+
+/** Core identity fields still empty (name, DOB, language, sex). */
+export function getMissingCoreCircleProfileFields(
+  snapshot: CirclePatientProfileSnapshot | null | undefined,
+): CoreCircleProfileField[] {
+  if (!snapshot) return [...CORE_CIRCLE_PROFILE_FIELDS];
+  const missing: CoreCircleProfileField[] = [];
+  if (!hasText(snapshot.identity.firstName)) missing.push('firstName');
+  if (!hasText(snapshot.identity.lastName)) missing.push('lastName');
+  if (!hasText(snapshot.identity.dob)) missing.push('dob');
+  if (!hasText(snapshot.identity.language)) missing.push('language');
+  if (!hasText(snapshot.extended.sex)) missing.push('sex');
+  return missing;
 }
 
 function isIdentityComplete(snapshot: CirclePatientProfileSnapshot): boolean {

@@ -137,6 +137,21 @@ export function profileCompletenessLabelT(
   return isComplete ? t('dashboard.dataComplete') : t('dashboard.dataIncomplete');
 }
 
+export function coreProfileFieldLabelT(
+  t: CircleTranslator,
+  field: 'firstName' | 'lastName' | 'dob' | 'language' | 'sex',
+): string {
+  return t(`dashboard.coreProfileFields.${field}`);
+}
+
+export function formatMissingCoreProfileFieldsT(
+  t: CircleTranslator,
+  fields: Array<'firstName' | 'lastName' | 'dob' | 'language' | 'sex'>,
+): string {
+  if (!fields.length) return '';
+  return fields.map((field) => coreProfileFieldLabelT(t, field)).join(', ');
+}
+
 export function treatmentPhaseLabelT(t: CircleTranslator, phase: string | undefined | null): string {
   const raw = phase?.trim() ?? '';
   if (!raw) return t('dashboard.notSet');
@@ -517,14 +532,20 @@ export function localizeCareProfileReminder(
   t: CircleTranslator,
   patientName: string,
   canOpenPatientProfile: boolean,
+  missingFieldsLabel = '',
 ): LocalizedReminderCopy {
+  const bodyKey = canOpenPatientProfile
+    ? missingFieldsLabel
+      ? 'dashboard.reminders.careProfileBodyWithFields'
+      : 'dashboard.reminders.careProfileBody'
+    : missingFieldsLabel
+      ? 'dashboard.reminders.careProfileBodyCaregiverWithFields'
+      : 'dashboard.reminders.careProfileBodyCaregiver';
   return {
     headline: t('dashboard.reminders.careProfileHeadline', { name: patientName }),
-    body: t(
-      canOpenPatientProfile
-        ? 'dashboard.reminders.careProfileBody'
-        : 'dashboard.reminders.careProfileBodyCaregiver',
-    ),
+    body: missingFieldsLabel
+      ? t(bodyKey, { fields: missingFieldsLabel })
+      : t(bodyKey),
   };
 }
 
@@ -532,9 +553,15 @@ export function localizePreviewCareProfileReminder(
   t: CircleTranslator,
   patientName: string,
 ): LocalizedReminderCopy {
+  const sampleFields = formatMissingCoreProfileFieldsT(t, [
+    'firstName',
+    'dob',
+    'language',
+    'sex',
+  ]);
   return {
     headline: t('dashboard.reminders.previewCareProfileHeadline', { name: patientName }),
-    body: t('dashboard.reminders.previewCareProfileBody'),
+    body: t('dashboard.reminders.previewCareProfileBodyWithFields', { fields: sampleFields }),
   };
 }
 

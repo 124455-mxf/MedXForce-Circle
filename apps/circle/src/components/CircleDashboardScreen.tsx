@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Heart,
   Image as ImageIcon,
+  Loader2,
   MessageCircle,
   MessageSquare,
   Radio,
@@ -30,12 +31,15 @@ import {
   canSendPatientRemoteCommands,
   diaryMoodLabel,
   isPatientInsightsPreviewRemindersEnabled,
+  isRemoteSettingsCustomized,
   normalizeMemberRole,
+  setRemoteDailyCheckIn,
   shouldHideDeclinedAppointmentForContact,
   type AnalyticsMetricId,
   type CirclePatientSummary,
   type CircleMemberThreadKind,
   type PatientRemoteCommandType,
+  type RemoteAppMode,
 } from '@medxforce/shared';
 
 import type { CircleMainTab } from './CircleBottomNav';
@@ -93,6 +97,8 @@ import { computeCircleScheduleNudgeCounts, buildPreviewScheduleNudgeCounts } fro
 
 import {
   isCircleProfileDataComplete,
+  isCoreCircleProfileComplete,
+  getMissingCoreCircleProfileFields,
   getUserProfileRecencyUrgency,
 } from '../lib/circleProfileDashboard';
 
@@ -110,11 +116,16 @@ import {
   formatLiveTilePhaseLineT,
   formatDashboardLastLine,
   formatDashboardTimestamp,
+  formatMissingCoreProfileFieldsT,
   formatPatientActiveSectionT,
   formatPatientOnlineDurationLabelT,
   profileCompletenessLabelT,
   treatmentPhaseLabelT,
 } from '../lib/dashboardI18n';
+import {
+  remoteAppModeCardClass,
+  remoteAppModeCurrentBadgeClass,
+} from '../lib/appModeUi';
 import {
   DASHBOARD_RECENCY_TINT_CLASSES,
   DASHBOARD_STATS_DAYS,
@@ -185,6 +196,8 @@ type DashboardWidgetSpec = {
   onClick: () => void;
   span?: 'full';
   recencyTint?: AlertAttentionRecencyUrgency;
+  /** Optional mode-colored card chrome (e.g. ICU / Hospital / Daily Life). */
+  accentClass?: string;
 };
 
 function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
@@ -199,14 +212,14 @@ function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
       onClick={spec.onClick}
       className={cn(
         DASHBOARD_WIDGET_BASE_CLASS,
-        DASHBOARD_RECENCY_TINT_CLASSES[spec.recencyTint ?? 'neutral'],
+        spec.accentClass ?? DASHBOARD_RECENCY_TINT_CLASSES[spec.recencyTint ?? 'neutral'],
       )}
     >
       <Icon size={20} className="text-blue-600 mb-2" />
       <p className="font-bold text-slate-800 text-sm sm:text-base">{spec.title}</p>
       <div className="text-xs text-slate-500 mt-1 leading-snug flex-1 flex flex-col justify-end gap-0.5">
         {rows.map((row, index) => (
-          <p key={index} className="line-clamp-1">
+          <p key={index} className="line-clamp-2">
             {row}
           </p>
         ))}
@@ -467,7 +480,9 @@ export function CircleDashboardScreen({
     settings: remoteSettings,
     fromFirestore: remoteSettingsFromFirestore,
     loading: remoteSettingsLoading,
+    persist: persistRemoteSettings,
   } = useCircleRemoteSettingsFromShell();
+  const [icuCheckInUpdating, setIcuCheckInUpdating] = useState(false);
   const caps = patient.capabilities;
   const memberRole = normalizeMemberRole(patient.role);
   const { isWidgetVisible } = useCircleDashboardLayout(
@@ -1003,21 +1018,54 @@ export function CircleDashboardScreen({
     richMediaReactionsCount > 0 ? 'green' : 'neutral';
 
   if (showRemoteSettings) {
-    const checkInLabel =
-      remoteSettings?.dailyCheckIn?.enabled !== false
-        ? t('dashboard.dailyCheckInOn')
-        : t('dashboard.dailyCheckInOff');
+    const checkInOn = remoteSettings?.dailyCheckIn?.enabled === true;
+    const checkInLabel = checkInOn
+      ? t('dashboard.dailyCheckInOn')
+      : t('dashboard.dailyCheckInOff');
+    const appMode = remoteSettings?.appMode as RemoteAppMode | undefined;
+    const modeLabel = formatDashboardApplicationModeLineT(
+      t,
+      remoteSettings,
+      remoteSettingsLoading,
+    );
 
     patientAppWidgets.push({
       key: 'remote-settings',
       title: t('dashboard.remoteSettings'),
       icon: SlidersHorizontal,
-      row1: formatDashboardApplicationModeLineT(t, remoteSettings, remoteSettingsLoading),
+      row1:
+        !remoteSettingsLoading &&
+        appMode &&
+        remoteSettings &&
+        !isRemoteSettingsCustomized(remoteSettings) ? (
+          <span className="inline-flex items-center gap-1.5 min-w-0">
+            <span
+              className={cn(
+                'shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide',
+                remoteAppModeCurrentBadgeClass(appMode),
+              )}
+            >
+              {t(`dashboard.appModes.${appMode}`)}
+            </span>
+            <span className="truncate">{modeLabel}</span>
+          </span>
+        ) : (
+          modeLabel
+        ),
       row2: formatDashboardPatientDashboardViewLineT(t, remoteSettings, remoteSettingsLoading),
       row3: remoteSettingsLoading ? '' : checkInLabel,
+      accentClass:
+        !remoteSettingsLoading && appMode
+          ? remoteAppModeCardClass(appMode, true)
+          : undefined,
       onClick: () => onGoToTab('remote-settings'),
     });
   }
+
+  const missingCoreFields = getMissingCoreCircleProfileFields(profileSnapshot);
+  const missingCoreLabel = formatMissingCoreProfileFieldsT(t, missingCoreFields);
+  const coreComplete =
+    profileSnapshot != null && isCoreCircleProfileComplete(profileSnapshot);
 
   patientAppWidgets.push({
     key: 'user-profile',
@@ -1032,9 +1080,11 @@ export function CircleDashboardScreen({
             false,
             profileSnapshot ? isCircleProfileDataComplete(profileSnapshot) : false,
           ),
-          row2: t('dashboard.phase', {
-            phase: treatmentPhaseLabelT(t, profileSnapshot?.clinical.treatmentPhase),
-          }),
+          row2: !coreComplete && missingCoreLabel
+            ? t('dashboard.coreProfileMissing', { fields: missingCoreLabel })
+            : t('dashboard.phase', {
+                phase: treatmentPhaseLabelT(t, profileSnapshot?.clinical.treatmentPhase),
+              }),
           row3: t('dashboard.device', {
             device: assistiveDevicesLabelT(t, profileSnapshot?.lifestyle.assistiveDevices),
           }),
@@ -1052,6 +1102,11 @@ export function CircleDashboardScreen({
   const visiblePatientAppWidgets = patientAppWidgets.filter((widget) =>
     isWidgetVisible(widget.key),
   );
+  const showIcuCheckInBanner =
+    showRemoteSettings &&
+    !remoteSettingsLoading &&
+    remoteSettings?.appMode === 'intensive_care';
+  const icuDailyCheckInOn = remoteSettings?.dailyCheckIn?.enabled === true;
 
   const handleConfirmRemoteCommand = async () => {
     if (!confirmCommandType || !canSendPatientRemoteCommands(patient.role)) return;
@@ -1290,11 +1345,94 @@ export function CircleDashboardScreen({
           <DashboardSection title={t('dashboard.sectionYou')} widgets={visibleYouWidgets} />
         ) : null}
 
-        {visiblePatientAppWidgets.length > 0 ? (
-          <DashboardSection
-            title={t('dashboard.sectionPatientApp')}
-            widgets={visiblePatientAppWidgets}
-          />
+        {visiblePatientAppWidgets.length > 0 || showIcuCheckInBanner ? (
+          <section className="space-y-2">
+            <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionPatientApp')}</h3>
+            {showIcuCheckInBanner ? (
+              <div
+                className={cn(
+                  'rounded-2xl border px-4 py-3 space-y-3',
+                  icuDailyCheckInOn
+                    ? 'border-red-200 bg-red-50/70'
+                    : 'border-slate-200 bg-slate-50',
+                )}
+              >
+                <div className="space-y-1">
+                  <p
+                    className={cn(
+                      'text-sm font-bold',
+                      icuDailyCheckInOn ? 'text-red-900' : 'text-slate-800',
+                    )}
+                  >
+                    {t(
+                      icuDailyCheckInOn
+                        ? 'dashboard.icuCheckInBannerTitle'
+                        : 'dashboard.icuCheckInBannerTitleOff',
+                    )}
+                  </p>
+                  <p
+                    className={cn(
+                      'text-xs leading-snug',
+                      icuDailyCheckInOn ? 'text-red-800/90' : 'text-slate-600',
+                    )}
+                  >
+                    {t(
+                      icuDailyCheckInOn
+                        ? 'dashboard.icuCheckInBannerBody'
+                        : 'dashboard.icuCheckInBannerBodyOff',
+                    )}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={icuCheckInUpdating || !remoteSettings}
+                  onClick={() => {
+                    if (!remoteSettings || icuCheckInUpdating) return;
+                    const nextEnabled = !icuDailyCheckInOn;
+                    setIcuCheckInUpdating(true);
+                    try {
+                      persistRemoteSettings({
+                        ...setRemoteDailyCheckIn(remoteSettings, { enabled: nextEnabled }),
+                        patientId: patient.patientId,
+                      });
+                    } finally {
+                      window.setTimeout(() => setIcuCheckInUpdating(false), 600);
+                    }
+                  }}
+                  className={cn(
+                    'inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60',
+                    icuDailyCheckInOn
+                      ? 'bg-red-600 text-white hover:bg-red-700'
+                      : 'bg-blue-600 text-white hover:bg-blue-700',
+                  )}
+                >
+                  {icuCheckInUpdating ? <Loader2 size={16} className="animate-spin" /> : null}
+                  {icuCheckInUpdating
+                    ? t('dashboard.icuCheckInUpdating')
+                    : t(
+                        icuDailyCheckInOn
+                          ? 'dashboard.icuCheckInTurnOff'
+                          : 'dashboard.icuCheckInTurnOn',
+                      )}
+                </button>
+              </div>
+            ) : null}
+            {visiblePatientAppWidgets.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3">
+                {visiblePatientAppWidgets.map((widget) => (
+                  <div
+                    key={widget.key}
+                    className={cn(
+                      DASHBOARD_WIDGET_CELL_CLASS,
+                      widget.span === 'full' && 'col-span-2',
+                    )}
+                  >
+                    <DashboardWidget spec={widget} />
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </section>
         ) : null}
       </div>
 

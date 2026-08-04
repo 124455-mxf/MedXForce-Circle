@@ -18,7 +18,7 @@ import {
   type CirclePatientSummary,
   type PatientAnalyticsSummary,
 } from '@medxforce/shared';
-import { isCoreCircleProfileComplete } from '../lib/circleProfileDashboard';
+import { isCoreCircleProfileComplete, getMissingCoreCircleProfileFields } from '../lib/circleProfileDashboard';
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import {
   localizeBirthdayReminder,
@@ -36,6 +36,7 @@ import {
   localizeCareAssessmentReminder,
   localizeCareProfileReminder,
   localizeTeamCoverageReminder,
+  formatMissingCoreProfileFieldsT,
   patientFriendlyDisplayName,
 } from '../lib/dashboardI18n';
 import { cn } from '../lib/utils';
@@ -393,7 +394,16 @@ export function CircleDashboardCelebrationSection({
   }
 
   if (showProfileReminder) {
-    const copy = localizeCareProfileReminder(t, friendlyName, canOpenPatientProfile);
+    const missingFieldsLabel = formatMissingCoreProfileFieldsT(
+      t,
+      getMissingCoreCircleProfileFields(snapshot),
+    );
+    const copy = localizeCareProfileReminder(
+      t,
+      friendlyName,
+      canOpenPatientProfile,
+      missingFieldsLabel,
+    );
     tiles.push({
       key: 'profile-incomplete',
       tone: 'care',

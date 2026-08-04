@@ -752,6 +752,23 @@ export const appShellEnglish = {
     allCaughtUp: 'All caught up',
     dailyCheckInOn: 'Daily check-in on',
     dailyCheckInOff: 'Daily check-in off',
+    icuCheckInBannerTitle: 'Daily check-in is on while in ICU',
+    icuCheckInBannerBody:
+      'The patient may not be able to complete it in their current condition. You can turn it off here.',
+    icuCheckInBannerTitleOff: 'Daily check-in is off while in ICU',
+    icuCheckInBannerBodyOff:
+      'Check-in will not prompt on the tablet. Turn it back on when the patient is ready.',
+    icuCheckInTurnOff: 'Turn off check-in',
+    icuCheckInTurnOn: 'Turn on check-in',
+    icuCheckInUpdating: 'Updating…',
+    coreProfileMissing: 'Still need: {{fields}}',
+    coreProfileFields: {
+      firstName: 'First name',
+      lastName: 'Last name',
+      dob: 'Date of birth',
+      language: 'Language',
+      sex: 'Sex',
+    },
     phase: 'Phase: {{phase}}',
     device: 'Device: {{device}}',
     gallery: 'Gallery',
@@ -853,8 +870,12 @@ export const appShellEnglish = {
       careProfileHeadline: "{{name}}'s profile needs attention",
       careProfileBody:
         'Key profile details are still missing. Tap to open Admin and fill them in as proxy, or wait for the patient to save their profile on the iPad.',
+      careProfileBodyWithFields:
+        'Still need: {{fields}}. Tap to open Admin and fill them in as proxy, or wait for the patient to save their profile on the iPad.',
       careProfileBodyCaregiver:
         'Key profile details are still missing. Ask the patient\'s proxy to complete the profile in Admin, or wait for the patient to save their profile on the iPad.',
+      careProfileBodyCaregiverWithFields:
+        'Still need: {{fields}}. Ask the patient\'s proxy to complete the profile in Admin, or wait for the patient to save their profile on the iPad.',
       careTeamCoverageHeadline: 'Strengthen the care team',
       careTeamCoverageBodyBothProxy:
         'No backup proxy and fewer than two caregivers on the team. Tap Admin → User management to invite a backup proxy and another caregiver.',
@@ -874,6 +895,8 @@ export const appShellEnglish = {
       previewCareProfileHeadline: "{{name}}'s profile needs attention",
       previewCareProfileBody:
         'Sample care-team nudge — tap to open User Profile when available.',
+      previewCareProfileBodyWithFields:
+        'Sample: still need {{fields}}. Tap to open User Profile when available.',
     },
     insightHints: {
       topicTriggers: 'Helps avoid upsetting topics in conversation.',
@@ -1784,6 +1807,23 @@ export const appShellGerman = {
     allCaughtUp: 'Alles gelesen',
     dailyCheckInOn: 'Täglicher Check-in an',
     dailyCheckInOff: 'Täglicher Check-in aus',
+    icuCheckInBannerTitle: 'Täglicher Check-in ist in der ICU aktiv',
+    icuCheckInBannerBody:
+      'In diesem Zustand kann der Patient ihn möglicherweise nicht ausfüllen. Sie können ihn hier ausschalten.',
+    icuCheckInBannerTitleOff: 'Täglicher Check-in ist in der ICU aus',
+    icuCheckInBannerBodyOff:
+      'Auf dem Tablet erscheint kein Check-in. Schalten Sie ihn wieder ein, wenn der Patient bereit ist.',
+    icuCheckInTurnOff: 'Check-in ausschalten',
+    icuCheckInTurnOn: 'Check-in einschalten',
+    icuCheckInUpdating: 'Wird aktualisiert…',
+    coreProfileMissing: 'Noch nötig: {{fields}}',
+    coreProfileFields: {
+      firstName: 'Vorname',
+      lastName: 'Nachname',
+      dob: 'Geburtsdatum',
+      language: 'Sprache',
+      sex: 'Geschlecht',
+    },
     phase: 'Phase: {{phase}}',
     device: 'Gerät: {{device}}',
     gallery: 'Galerie',
@@ -1885,8 +1925,12 @@ export const appShellGerman = {
       careProfileHeadline: 'Profil von {{name}} braucht Aufmerksamkeit',
       careProfileBody:
         'Wichtige Profildaten fehlen noch. Tippen Sie auf Admin und ergänzen Sie als Stellvertreter, oder warten Sie, bis der Patient das Profil auf dem iPad speichert.',
+      careProfileBodyWithFields:
+        'Noch nötig: {{fields}}. Tippen Sie auf Admin und ergänzen Sie als Stellvertreter, oder warten Sie, bis der Patient das Profil auf dem iPad speichert.',
       careProfileBodyCaregiver:
         'Wichtige Profildaten fehlen noch. Bitten Sie den Stellvertreter des Patienten, das Profil in Admin zu vervollständigen, oder warten Sie, bis der Patient das Profil auf dem iPad speichert.',
+      careProfileBodyCaregiverWithFields:
+        'Noch nötig: {{fields}}. Bitten Sie den Stellvertreter des Patienten, das Profil in Admin zu vervollständigen, oder warten Sie, bis der Patient das Profil auf dem iPad speichert.',
       careTeamCoverageHeadline: 'Betreuungsteam stärken',
       careTeamCoverageBodyBothProxy:
         'Kein Backup-Stellvertreter und nur ein Betreuer im Team. Tippen Sie auf Admin → Benutzerverwaltung, um einen Backup-Stellvertreter und einen weiteren Betreuer einzuladen.',
@@ -1906,6 +1950,8 @@ export const appShellGerman = {
       previewCareProfileHeadline: 'Profil von {{name}} braucht Aufmerksamkeit',
       previewCareProfileBody:
         'Beispiel-Betreuungs-Erinnerung — tippen für Benutzerprofil, wenn verfügbar.',
+      previewCareProfileBodyWithFields:
+        'Beispiel: noch nötig {{fields}}. Tippen für Benutzerprofil, wenn verfügbar.',
     },
     insightHints: {
       topicTriggers: 'Hilft, belastende Gesprächsthemen zu vermeiden.',
@@ -2816,6 +2862,23 @@ export const appShellSpanish = {
     allCaughtUp: 'Todo al día',
     dailyCheckInOn: 'Check-in diario activado',
     dailyCheckInOff: 'Check-in diario desactivado',
+    icuCheckInBannerTitle: 'El check-in diario está activado en UCI',
+    icuCheckInBannerBody:
+      'Es posible que el paciente no pueda completarlo en su estado actual. Puede desactivarlo aquí.',
+    icuCheckInBannerTitleOff: 'El check-in diario está desactivado en UCI',
+    icuCheckInBannerBodyOff:
+      'La tableta no pedirá el check-in. Actívelo de nuevo cuando el paciente esté listo.',
+    icuCheckInTurnOff: 'Desactivar check-in',
+    icuCheckInTurnOn: 'Activar check-in',
+    icuCheckInUpdating: 'Actualizando…',
+    coreProfileMissing: 'Aún falta: {{fields}}',
+    coreProfileFields: {
+      firstName: 'Nombre',
+      lastName: 'Apellido',
+      dob: 'Fecha de nacimiento',
+      language: 'Idioma',
+      sex: 'Sexo',
+    },
     phase: 'Fase: {{phase}}',
     device: 'Dispositivo: {{device}}',
     gallery: 'Galería',
@@ -2917,8 +2980,12 @@ export const appShellSpanish = {
       careProfileHeadline: 'El perfil de {{name}} necesita atención',
       careProfileBody:
         'Faltan datos clave del perfil. Toca para abrir Admin y completarlos como apoderado, o espera a que el paciente guarde su perfil en el iPad.',
+      careProfileBodyWithFields:
+        'Aún falta: {{fields}}. Toca para abrir Admin y completarlos como apoderado, o espera a que el paciente guarde su perfil en el iPad.',
       careProfileBodyCaregiver:
         'Faltan datos clave del perfil. Pide al apoderado del paciente que complete el perfil en Admin, o espera a que el paciente lo guarde en el iPad.',
+      careProfileBodyCaregiverWithFields:
+        'Aún falta: {{fields}}. Pide al apoderado del paciente que complete el perfil en Admin, o espera a que el paciente lo guarde en el iPad.',
       careTeamCoverageHeadline: 'Fortalecer el equipo de cuidado',
       careTeamCoverageBodyBothProxy:
         'No hay apoderado de respaldo y solo un cuidador en el equipo. Toca Admin → Gestión de usuarios para invitar un apoderado de respaldo y otro cuidador.',
@@ -2938,6 +3005,8 @@ export const appShellSpanish = {
       previewCareProfileHeadline: 'El perfil de {{name}} necesita atención',
       previewCareProfileBody:
         'Recordatorio de ejemplo del equipo — toca para Perfil de usuario cuando esté disponible.',
+      previewCareProfileBodyWithFields:
+        'Ejemplo: aún falta {{fields}}. Toca para Perfil de usuario cuando esté disponible.',
     },
     insightHints: {
       topicTriggers: 'Ayuda a evitar temas delicados en la conversación.',
@@ -3848,6 +3917,23 @@ export const appShellPolish = {
     allCaughtUp: 'Wszystko przeczytane',
     dailyCheckInOn: 'Codzienny check-in włączony',
     dailyCheckInOff: 'Codzienny check-in wyłączony',
+    icuCheckInBannerTitle: 'Codzienny check-in jest włączony w trybie OIOM',
+    icuCheckInBannerBody:
+      'Pacjent może nie być w stanie go wypełnić w obecnym stanie. Możesz go tutaj wyłączyć.',
+    icuCheckInBannerTitleOff: 'Codzienny check-in jest wyłączony w trybie OIOM',
+    icuCheckInBannerBodyOff:
+      'Tablet nie będzie prosił o check-in. Włącz go ponownie, gdy pacjent będzie gotowy.',
+    icuCheckInTurnOff: 'Wyłącz check-in',
+    icuCheckInTurnOn: 'Włącz check-in',
+    icuCheckInUpdating: 'Aktualizowanie…',
+    coreProfileMissing: 'Brakuje: {{fields}}',
+    coreProfileFields: {
+      firstName: 'Imię',
+      lastName: 'Nazwisko',
+      dob: 'Data urodzenia',
+      language: 'Język',
+      sex: 'Płeć',
+    },
     phase: 'Faza: {{phase}}',
     device: 'Urządzenie: {{device}}',
     gallery: 'Galeria',
@@ -3949,8 +4035,12 @@ export const appShellPolish = {
       careProfileHeadline: 'Profil {{name}} wymaga uwagi',
       careProfileBody:
         'Brakuje kluczowych danych profilu. Dotknij Admin i uzupełnij je jako pełnomocnik, lub poczekaj, aż pacjent zapisze profil na iPadzie.',
+      careProfileBodyWithFields:
+        'Brakuje: {{fields}}. Dotknij Admin i uzupełnij je jako pełnomocnik, lub poczekaj, aż pacjent zapisze profil na iPadzie.',
       careProfileBodyCaregiver:
         'Brakuje kluczowych danych profilu. Poproś pełnomocnika pacjenta o uzupełnienie profilu w Admin lub poczekaj, aż pacjent zapisze profil na iPadzie.',
+      careProfileBodyCaregiverWithFields:
+        'Brakuje: {{fields}}. Poproś pełnomocnika pacjenta o uzupełnienie profilu w Admin lub poczekaj, aż pacjent zapisze profil na iPadzie.',
       careTeamCoverageHeadline: 'Wzmocnij zespół opieki',
       careTeamCoverageBodyBothProxy:
         'Brak zapasowego pełnomocnika i tylko jeden opiekun w zespole. Dotknij Admin → Zarządzanie użytkownikami, aby zaprosić zapasowego pełnomocnika i kolejnego opiekuna.',
@@ -3970,6 +4060,8 @@ export const appShellPolish = {
       previewCareProfileHeadline: 'Profil {{name}} wymaga uwagi',
       previewCareProfileBody:
         'Przykładowe przypomnienie opieki — dotknij Profil użytkownika, gdy dostępny.',
+      previewCareProfileBodyWithFields:
+        'Przykład: brakuje {{fields}}. Dotknij Profil użytkownika, gdy dostępny.',
     },
     insightHints: {
       topicTriggers: 'Pomaga unikać wrażliwych tematów w rozmowie.',
