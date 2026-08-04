@@ -1101,7 +1101,6 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
       dailyCheckIn: { enabled: true, quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS } },
       visibleAreas: { phrases: false, categories: false, emojis: false, unicode: true },
       contentFontSize: 'medium',
-      shareLocationWithCircle: false,
     };
   }
 
@@ -1125,7 +1124,6 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
       },
       visibleAreas: visibleAll,
       contentFontSize: 'medium',
-      shareLocationWithCircle: false,
     };
   }
 
@@ -1145,7 +1143,6 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
     dailyCheckIn: { enabled: true, quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS } },
     visibleAreas: visibleAll,
     contentFontSize: 'medium',
-    shareLocationWithCircle: false,
   };
 }
 
@@ -1195,6 +1192,8 @@ export function isRemoteSettingsCustomized(doc: PatientRemoteSettingsDoc): boole
   }
 
   for (const path of REMOTE_PROXY_TOGGLE_PATHS) {
+    // Location sharing is independent of application mode — leave it alone for "Custom".
+    if (path === 'shareLocationWithCircle') continue;
     if (!remoteBoolMatches(getRemoteSettingValue(doc, path), getRemoteSettingValue(preset, path))) {
       return true;
     }
@@ -1284,6 +1283,8 @@ export function setRemoteAppMode(
     patientId: doc.patientId,
     primaryLanguage: doc.primaryLanguage,
     quickAreasOrder: preset.quickAreasOrder ?? doc.quickAreasOrder,
+    // Sticky: once enabled (or disabled) by proxy/patient, mode changes must not reset it.
+    shareLocationWithCircle: doc.shareLocationWithCircle,
   };
   if (appMode === 'intensive_care') {
     next.dashboardLayout = { ...doc.dashboardLayout, preset: 'minimal' };
