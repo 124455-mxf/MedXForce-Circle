@@ -20,7 +20,8 @@ import { CirclePatientLanguageConfirmModal } from './CirclePatientLanguageConfir
 import { CirclePatientRecoveryPhaseConfirmModal } from './CirclePatientRecoveryPhaseConfirmModal';
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import { treatmentPhaseLabelT } from '../lib/dashboardI18n';
-import { profileEditorSectionTitleI18n } from '../lib/adminScreenI18n';
+import { profileEditorSectionTitleI18n, ASSISTIVE_DEVICE_PRESETS, assistiveDeviceLabelI18n } from '../lib/adminScreenI18n';
+import { cn } from '../lib/utils';
 import {
   remoteSettingsAppModeLabel,
   remoteSettingsDashboardPresetLabel,
@@ -117,13 +118,16 @@ function ListFieldEditor({
   onChange,
   snapshot,
   discoveryKey,
+  presets,
 }: {
   label: string;
   value: string[];
   onChange: (next: string[]) => void;
   snapshot: CirclePatientProfileSnapshot;
   discoveryKey: string;
+  presets?: readonly string[];
 }) {
+  const t = useCircleT();
   return (
     <label className="block space-y-1">
       <CircleProfileFieldLabel
@@ -132,6 +136,32 @@ function ListFieldEditor({
         discoveryKey={discoveryKey}
         values={value}
       />
+      {presets?.length ? (
+        <div className="flex flex-wrap gap-2 pb-1">
+          {presets.map((device) => {
+            const selected = value.includes(device);
+            return (
+              <button
+                key={device}
+                type="button"
+                onClick={() =>
+                  onChange(
+                    selected ? value.filter((item) => item !== device) : [...value, device],
+                  )
+                }
+                className={cn(
+                  'px-3 py-1.5 rounded-full text-xs font-bold transition-all border-2',
+                  selected
+                    ? 'bg-emerald-600 border-emerald-600 text-white'
+                    : 'bg-white border-slate-100 text-slate-400 hover:border-emerald-100',
+                )}
+              >
+                {assistiveDeviceLabelI18n(t, device)}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
       <textarea
         className="w-full px-4 py-3 rounded-xl border border-slate-200 min-h-[72px]"
         value={listInput(value)}
@@ -651,8 +681,8 @@ export function CirclePatientProfileEditorModal({
                   discoveryKey="occupation"
                   values={draft.lifestyle.occupation ? [draft.lifestyle.occupation] : []}
                 />
-                <input
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200"
+                <textarea
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 min-h-[80px]"
                   value={draft.lifestyle.occupation}
                   onChange={(e) =>
                     setDraft({
@@ -669,8 +699,8 @@ export function CirclePatientProfileEditorModal({
                   discoveryKey="living_situation"
                   values={draft.lifestyle.livingSituation ? [draft.lifestyle.livingSituation] : []}
                 />
-                <input
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200"
+                <textarea
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 min-h-[80px]"
                   value={draft.lifestyle.livingSituation}
                   onChange={(e) =>
                     setDraft({
@@ -687,8 +717,8 @@ export function CirclePatientProfileEditorModal({
                   discoveryKey="sleep_profile"
                   values={draft.lifestyle.sleepProfile ? [draft.lifestyle.sleepProfile] : []}
                 />
-                <input
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200"
+                <textarea
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 min-h-[80px]"
                   value={draft.lifestyle.sleepProfile}
                   onChange={(e) =>
                     setDraft({
@@ -706,6 +736,7 @@ export function CirclePatientProfileEditorModal({
                 onChange={(assistiveDevices) =>
                   setDraft({ ...draft, lifestyle: { ...draft.lifestyle, assistiveDevices } })
                 }
+                presets={ASSISTIVE_DEVICE_PRESETS}
               />
               <div className="pt-2 border-t border-slate-100 space-y-3">
                 <p className="text-xs font-bold text-slate-500 uppercase">Substance use</p>
@@ -724,9 +755,9 @@ export function CirclePatientProfileEditorModal({
                       })
                     }
                   >
-                    <option value="">Not provided</option>
-                    <option value="yes">Yes</option>
-                    <option value="no">No</option>
+                    <option value="">{t('admin.profile.notProvided')}</option>
+                    <option value="yes">{t('admin.profile.yes')}</option>
+                    <option value="no">{t('admin.profile.no')}</option>
                   </select>
                 </label>
                 {draft.lifestyle.substanceUse.smoking === 'yes' && (
@@ -765,15 +796,15 @@ export function CirclePatientProfileEditorModal({
                       })
                     }
                   >
-                    <option value="">Not provided</option>
-                    <option value="yes">Yes</option>
-                    <option value="no">No</option>
+                    <option value="">{t('admin.profile.notProvided')}</option>
+                    <option value="yes">{t('admin.profile.yes')}</option>
+                    <option value="no">{t('admin.profile.no')}</option>
                   </select>
                 </label>
                 <label className="block space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase">Alcohol frequency</span>
-                  <input
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200"
+                  <select
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
                     value={draft.lifestyle.substanceUse.alcoholFreq}
                     onChange={(e) =>
                       setDraft({
@@ -784,7 +815,21 @@ export function CirclePatientProfileEditorModal({
                         },
                       })
                     }
-                  />
+                  >
+                    <option value="">{t('admin.profile.notProvided')}</option>
+                    <option value="none">{t('admin.profile.alcoholNone')}</option>
+                    <option value="occasionally">{t('admin.profile.alcoholOccasionally')}</option>
+                    <option value="once_a_week">{t('admin.profile.alcoholOnceAWeek')}</option>
+                    <option value="every_day">{t('admin.profile.alcoholEveryDay')}</option>
+                    {draft.lifestyle.substanceUse.alcoholFreq &&
+                    !['none', 'occasionally', 'once_a_week', 'every_day'].includes(
+                      draft.lifestyle.substanceUse.alcoholFreq,
+                    ) ? (
+                      <option value={draft.lifestyle.substanceUse.alcoholFreq}>
+                        {draft.lifestyle.substanceUse.alcoholFreq}
+                      </option>
+                    ) : null}
+                  </select>
                 </label>
                 <label className="block space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase">Recreational drugs</span>

@@ -16,6 +16,7 @@ import { cn } from '../lib/utils';
 import { CircleProfileAiBadge, isAiDiscoveredField } from '../lib/circleProfileAiDiscovery';
 import { useCircleT, type CircleTranslator } from '../lib/circleI18nContext';
 import {
+  alcoholFreqLabelI18n,
   fitnessLevelLabelI18n,
   yesNoLabelI18n,
 } from '../lib/adminScreenI18n';
@@ -83,7 +84,11 @@ function substanceUseSummary(t: CircleTranslator, snapshot: CirclePatientProfile
   if (su.vaping) {
     lines.push(t('admin.profile.substanceVaping', { value: yesNoLabelI18n(t, su.vaping) }));
   }
-  if (su.alcoholFreq) lines.push(t('admin.profile.substanceAlcohol', { value: su.alcoholFreq }));
+  if (su.alcoholFreq) {
+    lines.push(
+      t('admin.profile.substanceAlcohol', { value: alcoholFreqLabelI18n(t, su.alcoholFreq) }),
+    );
+  }
   if (su.recreationalDrugs) {
     lines.push(t('admin.profile.substanceRecreationalDrugs', { value: su.recreationalDrugs }));
   }

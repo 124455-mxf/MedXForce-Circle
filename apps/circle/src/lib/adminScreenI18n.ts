@@ -35,6 +35,29 @@ const FITNESS_LEVEL_KEYS: Record<string, string> = {
   extra_active: 'admin.profile.fitnessExtraActive',
 };
 
+const ALCOHOL_FREQ_KEYS: Record<string, string> = {
+  none: 'admin.profile.alcoholNone',
+  occasionally: 'admin.profile.alcoholOccasionally',
+  once_a_week: 'admin.profile.alcoholOnceAWeek',
+  every_day: 'admin.profile.alcoholEveryDay',
+};
+
+export const ASSISTIVE_DEVICE_PRESETS = [
+  'Cane',
+  'Walker',
+  'Wheelchair',
+  'Orthotics',
+  'Prosthetics',
+] as const;
+
+const ASSISTIVE_DEVICE_KEYS: Record<string, string> = {
+  Cane: 'admin.profile.assistiveCane',
+  Walker: 'admin.profile.assistiveWalker',
+  Wheelchair: 'admin.profile.assistiveWheelchair',
+  Orthotics: 'admin.profile.assistiveOrthotics',
+  Prosthetics: 'admin.profile.assistiveProsthetics',
+};
+
 export function translateCircleMemberAccessLabel(
   t: CircleTranslator,
   role: string,
@@ -91,6 +114,18 @@ export function relationshipLabelI18n(t: CircleTranslator, relationship: string)
 export function fitnessLevelLabelI18n(t: CircleTranslator, value: string): string {
   const key = FITNESS_LEVEL_KEYS[value.trim()];
   return key ? t(key) : value.trim() || t('admin.profile.emptyValue');
+}
+
+export function alcoholFreqLabelI18n(t: CircleTranslator, value: string): string {
+  const raw = value.trim();
+  if (!raw) return t('admin.profile.emptyValue');
+  const key = ALCOHOL_FREQ_KEYS[raw];
+  return key ? t(key) : raw;
+}
+
+export function assistiveDeviceLabelI18n(t: CircleTranslator, value: string): string {
+  const key = ASSISTIVE_DEVICE_KEYS[value.trim()];
+  return key ? t(key) : value.trim();
 }
 
 export function yesNoLabelI18n(t: CircleTranslator, value: string): string {
