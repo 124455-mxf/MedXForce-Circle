@@ -1287,64 +1287,6 @@ export function CircleDashboardScreen({
           />
         ) : null}
 
-        {familyGalleryWidget || showCircleMap || showCheckInWellnessRing ? (
-          <section className="space-y-2">
-            <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionStayConnected')}</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {familyGalleryWidget ? (
-                <>
-                  <div className={DASHBOARD_WIDGET_CELL_CLASS}>
-                    <DashboardWidget spec={familyGalleryWidget} />
-                  </div>
-                  <div className={DASHBOARD_WIDGET_CELL_CLASS}>
-                    <CircleGalleryRotatingPreviewWidget
-                      photos={galleryDashboard.previewPhotos}
-                      loading={galleryDashboard.loading}
-                      onOpenGallery={() => onGoToTab('media')}
-                    />
-                  </div>
-                </>
-              ) : null}
-              {showCircleMap ? (
-                <CircleDashboardCircleMapSection
-                  db={db}
-                  patientId={patient.patientId}
-                  memberRole={memberRole}
-                  patientDisplayName={patient.displayName}
-                  patientPhotoUrl={
-                    profileSnapshot?.identity.profilePicture?.trim() || patient.photoUrl?.trim()
-                  }
-                  patientNickName={profileSnapshot?.identity.nickName?.trim()}
-                  galleryPhotos={galleryDashboard.previewPhotos}
-                  enabled={showCircleMap}
-                  onManageContacts={
-                    canManageTeam ? () => onGoToTab('admin') : undefined
-                  }
-                />
-              ) : null}
-              {showCheckInWellnessRing ? (
-                <CircleDashboardCheckInWellnessSection
-                  memberRole={memberRole}
-                  answerTrend={dailyDetail?.answerTrend}
-                  enabled={showCheckInWellnessRing}
-                  onOpenDetails={() => onOpenAnalyticsDetail('daily-check-in')}
-                />
-              ) : null}
-            </div>
-          </section>
-        ) : null}
-
-        {visibleLastSevenDayWidgets.length > 0 ? (
-          <DashboardSection
-            title={t('dashboard.sectionLast7Days')}
-            widgets={visibleLastSevenDayWidgets}
-          />
-        ) : null}
-
-        {visibleYouWidgets.length > 0 ? (
-          <DashboardSection title={t('dashboard.sectionYou')} widgets={visibleYouWidgets} />
-        ) : null}
-
         {visiblePatientAppWidgets.length > 0 || showIcuCheckInBanner ? (
           <section className="space-y-2">
             <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionPatientApp')}</h3>
@@ -1433,6 +1375,64 @@ export function CircleDashboardScreen({
               </div>
             ) : null}
           </section>
+        ) : null}
+
+        {familyGalleryWidget || showCircleMap || showCheckInWellnessRing ? (
+          <section className="space-y-2">
+            <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionStayConnected')}</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {familyGalleryWidget ? (
+                <>
+                  <div className={DASHBOARD_WIDGET_CELL_CLASS}>
+                    <DashboardWidget spec={familyGalleryWidget} />
+                  </div>
+                  <div className={DASHBOARD_WIDGET_CELL_CLASS}>
+                    <CircleGalleryRotatingPreviewWidget
+                      photos={galleryDashboard.previewPhotos}
+                      loading={galleryDashboard.loading}
+                      onOpenGallery={() => onGoToTab('media')}
+                    />
+                  </div>
+                </>
+              ) : null}
+              {showCircleMap ? (
+                <CircleDashboardCircleMapSection
+                  db={db}
+                  patientId={patient.patientId}
+                  memberRole={memberRole}
+                  patientDisplayName={patient.displayName}
+                  patientPhotoUrl={
+                    profileSnapshot?.identity.profilePicture?.trim() || patient.photoUrl?.trim()
+                  }
+                  patientNickName={profileSnapshot?.identity.nickName?.trim()}
+                  galleryPhotos={galleryDashboard.previewPhotos}
+                  enabled={showCircleMap}
+                  onManageContacts={
+                    canManageTeam ? () => onGoToTab('admin') : undefined
+                  }
+                />
+              ) : null}
+              {showCheckInWellnessRing ? (
+                <CircleDashboardCheckInWellnessSection
+                  memberRole={memberRole}
+                  answerTrend={dailyDetail?.answerTrend}
+                  enabled={showCheckInWellnessRing}
+                  onOpenDetails={() => onOpenAnalyticsDetail('daily-check-in')}
+                />
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+
+        {visibleLastSevenDayWidgets.length > 0 ? (
+          <DashboardSection
+            title={t('dashboard.sectionLast7Days')}
+            widgets={visibleLastSevenDayWidgets}
+          />
+        ) : null}
+
+        {visibleYouWidgets.length > 0 ? (
+          <DashboardSection title={t('dashboard.sectionYou')} widgets={visibleYouWidgets} />
         ) : null}
       </div>
 
