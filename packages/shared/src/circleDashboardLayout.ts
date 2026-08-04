@@ -63,15 +63,27 @@ export const ALL_CUSTOMIZABLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
   'reminder-diary-entry',
 ];
 
-/** Participation + personal sharing tiles hidden for proxy until they opt in via Customize dashboard. */
+/**
+ * Optional tiles hidden for proxy until they opt in via Customize dashboard.
+ * Sourced from Dermo Patient Test-proxy-01 saved layout (Aug 2026).
+ * Visible by default: locale, last-7-day clinical tiles, remote settings, user profile.
+ */
 export const PROXY_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
-  'diary',
-  'gallery-engagement',
+  'patient-insights',
   'reminder-gallery-upload',
   'reminder-diary-entry',
+  'diary',
+  'circle',
+  'gallery-engagement',
+  'media-gallery',
+  'circle-map',
+  'check-in-wellness-ring',
 ];
 
-/** Optional tiles hidden for family until they opt in via Customize dashboard. */
+/**
+ * Optional tiles hidden for family until they opt in via Customize dashboard.
+ * Matches Dermo Patient Test-family-01 saved layout (Aug 2026).
+ */
 export const FAMILY_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
   'vitality',
   'assessments',
@@ -85,7 +97,10 @@ export const FRIEND_NEVER_VISIBLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] 
   'assessment-schedule-calendar',
 ];
 
-/** Optional tiles hidden for friends until they opt in (locale + insights stay on). */
+/**
+ * Optional tiles hidden for friends until they opt in (locale + insights + gallery + reminders stay on).
+ * Matches Dermo Patient Test-friend-01 saved layout (Aug 2026).
+ */
 export const FRIEND_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
   'alert-attention',
   'daily-check-in',
@@ -102,6 +117,12 @@ export const FRIEND_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = 
   'remote-settings',
   'user-profile',
 ];
+
+/**
+ * Caregiver / facility_staff / professional_caregiver: show all customizable tiles by default.
+ * Matches Dermo Patient Test-care-01 saved layout (empty hiddenWidgets).
+ */
+export const CAREGIVER_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [];
 
 export const CIRCLE_DASHBOARD_WIDGET_SECTIONS: Record<
   CircleDashboardLayoutSection,
@@ -149,7 +170,7 @@ export function defaultHiddenDashboardWidgetsForRole(
   if (role === 'friend') return [...FRIEND_ROLE_HIDDEN_DASHBOARD_WIDGETS];
   if (role === 'family') return [...FAMILY_ROLE_HIDDEN_DASHBOARD_WIDGETS];
   if (role === 'proxy') return [...PROXY_ROLE_HIDDEN_DASHBOARD_WIDGETS];
-  return [];
+  return [...CAREGIVER_ROLE_HIDDEN_DASHBOARD_WIDGETS];
 }
 
 export function parseMemberDashboardLayout(
