@@ -152,10 +152,24 @@ export function CirclePatientProfilePanel({
   }, [canEdit, loading, patient, snapshot]);
 
   useEffect(() => {
+    // Clear immediately on patient switch so a save/photo cannot write the previous
+    // patient's snapshot into the newly selected patientId.
+    let cancelled = false;
     setLoading(true);
-    return onSnapshot(
-      doc(db, 'patients', patient.patientId),
+    setSnapshot(null);
+    setDraftSnapshot(null);
+    setMetaSummary(null);
+    setAccountInfo(null);
+    setEditSection(null);
+    setFileToCrop(null);
+    setError(null);
+    setSaving(false);
+    setUploadingPhoto(false);
+    const subscribedPatientId = patient.patientId;
+    const unsub = onSnapshot(
+      doc(db, 'patients', subscribedPatientId),
       (snap) => {
+        if (cancelled) return;
         if (!snap.exists()) {
           setSnapshot(null);
           setMetaSummary(null);
@@ -178,15 +192,21 @@ export function CirclePatientProfilePanel({
         setLoading(false);
       },
       (err) => {
+        if (cancelled) return;
         console.warn('[CirclePatientProfilePanel]', err);
         setError(t('admin.profile.loadError'));
         setLoading(false);
       },
     );
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, [db, patient.patientId, t]);
 
   const handleSaveSection = useCallback(
     async (next: CirclePatientProfileSnapshot) => {
+      const targetPatientId = patient.patientId;
       setSaving(true);
       setError(null);
       const previousPhase = workingSnapshot?.clinical?.treatmentPhase?.trim() || '';
@@ -199,16 +219,19 @@ export function CirclePatientProfilePanel({
         },
       };
       try {
+        if (targetPatientId !== patient.patientId) {
+          throw new Error('Patient switched during profile save');
+        }
         await updateCirclePatientProfileFromProxy(
           db,
-          patient.patientId,
+          targetPatientId,
           normalizedNext,
           user.uid,
           patient.displayName,
           user.displayName || undefined,
         );
         void recordCareDiaryMilestones(db, {
-          patientId: patient.patientId,
+          patientId: targetPatientId,
           authorUid: user.uid,
           language: normalizedNext.identity.language || workingSnapshot?.identity.language,
           treatmentPhase: { from: previousPhase, to: nextPhase },
@@ -220,11 +243,12 @@ export function CirclePatientProfilePanel({
         ) {
           const packId = suggestedPackForPhaseTransition(previousPhase, nextPhase);
           if (packId) {
-            void readCareTransitionReadinessState(db, patient.patientId)
+            void readCareTransitionReadinessState(db, targetPatientId)
               .then(async (current) => {
+                if (targetPatientId !== patient.patientId) return;
                 const written = await writeCareTransitionReadinessState(
                   db,
-                  patient.patientId,
+                  targetPatientId,
                   {
                     ...current,
                     activePackId: packId,
@@ -237,7 +261,7 @@ export function CirclePatientProfilePanel({
                   user.uid,
                 );
                 await ensureCareTransitionAnnouncementPosted(db, {
-                  patientId: patient.patientId,
+                  patientId: targetPatientId,
                   packId,
                   state: written,
                   authorUid: user.uid,
@@ -256,14 +280,15 @@ export function CirclePatientProfilePanel({
           previousCountry !== nextCountry &&
           canManageCareTransitionPack(normalizeMemberRole(patient.role))
         ) {
-          void readCareTransitionReadinessState(db, patient.patientId)
+          void readCareTransitionReadinessState(db, targetPatientId)
             .then(async (current) => {
+              if (targetPatientId !== patient.patientId) return;
               if (current.regionManual) return;
               const region = careTransitionRegionFromCountry(nextCountry);
               if (region === current.region) return;
               await writeCareTransitionReadinessState(
                 db,
-                patient.patientId,
+                targetPatientId,
                 { ...current, region, regionManual: false },
                 user.uid,
               );
@@ -329,14 +354,18 @@ export function CirclePatientProfilePanel({
     if (!workingSnapshot) {
       throw new Error(t('admin.profile.profileNotLoaded'));
     }
+    const targetPatientId = patient.patientId;
     setUploadingPhoto(true);
     setError(null);
     try {
       const blob = await dataUrlToBlob(croppedDataUrl);
       // Proxy uploads use circle_profiles/{uid}/… — already allowed by Storage rules.
-      const path = `circle_profiles/${user.uid}/patient_${patient.patientId}_avatar.jpg`;
+      const path = `circle_profiles/${user.uid}/patient_${targetPatientId}_avatar.jpg`;
       const storageRef = ref(storage, path);
       await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
+      if (targetPatientId !== patient.patientId) {
+        throw new Error('Patient switched during photo upload');
+      }
       const url = await getDownloadURL(storageRef);
       const next: CirclePatientProfileSnapshot = {
         ...workingSnapshot,
@@ -344,7 +373,7 @@ export function CirclePatientProfilePanel({
       };
       await updateCirclePatientProfileFromProxy(
         db,
-        patient.patientId,
+        targetPatientId,
         next,
         user.uid,
         patient.displayName,

@@ -175,6 +175,15 @@ export async function updateCirclePatientProfileFromProxy(
     ? parseCircleProfileSnapshot(existingSnap.data()?.profileSnapshot)
     : null;
 
+  // Refuse to attach another patient's avatar URL to this patient (cross-switch bug guard).
+  const picture = String(snapshot.identity.profilePicture || '').trim();
+  const foreignAvatarMatch = picture.match(/patient_([A-Za-z0-9]+)_avatar/i);
+  if (foreignAvatarMatch && foreignAvatarMatch[1] && foreignAvatarMatch[1] !== patientId) {
+    throw new Error(
+      `Refusing profile write: photo belongs to patient ${foreignAvatarMatch[1]}, not ${patientId}`,
+    );
+  }
+
   if (
     previousSnapshot &&
     profileSnapshotFingerprint(previousSnapshot) === profileSnapshotFingerprint(snapshot)
