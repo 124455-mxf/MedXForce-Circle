@@ -41,6 +41,10 @@ export function resolveCirclePatientPhotoUrl(
 export interface CirclePatientSummary {
   patientId: string;
   displayName: string;
+  /** Profile identity first name when known (used for A–Z sort). */
+  firstName?: string;
+  /** Profile identity last name when known (used for A–Z sort). */
+  lastName?: string;
   role: string;
   proxyTier?: 'primary' | 'backup';
   canUpload: boolean;
@@ -56,6 +60,41 @@ export interface CirclePatientSummary {
   intendedEmail?: string;
   /** Patient app sign-in email after the iPad is linked. */
   claimedLoginEmail?: string;
+}
+
+/** Split a display name into first / remaining last for A–Z sorting. */
+export function patientNameSortParts(patient: Pick<
+  CirclePatientSummary,
+  'displayName' | 'firstName' | 'lastName'
+>): { first: string; last: string } {
+  const first = patient.firstName?.trim() ?? '';
+  const last = patient.lastName?.trim() ?? '';
+  if (first || last) return { first, last };
+  const parts = patient.displayName.trim().split(/\s+/).filter(Boolean);
+  return {
+    first: parts[0] ?? '',
+    last: parts.slice(1).join(' '),
+  };
+}
+
+/** Sort patients by first name, then last name (A–Z). */
+export function compareCirclePatientsByName(
+  a: CirclePatientSummary,
+  b: CirclePatientSummary,
+): number {
+  const aParts = patientNameSortParts(a);
+  const bParts = patientNameSortParts(b);
+  const byFirst = aParts.first.localeCompare(bParts.first, undefined, { sensitivity: 'base' });
+  if (byFirst !== 0) return byFirst;
+  const byLast = aParts.last.localeCompare(bParts.last, undefined, { sensitivity: 'base' });
+  if (byLast !== 0) return byLast;
+  return a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' });
+}
+
+export function sortCirclePatientsByName(
+  patients: readonly CirclePatientSummary[],
+): CirclePatientSummary[] {
+  return [...patients].sort(compareCirclePatientsByName);
 }
 
 /** Patients this circle user may access (accepted invites + active member doc). */
@@ -134,10 +173,14 @@ export async function listCirclePatientsForUser(
     const claimedLoginEmail = patientData
       ? String(patientData.claimedLoginEmail || '').trim() || undefined
       : undefined;
+    const firstName = snapshot?.identity.firstName?.trim() || undefined;
+    const lastName = snapshot?.identity.lastName?.trim() || undefined;
 
     summaries.push({
       patientId: invite.patientId,
       displayName: patientName,
+      firstName,
+      lastName,
       role,
       proxyTier,
       canUpload: canUploadRichMedia(capabilities),
@@ -147,7 +190,7 @@ export async function listCirclePatientsForUser(
     });
   }
 
-  return summaries;
+  return sortCirclePatientsByName(summaries);
 }
 
 /** Active patients plus proxy-created provisions waiting for iPad setup. */
@@ -161,5 +204,5 @@ export async function listCirclePatientsAndProvisionsForUser(
   const pendingSummaries = pending
     .filter((p) => !activeIds.has(p.provisionId))
     .map(pendingProvisionToCircleSummary);
-  return [...active, ...pendingSummaries];
+  return sortCirclePatientsByName([...active, ...pendingSummaries]);
 }
