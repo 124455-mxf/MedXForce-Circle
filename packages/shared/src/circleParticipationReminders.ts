@@ -20,7 +20,11 @@ export type CircleParticipationReminderKind =
   | 'hospitalFeatureMessaging'
   | 'hospitalFeatureDashboard'
   | 'hospitalFeatureVitality'
-  | 'hospitalFeatureAssessments';
+  | 'hospitalFeatureAssessments'
+  | 'modeStepUpStandard'
+  | 'modeStepUpHospital'
+  | 'icuSoulMusic'
+  | 'icuSoulMediaLibrary';
 
 export function reminderSnoozeDurationMs(kind: CircleParticipationReminderKind): number {
   if (
@@ -29,7 +33,11 @@ export function reminderSnoozeDurationMs(kind: CircleParticipationReminderKind):
     kind === 'hospitalFeatureMessaging' ||
     kind === 'hospitalFeatureDashboard' ||
     kind === 'hospitalFeatureVitality' ||
-    kind === 'hospitalFeatureAssessments'
+    kind === 'hospitalFeatureAssessments' ||
+    kind === 'modeStepUpStandard' ||
+    kind === 'modeStepUpHospital' ||
+    kind === 'icuSoulMusic' ||
+    kind === 'icuSoulMediaLibrary'
   ) {
     return CARE_ACTION_REMINDER_SNOOZE_MS;
   }
@@ -87,6 +95,18 @@ export function parseMemberReminderSnoozes(
   }
   if (typeof map.hospitalFeatureAssessments === 'number' && map.hospitalFeatureAssessments > 0) {
     next.hospitalFeatureAssessments = map.hospitalFeatureAssessments;
+  }
+  if (typeof map.modeStepUpStandard === 'number' && map.modeStepUpStandard > 0) {
+    next.modeStepUpStandard = map.modeStepUpStandard;
+  }
+  if (typeof map.modeStepUpHospital === 'number' && map.modeStepUpHospital > 0) {
+    next.modeStepUpHospital = map.modeStepUpHospital;
+  }
+  if (typeof map.icuSoulMusic === 'number' && map.icuSoulMusic > 0) {
+    next.icuSoulMusic = map.icuSoulMusic;
+  }
+  if (typeof map.icuSoulMediaLibrary === 'number' && map.icuSoulMediaLibrary > 0) {
+    next.icuSoulMediaLibrary = map.icuSoulMediaLibrary;
   }
   return next;
 }

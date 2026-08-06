@@ -102,7 +102,13 @@ export type RemoteFeaturesVisibility = {
   analytics?: boolean;
   journeyDiary?: boolean;
   activity?: RemoteActivityVisibility;
+  /** ICU optional: Soul Music (Apple Music). */
+  intensiveCareSoulMusic?: boolean;
+  /** ICU optional: Soul Media Library. */
+  intensiveCareSoulMediaLibrary?: boolean;
 } & Partial<Record<RemoteAssessmentVisibilityKey, boolean>>;
+
+export type RemoteIntensiveCareExperience = 'standard' | 'minimal_focus';
 
 export type RemoteVisibleAreas = {
   phrases?: boolean;
@@ -167,6 +173,8 @@ export function sanitizeRemoteDashboardPreset(
 /** Whitelisted keys Circle may read/write in Phase 1. */
 export type RemoteSettingsPayload = {
   appMode?: RemoteAppMode;
+  /** ICU layout variant (Standard vs Minimal distraction). */
+  intensiveCareExperience?: RemoteIntensiveCareExperience;
   primaryLanguage?: RemotePrimaryLanguage;
   showAlertButton?: boolean;
   showAttentionButton?: boolean;
@@ -281,6 +289,16 @@ export const REMOTE_FEATURE_TOGGLES: RemoteFeatureToggleDef[] = [
     description: 'Care calendar tab for appointments and scheduled assessments.',
   },
   { path: 'featuresVisibility.analytics', label: 'Analytics', description: 'Statistics and analytics tab.' },
+  {
+    path: 'featuresVisibility.intensiveCareSoulMusic',
+    label: 'ICU Soul Music',
+    description: 'Optional Intensive Care: Vitality with Apple Music (launcher needs Apple connected).',
+  },
+  {
+    path: 'featuresVisibility.intensiveCareSoulMediaLibrary',
+    label: 'ICU Soul Media Library',
+    description: 'Optional Intensive Care: Vitality with Media Library (launcher needs shared media).',
+  },
   { path: 'showQuickSettings', label: 'Quick Settings', description: 'Quick Settings gear in the sidebar.' },
   { path: 'showSettingsInSidebar', label: 'Settings', description: 'Settings tab in the sidebar.' },
 ];
@@ -592,6 +610,8 @@ function buildRemoteFeaturesVisibilityFromPreferences(
     schedule: fv.schedule !== false,
     analytics: !!fv.analytics,
     journeyDiary: !!fv.journeyDiary,
+    intensiveCareSoulMusic: !!fv.intensiveCareSoulMusic,
+    intensiveCareSoulMediaLibrary: !!fv.intensiveCareSoulMediaLibrary,
     activity: {
       enabled: !!activity.enabled,
       mind: activity.mind !== false,
@@ -652,6 +672,8 @@ function remoteFeaturesVisibilityPresetForMode(mode: RemoteAppMode): RemoteFeatu
     schedule,
     analytics: mode === 'user',
     journeyDiary: false,
+    intensiveCareSoulMusic: false,
+    intensiveCareSoulMediaLibrary: false,
     activity,
     ...assessments,
   };
@@ -742,6 +764,9 @@ export function parsePatientRemoteSettings(
   const appMode = asString(data.appMode);
   const mode: RemoteAppMode | undefined =
     appMode === 'intensive_care' || appMode === 'hospital' || appMode === 'user' ? appMode : undefined;
+  const experienceRaw = asString(data.intensiveCareExperience);
+  const intensiveCareExperience: RemoteIntensiveCareExperience | undefined =
+    experienceRaw === 'standard' || experienceRaw === 'minimal_focus' ? experienceRaw : undefined;
 
   const contentFontSize = asString(data.contentFontSize);
   const fontSize =
@@ -752,6 +777,7 @@ export function parsePatientRemoteSettings(
   return {
     patientId,
     appMode: mode,
+    intensiveCareExperience,
     primaryLanguage: parsePrimaryLanguage(data.primaryLanguage),
     showAlertButton: asBool(data.showAlertButton),
     showAttentionButton: asBool(data.showAttentionButton),
@@ -774,6 +800,8 @@ export function parsePatientRemoteSettings(
           schedule: asBool(fv.schedule),
           analytics: asBool(fv.analytics),
           journeyDiary: asBool(fv.journeyDiary),
+          intensiveCareSoulMusic: asBool(fv.intensiveCareSoulMusic),
+          intensiveCareSoulMediaLibrary: asBool(fv.intensiveCareSoulMediaLibrary),
           activity,
           ...assessmentVisibility,
         }
@@ -826,6 +854,11 @@ export function extractRemoteSettingsFromPreferences(
   return {
     patientId,
     appMode: preferences.appMode as RemoteAppMode | undefined,
+    intensiveCareExperience:
+      preferences.intensiveCareExperience === 'minimal_focus' ||
+      preferences.intensiveCareExperience === 'standard'
+        ? preferences.intensiveCareExperience
+        : undefined,
     primaryLanguage: parsePrimaryLanguage(preferences.primaryLanguage) ?? 'English',
     showAlertButton: preferences.showAlertButton !== false,
     showAttentionButton: preferences.showAttentionButton !== false,
@@ -1288,8 +1321,32 @@ export function setRemoteAppMode(
   };
   if (appMode === 'intensive_care') {
     next.dashboardLayout = { ...doc.dashboardLayout, preset: 'minimal' };
+    next.intensiveCareExperience = doc.intensiveCareExperience ?? 'standard';
+  } else {
+    delete next.intensiveCareExperience;
   }
   return next;
+}
+
+/** Apply ICU Standard vs Minimal distraction layout remotely (buttons; sounds applied on patient). */
+export function setRemoteIntensiveCareExperience(
+  doc: PatientRemoteSettingsDoc,
+  variant: RemoteIntensiveCareExperience,
+): PatientRemoteSettingsDoc {
+  return {
+    ...doc,
+    appMode: 'intensive_care',
+    intensiveCareExperience: variant,
+    ...(variant === 'minimal_focus'
+      ? {
+          showAlertButton: false,
+          showAttentionButton: false,
+        }
+      : {
+          showAlertButton: true,
+          showAttentionButton: true,
+        }),
+  };
 }
 
 export function setRemoteDashboardPreset(

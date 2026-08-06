@@ -896,6 +896,34 @@ export const appShellEnglish = {
       previewHospitalFeatureAssessmentsHeadline: 'Consider Assessments',
       previewHospitalFeatureAssessmentsBody:
         'Sample progression nudge — use Turn on Assessments to enable it from Home.',
+      modeStepUpStandardHeadline: 'Ready for ICU Standard?',
+      modeStepUpStandardBody:
+        'The patient is engaging — switch from Minimal distraction to Standard Intensive Care (Alert and Attention buttons on).',
+      modeStepUpHospitalHeadline: 'Consider Hospital mode',
+      modeStepUpHospitalBody:
+        'If the patient is ready for more features, switch Application Mode to Hospital.',
+      modeStepUpTurnOnStandard: 'Switch to Standard',
+      modeStepUpTurnOnHospital: 'Switch to Hospital',
+      icuSoulMusicHeadline: 'Add Soul Music?',
+      icuSoulMusicBody:
+        'Enable Vitality with Apple Music for Intensive Care. The Music launcher appears when Apple Music is connected.',
+      icuSoulMediaLibraryHeadline: 'Add Soul Media Library?',
+      icuSoulMediaLibraryBody:
+        'Enable Vitality with Media Library for Intensive Care. The launcher appears when shared media is available.',
+      icuSoulTurnOnMusic: 'Turn on Soul Music',
+      icuSoulTurnOnMediaLibrary: 'Turn on Media Library',
+      previewModeStepUpStandardHeadline: 'Ready for ICU Standard?',
+      previewModeStepUpStandardBody:
+        'Sample progression nudge — use Switch to Standard from Home.',
+      previewModeStepUpHospitalHeadline: 'Consider Hospital mode',
+      previewModeStepUpHospitalBody:
+        'Sample progression nudge — use Switch to Hospital from Home.',
+      previewIcuSoulMusicHeadline: 'Add Soul Music?',
+      previewIcuSoulMusicBody:
+        'Sample progression nudge — use Turn on Soul Music from Home.',
+      previewIcuSoulMediaLibraryHeadline: 'Add Soul Media Library?',
+      previewIcuSoulMediaLibraryBody:
+        'Sample progression nudge — use Turn on Media Library from Home.',
       careProfileHeadline: "{{name}}'s profile needs attention",
       careProfileBody:
         'Key profile details are still missing. Tap to open Admin and fill them in as proxy, or wait for the patient to save their profile on the iPad.',
@@ -1980,6 +2008,34 @@ export const appShellGerman = {
       previewHospitalFeatureAssessmentsHeadline: 'Beurteilungen erwägen',
       previewHospitalFeatureAssessmentsBody:
         'Beispiel-Fortschritts-Erinnerung — nutzen Sie „Beurteilungen einschalten“ auf der Startseite.',
+      modeStepUpStandardHeadline: 'Bereit für Intensivpflege Standard?',
+      modeStepUpStandardBody:
+        'Der Patient ist aktiv — wechseln Sie von Minimal zu Standard Intensivpflege (Alert- und Attention-Tasten an).',
+      modeStepUpHospitalHeadline: 'Krankenhaus-Modus erwägen',
+      modeStepUpHospitalBody:
+        'Wenn der Patient bereit für mehr Funktionen ist, wechseln Sie den Anwendungsmodus zu Krankenhaus.',
+      modeStepUpTurnOnStandard: 'Zu Standard wechseln',
+      modeStepUpTurnOnHospital: 'Zu Krankenhaus wechseln',
+      icuSoulMusicHeadline: 'Soul-Musik hinzufügen?',
+      icuSoulMusicBody:
+        'Vitalität mit Apple Music für Intensivpflege einschalten. Der Musik-Starter erscheint bei verbundener Apple Music.',
+      icuSoulMediaLibraryHeadline: 'Soul-Medienbibliothek hinzufügen?',
+      icuSoulMediaLibraryBody:
+        'Vitalität mit Medienbibliothek für Intensivpflege einschalten. Der Starter erscheint, wenn geteilte Medien verfügbar sind.',
+      icuSoulTurnOnMusic: 'Soul-Musik einschalten',
+      icuSoulTurnOnMediaLibrary: 'Medienbibliothek einschalten',
+      previewModeStepUpStandardHeadline: 'Bereit für Intensivpflege Standard?',
+      previewModeStepUpStandardBody:
+        'Beispiel-Fortschritts-Erinnerung — nutzen Sie „Zu Standard wechseln“ auf der Startseite.',
+      previewModeStepUpHospitalHeadline: 'Krankenhaus-Modus erwägen',
+      previewModeStepUpHospitalBody:
+        'Beispiel-Fortschritts-Erinnerung — nutzen Sie „Zu Krankenhaus wechseln“ auf der Startseite.',
+      previewIcuSoulMusicHeadline: 'Soul-Musik hinzufügen?',
+      previewIcuSoulMusicBody:
+        'Beispiel-Fortschritts-Erinnerung — nutzen Sie „Soul-Musik einschalten“ auf der Startseite.',
+      previewIcuSoulMediaLibraryHeadline: 'Soul-Medienbibliothek hinzufügen?',
+      previewIcuSoulMediaLibraryBody:
+        'Beispiel-Fortschritts-Erinnerung — nutzen Sie „Medienbibliothek einschalten“ auf der Startseite.',
       careProfileHeadline: 'Profil von {{name}} braucht Aufmerksamkeit',
       careProfileBody:
         'Wichtige Profildaten fehlen noch. Tippen Sie auf Admin und ergänzen Sie als Stellvertreter, oder warten Sie, bis der Patient das Profil auf dem iPad speichert.',
@@ -3064,6 +3120,34 @@ export const appShellSpanish = {
       previewHospitalFeatureAssessmentsHeadline: 'Considerar Evaluaciones',
       previewHospitalFeatureAssessmentsBody:
         'Recordatorio de progreso de ejemplo — usa Activar Evaluaciones desde Inicio.',
+      modeStepUpStandardHeadline: '¿Listo para UCI Estándar?',
+      modeStepUpStandardBody:
+        'El paciente está participando — pase de Mínimo a Cuidados intensivos Estándar (botones de Alerta y Atención activos).',
+      modeStepUpHospitalHeadline: 'Considerar modo Hospital',
+      modeStepUpHospitalBody:
+        'Si el paciente está listo para más funciones, cambie el Modo de aplicación a Hospital.',
+      modeStepUpTurnOnStandard: 'Cambiar a Estándar',
+      modeStepUpTurnOnHospital: 'Cambiar a Hospital',
+      icuSoulMusicHeadline: '¿Añadir Música Soul?',
+      icuSoulMusicBody:
+        'Active Vitalidad con Apple Music en cuidados intensivos. El acceso a Música aparece cuando Apple Music está conectado.',
+      icuSoulMediaLibraryHeadline: '¿Añadir Biblioteca de medios Soul?',
+      icuSoulMediaLibraryBody:
+        'Active Vitalidad con Biblioteca de medios en cuidados intensivos. El acceso aparece cuando hay medios compartidos.',
+      icuSoulTurnOnMusic: 'Activar Música Soul',
+      icuSoulTurnOnMediaLibrary: 'Activar Biblioteca de medios',
+      previewModeStepUpStandardHeadline: '¿Listo para UCI Estándar?',
+      previewModeStepUpStandardBody:
+        'Recordatorio de progreso de ejemplo — usa Cambiar a Estándar desde Inicio.',
+      previewModeStepUpHospitalHeadline: 'Considerar modo Hospital',
+      previewModeStepUpHospitalBody:
+        'Recordatorio de progreso de ejemplo — usa Cambiar a Hospital desde Inicio.',
+      previewIcuSoulMusicHeadline: '¿Añadir Música Soul?',
+      previewIcuSoulMusicBody:
+        'Recordatorio de progreso de ejemplo — usa Activar Música Soul desde Inicio.',
+      previewIcuSoulMediaLibraryHeadline: '¿Añadir Biblioteca de medios Soul?',
+      previewIcuSoulMediaLibraryBody:
+        'Recordatorio de progreso de ejemplo — usa Activar Biblioteca de medios desde Inicio.',
       careProfileHeadline: 'El perfil de {{name}} necesita atención',
       careProfileBody:
         'Faltan datos clave del perfil. Toca para abrir Admin y completarlos como apoderado, o espera a que el paciente guarde su perfil en el iPad.',
@@ -4148,6 +4232,34 @@ export const appShellPolish = {
       previewHospitalFeatureAssessmentsHeadline: 'Rozważ Oceny',
       previewHospitalFeatureAssessmentsBody:
         'Przykładowe przypomnienie postępu — użyj Włącz Oceny na stronie głównej.',
+      modeStepUpStandardHeadline: 'Gotowi na OIOM Standard?',
+      modeStepUpStandardBody:
+        'Pacjent jest aktywny — przełącz z Minimal na Standard Intensywnej opieki (przyciski Alert i Attention włączone).',
+      modeStepUpHospitalHeadline: 'Rozważ tryb Szpital',
+      modeStepUpHospitalBody:
+        'Jeśli pacjent jest gotowy na więcej funkcji, przełącz Tryb aplikacji na Szpital.',
+      modeStepUpTurnOnStandard: 'Przełącz na Standard',
+      modeStepUpTurnOnHospital: 'Przełącz na Szpital',
+      icuSoulMusicHeadline: 'Dodać Muzykę Soul?',
+      icuSoulMusicBody:
+        'Włącz Vitality z Apple Music w opiece intensywnej. Launcher muzyki pojawia się przy połączonym Apple Music.',
+      icuSoulMediaLibraryHeadline: 'Dodać Bibliotekę mediów Soul?',
+      icuSoulMediaLibraryBody:
+        'Włącz Vitality z Biblioteką mediów w opiece intensywnej. Launcher pojawia się, gdy są udostępnione media.',
+      icuSoulTurnOnMusic: 'Włącz Muzykę Soul',
+      icuSoulTurnOnMediaLibrary: 'Włącz Bibliotekę mediów',
+      previewModeStepUpStandardHeadline: 'Gotowi na OIOM Standard?',
+      previewModeStepUpStandardBody:
+        'Przykładowe przypomnienie postępu — użyj Przełącz na Standard na stronie głównej.',
+      previewModeStepUpHospitalHeadline: 'Rozważ tryb Szpital',
+      previewModeStepUpHospitalBody:
+        'Przykładowe przypomnienie postępu — użyj Przełącz na Szpital na stronie głównej.',
+      previewIcuSoulMusicHeadline: 'Dodać Muzykę Soul?',
+      previewIcuSoulMusicBody:
+        'Przykładowe przypomnienie postępu — użyj Włącz Muzykę Soul na stronie głównej.',
+      previewIcuSoulMediaLibraryHeadline: 'Dodać Bibliotekę mediów Soul?',
+      previewIcuSoulMediaLibraryBody:
+        'Przykładowe przypomnienie postępu — użyj Włącz Bibliotekę mediów na stronie głównej.',
       careProfileHeadline: 'Profil {{name}} wymaga uwagi',
       careProfileBody:
         'Brakuje kluczowych danych profilu. Dotknij Admin i uzupełnij je jako pełnomocnik, lub poczekaj, aż pacjent zapisze profil na iPadzie.',

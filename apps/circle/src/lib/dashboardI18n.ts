@@ -565,6 +565,62 @@ export function localizePreviewHospitalFeatureReminder(
   };
 }
 
+export function localizeIcuProgressionReminder(
+  t: CircleTranslator,
+  kind: 'modeStepUpStandard' | 'modeStepUpHospital' | 'icuSoulMusic' | 'icuSoulMediaLibrary',
+): LocalizedReminderCopy {
+  if (kind === 'modeStepUpStandard') {
+    return {
+      headline: t('dashboard.reminders.modeStepUpStandardHeadline'),
+      body: t('dashboard.reminders.modeStepUpStandardBody'),
+    };
+  }
+  if (kind === 'modeStepUpHospital') {
+    return {
+      headline: t('dashboard.reminders.modeStepUpHospitalHeadline'),
+      body: t('dashboard.reminders.modeStepUpHospitalBody'),
+    };
+  }
+  if (kind === 'icuSoulMusic') {
+    return {
+      headline: t('dashboard.reminders.icuSoulMusicHeadline'),
+      body: t('dashboard.reminders.icuSoulMusicBody'),
+    };
+  }
+  return {
+    headline: t('dashboard.reminders.icuSoulMediaLibraryHeadline'),
+    body: t('dashboard.reminders.icuSoulMediaLibraryBody'),
+  };
+}
+
+export function localizePreviewIcuProgressionReminder(
+  t: CircleTranslator,
+  kind: 'modeStepUpStandard' | 'modeStepUpHospital' | 'icuSoulMusic' | 'icuSoulMediaLibrary',
+): LocalizedReminderCopy {
+  if (kind === 'modeStepUpStandard') {
+    return {
+      headline: t('dashboard.reminders.previewModeStepUpStandardHeadline'),
+      body: t('dashboard.reminders.previewModeStepUpStandardBody'),
+    };
+  }
+  if (kind === 'modeStepUpHospital') {
+    return {
+      headline: t('dashboard.reminders.previewModeStepUpHospitalHeadline'),
+      body: t('dashboard.reminders.previewModeStepUpHospitalBody'),
+    };
+  }
+  if (kind === 'icuSoulMusic') {
+    return {
+      headline: t('dashboard.reminders.previewIcuSoulMusicHeadline'),
+      body: t('dashboard.reminders.previewIcuSoulMusicBody'),
+    };
+  }
+  return {
+    headline: t('dashboard.reminders.previewIcuSoulMediaLibraryHeadline'),
+    body: t('dashboard.reminders.previewIcuSoulMediaLibraryBody'),
+  };
+}
+
 export function localizePreviewCareAssessmentReminder(t: CircleTranslator): LocalizedReminderCopy {
   return {
     headline: t('dashboard.reminders.previewCareAssessmentHeadline'),

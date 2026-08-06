@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Loader2,
   MessageSquare,
+  Music,
   PartyPopper,
   PenLine,
   UserRound,
@@ -21,12 +22,17 @@ import type { User } from 'firebase/auth';
 import {
   ASSESSMENT_AFTER_FIRST_COMMUNICATION_MS,
   HOSPITAL_FEATURE_REMINDER_KINDS,
+  ICU_PROGRESSION_REMINDER_KINDS,
   hasAssessmentInWindow,
   hospitalFeatureRemotePath,
   isHospitalFeatureReminderKind,
+  isIcuProgressionReminderKind,
   isParticipationReminderSnoozed,
   isPatientInsightsPreviewRemindersEnabled,
   listHospitalFeatureRemindersToShow,
+  listIcuProgressionRemindersToShow,
+  setRemoteAppMode,
+  setRemoteIntensiveCareExperience,
   setRemoteSettingValue,
   shouldShowAssessmentAfterFirstCommReminder,
   shouldShowDiaryEntryReminder,
@@ -37,6 +43,7 @@ import {
   type CirclePatientProfileSnapshot,
   type CirclePatientSummary,
   type HospitalFeatureReminderKind,
+  type IcuProgressionReminderKind,
   type PatientAnalyticsSummary,
   type PatientRemoteSettingsDoc,
 } from '@medxforce/shared';
@@ -59,6 +66,8 @@ import {
   localizeCareProfileReminder,
   localizeHospitalFeatureReminder,
   localizePreviewHospitalFeatureReminder,
+  localizeIcuProgressionReminder,
+  localizePreviewIcuProgressionReminder,
   localizeTeamCoverageReminder,
   formatMissingCoreProfileFieldsT,
   patientFriendlyDisplayName,
@@ -79,7 +88,7 @@ type CelebrationTile = {
   isPreview?: boolean;
   dismissKind?: CircleParticipationReminderKind;
   onOpen?: () => void;
-  /** In-place enable action (Hospital feature nudges). */
+  /** In-place enable action (Hospital / ICU progression nudges). */
   actionLabel?: string;
   onAction?: () => void;
   actionUpdating?: boolean;
@@ -100,11 +109,25 @@ function hospitalFeatureTurnOnLabelKey(kind: HospitalFeatureReminderKind): strin
   return 'dashboard.reminders.hospitalFeatureTurnOnAssessments';
 }
 
+function icuProgressionIcon(kind: IcuProgressionReminderKind): LucideIcon {
+  if (kind === 'modeStepUpStandard' || kind === 'modeStepUpHospital') return Flag;
+  if (kind === 'icuSoulMusic') return Music;
+  return Camera;
+}
+
+function icuProgressionTurnOnLabelKey(kind: IcuProgressionReminderKind): string {
+  if (kind === 'modeStepUpStandard') return 'dashboard.reminders.modeStepUpTurnOnStandard';
+  if (kind === 'modeStepUpHospital') return 'dashboard.reminders.modeStepUpTurnOnHospital';
+  if (kind === 'icuSoulMusic') return 'dashboard.reminders.icuSoulTurnOnMusic';
+  return 'dashboard.reminders.icuSoulTurnOnMediaLibrary';
+}
+
 function isCareStyleDismissKind(kind: CircleParticipationReminderKind): boolean {
   return (
     kind === 'teamCoverage' ||
     kind === 'profileIncomplete' ||
-    isHospitalFeatureReminderKind(kind)
+    isHospitalFeatureReminderKind(kind) ||
+    isIcuProgressionReminderKind(kind)
   );
 }
 
@@ -291,7 +314,9 @@ export function CircleDashboardCelebrationSection({
   );
   const { analysis: teamCoverage, loading: teamCoverageLoading } = useCircleTeamCoverageFromDashboard();
   const canManageTeam = patient.capabilities.inviteMembers === true;
-  const [enablingKind, setEnablingKind] = useState<HospitalFeatureReminderKind | null>(null);
+  const [enablingKind, setEnablingKind] = useState<
+    HospitalFeatureReminderKind | IcuProgressionReminderKind | null
+  >(null);
 
   const friendlyName = patientFriendlyDisplayName(snapshot, patient.displayName);
   const birthday = localizeBirthdayReminder(t, language, snapshot, patient.displayName);
@@ -375,6 +400,16 @@ export function CircleDashboardCelebrationSection({
     snoozeLoading,
   });
 
+  const icuProgressionKinds = listIcuProgressionRemindersToShow({
+    enabled: careRemindersEnabled,
+    settings: remoteSettings,
+    settingsReady: remoteSettingsReady,
+    firstEngagementAt,
+    firstEngagementLoading,
+    snoozes,
+    snoozeLoading,
+  });
+
   const enableHospitalFeature = (kind: HospitalFeatureReminderKind) => {
     if (!remoteSettings || !canOpenRemoteSettings || enablingKind) return;
     setEnablingKind(kind);
@@ -384,6 +419,44 @@ export function CircleDashboardCelebrationSection({
       // Match Remote Settings Vitality master toggle: unlock Mind/Soul pillars too.
       if (kind === 'hospitalFeatureVitality') {
         next = setRemoteSettingValue(next, 'featuresVisibility.activity.mind', true);
+        next = setRemoteSettingValue(next, 'featuresVisibility.activity.soul', true);
+      }
+      onPersistRemoteSettings({
+        ...next,
+        patientId: patient.patientId,
+      });
+      void dismissReminder(kind).catch((err) => {
+        console.warn('[Circle] Reminder dismiss after enable failed:', err);
+      });
+    } finally {
+      window.setTimeout(() => setEnablingKind(null), 600);
+    }
+  };
+
+  const enableIcuProgression = (kind: IcuProgressionReminderKind) => {
+    if (!remoteSettings || !canOpenRemoteSettings || enablingKind) return;
+    setEnablingKind(kind);
+    try {
+      let next: PatientRemoteSettingsDoc = remoteSettings;
+      if (kind === 'modeStepUpStandard') {
+        next = setRemoteIntensiveCareExperience(remoteSettings, 'standard');
+      } else if (kind === 'modeStepUpHospital') {
+        next = setRemoteAppMode(remoteSettings, 'hospital');
+      } else if (kind === 'icuSoulMusic') {
+        next = setRemoteSettingValue(
+          remoteSettings,
+          'featuresVisibility.intensiveCareSoulMusic',
+          true,
+        );
+        next = setRemoteSettingValue(next, 'featuresVisibility.activity.enabled', true);
+        next = setRemoteSettingValue(next, 'featuresVisibility.activity.soul', true);
+      } else {
+        next = setRemoteSettingValue(
+          remoteSettings,
+          'featuresVisibility.intensiveCareSoulMediaLibrary',
+          true,
+        );
+        next = setRemoteSettingValue(next, 'featuresVisibility.activity.enabled', true);
         next = setRemoteSettingValue(next, 'featuresVisibility.activity.soul', true);
       }
       onPersistRemoteSettings({
@@ -605,6 +678,38 @@ export function CircleDashboardCelebrationSection({
         body: preview.body,
         isPreview: true,
         actionLabel: t(hospitalFeatureTurnOnLabelKey(kind)),
+        actionDisabled: true,
+      });
+    }
+  }
+
+  if (icuProgressionKinds.length > 0) {
+    for (const kind of icuProgressionKinds) {
+      const copy = localizeIcuProgressionReminder(t, kind);
+      tiles.push({
+        key: kind,
+        tone: 'care',
+        icon: icuProgressionIcon(kind),
+        headline: copy.headline,
+        body: copy.body,
+        dismissKind: kind,
+        actionLabel: t(icuProgressionTurnOnLabelKey(kind)),
+        onAction: canOpenRemoteSettings ? () => enableIcuProgression(kind) : undefined,
+        actionUpdating: enablingKind === kind,
+        actionDisabled: !canOpenRemoteSettings || !remoteSettings,
+      });
+    }
+  } else if (previewReminders && careRemindersEnabled) {
+    for (const kind of ICU_PROGRESSION_REMINDER_KINDS) {
+      const preview = localizePreviewIcuProgressionReminder(t, kind);
+      tiles.push({
+        key: `preview-${kind}`,
+        tone: 'care',
+        icon: icuProgressionIcon(kind),
+        headline: preview.headline,
+        body: preview.body,
+        isPreview: true,
+        actionLabel: t(icuProgressionTurnOnLabelKey(kind)),
         actionDisabled: true,
       });
     }
