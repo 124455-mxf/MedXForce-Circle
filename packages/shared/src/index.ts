@@ -24,6 +24,7 @@ export * from './circleMemberOnboarding';
 export * from './circleTeamCoverage';
 export * from './circleCareReminders';
 export * from './circleParticipationReminders';
+export * from './circleHospitalFeatureReminders';
 export * from './circleDashboardLayout';
 export * from './circlePatientLocation';
 export * from './circleMemberContactProfile';

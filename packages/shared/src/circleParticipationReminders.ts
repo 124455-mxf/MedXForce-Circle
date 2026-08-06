@@ -16,10 +16,21 @@ export type CircleParticipationReminderKind =
   | 'profileIncomplete'
   | 'teamCoverage'
   | 'birthday'
-  | 'onsetMilestone';
+  | 'onsetMilestone'
+  | 'hospitalFeatureMessaging'
+  | 'hospitalFeatureDashboard'
+  | 'hospitalFeatureVitality'
+  | 'hospitalFeatureAssessments';
 
 export function reminderSnoozeDurationMs(kind: CircleParticipationReminderKind): number {
-  if (kind === 'teamCoverage' || kind === 'profileIncomplete') {
+  if (
+    kind === 'teamCoverage' ||
+    kind === 'profileIncomplete' ||
+    kind === 'hospitalFeatureMessaging' ||
+    kind === 'hospitalFeatureDashboard' ||
+    kind === 'hospitalFeatureVitality' ||
+    kind === 'hospitalFeatureAssessments'
+  ) {
     return CARE_ACTION_REMINDER_SNOOZE_MS;
   }
   if (kind === 'birthday' || kind === 'onsetMilestone') {
@@ -64,6 +75,18 @@ export function parseMemberReminderSnoozes(
   }
   if (typeof map.onsetMilestone === 'number' && map.onsetMilestone > 0) {
     next.onsetMilestone = map.onsetMilestone;
+  }
+  if (typeof map.hospitalFeatureMessaging === 'number' && map.hospitalFeatureMessaging > 0) {
+    next.hospitalFeatureMessaging = map.hospitalFeatureMessaging;
+  }
+  if (typeof map.hospitalFeatureDashboard === 'number' && map.hospitalFeatureDashboard > 0) {
+    next.hospitalFeatureDashboard = map.hospitalFeatureDashboard;
+  }
+  if (typeof map.hospitalFeatureVitality === 'number' && map.hospitalFeatureVitality > 0) {
+    next.hospitalFeatureVitality = map.hospitalFeatureVitality;
+  }
+  if (typeof map.hospitalFeatureAssessments === 'number' && map.hospitalFeatureAssessments > 0) {
+    next.hospitalFeatureAssessments = map.hospitalFeatureAssessments;
   }
   return next;
 }

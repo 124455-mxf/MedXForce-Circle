@@ -521,6 +521,50 @@ export function localizeCareAssessmentReminder(t: CircleTranslator): LocalizedRe
   };
 }
 
+export function localizeHospitalFeatureReminder(
+  t: CircleTranslator,
+  kind:
+    | 'hospitalFeatureMessaging'
+    | 'hospitalFeatureDashboard'
+    | 'hospitalFeatureVitality'
+    | 'hospitalFeatureAssessments',
+): LocalizedReminderCopy {
+  const key =
+    kind === 'hospitalFeatureMessaging'
+      ? 'Messaging'
+      : kind === 'hospitalFeatureDashboard'
+        ? 'Dashboard'
+        : kind === 'hospitalFeatureVitality'
+          ? 'Vitality'
+          : 'Assessments';
+  return {
+    headline: t(`dashboard.reminders.hospitalFeature${key}Headline`),
+    body: t(`dashboard.reminders.hospitalFeature${key}Body`),
+  };
+}
+
+export function localizePreviewHospitalFeatureReminder(
+  t: CircleTranslator,
+  kind:
+    | 'hospitalFeatureMessaging'
+    | 'hospitalFeatureDashboard'
+    | 'hospitalFeatureVitality'
+    | 'hospitalFeatureAssessments',
+): LocalizedReminderCopy {
+  const key =
+    kind === 'hospitalFeatureMessaging'
+      ? 'Messaging'
+      : kind === 'hospitalFeatureDashboard'
+        ? 'Dashboard'
+        : kind === 'hospitalFeatureVitality'
+          ? 'Vitality'
+          : 'Assessments';
+  return {
+    headline: t(`dashboard.reminders.previewHospitalFeature${key}Headline`),
+    body: t(`dashboard.reminders.previewHospitalFeature${key}Body`),
+  };
+}
+
 export function localizePreviewCareAssessmentReminder(t: CircleTranslator): LocalizedReminderCopy {
   return {
     headline: t('dashboard.reminders.previewCareAssessmentHeadline'),

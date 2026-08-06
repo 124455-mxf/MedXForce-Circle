@@ -867,6 +867,35 @@ export const appShellEnglish = {
       previewCareAssessmentHeadline: 'Time for a baseline assessment?',
       previewCareAssessmentBody:
         'Sample care-team nudge — tap to open Assessments analytics.',
+      hospitalFeatureMessagingHeadline: 'Messaging may help now',
+      hospitalFeatureMessagingBody:
+        'The patient is engaging — turn on Messaging so Circle can leave notes asynchronously.',
+      hospitalFeatureDashboardHeadline: 'Ready for the Dashboard?',
+      hospitalFeatureDashboardBody:
+        'As engagement grows, the patient Dashboard can show check-ins and activity at a glance.',
+      hospitalFeatureVitalityHeadline: 'Vitality may be a good next step',
+      hospitalFeatureVitalityBody:
+        'Energy may be returning — enable Vitality for gallery and music when appropriate.',
+      hospitalFeatureAssessmentsHeadline: 'Consider Assessments',
+      hospitalFeatureAssessmentsBody:
+        'If the patient is stable enough for scheduled check-ins, turn on Assessments.',
+      hospitalFeatureTurnOnMessaging: 'Turn on Messaging',
+      hospitalFeatureTurnOnDashboard: 'Turn on Dashboard',
+      hospitalFeatureTurnOnVitality: 'Turn on Vitality',
+      hospitalFeatureTurnOnAssessments: 'Turn on Assessments',
+      hospitalFeatureUpdating: 'Updating…',
+      previewHospitalFeatureMessagingHeadline: 'Messaging may help now',
+      previewHospitalFeatureMessagingBody:
+        'Sample progression nudge — use Turn on Messaging to enable it from Home.',
+      previewHospitalFeatureDashboardHeadline: 'Ready for the Dashboard?',
+      previewHospitalFeatureDashboardBody:
+        'Sample progression nudge — use Turn on Dashboard to enable it from Home.',
+      previewHospitalFeatureVitalityHeadline: 'Vitality may be a good next step',
+      previewHospitalFeatureVitalityBody:
+        'Sample progression nudge — use Turn on Vitality to enable it from Home.',
+      previewHospitalFeatureAssessmentsHeadline: 'Consider Assessments',
+      previewHospitalFeatureAssessmentsBody:
+        'Sample progression nudge — use Turn on Assessments to enable it from Home.',
       careProfileHeadline: "{{name}}'s profile needs attention",
       careProfileBody:
         'Key profile details are still missing. Tap to open Admin and fill them in as proxy, or wait for the patient to save their profile on the iPad.',
@@ -1922,6 +1951,35 @@ export const appShellGerman = {
       previewCareAssessmentHeadline: 'Zeit für eine Basis-Beurteilung?',
       previewCareAssessmentBody:
         'Beispiel-Betreuungs-Erinnerung — tippen für Beurteilungs-Analysen.',
+      hospitalFeatureMessagingHeadline: 'Nachrichten könnten jetzt helfen',
+      hospitalFeatureMessagingBody:
+        'Der Patient ist aktiv — schalten Sie Nachrichten ein, damit der Circle asynchron Notizen hinterlassen kann.',
+      hospitalFeatureDashboardHeadline: 'Bereit für das Dashboard?',
+      hospitalFeatureDashboardBody:
+        'Mit wachsender Beteiligung zeigt das Patienten-Dashboard Check-ins und Aktivität auf einen Blick.',
+      hospitalFeatureVitalityHeadline: 'Vitalität könnte der nächste Schritt sein',
+      hospitalFeatureVitalityBody:
+        'Die Energie kehrt vielleicht zurück — aktivieren Sie Vitalität für Galerie und Musik, wenn es passt.',
+      hospitalFeatureAssessmentsHeadline: 'Beurteilungen erwägen',
+      hospitalFeatureAssessmentsBody:
+        'Wenn der Patient stabil genug für geplante Check-ins ist, schalten Sie Beurteilungen ein.',
+      hospitalFeatureTurnOnMessaging: 'Nachrichten einschalten',
+      hospitalFeatureTurnOnDashboard: 'Dashboard einschalten',
+      hospitalFeatureTurnOnVitality: 'Vitalität einschalten',
+      hospitalFeatureTurnOnAssessments: 'Beurteilungen einschalten',
+      hospitalFeatureUpdating: 'Wird aktualisiert…',
+      previewHospitalFeatureMessagingHeadline: 'Nachrichten könnten jetzt helfen',
+      previewHospitalFeatureMessagingBody:
+        'Beispiel-Fortschritts-Erinnerung — nutzen Sie „Nachrichten einschalten“ auf der Startseite.',
+      previewHospitalFeatureDashboardHeadline: 'Bereit für das Dashboard?',
+      previewHospitalFeatureDashboardBody:
+        'Beispiel-Fortschritts-Erinnerung — nutzen Sie „Dashboard einschalten“ auf der Startseite.',
+      previewHospitalFeatureVitalityHeadline: 'Vitalität könnte der nächste Schritt sein',
+      previewHospitalFeatureVitalityBody:
+        'Beispiel-Fortschritts-Erinnerung — nutzen Sie „Vitalität einschalten“ auf der Startseite.',
+      previewHospitalFeatureAssessmentsHeadline: 'Beurteilungen erwägen',
+      previewHospitalFeatureAssessmentsBody:
+        'Beispiel-Fortschritts-Erinnerung — nutzen Sie „Beurteilungen einschalten“ auf der Startseite.',
       careProfileHeadline: 'Profil von {{name}} braucht Aufmerksamkeit',
       careProfileBody:
         'Wichtige Profildaten fehlen noch. Tippen Sie auf Admin und ergänzen Sie als Stellvertreter, oder warten Sie, bis der Patient das Profil auf dem iPad speichert.',
@@ -2977,6 +3035,35 @@ export const appShellSpanish = {
       previewCareAssessmentHeadline: '¿Hora de una evaluación inicial?',
       previewCareAssessmentBody:
         'Recordatorio de ejemplo del equipo — toca para analíticas de evaluaciones.',
+      hospitalFeatureMessagingHeadline: 'Los mensajes pueden ayudar ahora',
+      hospitalFeatureMessagingBody:
+        'El paciente está participando — activa Mensajes para que el Circle deje notas de forma asíncrona.',
+      hospitalFeatureDashboardHeadline: '¿Listo para el Panel?',
+      hospitalFeatureDashboardBody:
+        'Con más participación, el Panel del paciente puede mostrar check-ins y actividad de un vistazo.',
+      hospitalFeatureVitalityHeadline: 'Vitalidad puede ser el siguiente paso',
+      hospitalFeatureVitalityBody:
+        'Puede volver la energía — activa Vitalidad para galería y música cuando corresponda.',
+      hospitalFeatureAssessmentsHeadline: 'Considerar Evaluaciones',
+      hospitalFeatureAssessmentsBody:
+        'Si el paciente está lo bastante estable para check-ins programados, activa Evaluaciones.',
+      hospitalFeatureTurnOnMessaging: 'Activar Mensajes',
+      hospitalFeatureTurnOnDashboard: 'Activar Panel',
+      hospitalFeatureTurnOnVitality: 'Activar Vitalidad',
+      hospitalFeatureTurnOnAssessments: 'Activar Evaluaciones',
+      hospitalFeatureUpdating: 'Actualizando…',
+      previewHospitalFeatureMessagingHeadline: 'Los mensajes pueden ayudar ahora',
+      previewHospitalFeatureMessagingBody:
+        'Recordatorio de progreso de ejemplo — usa Activar Mensajes desde Inicio.',
+      previewHospitalFeatureDashboardHeadline: '¿Listo para el Panel?',
+      previewHospitalFeatureDashboardBody:
+        'Recordatorio de progreso de ejemplo — usa Activar Panel desde Inicio.',
+      previewHospitalFeatureVitalityHeadline: 'Vitalidad puede ser el siguiente paso',
+      previewHospitalFeatureVitalityBody:
+        'Recordatorio de progreso de ejemplo — usa Activar Vitalidad desde Inicio.',
+      previewHospitalFeatureAssessmentsHeadline: 'Considerar Evaluaciones',
+      previewHospitalFeatureAssessmentsBody:
+        'Recordatorio de progreso de ejemplo — usa Activar Evaluaciones desde Inicio.',
       careProfileHeadline: 'El perfil de {{name}} necesita atención',
       careProfileBody:
         'Faltan datos clave del perfil. Toca para abrir Admin y completarlos como apoderado, o espera a que el paciente guarde su perfil en el iPad.',
@@ -4032,6 +4119,35 @@ export const appShellPolish = {
       previewCareAssessmentHeadline: 'Czas na ocenę wyjściową?',
       previewCareAssessmentBody:
         'Przykładowe przypomnienie opieki — dotknij analityki ocen.',
+      hospitalFeatureMessagingHeadline: 'Wiadomości mogą teraz pomóc',
+      hospitalFeatureMessagingBody:
+        'Pacjent jest aktywny — włącz Wiadomości, aby Circle mógł zostawiać notatki asynchronicznie.',
+      hospitalFeatureDashboardHeadline: 'Gotowi na Panel?',
+      hospitalFeatureDashboardBody:
+        'Wraz z większym zaangażowaniem Panel pacjenta może pokazywać check-iny i aktywność.',
+      hospitalFeatureVitalityHeadline: 'Vitality może być kolejnym krokiem',
+      hospitalFeatureVitalityBody:
+        'Energia może wracać — włącz Vitality dla galerii i muzyki, gdy to odpowiednie.',
+      hospitalFeatureAssessmentsHeadline: 'Rozważ Oceny',
+      hospitalFeatureAssessmentsBody:
+        'Jeśli pacjent jest wystarczająco stabilny na zaplanowane check-iny, włącz Oceny.',
+      hospitalFeatureTurnOnMessaging: 'Włącz Wiadomości',
+      hospitalFeatureTurnOnDashboard: 'Włącz Panel',
+      hospitalFeatureTurnOnVitality: 'Włącz Vitality',
+      hospitalFeatureTurnOnAssessments: 'Włącz Oceny',
+      hospitalFeatureUpdating: 'Aktualizowanie…',
+      previewHospitalFeatureMessagingHeadline: 'Wiadomości mogą teraz pomóc',
+      previewHospitalFeatureMessagingBody:
+        'Przykładowe przypomnienie postępu — użyj Włącz Wiadomości na stronie głównej.',
+      previewHospitalFeatureDashboardHeadline: 'Gotowi na Panel?',
+      previewHospitalFeatureDashboardBody:
+        'Przykładowe przypomnienie postępu — użyj Włącz Panel na stronie głównej.',
+      previewHospitalFeatureVitalityHeadline: 'Vitality może być kolejnym krokiem',
+      previewHospitalFeatureVitalityBody:
+        'Przykładowe przypomnienie postępu — użyj Włącz Vitality na stronie głównej.',
+      previewHospitalFeatureAssessmentsHeadline: 'Rozważ Oceny',
+      previewHospitalFeatureAssessmentsBody:
+        'Przykładowe przypomnienie postępu — użyj Włącz Oceny na stronie głównej.',
       careProfileHeadline: 'Profil {{name}} wymaga uwagi',
       careProfileBody:
         'Brakuje kluczowych danych profilu. Dotknij Admin i uzupełnij je jako pełnomocnik, lub poczekaj, aż pacjent zapisze profil na iPadzie.',

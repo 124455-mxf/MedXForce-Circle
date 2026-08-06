@@ -1,13 +1,33 @@
-import { useMemo } from 'react';
-import { Cake, Camera, ClipboardList, Flag, PartyPopper, PenLine, UserRound, Users, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import {
+  Activity,
+  Cake,
+  Camera,
+  ClipboardCheck,
+  ClipboardList,
+  Flag,
+  LayoutDashboard,
+  Loader2,
+  MessageSquare,
+  PartyPopper,
+  PenLine,
+  UserRound,
+  Users,
+  X,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { Firestore } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import {
   ASSESSMENT_AFTER_FIRST_COMMUNICATION_MS,
+  HOSPITAL_FEATURE_REMINDER_KINDS,
   hasAssessmentInWindow,
+  hospitalFeatureRemotePath,
+  isHospitalFeatureReminderKind,
   isParticipationReminderSnoozed,
   isPatientInsightsPreviewRemindersEnabled,
+  listHospitalFeatureRemindersToShow,
+  setRemoteSettingValue,
   shouldShowAssessmentAfterFirstCommReminder,
   shouldShowDiaryEntryReminder,
   shouldShowGalleryUploadReminder,
@@ -16,7 +36,9 @@ import {
   type CircleParticipationReminderKind,
   type CirclePatientProfileSnapshot,
   type CirclePatientSummary,
+  type HospitalFeatureReminderKind,
   type PatientAnalyticsSummary,
+  type PatientRemoteSettingsDoc,
 } from '@medxforce/shared';
 import { isCoreCircleProfileComplete, getMissingCoreCircleProfileFields } from '../lib/circleProfileDashboard';
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
@@ -35,6 +57,8 @@ import {
   localizePreviewTeamCoverageReminder,
   localizeCareAssessmentReminder,
   localizeCareProfileReminder,
+  localizeHospitalFeatureReminder,
+  localizePreviewHospitalFeatureReminder,
   localizeTeamCoverageReminder,
   formatMissingCoreProfileFieldsT,
   patientFriendlyDisplayName,
@@ -55,7 +79,34 @@ type CelebrationTile = {
   isPreview?: boolean;
   dismissKind?: CircleParticipationReminderKind;
   onOpen?: () => void;
+  /** In-place enable action (Hospital feature nudges). */
+  actionLabel?: string;
+  onAction?: () => void;
+  actionUpdating?: boolean;
+  actionDisabled?: boolean;
 };
+
+function hospitalFeatureIcon(kind: HospitalFeatureReminderKind): LucideIcon {
+  if (kind === 'hospitalFeatureMessaging') return MessageSquare;
+  if (kind === 'hospitalFeatureDashboard') return LayoutDashboard;
+  if (kind === 'hospitalFeatureVitality') return Activity;
+  return ClipboardCheck;
+}
+
+function hospitalFeatureTurnOnLabelKey(kind: HospitalFeatureReminderKind): string {
+  if (kind === 'hospitalFeatureMessaging') return 'dashboard.reminders.hospitalFeatureTurnOnMessaging';
+  if (kind === 'hospitalFeatureDashboard') return 'dashboard.reminders.hospitalFeatureTurnOnDashboard';
+  if (kind === 'hospitalFeatureVitality') return 'dashboard.reminders.hospitalFeatureTurnOnVitality';
+  return 'dashboard.reminders.hospitalFeatureTurnOnAssessments';
+}
+
+function isCareStyleDismissKind(kind: CircleParticipationReminderKind): boolean {
+  return (
+    kind === 'teamCoverage' ||
+    kind === 'profileIncomplete' ||
+    isHospitalFeatureReminderKind(kind)
+  );
+}
 
 function CelebrationCard({
   tone,
@@ -66,17 +117,22 @@ function CelebrationCard({
   dismissKind,
   onDismiss,
   onOpen,
+  actionLabel,
+  onAction,
+  actionUpdating = false,
+  actionDisabled = false,
   t,
 }: Omit<CelebrationTile, 'key'> & {
   t: ReturnType<typeof useCircleT>;
   onDismiss?: (kind: CircleParticipationReminderKind) => void;
 }) {
-  const interactive = !!onOpen;
+  const hasAction = !!actionLabel;
+  const interactive = !!onOpen && !hasAction;
 
   return (
     <div
       className={cn(
-        'w-full h-full text-left p-3 sm:p-4 rounded-2xl border shadow-sm transition-colors relative',
+        'w-full h-full text-left p-3 sm:p-4 rounded-2xl border shadow-sm transition-colors relative flex flex-col gap-2.5',
         tone === 'birthday'
           ? 'bg-gradient-to-r from-violet-50 via-pink-50 to-amber-50 border-violet-200'
           : tone === 'milestone'
@@ -86,6 +142,25 @@ function CelebrationCard({
               : 'bg-gradient-to-r from-amber-50 via-orange-50 to-rose-50 border-amber-200',
         interactive && 'cursor-pointer hover:brightness-[0.98] active:scale-[0.99]',
       )}
+      onClick={
+        interactive
+          ? () => {
+              onOpen?.();
+            }
+          : undefined
+      }
+      onKeyDown={
+        interactive
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onOpen?.();
+              }
+            }
+          : undefined
+      }
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
     >
       {isPreview ? (
         <span className="absolute top-3 right-3 inline-flex rounded-full bg-slate-900/75 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
@@ -96,7 +171,7 @@ function CelebrationCard({
         <button
           type="button"
           aria-label={t(
-            dismissKind === 'teamCoverage' || dismissKind === 'profileIncomplete'
+            isCareStyleDismissKind(dismissKind)
               ? 'dashboard.reminders.dismissCareReminder'
               : dismissKind === 'birthday' || dismissKind === 'onsetMilestone'
                 ? 'dashboard.reminders.dismissCelebrationReminder'
@@ -106,19 +181,16 @@ function CelebrationCard({
             event.stopPropagation();
             onDismiss(dismissKind);
           }}
-          className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-white/90 border border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-white flex items-center justify-center shadow-sm"
+          className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-white/90 border border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-white flex items-center justify-center shadow-sm z-10"
         >
           <X size={14} />
         </button>
       ) : null}
-      <button
-        type="button"
-        disabled={!interactive}
-        onClick={(event) => {
-          event.stopPropagation();
-          onOpen?.();
-        }}
-        className={cn('flex h-full w-full flex-col gap-2.5 text-left', !interactive && 'cursor-default')}
+      <div
+        className={cn(
+          'flex min-h-0 flex-1 flex-col gap-2.5 text-left',
+          (isPreview || dismissKind) && 'pr-8',
+        )}
       >
         <div
           className={cn(
@@ -134,20 +206,34 @@ function CelebrationCard({
         >
           <Icon size={18} />
         </div>
-        <div
-          className={cn(
-            'min-w-0 flex-1 flex flex-col gap-1.5',
-            (isPreview || dismissKind) && 'pr-8',
-          )}
-        >
+        <div className="min-w-0 flex-1 flex flex-col gap-1">
           <p className="font-bold text-slate-800 text-xs sm:text-sm leading-snug line-clamp-2">
             {headline}
           </p>
-          <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed line-clamp-3">
+          <p
+            className={cn(
+              'text-[11px] sm:text-xs text-slate-600 leading-relaxed',
+              hasAction ? 'line-clamp-2' : 'line-clamp-3',
+            )}
+          >
             {body}
           </p>
         </div>
-      </button>
+      </div>
+      {hasAction ? (
+        <button
+          type="button"
+          disabled={actionDisabled || actionUpdating || !onAction}
+          onClick={(event) => {
+            event.stopPropagation();
+            onAction?.();
+          }}
+          className="mt-auto inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-[11px] sm:text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-60 shrink-0"
+        >
+          {actionUpdating ? <Loader2 size={14} className="animate-spin" /> : null}
+          {actionUpdating ? t('dashboard.reminders.hospitalFeatureUpdating') : actionLabel}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -168,6 +254,10 @@ export function CircleDashboardCelebrationSection({
   analyticsByMetricId,
   analyticsLoading,
   canOpenPatientProfile,
+  remoteSettings,
+  remoteSettingsReady,
+  canOpenRemoteSettings,
+  onPersistRemoteSettings,
   onGoToTab,
 }: {
   db: Firestore;
@@ -185,6 +275,10 @@ export function CircleDashboardCelebrationSection({
   analyticsByMetricId: Map<string, PatientAnalyticsSummary>;
   analyticsLoading: boolean;
   canOpenPatientProfile: boolean;
+  remoteSettings: PatientRemoteSettingsDoc | null;
+  remoteSettingsReady: boolean;
+  canOpenRemoteSettings: boolean;
+  onPersistRemoteSettings: (next: PatientRemoteSettingsDoc) => void;
   onGoToTab: (tab: CircleMainTab) => void;
 }) {
   const t = useCircleT();
@@ -197,6 +291,7 @@ export function CircleDashboardCelebrationSection({
   );
   const { analysis: teamCoverage, loading: teamCoverageLoading } = useCircleTeamCoverageFromDashboard();
   const canManageTeam = patient.capabilities.inviteMembers === true;
+  const [enablingKind, setEnablingKind] = useState<HospitalFeatureReminderKind | null>(null);
 
   const friendlyName = patientFriendlyDisplayName(snapshot, patient.displayName);
   const birthday = localizeBirthdayReminder(t, language, snapshot, patient.displayName);
@@ -269,6 +364,39 @@ export function CircleDashboardCelebrationSection({
       loading: teamCoverageLoading,
       snoozedUntil: snoozes.teamCoverage,
     });
+
+  const hospitalFeatureKinds = listHospitalFeatureRemindersToShow({
+    enabled: careRemindersEnabled,
+    settings: remoteSettings,
+    settingsReady: remoteSettingsReady,
+    firstEngagementAt,
+    firstEngagementLoading,
+    snoozes,
+    snoozeLoading,
+  });
+
+  const enableHospitalFeature = (kind: HospitalFeatureReminderKind) => {
+    if (!remoteSettings || !canOpenRemoteSettings || enablingKind) return;
+    setEnablingKind(kind);
+    try {
+      const path = hospitalFeatureRemotePath(kind);
+      let next = setRemoteSettingValue(remoteSettings, path, true);
+      // Match Remote Settings Vitality master toggle: unlock Mind/Soul pillars too.
+      if (kind === 'hospitalFeatureVitality') {
+        next = setRemoteSettingValue(next, 'featuresVisibility.activity.mind', true);
+        next = setRemoteSettingValue(next, 'featuresVisibility.activity.soul', true);
+      }
+      onPersistRemoteSettings({
+        ...next,
+        patientId: patient.patientId,
+      });
+      void dismissReminder(kind).catch((err) => {
+        console.warn('[Circle] Reminder dismiss after enable failed:', err);
+      });
+    } finally {
+      window.setTimeout(() => setEnablingKind(null), 600);
+    }
+  };
 
   const tiles: CelebrationTile[] = [];
   if (birthday && !isParticipationReminderSnoozed('birthday', snoozes)) {
@@ -450,6 +578,38 @@ export function CircleDashboardCelebrationSection({
     });
   }
 
+  if (hospitalFeatureKinds.length > 0) {
+    for (const kind of hospitalFeatureKinds) {
+      const copy = localizeHospitalFeatureReminder(t, kind);
+      tiles.push({
+        key: kind,
+        tone: 'care',
+        icon: hospitalFeatureIcon(kind),
+        headline: copy.headline,
+        body: copy.body,
+        dismissKind: kind,
+        actionLabel: t(hospitalFeatureTurnOnLabelKey(kind)),
+        onAction: canOpenRemoteSettings ? () => enableHospitalFeature(kind) : undefined,
+        actionUpdating: enablingKind === kind,
+        actionDisabled: !canOpenRemoteSettings || !remoteSettings,
+      });
+    }
+  } else if (previewReminders && careRemindersEnabled) {
+    for (const kind of HOSPITAL_FEATURE_REMINDER_KINDS) {
+      const preview = localizePreviewHospitalFeatureReminder(t, kind);
+      tiles.push({
+        key: `preview-${kind}`,
+        tone: 'care',
+        icon: hospitalFeatureIcon(kind),
+        headline: preview.headline,
+        body: preview.body,
+        isPreview: true,
+        actionLabel: t(hospitalFeatureTurnOnLabelKey(kind)),
+        actionDisabled: true,
+      });
+    }
+  }
+
   if (tiles.length === 0) return null;
 
   return (
@@ -464,7 +624,12 @@ export function CircleDashboardCelebrationSection({
       ) : null}
       <div className="grid grid-cols-2 gap-3">
         {tiles.map((tile) => (
-          <div key={tile.key} className="h-[10rem] sm:h-[10.5rem]">
+          <div
+            key={tile.key}
+            className={cn(
+              tile.actionLabel ? 'h-[12rem] sm:h-[12.5rem]' : 'h-[10rem] sm:h-[10.5rem]',
+            )}
+          >
             <CelebrationCard
               tone={tile.tone}
               icon={tile.icon}
@@ -473,6 +638,10 @@ export function CircleDashboardCelebrationSection({
               isPreview={tile.isPreview}
               dismissKind={tile.dismissKind}
               onOpen={tile.onOpen}
+              actionLabel={tile.actionLabel}
+              onAction={tile.onAction}
+              actionUpdating={tile.actionUpdating}
+              actionDisabled={tile.actionDisabled}
               t={t}
               onDismiss={(kind) => {
                 void dismissReminder(kind).catch((err) => {

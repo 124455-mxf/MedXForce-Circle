@@ -1267,6 +1267,10 @@ export function CircleDashboardScreen({
           analyticsByMetricId={byMetricId}
           analyticsLoading={analyticsLoading}
           canOpenPatientProfile={canOpenPatientProfile}
+          remoteSettings={remoteSettings ?? null}
+          remoteSettingsReady={!remoteSettingsLoading && remoteSettingsFromFirestore}
+          canOpenRemoteSettings={patient.capabilities.remoteSettings === true}
+          onPersistRemoteSettings={persistRemoteSettings}
           onGoToTab={onGoToTab}
         />
 
