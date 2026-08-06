@@ -42,9 +42,11 @@ function accountInfoCollapsedStorageKey(patientId: string): string {
 
 function readAccountInfoCollapsed(patientId: string): boolean {
   try {
-    return localStorage.getItem(accountInfoCollapsedStorageKey(patientId)) === '1';
+    const raw = localStorage.getItem(accountInfoCollapsedStorageKey(patientId));
+    if (raw == null) return true;
+    return raw === '1';
   } catch {
-    return false;
+    return true;
   }
 }
 
