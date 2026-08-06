@@ -613,6 +613,7 @@ export function CirclePatientProfilePanel({
               db={db}
               patient={patient}
               compact
+              collapsible
             />
           </section>
         </>

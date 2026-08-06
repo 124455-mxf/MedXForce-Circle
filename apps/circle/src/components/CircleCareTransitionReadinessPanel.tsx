@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ClipboardList,
   Copy,
+  ChevronDown,
   Loader2,
   Maximize2,
   Plus,
@@ -41,10 +42,30 @@ type CircleCareTransitionReadinessPanelProps = {
   compact?: boolean;
   /** Hide the title row when the parent overlay already shows it */
   hideHeader?: boolean;
+  /**
+   * Profile embed: collapse the checklist behind a summary row.
+   * Defaults to collapsed; remembers expand/collapse per patient.
+   */
+  collapsible?: boolean;
   onClose?: () => void;
   /** Open the full-screen checklist modal */
   onExpand?: () => void;
 };
+
+function careTransitionCollapsedStorageKey(patientId: string): string {
+  return `circle:careTransitionCollapsed:${patientId}`;
+}
+
+/** Default collapsed when unset — profile should stay calm until opened. */
+function readCareTransitionCollapsed(patientId: string): boolean {
+  try {
+    const raw = localStorage.getItem(careTransitionCollapsedStorageKey(patientId));
+    if (raw == null) return true;
+    return raw === '1';
+  } catch {
+    return true;
+  }
+}
 
 export function CircleCareTransitionReadinessPanel({
   user,
@@ -52,6 +73,7 @@ export function CircleCareTransitionReadinessPanel({
   patient,
   compact = false,
   hideHeader = false,
+  collapsible = false,
   onClose,
   onExpand,
 }: CircleCareTransitionReadinessPanelProps) {
@@ -89,6 +111,29 @@ export function CircleCareTransitionReadinessPanel({
   const [draftKnowUrl, setDraftKnowUrl] = useState('');
   const [copiedTaskId, setCopiedTaskId] = useState<string | null>(null);
   const [regionPickerOpen, setRegionPickerOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() =>
+    collapsible ? readCareTransitionCollapsed(patient.patientId) : false,
+  );
+
+  useEffect(() => {
+    if (!collapsible) return;
+    setCollapsed(readCareTransitionCollapsed(patient.patientId));
+  }, [collapsible, patient.patientId]);
+
+  const toggleCollapsed = () => {
+    setCollapsed((current) => {
+      const next = !current;
+      try {
+        localStorage.setItem(
+          careTransitionCollapsedStorageKey(patient.patientId),
+          next ? '1' : '0',
+        );
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
 
   const profileCountry = profileSnapshot?.identity.country ?? '';
   const countryCode = normalizeCountryCode(profileCountry);
@@ -157,7 +202,60 @@ export function CircleCareTransitionReadinessPanel({
     }
   };
 
+  const collapsedSummary =
+    localizedPack != null
+      ? t('careTransition.collapsedSummary', {
+          pack: localizedPack.title,
+          done: progress.done,
+          total: progress.total,
+          percent: progress.percent,
+        })
+      : t('careTransition.collapsedSummaryNone');
+
+  const collapseToggle =
+    collapsible ? (
+      <button
+        type="button"
+        onClick={toggleCollapsed}
+        className={cn(
+          'w-full flex items-start gap-3 text-left',
+          compact ? 'p-4' : 'p-5',
+        )}
+        aria-expanded={!collapsed}
+        aria-label={
+          collapsed
+            ? t('careTransition.showSectionAria')
+            : t('careTransition.hideSectionAria')
+        }
+      >
+        <div className="w-11 h-11 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+          {loading || !state ? (
+            <Loader2 size={20} className="animate-spin" />
+          ) : (
+            <ClipboardList size={20} />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="font-bold text-slate-800">{t('careTransition.title')}</h3>
+          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed truncate">
+            {loading || !state ? t('careTransition.loadingSummary') : collapsedSummary}
+          </p>
+        </div>
+        <ChevronDown
+          size={18}
+          className={cn(
+            'shrink-0 text-slate-400 transition-transform mt-1',
+            collapsed && '-rotate-90',
+          )}
+          aria-hidden
+        />
+      </button>
+    ) : null;
+
   if (loading || !state) {
+    if (collapsible) {
+      return <div>{collapseToggle}</div>;
+    }
     return (
       <div className="py-10 flex justify-center text-slate-400">
         <Loader2 size={24} className="animate-spin" />
@@ -165,9 +263,21 @@ export function CircleCareTransitionReadinessPanel({
     );
   }
 
+  if (collapsible && collapsed) {
+    return <div>{collapseToggle}</div>;
+  }
+
   return (
-    <div className={cn('space-y-4', compact ? 'p-4' : 'p-5')}>
-      {hideHeader ? null : (
+    <div>
+      {collapseToggle}
+      <div
+        className={cn(
+          'space-y-4',
+          compact || collapsible ? 'p-4' : 'p-5',
+          collapsible && 'border-t border-slate-100',
+        )}
+      >
+      {hideHeader || collapsible ? null : (
       <div className="flex items-start gap-3">
         <div className="w-11 h-11 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
           <ClipboardList size={20} />
@@ -213,7 +323,7 @@ export function CircleCareTransitionReadinessPanel({
       </div>
       )}
 
-      {hideHeader && startedLabel ? (
+      {(hideHeader || collapsible) && startedLabel ? (
         <p className="text-[11px] text-slate-500 font-medium">{startedLabel}</p>
       ) : null}
 
@@ -627,6 +737,7 @@ export function CircleCareTransitionReadinessPanel({
           <Loader2 size={14} className="animate-spin" /> {t('admin.contact.saving')}
         </p>
       ) : null}
+      </div>
     </div>
   );
 }
