@@ -1,6 +1,7 @@
 /** Care transition readiness — shared Circle pack templates + progress helpers. */
 import { doc, getDoc, setDoc, type Firestore } from 'firebase/firestore';
 import type { CircleMemberRole } from './patientPermissions';
+import { normalizeMemberRole } from './patientPermissions';
 import type { TreatmentPhaseValue } from './treatmentPhase';
 import { normalizeTreatmentPhaseForSchedule } from './treatmentPhase';
 import {
@@ -616,7 +617,23 @@ export function getCareTransitionPack(id: CareTransitionPackId | null | undefine
 }
 
 export function canManageCareTransitionPack(role: CircleMemberRole): boolean {
-  return role === 'proxy' || role === 'caregiver' || role === 'professional_caregiver';
+  return normalizeMemberRole(role) === 'proxy';
+}
+
+/** Mark done / dismiss — care team and family; not friends. */
+export function canWorkCareTransitionTasks(role: CircleMemberRole): boolean {
+  const normalized = normalizeMemberRole(role);
+  return (
+    normalized === 'proxy' ||
+    normalized === 'caregiver' ||
+    normalized === 'professional_caregiver' ||
+    normalized === 'family'
+  );
+}
+
+/** Friends stay informed via announcements; they do not get a personal task list. */
+export function canViewCareTransitionTasks(role: CircleMemberRole): boolean {
+  return canWorkCareTransitionTasks(role);
 }
 
 export function suggestedPackForTreatmentPhase(
@@ -906,8 +923,10 @@ export function filterChecklistForViewer(
   customTasks: CareTransitionCustomTask[],
   dismissedIds: ReadonlySet<string>,
 ): CareTransitionChecklistItem[] {
+  if (!canViewCareTransitionTasks(role)) return [];
+
   const viewerRole: 'proxy' | 'caregiver' | 'family' =
-    role === 'proxy' ? 'proxy' : role === 'family' || role === 'friend' ? 'family' : 'caregiver';
+    role === 'proxy' ? 'proxy' : role === 'family' ? 'family' : 'caregiver';
 
   const template = pack.items.filter((item) => {
     if (!item.roles.includes(viewerRole)) return false;

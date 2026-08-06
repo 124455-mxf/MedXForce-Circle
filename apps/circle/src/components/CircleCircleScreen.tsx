@@ -22,6 +22,7 @@ import {
   isSyntheticAppointmentInvitePostId,
   isPastAppointmentInvitePost,
   mergeAppointmentInvitePostsWithCareCalendar,
+  normalizeMemberRole,
   unhideCircleThreadPostForUser,
   type CircleMemberRole,
   type CircleMemberThreadKind,
@@ -401,6 +402,10 @@ export function CircleCircleScreen({
   const inboxViews = useMemo(() => {
     const views = circlePostInboxViewsForThread(activeThread, memberRole);
     if (!careTransitionState?.activePackId) {
+      return views.filter((view) => view !== 'care_transition');
+    }
+    // Friends stay informed via announcements; checklist tab is for care team + family.
+    if (normalizeMemberRole(memberRole) === 'friend') {
       return views.filter((view) => view !== 'care_transition');
     }
     return views;

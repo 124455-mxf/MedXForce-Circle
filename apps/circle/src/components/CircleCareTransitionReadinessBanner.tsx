@@ -28,6 +28,8 @@ type CircleCareTransitionReadinessBannerProps = {
    * Circle keeps its own surfaces without this expiry.
    */
   maxAgeMs?: number;
+  /** When false, hide the banner (e.g. friends do not get Home task nudges). */
+  enabled?: boolean;
 };
 
 export function CircleCareTransitionReadinessBanner({
@@ -37,6 +39,7 @@ export function CircleCareTransitionReadinessBanner({
   loading,
   onOpen,
   maxAgeMs,
+  enabled = true,
 }: CircleCareTransitionReadinessBannerProps) {
   const t = useCircleT();
   const { language } = useCircleI18nContext();
@@ -46,7 +49,7 @@ export function CircleCareTransitionReadinessBanner({
     setHidden(false);
   }, [patient.patientId, readerUid, state?.activePackId, state?.packActivatedAt]);
 
-  if (loading || !state?.activePackId || hidden) return null;
+  if (!enabled || loading || !state?.activePackId || hidden) return null;
 
   const pack = getCareTransitionPack(state.activePackId);
   if (!pack) return null;

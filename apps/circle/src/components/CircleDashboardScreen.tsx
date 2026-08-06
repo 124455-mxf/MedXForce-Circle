@@ -1155,6 +1155,7 @@ export function CircleDashboardScreen({
         state={careTransitionState}
         loading={careTransitionLoading}
         maxAgeMs={CARE_TRANSITION_HOME_BANNER_MAX_AGE_MS}
+        enabled={memberRole !== 'friend'}
         onOpen={() => setCareTransitionOpen(true)}
       />
 

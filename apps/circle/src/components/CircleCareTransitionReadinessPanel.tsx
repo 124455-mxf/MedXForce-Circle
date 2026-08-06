@@ -93,6 +93,8 @@ export function CircleCareTransitionReadinessPanel({
     progress,
     doneSet,
     canManage,
+    canWorkTasks,
+    canViewTasks,
     setActivePack,
     setRegion,
     syncRegionFromCountry,
@@ -451,6 +453,16 @@ export function CircleCareTransitionReadinessPanel({
             ? t('careTransition.choosePack')
             : t('careTransition.noActivePack')}
         </p>
+      ) : !canViewTasks ? (
+        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-2">
+          <p className="font-semibold text-slate-800 text-sm">{localizedPack.title}</p>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            {t('careTransition.friendAwareness', { name: patient.displayName })}
+          </p>
+          {startedLabel ? (
+            <p className="text-[11px] text-slate-500 font-medium">{startedLabel}</p>
+          ) : null}
+        </div>
       ) : (
         <>
           <div className="rounded-2xl border border-slate-100 bg-white p-4 space-y-3">
@@ -502,7 +514,7 @@ export function CircleCareTransitionReadinessPanel({
                 <p className="text-base font-bold text-slate-800 truncate">
                   {role === 'proxy'
                     ? t('careTransition.roleProxy')
-                    : role === 'family' || role === 'friend'
+                    : role === 'family'
                       ? t('careTransition.roleFamily')
                       : t('careTransition.roleCaregiver')}
                 </p>
@@ -559,19 +571,21 @@ export function CircleCareTransitionReadinessPanel({
                     <div className="pl-7 space-y-2">
                       <p className="text-xs text-slate-600 leading-relaxed">{item.why}</p>
                       <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          disabled={saving}
-                          onClick={() => void toggleDone(item.id)}
-                          className={cn(
-                            'px-3 py-1.5 rounded-xl text-xs font-semibold text-white',
-                            done ? 'bg-emerald-600' : 'bg-blue-600',
-                          )}
-                        >
-                          {done
-                            ? t('careTransition.markNotDone')
-                            : t('careTransition.markDone')}
-                        </button>
+                        {canWorkTasks ? (
+                          <button
+                            type="button"
+                            disabled={saving}
+                            onClick={() => void toggleDone(item.id)}
+                            className={cn(
+                              'px-3 py-1.5 rounded-xl text-xs font-semibold text-white',
+                              done ? 'bg-emerald-600' : 'bg-blue-600',
+                            )}
+                          >
+                            {done
+                              ? t('careTransition.markNotDone')
+                              : t('careTransition.markDone')}
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => void copyTask(item)}
@@ -582,14 +596,16 @@ export function CircleCareTransitionReadinessPanel({
                             ? t('careTransition.copied')
                             : t('careTransition.copyTask')}
                         </button>
-                        <button
-                          type="button"
-                          disabled={saving}
-                          onClick={() => void dismissItem(item.id)}
-                          className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600"
-                        >
-                          {t('careTransition.dismiss')}
-                        </button>
+                        {canWorkTasks ? (
+                          <button
+                            type="button"
+                            disabled={saving}
+                            onClick={() => void dismissItem(item.id)}
+                            className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600"
+                          >
+                            {t('careTransition.dismiss')}
+                          </button>
+                        ) : null}
                         {item.custom && canManage ? (
                           <button
                             type="button"
@@ -619,14 +635,16 @@ export function CircleCareTransitionReadinessPanel({
                   className="flex items-center justify-between gap-2 text-sm text-slate-600"
                 >
                   <span className="min-w-0 truncate">{item.title}</span>
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={() => void restoreDismissed(item.id)}
-                    className="text-xs font-semibold text-blue-600 shrink-0"
-                  >
-                    {t('careTransition.restore')}
-                  </button>
+                  {canWorkTasks ? (
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => void restoreDismissed(item.id)}
+                      className="text-xs font-semibold text-blue-600 shrink-0"
+                    >
+                      {t('careTransition.restore')}
+                    </button>
+                  ) : null}
                 </div>
               ))}
             </div>

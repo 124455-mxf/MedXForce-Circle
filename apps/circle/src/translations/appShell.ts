@@ -51,7 +51,7 @@ export const appShellEnglish = {
     none: 'None',
     choosePack: 'Choose a pack to start, or change recovery stage to activate one.',
     packSelectHint:
-      'Often set automatically when “Where I am in recovery” changes. Use this menu to override.',
+      'Often set automatically when “Where I am in recovery” changes. Proxies can override or clear the pack here.',
     tasksFor: 'Tasks for',
     regionChange: 'Change',
     regionDone: 'Done',
@@ -62,7 +62,9 @@ export const appShellEnglish = {
     regionUseProfile: 'Use country from patient profile',
     countryNotSet: 'Not set',
     countryLegacy: 'current value',
-    noActivePack: 'No active care transition pack yet. A proxy or caregiver can start one.',
+    noActivePack: 'No active care transition pack yet. A proxy can start one.',
+    friendAwareness:
+      'The care team is using a readiness checklist for {{name}}’s current stage. Friends don’t get personal tasks — check Circle announcements for updates.',
     custom: 'Custom',
     markDone: 'Mark done',
     markNotDone: 'Mark not done',
@@ -1179,7 +1181,7 @@ export const appShellGerman = {
     none: 'Keines',
     choosePack: 'Paket wählen oder Genesungsphase ändern, um eines zu aktivieren.',
     packSelectHint:
-      'Wird oft automatisch gesetzt, wenn „Wo ich in der Genesung stehe“ geändert wird. Hier können Sie es überschreiben.',
+      'Wird oft automatisch gesetzt, wenn „Wo ich in der Genesung stehe“ geändert wird. Stellvertreter können das Paket hier überschreiben oder beenden.',
     tasksFor: 'Aufgaben für',
     regionChange: 'Ändern',
     regionDone: 'Fertig',
@@ -1190,7 +1192,9 @@ export const appShellGerman = {
     regionUseProfile: 'Land aus dem Patientenprofil verwenden',
     countryNotSet: 'Nicht festgelegt',
     countryLegacy: 'aktueller Wert',
-    noActivePack: 'Noch kein aktives Übergangspaket. Proxy oder Pflegekraft kann eines starten.',
+    noActivePack: 'Noch kein aktives Übergangspaket. Ein Stellvertreter kann eines starten.',
+    friendAwareness:
+      'Das Betreuungsteam nutzt eine Checkliste für die aktuelle Phase von {{name}}. Freunde erhalten keine eigenen Aufgaben — Updates stehen in Circle-Ankündigungen.',
     custom: 'Eigene',
     markDone: 'Erledigt',
     markNotDone: 'Nicht erledigt',
@@ -2303,7 +2307,7 @@ export const appShellSpanish = {
     none: 'Ninguno',
     choosePack: 'Elija un paquete o cambie la etapa de recuperación para activar uno.',
     packSelectHint:
-      'A menudo se establece automáticamente al cambiar “Dónde estoy en mi recuperación”. Use este menú para anularlo.',
+      'A menudo se establece automáticamente al cambiar “Dónde estoy en mi recuperación”. Los apoderados pueden anularlo o cerrarlo aquí.',
     tasksFor: 'Tareas para',
     regionChange: 'Cambiar',
     regionDone: 'Listo',
@@ -2314,7 +2318,9 @@ export const appShellSpanish = {
     regionUseProfile: 'Usar el país del perfil del paciente',
     countryNotSet: 'Sin definir',
     countryLegacy: 'valor actual',
-    noActivePack: 'Aún no hay paquete activo. Un proxy o cuidador puede iniciarlo.',
+    noActivePack: 'Aún no hay paquete activo. Un apoderado puede iniciarlo.',
+    friendAwareness:
+      'El equipo de cuidado usa una lista de preparación para la etapa actual de {{name}}. Los amigos no reciben tareas personales — mira los anuncios de Circle para novedades.',
     custom: 'Personalizada',
     markDone: 'Marcar hecha',
     markNotDone: 'Marcar no hecha',
@@ -3427,7 +3433,7 @@ export const appShellPolish = {
     none: 'Brak',
     choosePack: 'Wybierz pakiet lub zmień etap recovery, aby go aktywować.',
     packSelectHint:
-      'Często ustawiane automatycznie przy zmianie „Gdzie jestem w rekonwalescencji”. Tu możesz to nadpisać.',
+      'Często ustawiane automatycznie przy zmianie „Gdzie jestem w rekonwalescencji”. Pełnomocnik może tu nadpisać lub zakończyć pakiet.',
     tasksFor: 'Zadania dla',
     regionChange: 'Zmień',
     regionDone: 'Gotowe',
@@ -3438,7 +3444,9 @@ export const appShellPolish = {
     regionUseProfile: 'Użyj kraju z profilu pacjenta',
     countryNotSet: 'Nie ustawiono',
     countryLegacy: 'bieżąca wartość',
-    noActivePack: 'Brak aktywnego pakietu. Proxy lub opiekun może go uruchomić.',
+    noActivePack: 'Brak aktywnego pakietu. Pełnomocnik może go uruchomić.',
+    friendAwareness:
+      'Zespół opieki korzysta z listy gotowości dla obecnego etapu {{name}}. Przyjaciele nie dostają własnych zadań — aktualizacje są w ogłoszeniach Circle.',
     custom: 'Własne',
     markDone: 'Oznacz jako zrobione',
     markNotDone: 'Oznacz jako niezrobione',

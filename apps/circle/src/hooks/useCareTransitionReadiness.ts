@@ -7,6 +7,8 @@ import {
   careTransitionReadinessRef,
   careTransitionRegionFromCountry,
   canManageCareTransitionPack,
+  canViewCareTransitionTasks,
+  canWorkCareTransitionTasks,
   EMPTY_CARE_TRANSITION_STATE,
   ensureCareTransitionAnnouncementPosted,
   filterChecklistForViewer,
@@ -90,6 +92,8 @@ export function useCareTransitionReadiness(
 
   const progress = careTransitionProgress(activeItems, doneSet);
   const canManage = canManageCareTransitionPack(role);
+  const canWorkTasks = canWorkCareTransitionTasks(role);
+  const canViewTasks = canViewCareTransitionTasks(role);
   const loading = patientId != null && state === null;
 
   const openItemCount = state ? careTransitionOpenItemCount(state, role) : 0;
@@ -184,18 +188,18 @@ export function useCareTransitionReadiness(
 
   const toggleDone = useCallback(
     async (itemId: string) => {
-      if (!state) return;
+      if (!state || !canWorkTasks) return;
       const next = new Set(state.doneIds);
       if (next.has(itemId)) next.delete(itemId);
       else next.add(itemId);
       await persist({ ...state, doneIds: [...next] });
     },
-    [persist, state],
+    [canWorkTasks, persist, state],
   );
 
   const dismissItem = useCallback(
     async (itemId: string) => {
-      if (!state) return;
+      if (!state || !canWorkTasks) return;
       if (state.dismissedIds.includes(itemId)) return;
       await persist({
         ...state,
@@ -203,18 +207,18 @@ export function useCareTransitionReadiness(
         doneIds: state.doneIds.filter((id) => id !== itemId),
       });
     },
-    [persist, state],
+    [canWorkTasks, persist, state],
   );
 
   const restoreDismissed = useCallback(
     async (itemId: string) => {
-      if (!state) return;
+      if (!state || !canWorkTasks) return;
       await persist({
         ...state,
         dismissedIds: state.dismissedIds.filter((id) => id !== itemId),
       });
     },
-    [persist, state],
+    [canWorkTasks, persist, state],
   );
 
   const addCustomTask = useCallback(
@@ -308,6 +312,8 @@ export function useCareTransitionReadiness(
     doneSet,
     openItemCount,
     canManage,
+    canWorkTasks,
+    canViewTasks,
     setActivePack,
     setRegion,
     syncRegionFromCountry,
