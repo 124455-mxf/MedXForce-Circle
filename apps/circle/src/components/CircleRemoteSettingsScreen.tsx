@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Loader2, LayoutDashboard, Shield, SlidersHorizontal, FileText } from 'lucide-react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
@@ -7,19 +7,27 @@ import {
   REMOTE_DASHBOARD_PRESETS,
   REMOTE_ASSESSMENT_VISIBILITY_TOGGLES,
   REMOTE_FEATURE_TOGGLES,
+  REMOTE_HOSPITAL_OPTIONAL_FEATURES_DEFAULTS,
+  REMOTE_ICU_OPTIONAL_FEATURES_DEFAULTS,
   REMOTE_PRIMARY_LANGUAGE_OPTIONS,
   REMOTE_PROXY_SECTIONS,
   REMOTE_QUICK_SETTING_TOGGLES,
   REMOTE_VISIBLE_AREA_TOGGLES,
+  applyRemoteHospitalOptionalFeatures,
+  applyRemoteIntensiveCareOptionalFeatures,
   getRemoteFeatureToggleEnabled,
   getRemoteSettingValue,
   isRemoteFeatureToggleDisabled,
   isRemoteSettingsCustomized,
+  readRemoteHospitalOptionalFeatures,
+  readRemoteIntensiveCareOptionalFeatures,
   resolveEffectiveRemoteDashboardPreset,
+  resolveRemoteIntensiveCareExperience,
   setRemoteAppMode,
   setRemoteDashboardPreset,
   setRemoteContentFontSize,
   setRemoteDailyCheckIn,
+  setRemoteIntensiveCareExperience,
   setRemotePrimaryLanguage,
   setRemoteSettingValue,
   setRemoteVisibleArea,
@@ -28,6 +36,9 @@ import {
   type RemoteAppMode,
   type RemoteDashboardPreset,
   type RemoteFeatureToggleDef,
+  type RemoteHospitalOptionalFeatures,
+  type RemoteIntensiveCareExperience,
+  type RemoteIntensiveCareOptionalFeatures,
   type RemotePrimaryLanguage,
   recordCareDiaryMilestones,
 } from '@medxforce/shared';
@@ -120,6 +131,34 @@ function readQuickToggle(doc: PatientRemoteSettingsDoc, path: string): boolean {
   return getRemoteSettingValue(doc, path) ?? false;
 }
 
+function OptionalChipButton({
+  label,
+  active,
+  onClick,
+  className,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'w-full px-3 py-2.5 rounded-2xl text-sm font-bold transition-all border-2 text-center',
+        active
+          ? 'border-blue-600 bg-white text-blue-900 shadow-sm'
+          : 'border-slate-200 bg-white/80 text-slate-700 hover:border-blue-300',
+        className,
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
 function writeQuickToggle(
   doc: PatientRemoteSettingsDoc,
   path: string,
@@ -188,6 +227,13 @@ export function CircleRemoteSettingsScreen({
   const compactChrome = useCircleCompactChrome();
   const t = useCircleT();
   const [pendingMode, setPendingMode] = useState<RemoteAppMode | null>(null);
+  const [pendingIcuExperience, setPendingIcuExperience] =
+    useState<RemoteIntensiveCareExperience>('standard');
+  const [pendingIcuFeatures, setPendingIcuFeatures] = useState<RemoteIntensiveCareOptionalFeatures>(
+    REMOTE_ICU_OPTIONAL_FEATURES_DEFAULTS,
+  );
+  const [pendingHospitalFeatures, setPendingHospitalFeatures] =
+    useState<RemoteHospitalOptionalFeatures>(REMOTE_HOSPITAL_OPTIONAL_FEATURES_DEFAULTS);
   const [overviewOpen, setOverviewOpen] = useState(false);
   const { snapshot: profileSnapshot } = useCirclePatientProfileSnapshot(db, patient.patientId);
   const { overview, loading: overviewLoading } = useCircleApplicationOverview(db, patient.patientId);
@@ -197,10 +243,31 @@ export function CircleRemoteSettingsScreen({
     persist({ ...next, patientId: patient.patientId });
   };
 
+  const openPendingMode = (mode: RemoteAppMode) => {
+    if (mode === 'intensive_care') {
+      setPendingIcuExperience('standard');
+      setPendingIcuFeatures({ ...REMOTE_ICU_OPTIONAL_FEATURES_DEFAULTS });
+    } else if (mode === 'hospital') {
+      setPendingHospitalFeatures({ ...REMOTE_HOSPITAL_OPTIONAL_FEATURES_DEFAULTS });
+    }
+    setPendingMode(mode);
+  };
+
   const applyModeChange = (mode: RemoteAppMode) => {
     if (!settings) return;
     const previousMode = settings.appMode || '';
-    patch(setRemoteAppMode(settings, mode));
+    let next = setRemoteAppMode(settings, mode);
+    if (mode === 'intensive_care') {
+      next = setRemoteIntensiveCareExperience(next, pendingIcuExperience);
+      next = applyRemoteIntensiveCareOptionalFeatures(next, {
+        ...pendingIcuFeatures,
+        painAssessment:
+          pendingIcuExperience === 'minimal_focus' ? false : pendingIcuFeatures.painAssessment,
+      });
+    } else if (mode === 'hospital') {
+      next = applyRemoteHospitalOptionalFeatures(next, pendingHospitalFeatures);
+    }
+    patch(next);
     void recordCareDiaryMilestones(db, {
       patientId: patient.patientId,
       authorUid: user.uid,
@@ -208,6 +275,46 @@ export function CircleRemoteSettingsScreen({
       appMode: { from: previousMode, to: mode },
     }).catch((err) => console.warn('[careDiaryMilestone]', err));
     setPendingMode(null);
+  };
+
+  const resetModePresets = () => {
+    if (!settings?.appMode) return;
+    patch(setRemoteAppMode(settings, settings.appMode));
+  };
+
+  const icuExperience = resolveRemoteIntensiveCareExperience(settings);
+  const icuOptionalFeatures = useMemo(
+    () => readRemoteIntensiveCareOptionalFeatures(settings),
+    [settings],
+  );
+  const hospitalOptionalFeatures = useMemo(
+    () => readRemoteHospitalOptionalFeatures(settings),
+    [settings],
+  );
+
+  const applyIcuExperience = (variant: RemoteIntensiveCareExperience) => {
+    if (!settings) return;
+    patch(setRemoteIntensiveCareExperience(settings, variant));
+  };
+
+  const toggleIcuOptionalFeature = (key: keyof RemoteIntensiveCareOptionalFeatures) => {
+    if (!settings) return;
+    patch(
+      applyRemoteIntensiveCareOptionalFeatures(settings, {
+        ...icuOptionalFeatures,
+        [key]: !icuOptionalFeatures[key],
+      }),
+    );
+  };
+
+  const toggleHospitalOptionalFeature = (key: keyof RemoteHospitalOptionalFeatures) => {
+    if (!settings) return;
+    patch(
+      applyRemoteHospitalOptionalFeatures(settings, {
+        ...hospitalOptionalFeatures,
+        [key]: !hospitalOptionalFeatures[key],
+      }),
+    );
   };
 
   const customized = settings ? isRemoteSettingsCustomized(settings) : false;
@@ -309,7 +416,7 @@ export function CircleRemoteSettingsScreen({
             {customized && settings.appMode && (
               <button
                 type="button"
-                onClick={() => applyModeChange(settings.appMode!)}
+                onClick={resetModePresets}
                 className="text-xs font-semibold text-blue-600 hover:text-blue-700 px-0.5"
               >
                 {t('remoteSettings.resetTogglesTo', {
@@ -328,7 +435,7 @@ export function CircleRemoteSettingsScreen({
                     type="button"
                     onClick={() => {
                       if (active) return;
-                      setPendingMode(mode.key);
+                      openPendingMode(mode.key);
                     }}
                     className={cn(
                       'w-full text-left p-4 rounded-2xl border transition-colors',
@@ -363,6 +470,100 @@ export function CircleRemoteSettingsScreen({
                 );
               })}
             </div>
+
+            {settings.appMode === 'intensive_care' ? (
+              <div className="rounded-2xl border border-blue-200/80 bg-blue-50/60 p-4 space-y-4">
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    {t('remoteSettings.icuExperienceHeading')}
+                  </p>
+                  <p className="text-xs text-slate-600 leading-snug">
+                    {t('remoteSettings.icuExperienceDesc')}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <OptionalChipButton
+                      label={t('remoteSettings.icuVariantMinimal')}
+                      active={icuExperience === 'minimal_focus'}
+                      onClick={() => applyIcuExperience('minimal_focus')}
+                    />
+                    <OptionalChipButton
+                      label={t('remoteSettings.icuVariantStandard')}
+                      active={icuExperience !== 'minimal_focus'}
+                      onClick={() => applyIcuExperience('standard')}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    {t('remoteSettings.icuOptionalHeading')}
+                  </p>
+                  <p className="text-xs text-slate-600 leading-snug">
+                    {t('remoteSettings.icuOptionalDesc')}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <OptionalChipButton
+                      label={t('remoteSettings.icuOptPain')}
+                      active={icuOptionalFeatures.painAssessment}
+                      onClick={() => toggleIcuOptionalFeature('painAssessment')}
+                    />
+                    <OptionalChipButton
+                      label={t('remoteSettings.icuOptDoctor')}
+                      active={icuOptionalFeatures.doctorQuickAnswers}
+                      onClick={() => toggleIcuOptionalFeature('doctorQuickAnswers')}
+                    />
+                    <OptionalChipButton
+                      label={t('remoteSettings.icuOptSoulMusic')}
+                      active={icuOptionalFeatures.soulMusic}
+                      onClick={() => toggleIcuOptionalFeature('soulMusic')}
+                    />
+                    <OptionalChipButton
+                      label={t('remoteSettings.icuOptSoulMedia')}
+                      active={icuOptionalFeatures.soulMediaLibrary}
+                      onClick={() => toggleIcuOptionalFeature('soulMediaLibrary')}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {settings.appMode === 'hospital' ? (
+              <div className="rounded-2xl border border-blue-200/80 bg-blue-50/60 p-4 space-y-2">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                  {t('remoteSettings.hospitalOptionalHeading')}
+                </p>
+                <p className="text-xs text-slate-600 leading-snug">
+                  {t('remoteSettings.hospitalOptionalDesc')}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <OptionalChipButton
+                    label={t('remoteSettings.hospitalOptDashboard')}
+                    active={hospitalOptionalFeatures.dashboard}
+                    onClick={() => toggleHospitalOptionalFeature('dashboard')}
+                    className="col-span-2"
+                  />
+                  <OptionalChipButton
+                    label={t('remoteSettings.hospitalOptMessaging')}
+                    active={hospitalOptionalFeatures.messaging}
+                    onClick={() => toggleHospitalOptionalFeature('messaging')}
+                  />
+                  <OptionalChipButton
+                    label={t('remoteSettings.hospitalOptCompanion')}
+                    active={hospitalOptionalFeatures.aiCompanion}
+                    onClick={() => toggleHospitalOptionalFeature('aiCompanion')}
+                  />
+                  <OptionalChipButton
+                    label={t('remoteSettings.hospitalOptVitality')}
+                    active={hospitalOptionalFeatures.vitality}
+                    onClick={() => toggleHospitalOptionalFeature('vitality')}
+                  />
+                  <OptionalChipButton
+                    label={t('remoteSettings.hospitalOptAssessments')}
+                    active={hospitalOptionalFeatures.healthAssessments}
+                    onClick={() => toggleHospitalOptionalFeature('healthAssessments')}
+                  />
+                </div>
+              </div>
+            ) : null}
           </section>
 
           <section className="space-y-2">
@@ -700,14 +901,151 @@ export function CircleRemoteSettingsScreen({
 
       {pendingMode && (
         <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white w-full sm:max-w-md rounded-t-[28px] sm:rounded-[28px] border border-slate-100 shadow-2xl p-6 space-y-4">
-            <h3 className="text-lg font-bold text-slate-800">{t('remoteSettings.changeModeTitle')}</h3>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              {t('remoteSettings.changeModeBody', {
-                mode: remoteSettingsAppModeLabel(t, pendingMode),
-              })}
-            </p>
-            <div className="flex gap-3 pt-1">
+          <div className="bg-white w-full sm:max-w-md max-h-[min(92dvh,100%)] flex flex-col rounded-t-[28px] sm:rounded-[28px] border border-slate-100 shadow-2xl overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+              <h3 className="text-lg font-bold text-slate-800">{t('remoteSettings.changeModeTitle')}</h3>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                {t('remoteSettings.changeModeBody', {
+                  mode: remoteSettingsAppModeLabel(t, pendingMode),
+                })}
+              </p>
+
+              {pendingMode === 'intensive_care' ? (
+                <div className="rounded-2xl border border-blue-200/80 bg-blue-50/60 p-4 space-y-3">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    {t('remoteSettings.icuExperienceHeading')}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <OptionalChipButton
+                      label={t('remoteSettings.icuVariantMinimal')}
+                      active={pendingIcuExperience === 'minimal_focus'}
+                      onClick={() => {
+                        setPendingIcuExperience('minimal_focus');
+                        setPendingIcuFeatures((prev) => ({ ...prev, painAssessment: false }));
+                      }}
+                    />
+                    <OptionalChipButton
+                      label={t('remoteSettings.icuVariantStandard')}
+                      active={pendingIcuExperience !== 'minimal_focus'}
+                      onClick={() => {
+                        setPendingIcuExperience('standard');
+                        setPendingIcuFeatures((prev) => ({ ...prev, painAssessment: true }));
+                      }}
+                    />
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pt-1">
+                    {t('remoteSettings.icuOptionalHeading')}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <OptionalChipButton
+                      label={t('remoteSettings.icuOptPain')}
+                      active={pendingIcuFeatures.painAssessment}
+                      onClick={() =>
+                        setPendingIcuFeatures((prev) => ({
+                          ...prev,
+                          painAssessment: !prev.painAssessment,
+                        }))
+                      }
+                    />
+                    <OptionalChipButton
+                      label={t('remoteSettings.icuOptDoctor')}
+                      active={pendingIcuFeatures.doctorQuickAnswers}
+                      onClick={() =>
+                        setPendingIcuFeatures((prev) => ({
+                          ...prev,
+                          doctorQuickAnswers: !prev.doctorQuickAnswers,
+                        }))
+                      }
+                    />
+                    <OptionalChipButton
+                      label={t('remoteSettings.icuOptSoulMusic')}
+                      active={pendingIcuFeatures.soulMusic}
+                      onClick={() =>
+                        setPendingIcuFeatures((prev) => ({
+                          ...prev,
+                          soulMusic: !prev.soulMusic,
+                        }))
+                      }
+                    />
+                    <OptionalChipButton
+                      label={t('remoteSettings.icuOptSoulMedia')}
+                      active={pendingIcuFeatures.soulMediaLibrary}
+                      onClick={() =>
+                        setPendingIcuFeatures((prev) => ({
+                          ...prev,
+                          soulMediaLibrary: !prev.soulMediaLibrary,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {pendingMode === 'hospital' ? (
+                <div className="rounded-2xl border border-blue-200/80 bg-blue-50/60 p-4 space-y-3">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    {t('remoteSettings.hospitalOptionalHeading')}
+                  </p>
+                  <p className="text-xs text-slate-600 leading-snug">
+                    {t('remoteSettings.hospitalOptionalDesc')}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <OptionalChipButton
+                      label={t('remoteSettings.hospitalOptDashboard')}
+                      active={pendingHospitalFeatures.dashboard}
+                      onClick={() =>
+                        setPendingHospitalFeatures((prev) => ({
+                          ...prev,
+                          dashboard: !prev.dashboard,
+                        }))
+                      }
+                      className="col-span-2"
+                    />
+                    <OptionalChipButton
+                      label={t('remoteSettings.hospitalOptMessaging')}
+                      active={pendingHospitalFeatures.messaging}
+                      onClick={() =>
+                        setPendingHospitalFeatures((prev) => ({
+                          ...prev,
+                          messaging: !prev.messaging,
+                        }))
+                      }
+                    />
+                    <OptionalChipButton
+                      label={t('remoteSettings.hospitalOptCompanion')}
+                      active={pendingHospitalFeatures.aiCompanion}
+                      onClick={() =>
+                        setPendingHospitalFeatures((prev) => ({
+                          ...prev,
+                          aiCompanion: !prev.aiCompanion,
+                        }))
+                      }
+                    />
+                    <OptionalChipButton
+                      label={t('remoteSettings.hospitalOptVitality')}
+                      active={pendingHospitalFeatures.vitality}
+                      onClick={() =>
+                        setPendingHospitalFeatures((prev) => ({
+                          ...prev,
+                          vitality: !prev.vitality,
+                        }))
+                      }
+                    />
+                    <OptionalChipButton
+                      label={t('remoteSettings.hospitalOptAssessments')}
+                      active={pendingHospitalFeatures.healthAssessments}
+                      onClick={() =>
+                        setPendingHospitalFeatures((prev) => ({
+                          ...prev,
+                          healthAssessments: !prev.healthAssessments,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <div className="shrink-0 flex gap-3 p-6 pt-3 border-t border-slate-100 bg-white">
               <button
                 type="button"
                 onClick={() => setPendingMode(null)}

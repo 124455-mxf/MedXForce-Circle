@@ -102,6 +102,10 @@ export type RemoteFeaturesVisibility = {
   analytics?: boolean;
   journeyDiary?: boolean;
   activity?: RemoteActivityVisibility;
+  /** ICU optional: Pain Assessment shortcut. */
+  intensiveCarePainAssessment?: boolean;
+  /** ICU optional: Doctor Quick Answers shortcut. */
+  intensiveCareDoctorQuickAnswers?: boolean;
   /** ICU optional: Soul Music (Apple Music). */
   intensiveCareSoulMusic?: boolean;
   /** ICU optional: Soul Media Library. */
@@ -298,6 +302,16 @@ export const REMOTE_FEATURE_TOGGLES: RemoteFeatureToggleDef[] = [
     path: 'featuresVisibility.intensiveCareSoulMediaLibrary',
     label: 'ICU Soul Media Library',
     description: 'Optional Intensive Care: Vitality with Media Library (launcher needs shared media).',
+  },
+  {
+    path: 'featuresVisibility.intensiveCarePainAssessment',
+    label: 'ICU Pain Assessment',
+    description: 'Optional Intensive Care: Pain Assessment board shortcut.',
+  },
+  {
+    path: 'featuresVisibility.intensiveCareDoctorQuickAnswers',
+    label: 'ICU Doctor Quick Answers',
+    description: 'Optional Intensive Care: Doctor Quick Answers board shortcut.',
   },
   { path: 'showQuickSettings', label: 'Quick Settings', description: 'Quick Settings gear in the sidebar.' },
   { path: 'showSettingsInSidebar', label: 'Settings', description: 'Settings tab in the sidebar.' },
@@ -610,6 +624,8 @@ function buildRemoteFeaturesVisibilityFromPreferences(
     schedule: fv.schedule !== false,
     analytics: !!fv.analytics,
     journeyDiary: !!fv.journeyDiary,
+    intensiveCarePainAssessment: fv.intensiveCarePainAssessment !== false,
+    intensiveCareDoctorQuickAnswers: fv.intensiveCareDoctorQuickAnswers !== false,
     intensiveCareSoulMusic: !!fv.intensiveCareSoulMusic,
     intensiveCareSoulMediaLibrary: !!fv.intensiveCareSoulMediaLibrary,
     activity: {
@@ -674,6 +690,8 @@ function remoteFeaturesVisibilityPresetForMode(mode: RemoteAppMode): RemoteFeatu
     journeyDiary: false,
     intensiveCareSoulMusic: false,
     intensiveCareSoulMediaLibrary: false,
+    intensiveCarePainAssessment: mode === 'intensive_care',
+    intensiveCareDoctorQuickAnswers: mode === 'intensive_care',
     activity,
     ...assessments,
   };
@@ -800,6 +818,8 @@ export function parsePatientRemoteSettings(
           schedule: asBool(fv.schedule),
           analytics: asBool(fv.analytics),
           journeyDiary: asBool(fv.journeyDiary),
+          intensiveCarePainAssessment: asBool(fv.intensiveCarePainAssessment),
+          intensiveCareDoctorQuickAnswers: asBool(fv.intensiveCareDoctorQuickAnswers),
           intensiveCareSoulMusic: asBool(fv.intensiveCareSoulMusic),
           intensiveCareSoulMediaLibrary: asBool(fv.intensiveCareSoulMediaLibrary),
           activity,
@@ -1333,7 +1353,7 @@ export function setRemoteIntensiveCareExperience(
   doc: PatientRemoteSettingsDoc,
   variant: RemoteIntensiveCareExperience,
 ): PatientRemoteSettingsDoc {
-  return {
+  const next: PatientRemoteSettingsDoc = {
     ...doc,
     appMode: 'intensive_care',
     intensiveCareExperience: variant,
@@ -1347,6 +1367,125 @@ export function setRemoteIntensiveCareExperience(
           showAttentionButton: true,
         }),
   };
+  return setRemoteSettingValue(
+    next,
+    'featuresVisibility.intensiveCarePainAssessment',
+    variant === 'standard',
+  );
+}
+
+export type RemoteIntensiveCareOptionalFeatures = {
+  painAssessment: boolean;
+  doctorQuickAnswers: boolean;
+  soulMusic: boolean;
+  soulMediaLibrary: boolean;
+};
+
+export const REMOTE_ICU_OPTIONAL_FEATURES_DEFAULTS: RemoteIntensiveCareOptionalFeatures = {
+  painAssessment: true,
+  doctorQuickAnswers: true,
+  soulMusic: false,
+  soulMediaLibrary: false,
+};
+
+export function readRemoteIntensiveCareOptionalFeatures(
+  doc: PatientRemoteSettingsDoc | null | undefined,
+): RemoteIntensiveCareOptionalFeatures {
+  const fv = doc?.featuresVisibility;
+  return {
+    painAssessment:
+      fv?.intensiveCarePainAssessment !== undefined
+        ? !!fv.intensiveCarePainAssessment
+        : REMOTE_ICU_OPTIONAL_FEATURES_DEFAULTS.painAssessment,
+    doctorQuickAnswers:
+      fv?.intensiveCareDoctorQuickAnswers !== undefined
+        ? !!fv.intensiveCareDoctorQuickAnswers
+        : REMOTE_ICU_OPTIONAL_FEATURES_DEFAULTS.doctorQuickAnswers,
+    soulMusic: !!fv?.intensiveCareSoulMusic,
+    soulMediaLibrary: !!fv?.intensiveCareSoulMediaLibrary,
+  };
+}
+
+/** Apply ICU optional Application Mode chips remotely. */
+export function applyRemoteIntensiveCareOptionalFeatures(
+  doc: PatientRemoteSettingsDoc,
+  state: RemoteIntensiveCareOptionalFeatures,
+): PatientRemoteSettingsDoc {
+  let next = setRemoteSettingValue(
+    doc,
+    'featuresVisibility.intensiveCarePainAssessment',
+    state.painAssessment,
+  );
+  next = setRemoteSettingValue(
+    next,
+    'featuresVisibility.intensiveCareDoctorQuickAnswers',
+    state.doctorQuickAnswers,
+  );
+  next = setRemoteSettingValue(next, 'featuresVisibility.intensiveCareSoulMusic', state.soulMusic);
+  next = setRemoteSettingValue(
+    next,
+    'featuresVisibility.intensiveCareSoulMediaLibrary',
+    state.soulMediaLibrary,
+  );
+  if (state.soulMusic || state.soulMediaLibrary) {
+    next = setRemoteSettingValue(next, 'featuresVisibility.activity.enabled', true);
+    next = setRemoteSettingValue(next, 'featuresVisibility.activity.soul', true);
+  }
+  return next;
+}
+
+export type RemoteHospitalOptionalFeatures = {
+  dashboard: boolean;
+  messaging: boolean;
+  aiCompanion: boolean;
+  vitality: boolean;
+  healthAssessments: boolean;
+};
+
+export const REMOTE_HOSPITAL_OPTIONAL_FEATURES_DEFAULTS: RemoteHospitalOptionalFeatures = {
+  dashboard: false,
+  messaging: false,
+  aiCompanion: true,
+  vitality: false,
+  healthAssessments: false,
+};
+
+export function readRemoteHospitalOptionalFeatures(
+  doc: PatientRemoteSettingsDoc | null | undefined,
+): RemoteHospitalOptionalFeatures {
+  const fv = doc?.featuresVisibility;
+  return {
+    dashboard: !!fv?.dashboard,
+    messaging: !!fv?.messaging,
+    aiCompanion: fv?.aiCompanion !== false,
+    vitality: !!fv?.activity?.enabled,
+    healthAssessments: !!fv?.healthAssessments,
+  };
+}
+
+/** Apply Hospital optional Application Mode chips remotely. */
+export function applyRemoteHospitalOptionalFeatures(
+  doc: PatientRemoteSettingsDoc,
+  state: RemoteHospitalOptionalFeatures,
+): PatientRemoteSettingsDoc {
+  let next = setRemoteSettingValue(doc, 'featuresVisibility.dashboard', state.dashboard);
+  next = setRemoteSettingValue(next, 'featuresVisibility.messaging', state.messaging);
+  next = setRemoteSettingValue(next, 'featuresVisibility.aiCompanion', state.aiCompanion);
+  next = setRemoteSettingValue(
+    next,
+    'featuresVisibility.healthAssessments',
+    state.healthAssessments,
+  );
+  if (!state.healthAssessments) {
+    next = setRemoteSettingValue(next, 'featuresVisibility.schedule', false);
+  }
+  next = setRemoteSettingValue(next, 'featuresVisibility.activity.enabled', state.vitality);
+  if (state.vitality) {
+    next = setRemoteSettingValue(next, 'featuresVisibility.activity.mind', true);
+    next = setRemoteSettingValue(next, 'featuresVisibility.activity.body.enabled', true);
+    next = setRemoteSettingValue(next, 'featuresVisibility.activity.soul', true);
+  }
+  return next;
 }
 
 export function setRemoteDashboardPreset(
