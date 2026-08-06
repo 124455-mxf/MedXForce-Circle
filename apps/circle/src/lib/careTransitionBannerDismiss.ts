@@ -2,6 +2,9 @@
 
 const STORAGE_PREFIX = 'circle_care_transition_banner_hidden';
 
+/** Home nudge only — checklist remains available in Circle after this. */
+export const CARE_TRANSITION_HOME_BANNER_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
+
 function storageKey(patientId: string, readerUid: string): string {
   return `${STORAGE_PREFIX}_${patientId}_${readerUid}`;
 }
@@ -56,6 +59,18 @@ export function rememberCareTransitionBannerHidden(
   const keys = readHiddenKeys(patientId, readerUid);
   keys.add(careTransitionBannerHideKey(packId, packActivatedAt));
   writeHiddenKeys(patientId, readerUid, keys);
+}
+
+/** True when the Home banner should stop nudging (pack started ≥ max age ago). */
+export function isCareTransitionHomeBannerExpired(
+  packActivatedAt: number | null | undefined,
+  now = Date.now(),
+  maxAgeMs = CARE_TRANSITION_HOME_BANNER_MAX_AGE_MS,
+): boolean {
+  if (typeof packActivatedAt !== 'number' || !Number.isFinite(packActivatedAt) || packActivatedAt <= 0) {
+    return false;
+  }
+  return now - packActivatedAt >= maxAgeMs;
 }
 
 export function formatCareTransitionPackStartedAt(ms: number, language: string): string {

@@ -72,6 +72,7 @@ import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfil
 
 import { useCircleDashboardLayout } from '../hooks/useCircleDashboardLayout';
 import { useCareTransitionReadiness } from '../hooks/useCareTransitionReadiness';
+import { CARE_TRANSITION_HOME_BANNER_MAX_AGE_MS } from '../lib/careTransitionBannerDismiss';
 import {
   useCircleGalleryDashboardFromShell,
   useCirclePatientPresenceFromShell,
@@ -1153,6 +1154,7 @@ export function CircleDashboardScreen({
         readerUid={user.uid}
         state={careTransitionState}
         loading={careTransitionLoading}
+        maxAgeMs={CARE_TRANSITION_HOME_BANNER_MAX_AGE_MS}
         onOpen={() => setCareTransitionOpen(true)}
       />
 

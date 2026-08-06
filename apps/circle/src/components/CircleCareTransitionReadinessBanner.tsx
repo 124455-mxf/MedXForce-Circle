@@ -12,6 +12,7 @@ import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import {
   formatCareTransitionPackStartedAt,
   isCareTransitionBannerHiddenLocally,
+  isCareTransitionHomeBannerExpired,
   rememberCareTransitionBannerHidden,
 } from '../lib/careTransitionBannerDismiss';
 import { localizeCareTransitionPack } from '../lib/localizeCareTransition';
@@ -22,6 +23,11 @@ type CircleCareTransitionReadinessBannerProps = {
   state: CareTransitionReadinessState | null;
   loading?: boolean;
   onOpen: () => void;
+  /**
+   * Home only: hide automatically once the pack has been active this long.
+   * Circle keeps its own surfaces without this expiry.
+   */
+  maxAgeMs?: number;
 };
 
 export function CircleCareTransitionReadinessBanner({
@@ -30,6 +36,7 @@ export function CircleCareTransitionReadinessBanner({
   state,
   loading,
   onOpen,
+  maxAgeMs,
 }: CircleCareTransitionReadinessBannerProps) {
   const t = useCircleT();
   const { language } = useCircleI18nContext();
@@ -43,6 +50,13 @@ export function CircleCareTransitionReadinessBanner({
 
   const pack = getCareTransitionPack(state.activePackId);
   if (!pack) return null;
+
+  if (
+    maxAgeMs != null &&
+    isCareTransitionHomeBannerExpired(state.packActivatedAt, Date.now(), maxAgeMs)
+  ) {
+    return null;
+  }
 
   if (
     isCareTransitionBannerHiddenLocally(
