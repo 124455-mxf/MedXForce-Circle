@@ -49,7 +49,7 @@ const CircleRemoteSettingsScreen = lazy(() =>
 );
 import { useCircleOwnManagedContact } from '../hooks/useCircleOwnManagedContact';
 import { useCircleOnlineVisibility } from '../hooks/useCircleOnlineVisibility';
-import { startCircleMemberPresenceHeartbeat } from '../services/circleMemberPresenceService';
+import { startCircleMemberLastOpenHeartbeat, startCircleMemberPresenceHeartbeat } from '../services/circleMemberPresenceService';
 import { useCircleAlertAttentionState } from '../hooks/useCircleAlertAttentionState';
 import { useFamilyGalleryDashboard } from '../hooks/useFamilyGalleryDashboard';
 import { DASHBOARD_STATS_DAYS } from '../lib/circleDashboardStats';
@@ -461,6 +461,11 @@ export function CircleMainShell({
     selectedPatient?.capabilities.messaging,
     threadState.unreadCount,
   ]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    return startCircleMemberLastOpenHeartbeat(db, user.uid);
+  }, [db, user?.uid]);
 
   useEffect(() => {
     if (!selectedPatient?.patientId || !user?.uid || hideOnlineStatusFromPatient) return;
