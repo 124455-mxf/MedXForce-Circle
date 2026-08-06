@@ -274,6 +274,9 @@ interface CircleSettingsUserManagementPanelProps {
   patient: CirclePatientSummary | null;
   /** Admin embed: hide section icon/title and patient name in subtitle. */
   compact?: boolean;
+  /** Open on Circle access (e.g. from Home pending-invite reminder). */
+  initialTab?: PanelTab;
+  onInitialTabConsumed?: () => void;
 }
 
 function isCurrentUserInvite(item: CircleInviteListItem, user: User): boolean {
@@ -488,10 +491,12 @@ export function CircleSettingsUserManagementPanel({
   db,
   patient,
   compact = false,
+  initialTab,
+  onInitialTabConsumed,
 }: CircleSettingsUserManagementPanelProps) {
   const t = useCircleT();
   const { toast, showToast } = useCircleToast();
-  const [tab, setTab] = useState<PanelTab>('people');
+  const [tab, setTab] = useState<PanelTab>(initialTab === 'access' ? 'access' : 'people');
   const [members, setMembers] = useState<CircleInviteListItem[]>([]);
   const [contacts, setContacts] = useState<CircleManagedContact[]>([]);
   const [loading, setLoading] = useState(false);
@@ -569,6 +574,12 @@ export function CircleSettingsUserManagementPanel({
   useEffect(() => {
     void loadMembers();
   }, [loadMembers]);
+
+  useEffect(() => {
+    if (initialTab !== 'access' && initialTab !== 'people') return;
+    setTab(initialTab);
+    onInitialTabConsumed?.();
+  }, [initialTab, onInitialTabConsumed]);
 
   useEffect(() => {
     if (!patient?.patientId || isPendingProvision) {

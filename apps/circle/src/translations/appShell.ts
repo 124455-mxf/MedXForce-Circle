@@ -949,6 +949,13 @@ export const appShellEnglish = {
       previewCareTeamCoverageHeadline: 'Strengthen the care team',
       previewCareTeamCoverageBody:
         'Sample care-team nudge — tap to open User management when available.',
+      pendingInvitesHeadline_one: '1 Circle invite still waiting',
+      pendingInvitesHeadline_other: '{{count}} Circle invites still waiting',
+      pendingInvitesBody:
+        '{{names}} haven’t accepted yet. Tap Admin → Circle access to follow up or resend.',
+      previewPendingInvitesHeadline: '1 Circle invite still waiting',
+      previewPendingInvitesBody:
+        'Sample proxy nudge — tap Admin → Circle access to follow up on pending invites.',
       previewCareProfileHeadline: "{{name}}'s profile needs attention",
       previewCareProfileBody:
         'Sample care-team nudge — tap to open User Profile when available.',
@@ -2061,6 +2068,13 @@ export const appShellGerman = {
       previewCareTeamCoverageHeadline: 'Betreuungsteam stärken',
       previewCareTeamCoverageBody:
         'Beispiel-Betreuungs-Erinnerung — tippen für Benutzerverwaltung, wenn verfügbar.',
+      pendingInvitesHeadline_one: '1 Circle-Einladung wartet noch',
+      pendingInvitesHeadline_other: '{{count}} Circle-Einladungen warten noch',
+      pendingInvitesBody:
+        '{{names}} haben noch nicht angenommen. Tippen Sie auf Admin → Circle-Zugang, um nachzuhaken oder erneut zu senden.',
+      previewPendingInvitesHeadline: '1 Circle-Einladung wartet noch',
+      previewPendingInvitesBody:
+        'Beispiel-Stellvertreter-Erinnerung — tippen für Admin → Circle-Zugang bei ausstehenden Einladungen.',
       previewCareProfileHeadline: 'Profil von {{name}} braucht Aufmerksamkeit',
       previewCareProfileBody:
         'Beispiel-Betreuungs-Erinnerung — tippen für Benutzerprofil, wenn verfügbar.',
@@ -3173,6 +3187,13 @@ export const appShellSpanish = {
       previewCareTeamCoverageHeadline: 'Fortalecer el equipo de cuidado',
       previewCareTeamCoverageBody:
         'Recordatorio de ejemplo del equipo — toca para Gestión de usuarios cuando esté disponible.',
+      pendingInvitesHeadline_one: '1 invitación de Circle sigue pendiente',
+      pendingInvitesHeadline_other: '{{count}} invitaciones de Circle siguen pendientes',
+      pendingInvitesBody:
+        '{{names}} aún no han aceptado. Toca Admin → Acceso a Circle para hacer seguimiento o reenviar.',
+      previewPendingInvitesHeadline: '1 invitación de Circle sigue pendiente',
+      previewPendingInvitesBody:
+        'Recordatorio de ejemplo para apoderados — toca Admin → Acceso a Circle para invitaciones pendientes.',
       previewCareProfileHeadline: 'El perfil de {{name}} necesita atención',
       previewCareProfileBody:
         'Recordatorio de ejemplo del equipo — toca para Perfil de usuario cuando esté disponible.',
@@ -4285,6 +4306,13 @@ export const appShellPolish = {
       previewCareTeamCoverageHeadline: 'Wzmocnij zespół opieki',
       previewCareTeamCoverageBody:
         'Przykładowe przypomnienie opieki — dotknij Zarządzanie użytkownikami, gdy dostępne.',
+      pendingInvitesHeadline_one: '1 zaproszenie do Circle nadal czeka',
+      pendingInvitesHeadline_other: '{{count}} zaproszenia do Circle nadal czekają',
+      pendingInvitesBody:
+        '{{names}} jeszcze nie zaakceptowali. Dotknij Admin → Dostęp do Circle, aby przypomnieć lub wysłać ponownie.',
+      previewPendingInvitesHeadline: '1 zaproszenie do Circle nadal czeka',
+      previewPendingInvitesBody:
+        'Przykładowe przypomnienie dla pełnomocnika — dotknij Admin → Dostęp do Circle przy oczekujących zaproszeniach.',
       previewCareProfileHeadline: 'Profil {{name}} wymaga uwagi',
       previewCareProfileBody:
         'Przykładowe przypomnienie opieki — dotknij Profil użytkownika, gdy dostępny.',

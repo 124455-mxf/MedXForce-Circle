@@ -14,6 +14,7 @@ import {
   PenLine,
   UserRound,
   Users,
+  UserPlus,
   X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -23,6 +24,7 @@ import {
   ASSESSMENT_AFTER_FIRST_COMMUNICATION_MS,
   HOSPITAL_FEATURE_REMINDER_KINDS,
   ICU_PROGRESSION_REMINDER_KINDS,
+  formatStalePendingInviteNames,
   hasAssessmentInWindow,
   hospitalFeatureRemotePath,
   isHospitalFeatureReminderKind,
@@ -31,12 +33,14 @@ import {
   isPatientInsightsPreviewRemindersEnabled,
   listHospitalFeatureRemindersToShow,
   listIcuProgressionRemindersToShow,
+  listStalePendingInvites,
   setRemoteAppMode,
   setRemoteIntensiveCareExperience,
   setRemoteSettingValue,
   shouldShowAssessmentAfterFirstCommReminder,
   shouldShowDiaryEntryReminder,
   shouldShowGalleryUploadReminder,
+  shouldShowPendingInviteReminder,
   shouldShowProfileIncompleteReminder,
   shouldShowTeamCoverageReminder,
   type CircleParticipationReminderKind,
@@ -54,6 +58,7 @@ import {
   localizeOnsetMilestone,
   localizeParticipationDiaryReminder,
   localizeParticipationGalleryReminder,
+  localizePendingInviteReminder,
   localizePreviewBirthdayReminder,
   localizePreviewOnsetMilestoneFiveYear,
   localizePreviewOnsetMilestoneOneYear,
@@ -61,6 +66,7 @@ import {
   localizePreviewParticipationGalleryReminder,
   localizePreviewCareAssessmentReminder,
   localizePreviewCareProfileReminder,
+  localizePreviewPendingInviteReminder,
   localizePreviewTeamCoverageReminder,
   localizeCareAssessmentReminder,
   localizeCareProfileReminder,
@@ -125,6 +131,7 @@ function icuProgressionTurnOnLabelKey(kind: IcuProgressionReminderKind): string 
 function isCareStyleDismissKind(kind: CircleParticipationReminderKind): boolean {
   return (
     kind === 'teamCoverage' ||
+    kind === 'pendingInvites' ||
     kind === 'profileIncomplete' ||
     isHospitalFeatureReminderKind(kind) ||
     isIcuProgressionReminderKind(kind)
@@ -282,6 +289,7 @@ export function CircleDashboardCelebrationSection({
   canOpenRemoteSettings,
   onPersistRemoteSettings,
   onGoToTab,
+  onOpenAdminAccess,
 }: {
   db: Firestore;
   user: User;
@@ -303,6 +311,8 @@ export function CircleDashboardCelebrationSection({
   canOpenRemoteSettings: boolean;
   onPersistRemoteSettings: (next: PatientRemoteSettingsDoc) => void;
   onGoToTab: (tab: CircleMainTab) => void;
+  /** Opens Admin → Circle access (pending invites). */
+  onOpenAdminAccess?: () => void;
 }) {
   const t = useCircleT();
   const { language } = useCircleI18nContext();
@@ -312,7 +322,11 @@ export function CircleDashboardCelebrationSection({
     patient.patientId,
     user.uid,
   );
-  const { analysis: teamCoverage, loading: teamCoverageLoading } = useCircleTeamCoverageFromDashboard();
+  const {
+    analysis: teamCoverage,
+    invites,
+    loading: teamCoverageLoading,
+  } = useCircleTeamCoverageFromDashboard();
   const canManageTeam = patient.capabilities.inviteMembers === true;
   const [enablingKind, setEnablingKind] = useState<
     HospitalFeatureReminderKind | IcuProgressionReminderKind | null
@@ -389,6 +403,21 @@ export function CircleDashboardCelebrationSection({
       loading: teamCoverageLoading,
       snoozedUntil: snoozes.teamCoverage,
     });
+
+  const stalePendingInvites = useMemo(
+    () => (teamCoverageLoading ? [] : listStalePendingInvites(invites)),
+    [invites, teamCoverageLoading],
+  );
+  const openAdminAccess = () => {
+    if (onOpenAdminAccess) onOpenAdminAccess();
+    else onGoToTab('admin');
+  };
+  const showPendingInviteReminder = shouldShowPendingInviteReminder({
+    enabled: canManageTeam,
+    staleInvites: stalePendingInvites,
+    loading: teamCoverageLoading || snoozeLoading,
+    snoozes,
+  });
 
   const hospitalFeatureKinds = listHospitalFeatureRemindersToShow({
     enabled: careRemindersEnabled,
@@ -648,6 +677,35 @@ export function CircleDashboardCelebrationSection({
       body: preview.body,
       isPreview: true,
       onOpen: canManageTeam ? () => onGoToTab('admin') : undefined,
+    });
+  }
+
+  if (showPendingInviteReminder) {
+    const names = formatStalePendingInviteNames(stalePendingInvites, (count) =>
+      count === 1
+        ? t('dashboard.insightList.andOneMore')
+        : t('dashboard.insightList.andMore', { count }),
+    );
+    const copy = localizePendingInviteReminder(t, stalePendingInvites.length, names);
+    tiles.push({
+      key: 'pending-invites',
+      tone: 'care',
+      icon: UserPlus,
+      headline: copy.headline,
+      body: copy.body,
+      dismissKind: 'pendingInvites',
+      onOpen: openAdminAccess,
+    });
+  } else if (previewReminders && canManageTeam) {
+    const preview = localizePreviewPendingInviteReminder(t);
+    tiles.push({
+      key: 'preview-pending-invites',
+      tone: 'care',
+      icon: UserPlus,
+      headline: preview.headline,
+      body: preview.body,
+      isPreview: true,
+      onOpen: openAdminAccess,
     });
   }
 

@@ -26,6 +26,9 @@ export interface CircleInviteRecord {
   leftByUid?: string;
   createdAt: number;
   updatedAt: number;
+  /** When the introduction / invite email was sent (patient API). */
+  introductionEmailSentAt?: number;
+  introductionReminderSentAt?: number;
 }
 
 export function buildCircleInviteRecord(params: {

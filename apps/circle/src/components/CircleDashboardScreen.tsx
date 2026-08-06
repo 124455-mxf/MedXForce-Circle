@@ -166,6 +166,7 @@ interface CircleDashboardScreenProps {
   urgentAlertAttention: CircleAlertAttentionItem[];
   subduedAlertAttention: CircleAlertAttentionItem[];
   onGoToTab: (tab: CircleMainTab) => void;
+  onOpenAdminAccess?: () => void;
   onOpenCircleFolder?: (thread: CircleMemberThreadKind, folder: CircleInboxFolder) => void;
   onOpenRichMediaReactions?: () => void;
   onOpenAnalyticsDetail: (metricId: AnalyticsMetricId) => void;
@@ -462,6 +463,7 @@ export function CircleDashboardScreen({
   urgentAlertAttention,
   subduedAlertAttention,
   onGoToTab,
+  onOpenAdminAccess,
   onOpenCircleFolder,
   onOpenRichMediaReactions,
   onOpenAnalyticsDetail,
@@ -1272,6 +1274,7 @@ export function CircleDashboardScreen({
           canOpenRemoteSettings={patient.capabilities.remoteSettings === true}
           onPersistRemoteSettings={persistRemoteSettings}
           onGoToTab={onGoToTab}
+          onOpenAdminAccess={onOpenAdminAccess}
         />
 
         {isWidgetVisible('patient-locale') || previewReminders ? (

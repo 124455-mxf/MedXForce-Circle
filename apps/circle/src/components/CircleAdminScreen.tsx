@@ -10,9 +10,17 @@ interface CircleAdminScreenProps {
   user: User;
   db: Firestore;
   patient: CirclePatientSummary;
+  initialUsersTab?: 'people' | 'access' | null;
+  onInitialUsersTabConsumed?: () => void;
 }
 
-export function CircleAdminScreen({ user, db, patient }: CircleAdminScreenProps) {
+export function CircleAdminScreen({
+  user,
+  db,
+  patient,
+  initialUsersTab = null,
+  onInitialUsersTabConsumed,
+}: CircleAdminScreenProps) {
   const t = useCircleT();
 
   return (
@@ -26,7 +34,14 @@ export function CircleAdminScreen({ user, db, patient }: CircleAdminScreenProps)
       </div>
 
       <CircleCollapsibleSection title={t('admin.sectionUserManagement')} defaultOpen>
-        <CircleSettingsUserManagementPanel user={user} db={db} patient={patient} compact />
+        <CircleSettingsUserManagementPanel
+          user={user}
+          db={db}
+          patient={patient}
+          compact
+          initialTab={initialUsersTab ?? undefined}
+          onInitialTabConsumed={onInitialUsersTabConsumed}
+        />
       </CircleCollapsibleSection>
     </div>
   );

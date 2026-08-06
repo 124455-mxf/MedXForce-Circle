@@ -697,6 +697,29 @@ export function localizePreviewTeamCoverageReminder(t: CircleTranslator): Locali
   };
 }
 
+export function localizePendingInviteReminder(
+  t: CircleTranslator,
+  count: number,
+  names: string,
+): LocalizedReminderCopy {
+  return {
+    headline: t(
+      count === 1
+        ? 'dashboard.reminders.pendingInvitesHeadline_one'
+        : 'dashboard.reminders.pendingInvitesHeadline_other',
+      { count },
+    ),
+    body: t('dashboard.reminders.pendingInvitesBody', { names }),
+  };
+}
+
+export function localizePreviewPendingInviteReminder(t: CircleTranslator): LocalizedReminderCopy {
+  return {
+    headline: t('dashboard.reminders.previewPendingInvitesHeadline'),
+    body: t('dashboard.reminders.previewPendingInvitesBody'),
+  };
+}
+
 export function insightHintT(t: CircleTranslator, key: CirclePatientInsightKey): string | undefined {
   const path = `dashboard.insightHints.${key}`;
   const translated = t(path);

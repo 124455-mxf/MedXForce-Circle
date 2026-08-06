@@ -118,6 +118,9 @@ export function CircleMainShell({
   const [activeTab, setActiveTab] = useState<CircleMainTab>('dashboard');
   const [initialAnalyticsMetricId, setInitialAnalyticsMetricId] =
     useState<AnalyticsMetricId | null>(null);
+  const [initialAdminUsersTab, setInitialAdminUsersTab] = useState<'people' | 'access' | null>(
+    null,
+  );
   const { language, t } = useCircleI18nContext();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [visitCaptureOpen, setVisitCaptureOpen] = useState(false);
@@ -174,6 +177,15 @@ export function CircleMainShell({
 
   const handleAnalyticsInitialMetricConsumed = useCallback(() => {
     setInitialAnalyticsMetricId(null);
+  }, []);
+
+  const handleOpenAdminAccess = useCallback(() => {
+    setInitialAdminUsersTab('access');
+    guardedNavigate(() => setActiveTab('admin'));
+  }, [guardedNavigate]);
+
+  const handleAdminInitialUsersTabConsumed = useCallback(() => {
+    setInitialAdminUsersTab(null);
   }, []);
 
   const handleCircleInboxIntentConsumed = useCallback(() => {
@@ -598,6 +610,7 @@ export function CircleMainShell({
               urgentAlertAttention={alertAttention.urgentItems}
               subduedAlertAttention={alertAttention.subduedItems}
               onGoToTab={handleGoToTab}
+              onOpenAdminAccess={handleOpenAdminAccess}
               onOpenCircleFolder={handleOpenCircleFolder}
               onOpenRichMediaReactions={handleOpenRichMediaReactions}
               onOpenAnalyticsDetail={handleOpenAnalyticsDetail}
@@ -702,7 +715,13 @@ export function CircleMainShell({
             </div>
           )}
           {activeTab === 'admin' && (
-            <CircleAdminScreen user={user} db={db} patient={selectedPatient} />
+            <CircleAdminScreen
+              user={user}
+              db={db}
+              patient={selectedPatient}
+              initialUsersTab={initialAdminUsersTab}
+              onInitialUsersTabConsumed={handleAdminInitialUsersTabConsumed}
+            />
           )}
           {activeTab === 'analytics' && (
             <div className="flex flex-col flex-1 min-h-0">
