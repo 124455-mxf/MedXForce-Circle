@@ -172,6 +172,12 @@ const remoteSettingsEnglish = {
     sharedJournal: 'Include entries shared by the circle.',
     assessments: 'Assessments tab in the sidebar.',
     analytics: 'Statistics and analytics tab.',
+    icuSoulMusic:
+      'Optional Intensive Care: Vitality with Apple Music (launcher needs Apple connected).',
+    icuSoulMedia:
+      'Optional Intensive Care: Vitality with Media Library (launcher needs shared media).',
+    icuPain: 'Optional Intensive Care: Pain Assessment board shortcut.',
+    icuDoctor: 'Optional Intensive Care: Doctor Quick Answers board shortcut.',
     quickSettingsGear: 'Quick Settings gear in the sidebar.',
     settingsTab: 'Settings tab in the sidebar.',
     impactAssessment: 'Show the impact assessment on the tablet.',
@@ -440,6 +446,12 @@ const remoteSettingsGerman = {
     sharedJournal: 'Vom Circle geteilte Einträge einbeziehen.',
     assessments: 'Assessments-Tab in der Seitenleiste.',
     analytics: 'Statistik- und Analysen-Tab.',
+    icuSoulMusic:
+      'Optional Intensivpflege: Vitalität mit Apple Music (Starter nur bei verbundener Apple Music).',
+    icuSoulMedia:
+      'Optional Intensivpflege: Vitalität mit Medienbibliothek (Starter nur bei geteilten Medien).',
+    icuPain: 'Optional Intensivpflege: Schmerz-Einschätzung als Tafel-Kurzbefehl.',
+    icuDoctor: 'Optional Intensivpflege: Arzt-Schnellantworten als Tafel-Kurzbefehl.',
     quickSettingsGear: 'Schnelleinstellungen-Zahnrad in der Seitenleiste.',
     settingsTab: 'Einstellungen-Tab in der Seitenleiste.',
     impactAssessment: 'Impact-Assessment auf dem Tablet anzeigen.',
@@ -707,6 +719,12 @@ const remoteSettingsSpanish = {
     sharedJournal: 'Incluir entradas compartidas por el círculo.',
     assessments: 'Pestaña Evaluaciones en la barra lateral.',
     analytics: 'Pestaña de estadísticas y análisis.',
+    icuSoulMusic:
+      'Opcional en UCI: Vitalidad con Apple Music (el acceso aparece si Apple Music está conectado).',
+    icuSoulMedia:
+      'Opcional en UCI: Vitalidad con Biblioteca de medios (el acceso aparece si hay medios compartidos).',
+    icuPain: 'Opcional en UCI: acceso directo a Evaluación del dolor en el tablero.',
+    icuDoctor: 'Opcional en UCI: acceso directo a Respuestas rápidas del médico en el tablero.',
     quickSettingsGear: 'Engranaje de ajustes rápidos en la barra lateral.',
     settingsTab: 'Pestaña Ajustes en la barra lateral.',
     impactAssessment: 'Mostrar la evaluación de impacto en la tableta.',
@@ -973,6 +991,12 @@ const remoteSettingsPolish = {
     sharedJournal: 'Uwzględnij wpisy udostępnione przez krąg.',
     assessments: 'Zakładka Oceny w bocznym menu.',
     analytics: 'Zakładka statystyk i analityki.',
+    icuSoulMusic:
+      'Opcjonalnie w OIOM: Vitality z Apple Music (launcher tylko przy połączonym Apple Music).',
+    icuSoulMedia:
+      'Opcjonalnie w OIOM: Vitality z Biblioteką mediów (launcher tylko przy udostępnionych mediach).',
+    icuPain: 'Opcjonalnie w OIOM: skrót oceny bólu na tablicy.',
+    icuDoctor: 'Opcjonalnie w OIOM: skrót szybkich odpowiedzi lekarza na tablicy.',
     quickSettingsGear: 'Ikona szybkich ustawień w bocznym menu.',
     settingsTab: 'Zakładka Ustawienia w bocznym menu.',
     impactAssessment: 'Pokaż ocenę wpływu na tablecie.',
