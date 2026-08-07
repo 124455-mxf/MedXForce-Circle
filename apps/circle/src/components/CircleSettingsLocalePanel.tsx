@@ -1,12 +1,17 @@
-import { Globe } from 'lucide-react';
+import { Globe, Type } from 'lucide-react';
 import {
   setCircleLocaleTemperatureUnit,
   setCircleLocaleTimeFormat,
   type CircleLocaleTemperatureUnit,
   type CircleLocaleTimeFormat,
 } from '../lib/circleLocaleDisplayPreferences';
+import {
+  CIRCLE_TEXT_SIZE_OPTIONS,
+  type CircleTextSize,
+} from '../lib/circleTextSizePreferences';
 import { useCircleLocaleTemperatureUnit } from '../hooks/useCircleLocaleTemperatureUnit';
 import { useCircleLocaleTimeFormat } from '../hooks/useCircleLocaleTimeFormat';
+import { useCircleTextSizeFromContext } from '../lib/circleTextSizeContext';
 import { cn } from '../lib/utils';
 import { useCircleT } from '../lib/circleI18nContext';
 
@@ -24,10 +29,17 @@ const TEMPERATURE_UNIT_LABEL_KEYS: Record<CircleLocaleTemperatureUnit, string> =
   celsius: 'settings.localeTemperatureCelsius',
 };
 
+const TEXT_SIZE_LABEL_KEYS: Record<CircleTextSize, string> = {
+  small: 'settings.textSizeSmall',
+  medium: 'settings.textSizeMedium',
+  large: 'settings.textSizeLarge',
+};
+
 export function CircleSettingsLocalePanel() {
   const t = useCircleT();
   const timeFormat = useCircleLocaleTimeFormat();
   const temperatureUnit = useCircleLocaleTemperatureUnit();
+  const { textSize, setTextSize } = useCircleTextSizeFromContext();
 
   return (
     <div className="space-y-6 p-5">
@@ -41,6 +53,45 @@ export function CircleSettingsLocalePanel() {
             {t('settings.localeSettingsSubtitle')}
           </p>
         </div>
+      </div>
+
+      <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
+            <Type size={18} />
+          </div>
+          <div className="space-y-1 min-w-0">
+            <p className="font-bold text-slate-800">{t('settings.textSizeTitle')}</p>
+            <p className="text-sm text-slate-400">{t('settings.textSizeDesc')}</p>
+          </div>
+        </div>
+        <div
+          className="inline-flex rounded-xl bg-slate-200/80 p-1 gap-0.5 flex-wrap"
+          role="group"
+          aria-label={t('settings.textSizeTitle')}
+        >
+          {CIRCLE_TEXT_SIZE_OPTIONS.map((id) => {
+            const active = textSize === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setTextSize(id)}
+                className={cn(
+                  'px-4 py-2 rounded-lg text-xs font-bold transition-all',
+                  active
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700',
+                )}
+              >
+                {t(TEXT_SIZE_LABEL_KEYS[id])}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-sm text-slate-600 leading-relaxed pt-1">
+          {t('settings.textSizePreview')}
+        </p>
       </div>
 
       <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">

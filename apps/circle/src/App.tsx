@@ -39,6 +39,8 @@ import { CIRCLE_BUILD_ID } from './lib/circleBuildId';
 import { sendWelcomeEmailsForAcceptedInvites } from './services/circleWelcomeEmailApi';
 import { useCircleI18n } from './hooks/useCircleI18n';
 import { CircleI18nProvider } from './lib/circleI18nContext';
+import { useCircleTextSize } from './hooks/useCircleTextSize';
+import { CircleTextSizeProvider } from './lib/circleTextSizeContext';
 import { CirclePatientSwitcher } from './components/CirclePatientSwitcher';
 import {
   firstActivePatient,
@@ -70,6 +72,7 @@ export default function App() {
   const [startupPatientId, setStartupPatientId] = useState<string | null>(null);
   const [startupPreferenceReady, setStartupPreferenceReady] = useState(false);
   const { language, t, setLanguage } = useCircleI18n(firebase.db, user);
+  const { textSize, setTextSize } = useCircleTextSize(firebase.db, user);
 
   const selectedPatientForSettings = useMemo(() => {
     if (patients.length === 0) return null;
@@ -664,7 +667,9 @@ export default function App() {
 
   return (
     <CircleI18nProvider language={language} t={t} setLanguage={setLanguage}>
-      {appBody}
+      <CircleTextSizeProvider textSize={textSize} setTextSize={setTextSize}>
+        {appBody}
+      </CircleTextSizeProvider>
     </CircleI18nProvider>
   );
 }

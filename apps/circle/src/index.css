@@ -8,6 +8,11 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
+html {
+  /* Circle text size preference sets an inline font-size; fall back to browser default. */
+  font-size: 100%;
+}
+
 body {
   @apply bg-[#F8FAFC] text-slate-900 font-sans antialiased;
 }

@@ -16,6 +16,8 @@ export interface CircleUserProfile {
   hideOnlineStatusFromPatient?: boolean;
   /** Patient Circle opens on sign-in (synced across devices). */
   startupPatientId?: string;
+  /** Circle UI text size: small | medium | large. */
+  textSize?: string;
   updatedAt: number;
 }
 
@@ -41,6 +43,7 @@ export async function getCircleUserProfile(
       typeof data.startupPatientId === 'string' && data.startupPatientId.trim()
         ? data.startupPatientId.trim()
         : undefined,
+    textSize: typeof data.textSize === 'string' ? data.textSize : undefined,
     updatedAt: data.updatedAt ?? 0,
   };
 }
@@ -58,6 +61,7 @@ export async function saveCircleUserProfile(
       | 'languageSource'
       | 'managedPatientId'
       | 'hideOnlineStatusFromPatient'
+      | 'textSize'
     >
   > & {
     /** Pass null to clear the synced startup patient preference. */
