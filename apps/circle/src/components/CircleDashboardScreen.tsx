@@ -9,7 +9,6 @@ import {
   Loader2,
   MessageCircle,
   MessageSquare,
-  Radio,
   SlidersHorizontal,
   Sparkles,
   Stethoscope,
@@ -114,6 +113,7 @@ import { analyticsSummaryFooterText } from '../lib/circleAnalyticsI18n';
 import {
   assistiveDevicesLabelT,
   circlePatientFirstName,
+  patientFriendlyDisplayName,
   dashboardPlural,
   formatDashboardApplicationModeLineT,
   formatDashboardPatientDashboardViewLineT,
@@ -235,9 +235,67 @@ function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
   );
 }
 
+function LivePresenceDot({ className }: { className?: string }) {
+  return (
+    <span className={cn('relative flex h-2.5 w-2.5 shrink-0', className)} aria-hidden>
+      <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+    </span>
+  );
+}
+
+function LiveRemotePromptChip({
+  label,
+  icon: Icon,
+  onClick,
+  tone = 'default',
+  disabled = false,
+  disabledHint,
+}: {
+  label: string;
+  icon: LucideIcon;
+  onClick?: () => void;
+  tone?: 'default' | 'dropIn';
+  disabled?: boolean;
+  disabledHint?: string;
+}) {
+  const toneClass =
+    tone === 'dropIn'
+      ? 'border-indigo-100 text-indigo-800 hover:bg-indigo-50/80 hover:border-indigo-200'
+      : 'border-slate-200 text-slate-800 hover:bg-slate-50 hover:border-slate-300';
+
+  if (disabled) {
+    return (
+      <div
+        className="inline-flex items-center justify-center gap-1.5 rounded-full border border-slate-100 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-400 cursor-not-allowed select-none"
+        aria-disabled="true"
+        title={disabledHint}
+      >
+        <Icon size={14} className="shrink-0 opacity-70" aria-hidden />
+        <span className="truncate">{label}</span>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'inline-flex items-center justify-center gap-1.5 rounded-full border bg-white px-3 py-2 text-xs font-semibold transition-colors',
+        toneClass,
+      )}
+    >
+      <Icon size={14} className="shrink-0" aria-hidden />
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
 function LivePatientWidget({
   onlineDurationLabel,
   activeSectionLabel,
+  patientName,
   patientContextLines,
   showRemotePrompts,
   compact = false,
@@ -253,6 +311,7 @@ function LivePatientWidget({
 }: {
   onlineDurationLabel: string;
   activeSectionLabel: string;
+  patientName: string;
   patientContextLines?: string[];
   showRemotePrompts: boolean;
   compact?: boolean;
@@ -267,108 +326,92 @@ function LivePatientWidget({
   t: ReturnType<typeof useCircleT>;
 }) {
   const showResumeDropIn = dropInActive && !dropInChatOpen && !!onResumeDropIn;
+  const metaLine = patientContextLines?.filter(Boolean).join(' · ') ?? '';
+  const liveTitle = (
+    <p className="font-bold text-slate-800 text-sm sm:text-base leading-snug">
+      <span>{t('dashboard.live')}</span>
+      <span className="font-semibold text-slate-400"> – </span>
+      <span className="text-slate-800">{patientName}</span>
+      <span className="font-semibold text-slate-400"> – </span>
+      <span className="font-medium text-slate-500">
+        {t('dashboard.onlineFor', { duration: onlineDurationLabel })}
+      </span>
+    </p>
+  );
 
   if (compact) {
     return (
       <div
         className={cn(
-          'w-full rounded-2xl border text-left transition-colors',
-          'flex flex-row items-center gap-3 sm:gap-4 px-4 py-3 sm:px-5 sm:py-3.5',
-          'border-emerald-200 bg-emerald-50/40',
+          'w-full rounded-2xl border border-slate-100 bg-white text-left',
+          'flex items-start gap-3 px-4 py-3.5 sm:px-5 sm:py-4',
         )}
       >
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="relative flex h-2.5 w-2.5" aria-hidden>
-            <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
-          </span>
-          <p className="font-bold text-slate-800 text-sm">{t('dashboard.live')}</p>
-        </div>
-        <div className="flex-1 min-w-0 text-right text-xs text-slate-600 leading-snug">
-          <p className="truncate">{t('dashboard.onlineFor', { duration: onlineDurationLabel })}</p>
-          <p className="truncate">{t('dashboard.currently', { section: activeSectionLabel })}</p>
+        <LivePresenceDot className="mt-1.5" />
+        <div className="min-w-0 flex-1">
+          {liveTitle}
+          <p className="mt-1 text-xs text-slate-500 leading-snug">
+            {t('dashboard.currently', { section: activeSectionLabel })}
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="relative h-full w-full">
-      <div
-        className={cn(
-          DASHBOARD_WIDGET_BASE_CLASS,
-          'flex-row items-stretch gap-4 sm:gap-5',
-          'border-emerald-200 bg-emerald-50/40',
-        )}
-      >
-        <div className="flex-1 min-w-0 flex flex-col">
-          <Radio size={20} className="mb-1 shrink-0 text-emerald-600" />
-          <p className="font-bold text-slate-800 text-sm sm:text-base">{t('dashboard.live')}</p>
-          <div className="text-xs text-slate-600 mt-3 leading-snug flex flex-col gap-1">
-            <p>{t('dashboard.onlineFor', { duration: onlineDurationLabel })}</p>
-            <p className="line-clamp-2">{t('dashboard.currently', { section: activeSectionLabel })}</p>
-            {patientContextLines?.map((line, index) => (
-              <p key={`live-context-${index}`} className="line-clamp-1">
-                {line}
+    <div className="relative w-full">
+      <div className="w-full rounded-2xl border border-slate-100 bg-white px-4 py-4 sm:px-5 sm:py-5">
+        <div className="flex items-start gap-3">
+          <LivePresenceDot className="mt-1.5" />
+          <div className="min-w-0 flex-1">
+            {liveTitle}
+            <p className="mt-1 text-xs text-slate-600 leading-snug line-clamp-2">
+              {t('dashboard.currently', { section: activeSectionLabel })}
+            </p>
+            {metaLine ? (
+              <p className="mt-1 text-[11px] text-slate-400 leading-snug line-clamp-2">
+                {metaLine}
               </p>
-            ))}
+            ) : null}
           </div>
         </div>
 
         {showRemotePrompts ? (
-          <div className="w-[11.5rem] sm:w-[13rem] shrink-0 flex flex-col border-l border-slate-200/90 pl-4 sm:pl-5 pb-1">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+          <div className="mt-4 pt-3 border-t border-slate-100">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5 mb-2.5">
               {t('dashboard.remotePrompts')}
             </p>
-            <div className="mt-3 flex flex-col gap-1.5 flex-1 justify-center min-h-0 pb-1">
-              <button
-                type="button"
+            <div className="grid grid-cols-2 gap-2">
+              <LiveRemotePromptChip
+                label={t('dashboard.checkIn')}
+                icon={Calendar}
                 onClick={onPromptCheckIn}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-blue-200 text-blue-800 text-xs font-bold hover:bg-blue-50"
-              >
-                <Calendar size={14} className="shrink-0" aria-hidden />
-                {t('dashboard.checkIn')}
-              </button>
-              <button
-                type="button"
+              />
+              <LiveRemotePromptChip
+                label={t('dashboard.quickAnswers')}
+                icon={ClipboardList}
                 onClick={onPromptQuickAnswers}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-blue-200 text-blue-800 text-xs font-bold hover:bg-blue-50"
-              >
-                <ClipboardList size={14} className="shrink-0" aria-hidden />
-                {t('dashboard.quickAnswers')}
-              </button>
+              />
               {onDropIn ? (
-                <button
-                  type="button"
+                <LiveRemotePromptChip
+                  label={t('dashboard.dropIn')}
+                  icon={MessageCircle}
+                  tone="dropIn"
                   onClick={onDropIn}
-                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-indigo-200 text-indigo-800 text-xs font-bold hover:bg-indigo-50"
-                >
-                  <MessageCircle size={14} className="shrink-0" aria-hidden />
-                  {t('dashboard.dropIn')}
-                </button>
+                />
               ) : dropInFeatureEnabled === false ? (
-                <div className="w-full space-y-1">
-                  <div
-                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/80 border border-slate-200 text-slate-400 text-xs font-bold cursor-not-allowed select-none"
-                    aria-disabled="true"
-                    title={t('dashboard.dropInDisabledHint')}
-                  >
-                    <MessageCircle size={14} className="shrink-0 opacity-70" aria-hidden />
-                    {t('dashboard.dropIn')}
-                  </div>
-                  <p className="text-[9px] font-medium text-center text-slate-400 leading-tight px-0.5">
-                    {t('dashboard.dropInDisabledHint')}
-                  </p>
-                </div>
+                <LiveRemotePromptChip
+                  label={t('dashboard.dropIn')}
+                  icon={MessageCircle}
+                  disabled
+                  disabledHint={t('dashboard.dropInDisabledHint')}
+                />
               ) : null}
-              <button
-                type="button"
+              <LiveRemotePromptChip
+                label={t('dashboard.doctorVisit')}
+                icon={Stethoscope}
                 onClick={onPromptDoctorVisit}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-blue-200 text-blue-800 text-xs font-bold hover:bg-blue-50"
-              >
-                <Stethoscope size={14} className="shrink-0" aria-hidden />
-                {t('dashboard.doctorVisit')}
-              </button>
+              />
             </div>
           </div>
         ) : null}
@@ -378,7 +421,7 @@ function LivePatientWidget({
         <button
           type="button"
           onClick={onResumeDropIn}
-          className="absolute left-1/2 bottom-0 z-10 -translate-x-1/2 translate-y-1/2 inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold shadow-md hover:bg-indigo-700 whitespace-nowrap"
+          className="absolute left-1/2 bottom-0 z-10 -translate-x-1/2 translate-y-1/2 inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-indigo-600 text-white text-xs font-bold shadow-md hover:bg-indigo-700 whitespace-nowrap"
         >
           <MessageCircle size={14} className="shrink-0" aria-hidden />
           {t('dashboard.resumeDropIn')}
@@ -1211,13 +1254,13 @@ export function CircleDashboardScreen({
             <div
               className={cn(
                 'col-span-2',
-                memberRole === 'family' ? null : 'h-[15.5rem] sm:h-[16rem]',
                 dropInActive && !dropInChatOpen && onResumeDropIn ? 'mb-6' : null,
               )}
             >
               <LivePatientWidget
                 onlineDurationLabel={liveOnlineDurationLabel}
                 activeSectionLabel={formatPatientActiveSectionT(t, patientPresence.activeSection)}
+                patientName={patientFriendlyDisplayName(profileSnapshot, patient.displayName)}
                 patientContextLines={livePatientContextLines}
                 showRemotePrompts={showRemotePrompts}
                 compact={memberRole === 'family'}
