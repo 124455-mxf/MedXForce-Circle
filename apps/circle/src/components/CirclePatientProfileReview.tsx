@@ -22,6 +22,11 @@ import {
 } from '../lib/adminScreenI18n';
 import { treatmentPhaseLabelT } from '../lib/dashboardI18n';
 import {
+  treatmentPhaseAccentTextClass,
+  treatmentPhaseBadgeClass,
+  treatmentPhaseCardClass,
+} from '../lib/appModeUi';
+import {
   CirclePatientProfileSectionNav,
   type CirclePatientProfileNavSection,
 } from './CirclePatientProfileSectionNav';
@@ -295,7 +300,6 @@ function buildSections(
           ),
         },
         { label: t('admin.profile.fieldDateOfOnset'), value: textValue(snapshot.clinical.dateOfOnset, empty) },
-        { label: t('admin.profile.fieldTreatmentPhase'), value: snapshot.clinical.treatmentPhase ? treatmentPhaseLabelT(t, snapshot.clinical.treatmentPhase) : empty },
         {
           label: t('admin.profile.fieldSurgicalHistory'),
           value: textValue(snapshot.clinical.surgicalHistory, empty),
@@ -449,24 +453,77 @@ export function CirclePatientProfileReview({
         {current.id === 'references' ? (
           referencesContent
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {current.items.map((item) => (
+          <div className="space-y-3">
+            {current.id === 'clinical' ? (
               <div
-                key={item.label}
                 className={cn(
-                  'rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-3 space-y-1',
-                  item.fullWidth && 'sm:col-span-2',
+                  'rounded-2xl border px-3.5 py-3.5 sm:px-4 sm:py-4',
+                  treatmentPhaseCardClass(snapshot.clinical.treatmentPhase, true),
                 )}
               >
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                  {item.label}
-                </p>
-                <div className="text-sm text-slate-700 flex items-center gap-2 flex-wrap">
-                  <span>{item.value}</span>
-                  {item.aiDiscovered ? <CircleProfileAiBadge /> : null}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-1.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                      {t('admin.profile.fieldTreatmentPhase')}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {snapshot.clinical.treatmentPhase ? (
+                        <span
+                          className={cn(
+                            'inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide',
+                            treatmentPhaseBadgeClass(snapshot.clinical.treatmentPhase),
+                          )}
+                        >
+                          {treatmentPhaseLabelT(t, snapshot.clinical.treatmentPhase)}
+                        </span>
+                      ) : (
+                        <span
+                          className={cn(
+                            'text-sm font-bold',
+                            treatmentPhaseAccentTextClass(snapshot.clinical.treatmentPhase),
+                          )}
+                        >
+                          {t('admin.profile.emptyValue')}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-snug">
+                      {t('admin.profile.treatmentPhaseDrivesAppHint')}
+                    </p>
+                  </div>
+                  {canEdit && onEditSection ? (
+                    <button
+                      type="button"
+                      onClick={() => onEditSection('clinical')}
+                      className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/90 border border-slate-200 text-slate-700 text-xs font-bold hover:bg-white"
+                    >
+                      <Pencil size={14} />
+                      {t('admin.profile.treatmentPhaseChange')}
+                    </button>
+                  ) : null}
                 </div>
               </div>
-            ))}
+            ) : null}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {current.items.map((item) => (
+                <div
+                  key={item.label}
+                  className={cn(
+                    'rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-3 space-y-1',
+                    item.fullWidth && 'sm:col-span-2',
+                  )}
+                >
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                    {item.label}
+                  </p>
+                  <div className="text-sm text-slate-700 flex items-center gap-2 flex-wrap">
+                    <span>{item.value}</span>
+                    {item.aiDiscovered ? <CircleProfileAiBadge /> : null}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </section>

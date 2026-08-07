@@ -86,6 +86,9 @@ const profileEnglish = {
   fieldPrimaryDiagnosis: 'Primary diagnosis',
   fieldDateOfOnset: 'Date of onset',
   fieldTreatmentPhase: 'Where I am in recovery',
+  treatmentPhaseDrivesAppHint:
+    'Changing this updates the patient app application mode and dashboard layout.',
+  treatmentPhaseChange: 'Change',
   fieldSurgicalHistory: 'Surgical history',
   fieldComorbidities: 'Comorbidities',
   fieldMedications: 'Medications',
@@ -404,6 +407,9 @@ const profileGerman = {
   fieldPrimaryDiagnosis: 'Primärdiagnose',
   fieldDateOfOnset: 'Beginndatum',
   fieldTreatmentPhase: 'Wo ich in der Genesung stehe',
+  treatmentPhaseDrivesAppHint:
+    'Eine Änderung aktualisiert den Anwendungsmodus und das Dashboard-Layout der Patienten-App.',
+  treatmentPhaseChange: 'Ändern',
   fieldSurgicalHistory: 'Operationsgeschichte',
   fieldComorbidities: 'Komorbiditäten',
   fieldMedications: 'Medikamente',
@@ -730,6 +736,9 @@ const profileSpanish = {
   fieldPrimaryDiagnosis: 'Diagnóstico principal',
   fieldDateOfOnset: 'Fecha de inicio',
   fieldTreatmentPhase: 'Dónde estoy en mi recuperación',
+  treatmentPhaseDrivesAppHint:
+    'Cambiar esto actualiza el modo de aplicación y el diseño del panel de la app del paciente.',
+  treatmentPhaseChange: 'Cambiar',
   fieldSurgicalHistory: 'Historial quirúrgico',
   fieldComorbidities: 'Comorbilidades',
   fieldMedications: 'Medicamentos',
@@ -1056,6 +1065,9 @@ const profilePolish = {
   fieldPrimaryDiagnosis: 'Główna diagnoza',
   fieldDateOfOnset: 'Data początku',
   fieldTreatmentPhase: 'Gdzie jestem w rekonwalescencji',
+  treatmentPhaseDrivesAppHint:
+    'Zmiana aktualizuje tryb aplikacji i układ pulpitu aplikacji pacjenta.',
+  treatmentPhaseChange: 'Zmień',
   fieldSurgicalHistory: 'Historia operacji',
   fieldComorbidities: 'Choroby współistniejące',
   fieldMedications: 'Leki',

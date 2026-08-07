@@ -131,6 +131,8 @@ import {
 import {
   remoteAppModeCardClass,
   remoteAppModeCurrentBadgeClass,
+  treatmentPhaseBadgeClass,
+  treatmentPhaseCardClass,
 } from '../lib/appModeUi';
 import {
   DASHBOARD_RECENCY_TINT_CLASSES,
@@ -1154,13 +1156,34 @@ export function CircleDashboardScreen({
           ),
           row2: !coreComplete && missingCoreLabel
             ? t('dashboard.coreProfileMissing', { fields: missingCoreLabel })
-            : t('dashboard.phase', {
-                phase: treatmentPhaseLabelT(t, profileSnapshot?.clinical.treatmentPhase),
-              }),
+            : (
+                <span className="inline-flex items-center gap-1.5 min-w-0">
+                  {profileSnapshot?.clinical.treatmentPhase ? (
+                    <span
+                      className={cn(
+                        'shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide',
+                        treatmentPhaseBadgeClass(profileSnapshot.clinical.treatmentPhase),
+                      )}
+                    >
+                      {treatmentPhaseLabelT(t, profileSnapshot.clinical.treatmentPhase)}
+                    </span>
+                  ) : null}
+                  <span className="truncate">
+                    {t('dashboard.phase', {
+                      phase: treatmentPhaseLabelT(t, profileSnapshot?.clinical.treatmentPhase),
+                    })}
+                  </span>
+                </span>
+              ),
           row3: t('dashboard.device', {
             device: assistiveDevicesLabelT(t, profileSnapshot?.lifestyle.assistiveDevices),
           }),
-          recencyTint: getUserProfileRecencyUrgency(profileSnapshot),
+          accentClass: profileSnapshot?.clinical.treatmentPhase
+            ? treatmentPhaseCardClass(profileSnapshot.clinical.treatmentPhase, true)
+            : undefined,
+          recencyTint: profileSnapshot?.clinical.treatmentPhase
+            ? undefined
+            : getUserProfileRecencyUrgency(profileSnapshot),
         }),
     onClick: canOpenPatientProfile
       ? () => onGoToTab('patient-profile')

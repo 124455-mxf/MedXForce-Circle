@@ -26,6 +26,10 @@ import {
   remoteSettingsAppModeLabel,
   remoteSettingsDashboardPresetLabel,
 } from '../lib/remoteSettingsScreenI18n';
+import {
+  treatmentPhaseBadgeClass,
+  treatmentPhaseCardClass,
+} from '../lib/appModeUi';
 
 type EditableSection =
   | 'identity'
@@ -888,27 +892,50 @@ export function CirclePatientProfileEditorModal({
                   }
                 />
               </label>
-              <label className="block space-y-1">
+              <label className="block space-y-2 sm:col-span-2">
                 <span className="text-xs font-bold text-slate-500 uppercase">
                   {t('admin.profile.fieldTreatmentPhase')}
                 </span>
-                <select
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
-                  value={draft.clinical.treatmentPhase}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      clinical: { ...draft.clinical, treatmentPhase: e.target.value },
-                    })
-                  }
-                >
-                  <option value="">{t('dashboard.notSet')}</option>
-                  {TREATMENT_PHASE_VALUES.map((phase) => (
-                    <option key={phase} value={phase}>
-                      {treatmentPhaseLabelT(t, phase)}
-                    </option>
-                  ))}
-                </select>
+                <p className="text-[11px] text-slate-500 leading-snug -mt-1">
+                  {t('admin.profile.treatmentPhaseDrivesAppHint')}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {TREATMENT_PHASE_VALUES.map((phase) => {
+                    const active = draft.clinical.treatmentPhase === phase;
+                    return (
+                      <button
+                        key={phase}
+                        type="button"
+                        onClick={() =>
+                          setDraft({
+                            ...draft,
+                            clinical: { ...draft.clinical, treatmentPhase: phase },
+                          })
+                        }
+                        className={cn(
+                          'w-full text-left px-3 py-3 rounded-2xl border transition-colors',
+                          treatmentPhaseCardClass(phase, active),
+                        )}
+                      >
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className={cn(
+                              'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                              treatmentPhaseBadgeClass(phase),
+                            )}
+                          >
+                            {treatmentPhaseLabelT(t, phase)}
+                          </span>
+                          {active ? (
+                            <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                              {t('remoteSettings.current')}
+                            </span>
+                          ) : null}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </label>
               <label className="block space-y-1">
                 <span className="text-xs font-bold text-slate-500 uppercase">Surgical history</span>

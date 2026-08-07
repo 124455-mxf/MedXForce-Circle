@@ -35,6 +35,11 @@ import { dataUrlToBlob } from '../lib/imageCrop';
 import { isFirestoreQuotaError, pauseFirestoreBackgroundWrites } from '../lib/firestoreQuota';
 import { useCircleT } from '../lib/circleI18nContext';
 import { cn } from '../lib/utils';
+import { treatmentPhaseLabelT } from '../lib/dashboardI18n';
+import {
+  treatmentPhaseBadgeClass,
+  treatmentPhaseCardClass,
+} from '../lib/appModeUi';
 
 function accountInfoCollapsedStorageKey(patientId: string): string {
   return `circle:patientAccountCollapsed:${patientId}`;
@@ -564,6 +569,30 @@ export function CirclePatientProfilePanel({
               <p className="text-lg font-bold text-slate-800">
                 {displayProfileName(workingSnapshot, patient.displayName)}
               </p>
+              {showClinical && workingSnapshot.clinical.treatmentPhase ? (
+                <button
+                  type="button"
+                  onClick={() => (canEdit ? handleEditSection('clinical') : undefined)}
+                  disabled={!canEdit}
+                  className={cn(
+                    'inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-left transition-colors',
+                    treatmentPhaseCardClass(workingSnapshot.clinical.treatmentPhase, true),
+                    canEdit ? 'hover:opacity-95 cursor-pointer' : 'cursor-default',
+                  )}
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                    {t('admin.profile.fieldTreatmentPhase')}
+                  </span>
+                  <span
+                    className={cn(
+                      'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                      treatmentPhaseBadgeClass(workingSnapshot.clinical.treatmentPhase),
+                    )}
+                  >
+                    {treatmentPhaseLabelT(t, workingSnapshot.clinical.treatmentPhase)}
+                  </span>
+                </button>
+              ) : null}
               {workingSnapshot.identity.email &&
               workingSnapshot.identity.email.trim().toLowerCase() !==
                 (accountInfo?.claimedLoginEmail?.trim().toLowerCase() ?? '') ? (
