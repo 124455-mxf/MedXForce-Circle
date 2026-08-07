@@ -30,6 +30,7 @@ import {
   canViewRemoteSettingsTab,
   canSendPatientRemoteCommands,
   diaryMoodLabel,
+  isHospitalFeatureEnabledInRemoteSettings,
   isPatientInsightsPreviewRemindersEnabled,
   isRemoteSettingsCustomized,
   normalizeMemberRole,
@@ -94,7 +95,11 @@ import { useCirclePatientThreadsContext } from '../context/CirclePatientThreadsC
 import { useCareCalendarEntries, buildCareCalendarEntriesSubscription } from '../hooks/useCareCalendarEntries';
 import { useCircleMemberInviteContext } from '../hooks/useCircleMemberInviteContext';
 import { buildCircleAssessmentScheduleContext } from '../lib/circleAssessmentScheduleMetrics';
-import { computeCircleScheduleNudgeCounts, buildPreviewScheduleNudgeCounts } from '../lib/circleDashboardScheduleNudges';
+import {
+  computeCircleScheduleNudgeCounts,
+  buildPreviewScheduleNudgeCounts,
+  type CircleScheduleNudgeCounts,
+} from '../lib/circleDashboardScheduleNudges';
 
 import {
   isCircleProfileDataComplete,
@@ -485,6 +490,17 @@ export function CircleDashboardScreen({
     loading: remoteSettingsLoading,
     persist: persistRemoteSettings,
   } = useCircleRemoteSettingsFromShell();
+  const remoteFeatureFlagsReady = !remoteSettingsLoading && remoteSettingsFromFirestore;
+  /** Last-7-day / activity tiles: hide when the Patient App feature is off (Customize may stay on). */
+  const patientMessagingFeatureEnabled =
+    remoteFeatureFlagsReady &&
+    isHospitalFeatureEnabledInRemoteSettings(remoteSettings, 'hospitalFeatureMessaging');
+  const patientVitalityFeatureEnabled =
+    remoteFeatureFlagsReady &&
+    isHospitalFeatureEnabledInRemoteSettings(remoteSettings, 'hospitalFeatureVitality');
+  const patientAssessmentsFeatureEnabled =
+    remoteFeatureFlagsReady &&
+    isHospitalFeatureEnabledInRemoteSettings(remoteSettings, 'hospitalFeatureAssessments');
   const [icuCheckInUpdating, setIcuCheckInUpdating] = useState(false);
   const caps = patient.capabilities;
   const memberRole = normalizeMemberRole(patient.role);
@@ -609,9 +625,13 @@ export function CircleDashboardScreen({
       careEntries: visibleCareCalendarEntries,
       scheduleEnabled: remoteSettings?.featuresVisibility?.schedule !== false,
     });
-    return previewReminders ? buildPreviewScheduleNudgeCounts(live) : live;
+    const gated: CircleScheduleNudgeCounts = patientAssessmentsFeatureEnabled
+      ? live
+      : { ...live, dueAssessments: 0, upcomingAssessments: 0 };
+    return previewReminders ? buildPreviewScheduleNudgeCounts(gated) : gated;
   }, [
     assessmentScheduleContext,
+    patientAssessmentsFeatureEnabled,
     previewReminders,
     remoteSettings?.featuresVisibility?.schedule,
     showScheduleNudgeTiles,
@@ -662,8 +682,7 @@ export function CircleDashboardScreen({
   const companionLast7 = sumCompanionLast7ExcludingDetected(companionDetail?.timeline);
   const checkInStats = resolveDailyCheckInLast7Stats(dailyDetail);
   const dailyCheckInEnabled =
-    !remoteSettingsLoading &&
-    remoteSettingsFromFirestore &&
+    remoteFeatureFlagsReady &&
     remoteSettings?.dailyCheckIn?.enabled === true &&
     dailyCheckIn?.summaryText !== 'Daily check-in off';
   const showCheckInWellnessRing =
@@ -790,24 +809,26 @@ export function CircleDashboardScreen({
       });
     }
 
-    lastSevenDayWidgets.push({
-      key: 'messages',
-      title: t('dashboard.messages'),
-      icon: MessageSquare,
-      ...(analyticsLoading
-        ? loadingRows(t('common.loading'))
-        : {
-            row1: dashboardPlural(t, 'messaging', communicationStats.messaging),
-            row2:
-              caps.messaging && messageCount > 0
-                ? dashboardPlural(t, 'thread', messageCount)
-                : t('common.last7Days'),
-            row3: caps.messaging
-              ? t('common.unread', { count: formatCircleBadgeCount(unreadCount) })
-              : undefined,
-          }),
-      onClick: () => onGoToTab(caps.messaging ? 'messages' : 'analytics'),
-    });
+    if (patientMessagingFeatureEnabled) {
+      lastSevenDayWidgets.push({
+        key: 'messages',
+        title: t('dashboard.messages'),
+        icon: MessageSquare,
+        ...(analyticsLoading
+          ? loadingRows(t('common.loading'))
+          : {
+              row1: dashboardPlural(t, 'messaging', communicationStats.messaging),
+              row2:
+                caps.messaging && messageCount > 0
+                  ? dashboardPlural(t, 'thread', messageCount)
+                  : t('common.last7Days'),
+              row3: caps.messaging
+                ? t('common.unread', { count: formatCircleBadgeCount(unreadCount) })
+                : undefined,
+            }),
+        onClick: () => onGoToTab(caps.messaging ? 'messages' : 'analytics'),
+      });
+    }
 
     lastSevenDayWidgets.push({
       key: 'communication',
@@ -823,41 +844,45 @@ export function CircleDashboardScreen({
       onClick: () => onGoToTab('analytics'),
     });
 
-    lastSevenDayWidgets.push({
-      key: 'vitality',
-      title: t('dashboard.vitality'),
-      icon: Sparkles,
-      ...(analyticsLoading
-        ? loadingRows(t('common.loading'))
-        : (() => {
-            const pictureCount =
-              soulDetail?.totalPhotoCount ?? soulDetail?.photoCount ?? 0;
-            const unseenCount =
-              soulDetail?.unseenMediaCount ?? soulDetail?.unseenPhotoCount ?? 0;
-            return {
-              row1: dashboardPlural(t, 'gamesPlayed', vitalityGamesLast7),
-              row2: dashboardPlural(t, 'picture', pictureCount),
-              row3: dashboardPlural(t, 'unseen', unseenCount),
-            };
-          })()),
-      onClick: () => onGoToTab('analytics'),
-    });
+    if (patientVitalityFeatureEnabled) {
+      lastSevenDayWidgets.push({
+        key: 'vitality',
+        title: t('dashboard.vitality'),
+        icon: Sparkles,
+        ...(analyticsLoading
+          ? loadingRows(t('common.loading'))
+          : (() => {
+              const pictureCount =
+                soulDetail?.totalPhotoCount ?? soulDetail?.photoCount ?? 0;
+              const unseenCount =
+                soulDetail?.unseenMediaCount ?? soulDetail?.unseenPhotoCount ?? 0;
+              return {
+                row1: dashboardPlural(t, 'gamesPlayed', vitalityGamesLast7),
+                row2: dashboardPlural(t, 'picture', pictureCount),
+                row3: dashboardPlural(t, 'unseen', unseenCount),
+              };
+            })()),
+        onClick: () => onGoToTab('analytics'),
+      });
+    }
 
-    lastSevenDayWidgets.push({
-      key: 'assessments',
-      title: t('dashboard.assessments'),
-      icon: ClipboardList,
-      ...(analyticsLoading
-        ? loadingRows(t('common.loading'))
-        : {
-            row1: t('dashboard.finished', { count: assessmentsLast7 }),
-            row2: latestAssessment.title
-              ? t('dashboard.lastAssessment', { title: latestAssessment.title })
-              : t('dashboard.noAssessmentsYet'),
-            row3: lastLine(latestAssessment.latestAt),
-          }),
-      onClick: () => onGoToTab('analytics'),
-    });
+    if (patientAssessmentsFeatureEnabled) {
+      lastSevenDayWidgets.push({
+        key: 'assessments',
+        title: t('dashboard.assessments'),
+        icon: ClipboardList,
+        ...(analyticsLoading
+          ? loadingRows(t('common.loading'))
+          : {
+              row1: t('dashboard.finished', { count: assessmentsLast7 }),
+              row2: latestAssessment.title
+                ? t('dashboard.lastAssessment', { title: latestAssessment.title })
+                : t('dashboard.noAssessmentsYet'),
+              row3: lastLine(latestAssessment.latestAt),
+            }),
+        onClick: () => onGoToTab('analytics'),
+      });
+    }
   }
 
   if (showEngagementStats) {
