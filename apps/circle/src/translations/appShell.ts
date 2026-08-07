@@ -720,6 +720,8 @@ export const appShellEnglish = {
     localeUpdatedDays_one: '{{count}} day',
     localeUpdatedDays_other: '{{count}} days',
     remotePrompts: 'Remote prompts',
+    remotePromptsExpandAria: 'Show remote prompts',
+    remotePromptsCollapseAria: 'Hide remote prompts',
     checkIn: 'Check-in',
     doctorVisit: 'Doctor visit',
     quickAnswers: 'Quick Answers',
@@ -798,7 +800,7 @@ export const appShellEnglish = {
     viewAllInProfile: 'View all in profile',
     preview: 'Preview',
     previewRemindersHint:
-      'Preview mode — sample welcome message, birthday, onset, participation, care-team, reachability, and schedule nudge tiles. Remove ?previewReminders=1 from the URL when done.',
+      'Preview mode — sample welcome message, birthday, onset, participation, care-team, ICU check-in, reachability, and schedule nudge tiles. Remove ?previewReminders=1 from the URL when done.',
     previewRemindersCollapsed: 'Preview: birthday & onset reminders',
     previewOfflineAlertHint:
       'Preview — sample “not in patient app” alert (6 days away). Remove ?previewReminders=1 when done.',
@@ -948,21 +950,23 @@ export const appShellEnglish = {
       careProfileBodyCaregiverWithFields:
         'Still need: {{fields}}. Ask the patient\'s proxy to complete the profile in Admin, or wait for the patient to save their profile on the iPad.',
       careTeamCoverageHeadline: 'Strengthen the care team',
+      careTeamCoverageOpenAdmin: 'Open Admin',
+      careTeamCoverageAskProxyFooter: 'Please tell the proxy',
       careTeamCoverageBodyBothProxy:
-        'No backup proxy and fewer than two caregivers on the team. Tap Admin → User management to invite a backup proxy and another caregiver.',
+        'No backup proxy and fewer than two caregivers on the team. Invite a backup proxy and another caregiver in Admin.',
       careTeamCoverageBodyBothCaregiver:
-        'No backup proxy and fewer than two caregivers on the team. Ask the patient\'s proxy to add people in Admin → User management.',
+        'No backup proxy and fewer than two caregivers on the team. Please tell the primary proxy — only they can invite people.',
       careTeamCoverageBodyBackupProxy:
-        'No backup proxy is on the team yet. Tap Admin → User management to invite one.',
+        'No backup proxy is on the team yet. Invite one in Admin.',
       careTeamCoverageBodyBackupCaregiver:
-        'No backup proxy is on the team yet. Ask the patient\'s proxy to add one in Admin → User management.',
+        'No backup proxy is on the team yet. Please tell the primary proxy — only they can invite one.',
       careTeamCoverageBodyCaregiversProxy:
-        'Fewer than two caregivers are on the team. Tap Admin → User management to invite another caregiver.',
+        'Fewer than two caregivers are on the team. Invite another caregiver in Admin.',
       careTeamCoverageBodyCaregiversCaregiver:
-        'Fewer than two caregivers are on the team. Ask the patient\'s proxy to invite another caregiver.',
+        'Fewer than two caregivers are on the team. Please tell the primary proxy — only they can invite another caregiver.',
       previewCareTeamCoverageHeadline: 'Strengthen the care team',
       previewCareTeamCoverageBody:
-        'Sample care-team nudge — tap to open User management when available.',
+        'Sample care-team nudge — open Admin to invite members when available.',
       pendingInvitesHeadline_one: '1 Circle invite still waiting',
       pendingInvitesHeadline_other: '{{count}} Circle invites still waiting',
       pendingInvitesBody:
@@ -1853,6 +1857,8 @@ export const appShellGerman = {
     localeUpdatedDays_one: '{{count}} Tag',
     localeUpdatedDays_other: '{{count}} Tagen',
     remotePrompts: 'Fernaufforderungen',
+    remotePromptsExpandAria: 'Fernaufforderungen anzeigen',
+    remotePromptsCollapseAria: 'Fernaufforderungen ausblenden',
     checkIn: 'Täglicher Check-in',
     doctorVisit: 'Arztbesuch',
     quickAnswers: 'Schnellantworten',
@@ -1931,7 +1937,7 @@ export const appShellGerman = {
     viewAllInProfile: 'Alle im Profil anzeigen',
     preview: 'Vorschau',
     previewRemindersHint:
-      'Vorschaumodus — Beispiele für Willkommensnachricht, Geburtstags-, Beginn-, Beteiligungs-, Betreuungs-, Erreichbarkeits- und Zeitplan-Hinweis-Kacheln. Entfernen Sie ?previewReminders=1 aus der URL, wenn Sie fertig sind.',
+      'Vorschaumodus — Beispiele für Willkommensnachricht, Geburtstags-, Beginn-, Beteiligungs-, Betreuungs-, ICU-Check-in-, Erreichbarkeits- und Zeitplan-Hinweis-Kacheln. Entfernen Sie ?previewReminders=1 aus der URL, wenn Sie fertig sind.',
     previewRemindersCollapsed: 'Vorschau: Geburtstags- & Beginn-Erinnerungen',
     previewOfflineAlertHint:
       'Vorschau — Beispiel „Nicht in der Patienten-App“ (6 Tage). ?previewReminders=1 entfernen, wenn fertig.',
@@ -2081,21 +2087,23 @@ export const appShellGerman = {
       careProfileBodyCaregiverWithFields:
         'Noch nötig: {{fields}}. Bitten Sie den Stellvertreter des Patienten, das Profil in Admin zu vervollständigen, oder warten Sie, bis der Patient das Profil auf dem iPad speichert.',
       careTeamCoverageHeadline: 'Betreuungsteam stärken',
+      careTeamCoverageOpenAdmin: 'Admin öffnen',
+      careTeamCoverageAskProxyFooter: 'Bitte den Stellvertreter informieren',
       careTeamCoverageBodyBothProxy:
-        'Kein Backup-Stellvertreter und nur ein Betreuer im Team. Tippen Sie auf Admin → Benutzerverwaltung, um einen Backup-Stellvertreter und einen weiteren Betreuer einzuladen.',
+        'Kein Backup-Stellvertreter und nur ein Betreuer im Team. Laden Sie in Admin einen Backup-Stellvertreter und einen weiteren Betreuer ein.',
       careTeamCoverageBodyBothCaregiver:
-        'Kein Backup-Stellvertreter und nur ein Betreuer im Team. Bitten Sie den Stellvertreter des Patienten, Personen in Admin → Benutzerverwaltung hinzuzufügen.',
+        'Kein Backup-Stellvertreter und nur ein Betreuer im Team. Bitte informieren Sie den Haupt-Stellvertreter — nur er oder sie kann Personen einladen.',
       careTeamCoverageBodyBackupProxy:
-        'Noch kein Backup-Stellvertreter im Team. Tippen Sie auf Admin → Benutzerverwaltung, um einen einzuladen.',
+        'Noch kein Backup-Stellvertreter im Team. Laden Sie einen in Admin ein.',
       careTeamCoverageBodyBackupCaregiver:
-        'Noch kein Backup-Stellvertreter im Team. Bitten Sie den Stellvertreter des Patienten, einen in Admin → Benutzerverwaltung hinzuzufügen.',
+        'Noch kein Backup-Stellvertreter im Team. Bitte informieren Sie den Haupt-Stellvertreter — nur er oder sie kann einen einladen.',
       careTeamCoverageBodyCaregiversProxy:
-        'Nur ein Betreuer im Team. Tippen Sie auf Admin → Benutzerverwaltung, um einen weiteren Betreuer einzuladen.',
+        'Nur ein Betreuer im Team. Laden Sie in Admin einen weiteren Betreuer ein.',
       careTeamCoverageBodyCaregiversCaregiver:
-        'Nur ein Betreuer im Team. Bitten Sie den Stellvertreter des Patienten, einen weiteren Betreuer einzuladen.',
+        'Nur ein Betreuer im Team. Bitte informieren Sie den Haupt-Stellvertreter — nur er oder sie kann einen weiteren Betreuer einladen.',
       previewCareTeamCoverageHeadline: 'Betreuungsteam stärken',
       previewCareTeamCoverageBody:
-        'Beispiel-Betreuungs-Erinnerung — tippen für Benutzerverwaltung, wenn verfügbar.',
+        'Beispiel-Betreuungs-Erinnerung — öffnen Sie Admin, um Mitglieder einzuladen.',
       pendingInvitesHeadline_one: '1 Circle-Einladung wartet noch',
       pendingInvitesHeadline_other: '{{count}} Circle-Einladungen warten noch',
       pendingInvitesBody:
@@ -2986,6 +2994,8 @@ export const appShellSpanish = {
     localeUpdatedDays_one: '{{count}} día',
     localeUpdatedDays_other: '{{count}} días',
     remotePrompts: 'Indicaciones remotas',
+    remotePromptsExpandAria: 'Mostrar indicaciones remotas',
+    remotePromptsCollapseAria: 'Ocultar indicaciones remotas',
     checkIn: 'Check-in diario',
     doctorVisit: 'Visita médica',
     quickAnswers: 'Respuestas rápidas',
@@ -3064,7 +3074,7 @@ export const appShellSpanish = {
     viewAllInProfile: 'Ver todo en el perfil',
     preview: 'Vista previa',
     previewRemindersHint:
-      'Modo vista previa — muestras de bienvenida, cumpleaños, inicio, participación, equipo de cuidado, disponibilidad y recordatorios de agenda. Quite ?previewReminders=1 de la URL cuando termine.',
+      'Modo vista previa — muestras de bienvenida, cumpleaños, inicio, participación, equipo de cuidado, check-in UCI, disponibilidad y recordatorios de agenda. Quite ?previewReminders=1 de la URL cuando termine.',
     previewRemindersCollapsed: 'Vista previa: recordatorios de cumpleaños e inicio',
     previewOfflineAlertHint:
       'Vista previa — alerta de ejemplo “sin app del paciente” (6 días). Quite ?previewReminders=1 al terminar.',
@@ -3214,21 +3224,23 @@ export const appShellSpanish = {
       careProfileBodyCaregiverWithFields:
         'Aún falta: {{fields}}. Pide al apoderado del paciente que complete el perfil en Admin, o espera a que el paciente lo guarde en el iPad.',
       careTeamCoverageHeadline: 'Fortalecer el equipo de cuidado',
+      careTeamCoverageOpenAdmin: 'Abrir Admin',
+      careTeamCoverageAskProxyFooter: 'Por favor, avisa al apoderado',
       careTeamCoverageBodyBothProxy:
-        'No hay apoderado de respaldo y solo un cuidador en el equipo. Toca Admin → Gestión de usuarios para invitar un apoderado de respaldo y otro cuidador.',
+        'No hay apoderado de respaldo y solo un cuidador en el equipo. Invita un apoderado de respaldo y otro cuidador en Admin.',
       careTeamCoverageBodyBothCaregiver:
-        'No hay apoderado de respaldo y solo un cuidador en el equipo. Pide al apoderado del paciente que añada personas en Admin → Gestión de usuarios.',
+        'No hay apoderado de respaldo y solo un cuidador en el equipo. Avisa al apoderado principal — solo él o ella puede invitar personas.',
       careTeamCoverageBodyBackupProxy:
-        'Aún no hay apoderado de respaldo en el equipo. Toca Admin → Gestión de usuarios para invitar uno.',
+        'Aún no hay apoderado de respaldo en el equipo. Invita uno en Admin.',
       careTeamCoverageBodyBackupCaregiver:
-        'Aún no hay apoderado de respaldo en el equipo. Pide al apoderado del paciente que añada uno en Admin → Gestión de usuarios.',
+        'Aún no hay apoderado de respaldo en el equipo. Avisa al apoderado principal — solo él o ella puede invitar uno.',
       careTeamCoverageBodyCaregiversProxy:
-        'Solo hay un cuidador en el equipo. Toca Admin → Gestión de usuarios para invitar otro cuidador.',
+        'Solo hay un cuidador en el equipo. Invita otro cuidador en Admin.',
       careTeamCoverageBodyCaregiversCaregiver:
-        'Solo hay un cuidador en el equipo. Pide al apoderado del paciente que invite otro cuidador.',
+        'Solo hay un cuidador en el equipo. Avisa al apoderado principal — solo él o ella puede invitar otro cuidador.',
       previewCareTeamCoverageHeadline: 'Fortalecer el equipo de cuidado',
       previewCareTeamCoverageBody:
-        'Recordatorio de ejemplo del equipo — toca para Gestión de usuarios cuando esté disponible.',
+        'Recordatorio de ejemplo del equipo — abre Admin para invitar miembros.',
       pendingInvitesHeadline_one: '1 invitación de Circle sigue pendiente',
       pendingInvitesHeadline_other: '{{count}} invitaciones de Circle siguen pendientes',
       pendingInvitesBody:
@@ -4119,6 +4131,8 @@ export const appShellPolish = {
     localeUpdatedDays_one: '{{count}} dzień',
     localeUpdatedDays_other: '{{count}} dni',
     remotePrompts: 'Zdalne podpowiedzi',
+    remotePromptsExpandAria: 'Pokaż zdalne podpowiedzi',
+    remotePromptsCollapseAria: 'Ukryj zdalne podpowiedzi',
     checkIn: 'Codzienny check-in',
     doctorVisit: 'Wizyta u lekarza',
     quickAnswers: 'Szybkie odpowiedzi',
@@ -4197,7 +4211,7 @@ export const appShellPolish = {
     viewAllInProfile: 'Zobacz wszystko w profilu',
     preview: 'Podgląd',
     previewRemindersHint:
-      'Tryb podglądu — przykładowe kafelki powitania, urodzin, początku, udziału, opieki, dostępności i harmonogramu. Usuń ?previewReminders=1 z adresu URL po zakończeniu.',
+      'Tryb podglądu — przykładowe kafelki powitania, urodzin, początku, udziału, opieki, check-inu OIOM, dostępności i harmonogramu. Usuń ?previewReminders=1 z adresu URL po zakończeniu.',
     previewRemindersCollapsed: 'Podgląd: przypomnienia urodzin i początku',
     previewOfflineAlertHint:
       'Podgląd — przykładowy alert „poza aplikacją pacjenta” (6 dni). Usuń ?previewReminders=1 po zakończeniu.',
@@ -4347,21 +4361,23 @@ export const appShellPolish = {
       careProfileBodyCaregiverWithFields:
         'Brakuje: {{fields}}. Poproś pełnomocnika pacjenta o uzupełnienie profilu w Admin lub poczekaj, aż pacjent zapisze profil na iPadzie.',
       careTeamCoverageHeadline: 'Wzmocnij zespół opieki',
+      careTeamCoverageOpenAdmin: 'Otwórz Admin',
+      careTeamCoverageAskProxyFooter: 'Poinformuj pełnomocnika',
       careTeamCoverageBodyBothProxy:
-        'Brak zapasowego pełnomocnika i tylko jeden opiekun w zespole. Dotknij Admin → Zarządzanie użytkownikami, aby zaprosić zapasowego pełnomocnika i kolejnego opiekuna.',
+        'Brak zapasowego pełnomocnika i tylko jeden opiekun w zespole. Zaproś zapasowego pełnomocnika i kolejnego opiekuna w Admin.',
       careTeamCoverageBodyBothCaregiver:
-        'Brak zapasowego pełnomocnika i tylko jeden opiekun w zespole. Poproś pełnomocnika pacjenta o dodanie osób w Admin → Zarządzanie użytkownikami.',
+        'Brak zapasowego pełnomocnika i tylko jeden opiekun w zespole. Poinformuj głównego pełnomocnika — tylko on lub ona może zapraszać osoby.',
       careTeamCoverageBodyBackupProxy:
-        'W zespole nie ma jeszcze zapasowego pełnomocnika. Dotknij Admin → Zarządzanie użytkownikami, aby go zaprosić.',
+        'W zespole nie ma jeszcze zapasowego pełnomocnika. Zaproś go w Admin.',
       careTeamCoverageBodyBackupCaregiver:
-        'W zespole nie ma jeszcze zapasowego pełnomocnika. Poproś pełnomocnika pacjenta o dodanie go w Admin → Zarządzanie użytkownikami.',
+        'W zespole nie ma jeszcze zapasowego pełnomocnika. Poinformuj głównego pełnomocnika — tylko on lub ona może go zaprosić.',
       careTeamCoverageBodyCaregiversProxy:
-        'W zespole jest tylko jeden opiekun. Dotknij Admin → Zarządzanie użytkownikami, aby zaprosić kolejnego opiekuna.',
+        'W zespole jest tylko jeden opiekun. Zaproś kolejnego opiekuna w Admin.',
       careTeamCoverageBodyCaregiversCaregiver:
-        'W zespole jest tylko jeden opiekun. Poproś pełnomocnika pacjenta o zaproszenie kolejnego opiekuna.',
+        'W zespole jest tylko jeden opiekun. Poinformuj głównego pełnomocnika — tylko on lub ona może zaprosić kolejnego opiekuna.',
       previewCareTeamCoverageHeadline: 'Wzmocnij zespół opieki',
       previewCareTeamCoverageBody:
-        'Przykładowe przypomnienie opieki — dotknij Zarządzanie użytkownikami, gdy dostępne.',
+        'Przykładowe przypomnienie opieki — otwórz Admin, aby zaprosić członków.',
       pendingInvitesHeadline_one: '1 zaproszenie do Circle nadal czeka',
       pendingInvitesHeadline_other: '{{count}} zaproszenia do Circle nadal czekają',
       pendingInvitesBody:

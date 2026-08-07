@@ -3,10 +3,10 @@ import {
   Bell,
   BookOpen,
   Calendar,
+  ChevronDown,
   ClipboardList,
   Heart,
   Image as ImageIcon,
-  Loader2,
   MessageCircle,
   MessageSquare,
   SlidersHorizontal,
@@ -33,7 +33,6 @@ import {
   isPatientInsightsPreviewRemindersEnabled,
   isRemoteSettingsCustomized,
   normalizeMemberRole,
-  setRemoteDailyCheckIn,
   shouldHideDeclinedAppointmentForContact,
   type AnalyticsMetricId,
   type CirclePatientSummary,
@@ -237,6 +236,36 @@ function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
   );
 }
 
+function liveRemotePromptsCollapsedStorageKey(memberUid: string, patientId: string): string {
+  return `circle:liveRemotePromptsCollapsed:${memberUid}:${patientId}`;
+}
+
+function readLiveRemotePromptsCollapsed(memberUid: string, patientId: string): boolean {
+  try {
+    const raw = localStorage.getItem(liveRemotePromptsCollapsedStorageKey(memberUid, patientId));
+    // Default collapsed so presence stays primary until the member opens prompts.
+    if (raw == null) return true;
+    return raw === '1';
+  } catch {
+    return true;
+  }
+}
+
+function writeLiveRemotePromptsCollapsed(
+  memberUid: string,
+  patientId: string,
+  collapsed: boolean,
+): void {
+  try {
+    localStorage.setItem(
+      liveRemotePromptsCollapsedStorageKey(memberUid, patientId),
+      collapsed ? '1' : '0',
+    );
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 function LivePresenceDot({ className }: { className?: string }) {
   return (
     <span className={cn('relative flex h-2.5 w-2.5 shrink-0', className)} aria-hidden>
@@ -298,6 +327,8 @@ function LivePatientWidget({
   onlineDurationLabel,
   activeSectionLabel,
   patientName,
+  patientId,
+  memberUid,
   patientContextLines,
   showRemotePrompts,
   compact = false,
@@ -314,6 +345,8 @@ function LivePatientWidget({
   onlineDurationLabel: string;
   activeSectionLabel: string;
   patientName: string;
+  patientId: string;
+  memberUid: string;
   patientContextLines?: string[];
   showRemotePrompts: boolean;
   compact?: boolean;
@@ -328,6 +361,26 @@ function LivePatientWidget({
   t: ReturnType<typeof useCircleT>;
 }) {
   const showResumeDropIn = dropInActive && !dropInChatOpen && !!onResumeDropIn;
+  const [promptsCollapsed, setPromptsCollapsed] = useState(() =>
+    readLiveRemotePromptsCollapsed(memberUid, patientId),
+  );
+
+  useEffect(() => {
+    setPromptsCollapsed(readLiveRemotePromptsCollapsed(memberUid, patientId));
+  }, [memberUid, patientId]);
+
+  // Keep prompts open while a drop-in can be resumed so the action isn't buried.
+  const promptsExpanded = showResumeDropIn || !promptsCollapsed;
+
+  const togglePromptsCollapsed = () => {
+    if (showResumeDropIn) return;
+    setPromptsCollapsed((current) => {
+      const next = !current;
+      writeLiveRemotePromptsCollapsed(memberUid, patientId, next);
+      return next;
+    });
+  };
+
   const metaLine = patientContextLines?.filter(Boolean).join(' · ') ?? '';
   const liveTitle = (
     <p className="font-bold text-slate-800 text-sm sm:text-base leading-snug">
@@ -380,41 +433,70 @@ function LivePatientWidget({
 
         {showRemotePrompts ? (
           <div className="mt-4 pt-3 border-t border-slate-100">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5 mb-2.5">
-              {t('dashboard.remotePrompts')}
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <LiveRemotePromptChip
-                label={t('dashboard.checkIn')}
-                icon={Calendar}
-                onClick={onPromptCheckIn}
+            <button
+              type="button"
+              onClick={togglePromptsCollapsed}
+              disabled={showResumeDropIn}
+              aria-expanded={promptsExpanded}
+              aria-label={
+                promptsExpanded
+                  ? t('dashboard.remotePromptsCollapseAria')
+                  : t('dashboard.remotePromptsExpandAria')
+              }
+              className={cn(
+                'w-full flex items-center justify-between gap-2 px-0.5 rounded-lg text-left',
+                showResumeDropIn
+                  ? 'cursor-default'
+                  : 'hover:bg-slate-50/80 -mx-1 px-1.5 py-0.5',
+              )}
+            >
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                {t('dashboard.remotePrompts')}
+              </p>
+              <ChevronDown
+                size={16}
+                className={cn(
+                  'shrink-0 text-slate-400 transition-transform',
+                  !promptsExpanded && '-rotate-90',
+                  showResumeDropIn && 'opacity-40',
+                )}
+                aria-hidden
               />
-              <LiveRemotePromptChip
-                label={t('dashboard.quickAnswers')}
-                icon={ClipboardList}
-                onClick={onPromptQuickAnswers}
-              />
-              {onDropIn ? (
+            </button>
+            {promptsExpanded ? (
+              <div className="mt-2.5 grid grid-cols-2 gap-2">
                 <LiveRemotePromptChip
-                  label={t('dashboard.dropIn')}
-                  icon={MessageCircle}
-                  tone="dropIn"
-                  onClick={onDropIn}
+                  label={t('dashboard.checkIn')}
+                  icon={Calendar}
+                  onClick={onPromptCheckIn}
                 />
-              ) : dropInFeatureEnabled === false ? (
                 <LiveRemotePromptChip
-                  label={t('dashboard.dropIn')}
-                  icon={MessageCircle}
-                  disabled
-                  disabledHint={t('dashboard.dropInDisabledHint')}
+                  label={t('dashboard.quickAnswers')}
+                  icon={ClipboardList}
+                  onClick={onPromptQuickAnswers}
                 />
-              ) : null}
-              <LiveRemotePromptChip
-                label={t('dashboard.doctorVisit')}
-                icon={Stethoscope}
-                onClick={onPromptDoctorVisit}
-              />
-            </div>
+                {onDropIn ? (
+                  <LiveRemotePromptChip
+                    label={t('dashboard.dropIn')}
+                    icon={MessageCircle}
+                    tone="dropIn"
+                    onClick={onDropIn}
+                  />
+                ) : dropInFeatureEnabled === false ? (
+                  <LiveRemotePromptChip
+                    label={t('dashboard.dropIn')}
+                    icon={MessageCircle}
+                    disabled
+                    disabledHint={t('dashboard.dropInDisabledHint')}
+                  />
+                ) : null}
+                <LiveRemotePromptChip
+                  label={t('dashboard.doctorVisit')}
+                  icon={Stethoscope}
+                  onClick={onPromptDoctorVisit}
+                />
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -546,7 +628,6 @@ export function CircleDashboardScreen({
   const patientAssessmentsFeatureEnabled =
     remoteFeatureFlagsReady &&
     isHospitalFeatureEnabledInRemoteSettings(remoteSettings, 'hospitalFeatureAssessments');
-  const [icuCheckInUpdating, setIcuCheckInUpdating] = useState(false);
   const caps = patient.capabilities;
   const memberRole = normalizeMemberRole(patient.role);
   const { isWidgetVisible } = useCircleDashboardLayout(
@@ -1197,11 +1278,6 @@ export function CircleDashboardScreen({
   const visiblePatientAppWidgets = patientAppWidgets.filter((widget) =>
     isWidgetVisible(widget.key),
   );
-  const showIcuCheckInBanner =
-    showRemoteSettings &&
-    !remoteSettingsLoading &&
-    remoteSettings?.appMode === 'intensive_care';
-  const icuDailyCheckInOn = remoteSettings?.dailyCheckIn?.enabled === true;
 
   const handleConfirmRemoteCommand = async () => {
     if (!confirmCommandType || !canSendPatientRemoteCommands(patient.role)) return;
@@ -1284,6 +1360,8 @@ export function CircleDashboardScreen({
                 onlineDurationLabel={liveOnlineDurationLabel}
                 activeSectionLabel={formatPatientActiveSectionT(t, patientPresence.activeSection)}
                 patientName={patientFriendlyDisplayName(profileSnapshot, patient.displayName)}
+                patientId={patient.patientId}
+                memberUid={user.uid}
                 patientContextLines={livePatientContextLines}
                 showRemotePrompts={showRemotePrompts}
                 compact={memberRole === 'family'}
@@ -1389,93 +1467,22 @@ export function CircleDashboardScreen({
           />
         ) : null}
 
-        {visiblePatientAppWidgets.length > 0 || showIcuCheckInBanner ? (
+        {visiblePatientAppWidgets.length > 0 ? (
           <section className="space-y-2">
             <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionPatientApp')}</h3>
-            {showIcuCheckInBanner ? (
-              <div
-                className={cn(
-                  'rounded-2xl border px-4 py-3 space-y-3',
-                  icuDailyCheckInOn
-                    ? 'border-red-200 bg-red-50/70'
-                    : 'border-slate-200 bg-slate-50',
-                )}
-              >
-                <div className="space-y-1">
-                  <p
-                    className={cn(
-                      'text-sm font-bold',
-                      icuDailyCheckInOn ? 'text-red-900' : 'text-slate-800',
-                    )}
-                  >
-                    {t(
-                      icuDailyCheckInOn
-                        ? 'dashboard.icuCheckInBannerTitle'
-                        : 'dashboard.icuCheckInBannerTitleOff',
-                    )}
-                  </p>
-                  <p
-                    className={cn(
-                      'text-xs leading-snug',
-                      icuDailyCheckInOn ? 'text-red-800/90' : 'text-slate-600',
-                    )}
-                  >
-                    {t(
-                      icuDailyCheckInOn
-                        ? 'dashboard.icuCheckInBannerBody'
-                        : 'dashboard.icuCheckInBannerBodyOff',
-                    )}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  disabled={icuCheckInUpdating || !remoteSettings}
-                  onClick={() => {
-                    if (!remoteSettings || icuCheckInUpdating) return;
-                    const nextEnabled = !icuDailyCheckInOn;
-                    setIcuCheckInUpdating(true);
-                    try {
-                      persistRemoteSettings({
-                        ...setRemoteDailyCheckIn(remoteSettings, { enabled: nextEnabled }),
-                        patientId: patient.patientId,
-                      });
-                    } finally {
-                      window.setTimeout(() => setIcuCheckInUpdating(false), 600);
-                    }
-                  }}
+            <div className="grid grid-cols-2 gap-3">
+              {visiblePatientAppWidgets.map((widget) => (
+                <div
+                  key={widget.key}
                   className={cn(
-                    'inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-bold disabled:opacity-60',
-                    icuDailyCheckInOn
-                      ? 'bg-red-600 text-white hover:bg-red-700'
-                      : 'bg-blue-600 text-white hover:bg-blue-700',
+                    DASHBOARD_WIDGET_CELL_CLASS,
+                    widget.span === 'full' && 'col-span-2',
                   )}
                 >
-                  {icuCheckInUpdating ? <Loader2 size={16} className="animate-spin" /> : null}
-                  {icuCheckInUpdating
-                    ? t('dashboard.icuCheckInUpdating')
-                    : t(
-                        icuDailyCheckInOn
-                          ? 'dashboard.icuCheckInTurnOff'
-                          : 'dashboard.icuCheckInTurnOn',
-                      )}
-                </button>
-              </div>
-            ) : null}
-            {visiblePatientAppWidgets.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3">
-                {visiblePatientAppWidgets.map((widget) => (
-                  <div
-                    key={widget.key}
-                    className={cn(
-                      DASHBOARD_WIDGET_CELL_CLASS,
-                      widget.span === 'full' && 'col-span-2',
-                    )}
-                  >
-                    <DashboardWidget spec={widget} />
-                  </div>
-                ))}
-              </div>
-            ) : null}
+                  <DashboardWidget spec={widget} />
+                </div>
+              ))}
+            </div>
           </section>
         ) : null}
 

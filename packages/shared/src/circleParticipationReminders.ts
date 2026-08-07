@@ -25,7 +25,8 @@ export type CircleParticipationReminderKind =
   | 'modeStepUpStandard'
   | 'modeStepUpHospital'
   | 'icuSoulMusic'
-  | 'icuSoulMediaLibrary';
+  | 'icuSoulMediaLibrary'
+  | 'icuDailyCheckIn';
 
 export function reminderSnoozeDurationMs(kind: CircleParticipationReminderKind): number {
   if (
@@ -39,7 +40,8 @@ export function reminderSnoozeDurationMs(kind: CircleParticipationReminderKind):
     kind === 'modeStepUpStandard' ||
     kind === 'modeStepUpHospital' ||
     kind === 'icuSoulMusic' ||
-    kind === 'icuSoulMediaLibrary'
+    kind === 'icuSoulMediaLibrary' ||
+    kind === 'icuDailyCheckIn'
   ) {
     return CARE_ACTION_REMINDER_SNOOZE_MS;
   }
@@ -112,6 +114,9 @@ export function parseMemberReminderSnoozes(
   }
   if (typeof map.icuSoulMediaLibrary === 'number' && map.icuSoulMediaLibrary > 0) {
     next.icuSoulMediaLibrary = map.icuSoulMediaLibrary;
+  }
+  if (typeof map.icuDailyCheckIn === 'number' && map.icuDailyCheckIn > 0) {
+    next.icuDailyCheckIn = map.icuDailyCheckIn;
   }
   return next;
 }

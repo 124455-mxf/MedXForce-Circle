@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   Activity,
   Cake,
+  Calendar,
   Camera,
   ClipboardCheck,
   ClipboardList,
@@ -35,11 +36,13 @@ import {
   listIcuProgressionRemindersToShow,
   listStalePendingInvites,
   setRemoteAppMode,
+  setRemoteDailyCheckIn,
   setRemoteIntensiveCareExperience,
   setRemoteSettingValue,
   shouldShowAssessmentAfterFirstCommReminder,
   shouldShowDiaryEntryReminder,
   shouldShowGalleryUploadReminder,
+  shouldShowIcuDailyCheckInReminder,
   shouldShowPendingInviteReminder,
   shouldShowProfileIncompleteReminder,
   shouldShowTeamCoverageReminder,
@@ -99,6 +102,8 @@ type CelebrationTile = {
   onAction?: () => void;
   actionUpdating?: boolean;
   actionDisabled?: boolean;
+  /** Non-interactive footer (e.g. caregiver: ask proxy) — matches action-button height. */
+  footerNote?: string;
 };
 
 function hospitalFeatureIcon(kind: HospitalFeatureReminderKind): LucideIcon {
@@ -133,6 +138,7 @@ function isCareStyleDismissKind(kind: CircleParticipationReminderKind): boolean 
     kind === 'teamCoverage' ||
     kind === 'pendingInvites' ||
     kind === 'profileIncomplete' ||
+    kind === 'icuDailyCheckIn' ||
     isHospitalFeatureReminderKind(kind) ||
     isIcuProgressionReminderKind(kind)
   );
@@ -151,12 +157,14 @@ function CelebrationCard({
   onAction,
   actionUpdating = false,
   actionDisabled = false,
+  footerNote,
   t,
 }: Omit<CelebrationTile, 'key'> & {
   t: ReturnType<typeof useCircleT>;
   onDismiss?: (kind: CircleParticipationReminderKind) => void;
 }) {
   const hasAction = !!actionLabel;
+  const hasFooter = hasAction || !!footerNote;
   const interactive = !!onOpen && !hasAction;
 
   return (
@@ -243,7 +251,7 @@ function CelebrationCard({
           <p
             className={cn(
               'text-[11px] sm:text-xs text-slate-600 leading-relaxed',
-              hasAction ? 'line-clamp-2' : 'line-clamp-3',
+              hasFooter ? 'line-clamp-2' : 'line-clamp-3',
             )}
           >
             {body}
@@ -263,6 +271,10 @@ function CelebrationCard({
           {actionUpdating ? <Loader2 size={14} className="animate-spin" /> : null}
           {actionUpdating ? t('dashboard.reminders.hospitalFeatureUpdating') : actionLabel}
         </button>
+      ) : footerNote ? (
+        <p className="mt-auto inline-flex w-full items-center justify-center rounded-xl border border-sky-200 bg-white/80 px-3 py-2 text-center text-[11px] sm:text-xs font-bold text-sky-800 shrink-0 leading-snug">
+          {footerNote}
+        </p>
       ) : null}
     </div>
   );
@@ -329,7 +341,7 @@ export function CircleDashboardCelebrationSection({
   } = useCircleTeamCoverageFromDashboard();
   const canManageTeam = patient.capabilities.inviteMembers === true;
   const [enablingKind, setEnablingKind] = useState<
-    HospitalFeatureReminderKind | IcuProgressionReminderKind | null
+    HospitalFeatureReminderKind | IcuProgressionReminderKind | 'icuDailyCheckIn' | null
   >(null);
 
   const friendlyName = patientFriendlyDisplayName(snapshot, patient.displayName);
@@ -500,6 +512,35 @@ export function CircleDashboardCelebrationSection({
     }
   };
 
+  const icuDailyCheckInOn = remoteSettings?.dailyCheckIn?.enabled === true;
+  const showIcuDailyCheckInReminder = shouldShowIcuDailyCheckInReminder({
+    enabled: careRemindersEnabled && canOpenRemoteSettings,
+    settings: remoteSettings,
+    settingsReady: remoteSettingsReady,
+    snoozes,
+    snoozeLoading,
+  });
+
+  const toggleIcuDailyCheckIn = () => {
+    if (!remoteSettings || !canOpenRemoteSettings || enablingKind) return;
+    setEnablingKind('icuDailyCheckIn');
+    try {
+      const nextEnabled = !icuDailyCheckInOn;
+      onPersistRemoteSettings({
+        ...setRemoteDailyCheckIn(remoteSettings, { enabled: nextEnabled }),
+        patientId: patient.patientId,
+      });
+      // After turning check-in on, snooze so the "off" nudge doesn't linger.
+      if (nextEnabled) {
+        void dismissReminder('icuDailyCheckIn').catch((err) => {
+          console.warn('[Circle] Reminder dismiss after check-in toggle failed:', err);
+        });
+      }
+    } finally {
+      window.setTimeout(() => setEnablingKind(null), 600);
+    }
+  };
+
   const tiles: CelebrationTile[] = [];
   if (birthday && !isParticipationReminderSnoozed('birthday', snoozes)) {
     tiles.push({
@@ -665,7 +706,14 @@ export function CircleDashboardCelebrationSection({
       headline: copy.headline,
       body: copy.body,
       dismissKind: 'teamCoverage',
-      onOpen: canManageTeam ? () => onGoToTab('admin') : undefined,
+      ...(canManageTeam
+        ? {
+            actionLabel: t('dashboard.reminders.careTeamCoverageOpenAdmin'),
+            onAction: () => onGoToTab('admin'),
+          }
+        : {
+            footerNote: t('dashboard.reminders.careTeamCoverageAskProxyFooter'),
+          }),
     });
   } else if (previewReminders && careRemindersEnabled) {
     const preview = localizePreviewTeamCoverageReminder(t);
@@ -676,7 +724,15 @@ export function CircleDashboardCelebrationSection({
       headline: preview.headline,
       body: preview.body,
       isPreview: true,
-      onOpen: canManageTeam ? () => onGoToTab('admin') : undefined,
+      ...(canManageTeam
+        ? {
+            actionLabel: t('dashboard.reminders.careTeamCoverageOpenAdmin'),
+            onAction: () => onGoToTab('admin'),
+            actionDisabled: true,
+          }
+        : {
+            footerNote: t('dashboard.reminders.careTeamCoverageAskProxyFooter'),
+          }),
     });
   }
 
@@ -773,6 +829,42 @@ export function CircleDashboardCelebrationSection({
     }
   }
 
+  if (showIcuDailyCheckInReminder) {
+    tiles.push({
+      key: 'icu-daily-check-in',
+      tone: 'care',
+      icon: Calendar,
+      headline: t(
+        icuDailyCheckInOn
+          ? 'dashboard.icuCheckInBannerTitle'
+          : 'dashboard.icuCheckInBannerTitleOff',
+      ),
+      body: t(
+        icuDailyCheckInOn
+          ? 'dashboard.icuCheckInBannerBody'
+          : 'dashboard.icuCheckInBannerBodyOff',
+      ),
+      dismissKind: 'icuDailyCheckIn',
+      actionLabel: t(
+        icuDailyCheckInOn ? 'dashboard.icuCheckInTurnOff' : 'dashboard.icuCheckInTurnOn',
+      ),
+      onAction: toggleIcuDailyCheckIn,
+      actionUpdating: enablingKind === 'icuDailyCheckIn',
+      actionDisabled: !canOpenRemoteSettings || !remoteSettings,
+    });
+  } else if (previewReminders && careRemindersEnabled) {
+    tiles.push({
+      key: 'preview-icu-daily-check-in',
+      tone: 'care',
+      icon: Calendar,
+      headline: t('dashboard.icuCheckInBannerTitleOff'),
+      body: t('dashboard.icuCheckInBannerBodyOff'),
+      isPreview: true,
+      actionLabel: t('dashboard.icuCheckInTurnOn'),
+      actionDisabled: true,
+    });
+  }
+
   if (tiles.length === 0) return null;
 
   return (
@@ -790,7 +882,9 @@ export function CircleDashboardCelebrationSection({
           <div
             key={tile.key}
             className={cn(
-              tile.actionLabel ? 'h-[12rem] sm:h-[12.5rem]' : 'h-[10rem] sm:h-[10.5rem]',
+              tile.actionLabel || tile.footerNote
+                ? 'h-[12rem] sm:h-[12.5rem]'
+                : 'h-[10rem] sm:h-[10.5rem]',
             )}
           >
             <CelebrationCard
@@ -805,6 +899,7 @@ export function CircleDashboardCelebrationSection({
               onAction={tile.onAction}
               actionUpdating={tile.actionUpdating}
               actionDisabled={tile.actionDisabled}
+              footerNote={tile.footerNote}
               t={t}
               onDismiss={(kind) => {
                 void dismissReminder(kind).catch((err) => {

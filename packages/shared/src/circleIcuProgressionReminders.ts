@@ -170,3 +170,22 @@ export function listIcuProgressionRemindersToShow(input: {
   }
   return kinds;
 }
+
+/**
+ * ICU Home nudge for daily check-in (on or off) — lives in Reminders with other
+ * Intensive Care progression actions, not under Patient App.
+ */
+export function shouldShowIcuDailyCheckInReminder(input: {
+  enabled: boolean;
+  settings: PatientRemoteSettingsDoc | null | undefined;
+  settingsReady: boolean;
+  snoozes: CircleParticipationReminderSnoozes;
+  snoozeLoading?: boolean;
+  now?: number;
+}): boolean {
+  if (!input.enabled || !input.settingsReady || input.snoozeLoading) return false;
+  if (!input.settings || input.settings.appMode !== 'intensive_care') return false;
+  const now = input.now ?? Date.now();
+  if (isParticipationReminderSnoozed('icuDailyCheckIn', input.snoozes, now)) return false;
+  return true;
+}
