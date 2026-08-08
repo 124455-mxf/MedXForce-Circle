@@ -114,7 +114,6 @@ import {
   circlePatientFirstName,
   patientFriendlyDisplayName,
   dashboardPlural,
-  formatDashboardApplicationModeLineT,
   formatDashboardPatientDashboardViewLineT,
   formatLiveTileApplicationModeLineT,
   formatLiveTileLanguageLineT,
@@ -1178,35 +1177,35 @@ export function CircleDashboardScreen({
       ? t('dashboard.dailyCheckInOn')
       : t('dashboard.dailyCheckInOff');
     const appMode = remoteSettings?.appMode as RemoteAppMode | undefined;
-    const modeLabel = formatDashboardApplicationModeLineT(
-      t,
-      remoteSettings,
-      remoteSettingsLoading,
-    );
+    const remoteCustomized =
+      !!remoteSettings && !remoteSettingsLoading && isRemoteSettingsCustomized(remoteSettings);
 
     patientAppWidgets.push({
       key: 'remote-settings',
       title: t('dashboard.remoteSettings'),
       icon: SlidersHorizontal,
-      row1:
-        !remoteSettingsLoading &&
-        appMode &&
-        remoteSettings &&
-        !isRemoteSettingsCustomized(remoteSettings) ? (
-          <span className="inline-flex items-center gap-1.5 min-w-0">
-            <span
-              className={cn(
-                'shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide',
-                remoteAppModeCurrentBadgeClass(appMode),
-              )}
-            >
-              {t(`dashboard.appModes.${appMode}`)}
-            </span>
-            <span className="truncate">{modeLabel}</span>
+      row1: remoteSettingsLoading ? (
+        t('dashboard.modeLoading')
+      ) : appMode ? (
+        <span className="inline-flex items-center gap-1.5 min-w-0">
+          <span className="shrink-0 text-slate-500">{t('dashboard.modePrefix')}</span>
+          <span
+            className={cn(
+              'shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide',
+              remoteAppModeCurrentBadgeClass(appMode),
+            )}
+          >
+            {t(`dashboard.appModes.${appMode}`)}
           </span>
-        ) : (
-          modeLabel
-        ),
+          {remoteCustomized ? (
+            <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-100">
+              {t('dashboard.modeCustomBadge')}
+            </span>
+          ) : null}
+        </span>
+      ) : (
+        t('dashboard.modeCustom')
+      ),
       row2: formatDashboardPatientDashboardViewLineT(t, remoteSettings, remoteSettingsLoading),
       row3: remoteSettingsLoading ? '' : checkInLabel,
       accentClass:
@@ -1239,6 +1238,7 @@ export function CircleDashboardScreen({
             ? t('dashboard.coreProfileMissing', { fields: missingCoreLabel })
             : (
                 <span className="inline-flex items-center gap-1.5 min-w-0">
+                  <span className="shrink-0 text-slate-500">{t('dashboard.phasePrefix')}</span>
                   {profileSnapshot?.clinical.treatmentPhase ? (
                     <span
                       className={cn(
@@ -1248,12 +1248,9 @@ export function CircleDashboardScreen({
                     >
                       {treatmentPhaseLabelT(t, profileSnapshot.clinical.treatmentPhase)}
                     </span>
-                  ) : null}
-                  <span className="truncate">
-                    {t('dashboard.phase', {
-                      phase: treatmentPhaseLabelT(t, profileSnapshot?.clinical.treatmentPhase),
-                    })}
-                  </span>
+                  ) : (
+                    <span className="truncate text-slate-500">{t('dashboard.notSet')}</span>
+                  )}
                 </span>
               ),
           row3: t('dashboard.device', {
