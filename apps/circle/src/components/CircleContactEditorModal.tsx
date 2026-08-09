@@ -9,6 +9,8 @@ import {
   circleAccessOptionLabelKey,
   circleAccessOptionsForDraft,
   defaultCircleAccessOptionForKind,
+  findBackupProxyContact,
+  findPrimaryProxyContact,
   type CircleAccessOptionId,
 } from '../lib/circleContactAccessOptions';
 import {
@@ -192,6 +194,14 @@ export function CircleContactEditorModal({
   const selectedAccessOption = accessOptions.includes(draft.circleAccessOption)
     ? draft.circleAccessOption
     : accessOptions[0] ?? draft.circleAccessOption;
+  const otherPrimary = findPrimaryProxyContact(rosterContacts, draft.id);
+  const otherBackup = findBackupProxyContact(rosterContacts, draft.id);
+  const showPrimaryTaken =
+    !!otherPrimary && draft.circleAccessOption !== 'proxy_primary';
+  const showBackupTaken =
+    !!otherBackup && draft.circleAccessOption !== 'proxy_backup';
+  const showFamilyBackupNote =
+    draft.kind === 'family' && accessOptions.includes('proxy_backup');
 
   const isView = mode === 'view';
   const isCreate = mode === 'create';
@@ -321,6 +331,32 @@ export function CircleContactEditorModal({
                 </span>
               ) : (
                 <>
+                  <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                    {t('admin.contact.circleAccessProxyLimitNote')}
+                  </p>
+                  {showFamilyBackupNote && (
+                    <p className="text-xs text-slate-500 leading-relaxed bg-violet-50 border border-violet-100 rounded-xl px-3 py-2">
+                      {t('admin.contact.circleAccessBackupFromFamilyNote')}
+                    </p>
+                  )}
+                  {(showPrimaryTaken || showBackupTaken) && (
+                    <div className="space-y-2">
+                      {showPrimaryTaken && (
+                        <p className="text-xs text-amber-800 leading-relaxed bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                          {t('admin.contact.circleAccessPrimaryTakenNote', {
+                            name: otherPrimary?.name?.trim() || t('circle.rolePrimaryProxy'),
+                          })}
+                        </p>
+                      )}
+                      {showBackupTaken && (
+                        <p className="text-xs text-amber-800 leading-relaxed bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                          {t('admin.contact.circleAccessBackupTakenNote', {
+                            name: otherBackup?.name?.trim() || t('circle.roleBackupProxy'),
+                          })}
+                        </p>
+                      )}
+                    </div>
+                  )}
                   <select
                     value={selectedAccessOption}
                     onChange={(e) =>

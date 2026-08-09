@@ -228,6 +228,14 @@ const contactEnglish = {
   circleAccess: 'Circle access',
   circleAccessHint:
     'Sign-in role for the Circle app. Person type above is how they are grouped in the care list.',
+  circleAccessProxyLimitNote:
+    'You can have one Primary proxy and one Backup proxy. Once a slot is filled, it is hidden for other contacts until you change or remove that assignment.',
+  circleAccessPrimaryTakenNote:
+    'Primary proxy is already assigned to {{name}}. Change or remove that contact’s role first if you want someone else as Primary.',
+  circleAccessBackupTakenNote:
+    'Backup proxy is already assigned to {{name}}. Change or remove that contact’s role first if you want someone else as Backup.',
+  circleAccessBackupFromFamilyNote:
+    'No other caregivers are listed besides your proxy, so a family member here can be designated as Backup proxy (same Circle powers as your primary proxy).',
   circleAccessDescPrimaryProxy:
     'Full Circle admin for this patient — user management, profile, and remote settings.',
   circleAccessDescBackupProxy:
@@ -553,6 +561,14 @@ const contactGerman = {
   circleAccess: 'Circle-Zugang',
   circleAccessHint:
     'Anmelderolle für die Circle-App. Der Personentyp oben bestimmt die Gruppierung in der Betreuungsliste.',
+  circleAccessProxyLimitNote:
+    'Sie können einen Haupt-Bevollmächtigten und einen Ersatz-Bevollmächtigten haben. Ist ein Platz belegt, wird er für andere Kontakte ausgeblendet, bis Sie die Zuweisung ändern oder entfernen.',
+  circleAccessPrimaryTakenNote:
+    'Haupt-Bevollmächtigter ist bereits {{name}} zugewiesen. Ändern oder entfernen Sie zuerst die Rolle dieses Kontakts, wenn jemand anderes Haupt-Bevollmächtigter werden soll.',
+  circleAccessBackupTakenNote:
+    'Ersatz-Bevollmächtigter ist bereits {{name}} zugewiesen. Ändern oder entfernen Sie zuerst die Rolle dieses Kontakts, wenn jemand anderes Ersatz-Bevollmächtigter werden soll.',
+  circleAccessBackupFromFamilyNote:
+    'Außer Ihrem Bevollmächtigten sind keine weiteren Betreuer gelistet — ein Familienmitglied hier kann als Ersatz-Bevollmächtigter bestimmt werden (gleiche Circle-Befugnisse wie der Haupt-Bevollmächtigte).',
   circleAccessDescPrimaryProxy:
     'Voller Circle-Admin für diesen Patienten — Benutzerverwaltung, Profil und Remote-Einstellungen.',
   circleAccessDescBackupProxy:
@@ -882,6 +898,14 @@ const contactSpanish = {
   circleAccess: 'Acceso al Circle',
   circleAccessHint:
     'Rol de inicio de sesión en la app Circle. El tipo de persona arriba indica cómo se agrupa en la lista de cuidado.',
+  circleAccessProxyLimitNote:
+    'Puede tener un Apoderado principal y un Apoderado de respaldo. Cuando un puesto está ocupado, se oculta para otros contactos hasta que cambie o quite esa asignación.',
+  circleAccessPrimaryTakenNote:
+    'El Apoderado principal ya está asignado a {{name}}. Cambie o quite primero el rol de ese contacto si quiere a otra persona como Principal.',
+  circleAccessBackupTakenNote:
+    'El Apoderado de respaldo ya está asignado a {{name}}. Cambie o quite primero el rol de ese contacto si quiere a otra persona como Respaldo.',
+  circleAccessBackupFromFamilyNote:
+    'No hay otros cuidadores además de su apoderado; un familiar aquí puede designarse como Apoderado de respaldo (mismos poderes que el principal).',
   circleAccessDescPrimaryProxy:
     'Administración completa de Circle — usuarios, perfil y ajustes remotos.',
   circleAccessDescBackupProxy:
@@ -1211,6 +1235,14 @@ const contactPolish = {
   circleAccess: 'Dostęp do Circle',
   circleAccessHint:
     'Rola logowania w aplikacji Circle. Typ osoby powyżej określa grupowanie na liście opieki.',
+  circleAccessProxyLimitNote:
+    'Możesz mieć jednego Pełnomocnika głównego i jednego Pełnomocnika zapasowego. Gdy miejsce jest zajęte, jest ukryte dla innych kontaktów, dopóki nie zmienisz lub nie usuniesz tego przypisania.',
+  circleAccessPrimaryTakenNote:
+    'Pełnomocnik główny jest już przypisany do {{name}}. Najpierw zmień lub usuń rolę tego kontaktu, jeśli chcesz kogoś innego jako Głównego.',
+  circleAccessBackupTakenNote:
+    'Pełnomocnik zapasowy jest już przypisany do {{name}}. Najpierw zmień lub usuń rolę tego kontaktu, jeśli chcesz kogoś innego jako Zapasowego.',
+  circleAccessBackupFromFamilyNote:
+    'Poza pełnomocnikiem nie ma innych opiekunów — członek rodziny tutaj może być Pełnomocnikiem zapasowym (te same uprawnienia Circle co główny).',
   circleAccessDescPrimaryProxy:
     'Pełny admin Circle — użytkownicy, profil i ustawienia zdalne.',
   circleAccessDescBackupProxy:
