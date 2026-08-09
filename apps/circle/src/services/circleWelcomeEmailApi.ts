@@ -10,6 +10,10 @@ function welcomeEmailStorageKey(patientId: string, email: string): string {
   return `mxWelcomeEmailSent:${patientId}:${email.toLowerCase()}`;
 }
 
+function joinNotifyStorageKey(patientId: string, email: string): string {
+  return `mxJoinNotifySent:${patientId}:${email.toLowerCase()}`;
+}
+
 function formatRoleLabel(role: string, proxyTier?: string): string {
   if (role === 'proxy') {
     return proxyTier === 'backup' ? 'Backup proxy' : 'Proxy';
@@ -45,6 +49,26 @@ export async function sendCircleWelcomeEmail(params: {
   return res.json() as Promise<{ success: boolean; message?: string }>;
 }
 
+export async function notifyCircleMemberJoined(params: {
+  memberEmail: string;
+  memberName?: string;
+  patientName?: string;
+  patientId?: string;
+  roleLabel?: string;
+}): Promise<{ success: boolean; message?: string }> {
+  const base = patientApiBaseUrl();
+  if (!base) {
+    return { success: false, message: 'Patient API URL not configured.' };
+  }
+
+  const res = await fetch(`${base}/api/notify-circle-member-joined`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  return res.json() as Promise<{ success: boolean; message?: string }>;
+}
+
 export async function sendWelcomeEmailsForAcceptedInvites(
   user: User,
   accepted: AcceptedCircleInviteSummary[],
@@ -61,22 +85,40 @@ export async function sendWelcomeEmailsForAcceptedInvites(
   await Promise.all(
     accepted.map(async (invite) => {
       const storageKey = welcomeEmailStorageKey(invite.patientId, email);
-      if (localStorage.getItem(storageKey) === '1') return;
-
+      const notifyKey = joinNotifyStorageKey(invite.patientId, email);
       const patient = patients.find((entry) => entry.patientId === invite.patientId);
       const patientName = patient?.displayName || 'your patient';
-      const result = await sendCircleWelcomeEmail({
-        email,
-        memberName,
-        patientName,
-        roleLabel: formatRoleLabel(invite.role, invite.proxyTier),
-        invitedByName: patientName,
-      });
+      const roleLabel = formatRoleLabel(invite.role, invite.proxyTier);
 
-      if (result.success) {
-        localStorage.setItem(storageKey, '1');
-      } else {
-        console.warn('[Circle] Welcome email not sent:', result.message || invite.patientId);
+      if (localStorage.getItem(storageKey) !== '1') {
+        const result = await sendCircleWelcomeEmail({
+          email,
+          memberName,
+          patientName,
+          roleLabel,
+          invitedByName: patientName,
+        });
+
+        if (result.success) {
+          localStorage.setItem(storageKey, '1');
+        } else {
+          console.warn('[Circle] Welcome email not sent:', result.message || invite.patientId);
+        }
+      }
+
+      if (localStorage.getItem(notifyKey) !== '1') {
+        const notify = await notifyCircleMemberJoined({
+          memberEmail: email,
+          memberName,
+          patientName,
+          patientId: invite.patientId,
+          roleLabel,
+        });
+        if (notify.success) {
+          localStorage.setItem(notifyKey, '1');
+        } else {
+          console.warn('[Circle] Join notify email not sent:', notify.message || invite.patientId);
+        }
       }
     }),
   );
