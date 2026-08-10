@@ -5,10 +5,12 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import { Loader2, Lock, PencilLine, UserRound } from 'lucide-react';
 import {
+  composeContactDisplayName,
   findManagedContactByEmail,
   listManagedProxyContacts,
   listPatientManagedContacts,
   mergeContactWithMemberContactProfile,
+  normalizeContactDateOfBirth,
   normalizeInviteEmail,
   parseMemberContactProfile,
   parsePatientManagedContacts,
@@ -110,11 +112,23 @@ function applyMergedContactToForm(
   merged: CircleManagedContact,
   setContact: (c: CircleManagedContact) => void,
   setName: (v: string) => void,
+  setFirstName: (v: string) => void,
+  setLastName: (v: string) => void,
+  setDateOfBirth: (v: string) => void,
   setLanguage: (v: string) => void,
   setRelationship: (v: string) => void,
 ) {
   setContact(merged);
-  setName(merged.name);
+  setFirstName(merged.firstName || '');
+  setLastName(merged.lastName || '');
+  setDateOfBirth(merged.dateOfBirth || '');
+  setName(
+    composeContactDisplayName({
+      firstName: merged.firstName,
+      lastName: merged.lastName,
+      name: merged.name,
+    }),
+  );
   setLanguage(merged.language || 'English');
   setRelationship(merged.relationship || defaultRelationshipForKind(merged.kind));
 }
@@ -130,6 +144,9 @@ export function CircleSettingsMyContactPanel({
   const { setLanguage: setUiLanguage } = useCircleI18nContext();
   const [contact, setContact] = useState<CircleManagedContact | null>(null);
   const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [language, setLanguage] = useState('English');
   const [relationship, setRelationship] = useState('');
   const [loading, setLoading] = useState(true);
@@ -143,7 +160,16 @@ export function CircleSettingsMyContactPanel({
     (merged: CircleManagedContact | null, preserveDraft: boolean) => {
       setContact(merged);
       if (!merged || preserveDraft) return;
-      setName(merged.name);
+      setFirstName(merged.firstName || '');
+      setLastName(merged.lastName || '');
+      setDateOfBirth(merged.dateOfBirth || '');
+      setName(
+        composeContactDisplayName({
+          firstName: merged.firstName,
+          lastName: merged.lastName,
+          name: merged.name,
+        }),
+      );
       setLanguage(merged.language || 'English');
       setRelationship(merged.relationship || defaultRelationshipForKind(merged.kind));
     },
@@ -275,7 +301,14 @@ export function CircleSettingsMyContactPanel({
 
   const handleSave = async () => {
     if (!patient?.patientId || !user.email || !user.uid || !contact) return;
-    const trimmedName = name.trim();
+    const nextFirstName = firstName.trim();
+    const nextLastName = lastName.trim();
+    const nextDob = normalizeContactDateOfBirth(dateOfBirth);
+    const trimmedName = composeContactDisplayName({
+      firstName: nextFirstName,
+      lastName: nextLastName,
+      name,
+    });
     if (!trimmedName) {
       setError(t('admin.users.nameRequired'));
       return;
@@ -296,6 +329,9 @@ export function CircleSettingsMyContactPanel({
         user.email,
         {
           name: trimmedName,
+          firstName: nextFirstName,
+          lastName: nextLastName,
+          dateOfBirth: nextDob,
           language,
           relationship: showRelationship ? nextRelationship : undefined,
         },
@@ -309,7 +345,16 @@ export function CircleSettingsMyContactPanel({
       });
       await updateProfile(user, { displayName: trimmedName });
 
-      applyMergedContactToForm(updated, setContact, setName, setLanguage, setRelationship);
+      applyMergedContactToForm(
+        updated,
+        setContact,
+        setName,
+        setFirstName,
+        setLastName,
+        setDateOfBirth,
+        setLanguage,
+        setRelationship,
+      );
       setUiLanguage(normalizeCircleUiLanguage(language));
       setIsDirty(false);
       setSaved(true);
@@ -382,6 +427,54 @@ export function CircleSettingsMyContactPanel({
                 {t('admin.myContactPanel.editable')}
               </span>
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-blue-800 uppercase tracking-wider block">
+                  {t('admin.contact.fieldFirstName')}
+                </label>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setFirstName(next);
+                    setName(
+                      composeContactDisplayName({
+                        firstName: next,
+                        lastName,
+                        name,
+                      }),
+                    );
+                    markDirty();
+                  }}
+                  className={editableFieldClass}
+                  autoComplete="given-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-blue-800 uppercase tracking-wider block">
+                  {t('admin.contact.fieldLastName')}
+                </label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setLastName(next);
+                    setName(
+                      composeContactDisplayName({
+                        firstName,
+                        lastName: next,
+                        name,
+                      }),
+                    );
+                    markDirty();
+                  }}
+                  className={editableFieldClass}
+                  autoComplete="family-name"
+                />
+              </div>
+            </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-blue-800 uppercase tracking-wider block">
                 {t('admin.contact.fieldName')}
@@ -395,6 +488,24 @@ export function CircleSettingsMyContactPanel({
                 }}
                 className={editableFieldClass}
                 autoComplete="name"
+              />
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                {t('admin.myContactPanel.displayNameHint')}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-blue-800 uppercase tracking-wider block">
+                {t('admin.contact.fieldDob')}
+              </label>
+              <input
+                type="date"
+                value={dateOfBirth}
+                onChange={(e) => {
+                  setDateOfBirth(e.target.value);
+                  markDirty();
+                }}
+                className={editableFieldClass}
+                autoComplete="bday"
               />
             </div>
             {showRelationship ? (
@@ -453,7 +564,10 @@ export function CircleSettingsMyContactPanel({
           <button
             type="button"
             onClick={() => void handleSave()}
-            disabled={saving || !name.trim()}
+            disabled={
+              saving ||
+              !composeContactDisplayName({ firstName, lastName, name }).trim()
+            }
             className="w-full py-3.5 rounded-2xl bg-blue-600 text-white font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-md shadow-blue-200"
           >
             {saving ? t('common.saving') : t('admin.myContactPanel.saveChanges')}

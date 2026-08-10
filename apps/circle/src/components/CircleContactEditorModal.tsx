@@ -1,5 +1,6 @@
 import { Loader2, Pencil, X } from 'lucide-react';
 import type { CircleContactKind, CircleManagedContact } from '@medxforce/shared';
+import { composeContactDisplayName } from '@medxforce/shared';
 import { CIRCLE_UI_LANGUAGES } from '../lib/circleLanguages';
 import { cn } from '../lib/utils';
 import { useCircleT, type CircleTranslator } from '../lib/circleI18nContext';
@@ -22,6 +23,9 @@ import {
 export type ContactEditorDraft = {
   id?: string;
   name: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
   email: string;
   mobile: string;
   relationship: string;
@@ -403,7 +407,22 @@ export function CircleContactEditorModal({
             </h4>
             {isView ? (
               <>
+                <ReadOnlyField
+                  label={t('admin.contact.fieldFirstName')}
+                  value={draft.firstName}
+                  empty={empty}
+                />
+                <ReadOnlyField
+                  label={t('admin.contact.fieldLastName')}
+                  value={draft.lastName}
+                  empty={empty}
+                />
                 <ReadOnlyField label={t('admin.contact.fieldName')} value={draft.name} empty={empty} />
+                <ReadOnlyField
+                  label={t('admin.contact.fieldDob')}
+                  value={draft.dateOfBirth}
+                  empty={empty}
+                />
                 {(draft.kind === 'caregiver' || draft.kind === 'family') && (
                   <ReadOnlyField
                     label={t('admin.contact.fieldRelationship')}
@@ -415,6 +434,52 @@ export function CircleContactEditorModal({
               </>
             ) : (
               <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                      {t('admin.contact.fieldFirstName')}
+                    </label>
+                    <input
+                      value={draft.firstName}
+                      onChange={(e) => {
+                        const firstName = e.target.value;
+                        onChange({
+                          firstName,
+                          name: composeContactDisplayName({
+                            firstName,
+                            lastName: draft.lastName,
+                            name: draft.name,
+                          }),
+                        });
+                      }}
+                      className={fieldClass}
+                      placeholder={t('admin.contact.placeholderFirstName')}
+                      autoComplete="given-name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                      {t('admin.contact.fieldLastName')}
+                    </label>
+                    <input
+                      value={draft.lastName}
+                      onChange={(e) => {
+                        const lastName = e.target.value;
+                        onChange({
+                          lastName,
+                          name: composeContactDisplayName({
+                            firstName: draft.firstName,
+                            lastName,
+                            name: draft.name,
+                          }),
+                        });
+                      }}
+                      className={fieldClass}
+                      placeholder={t('admin.contact.placeholderLastName')}
+                      autoComplete="family-name"
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
                     {t('admin.contact.fieldName')}
@@ -425,6 +490,18 @@ export function CircleContactEditorModal({
                     className={fieldClass}
                     placeholder={t('admin.contact.placeholderFullName')}
                     autoFocus
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                    {t('admin.contact.fieldDob')}
+                  </label>
+                  <input
+                    type="date"
+                    value={draft.dateOfBirth}
+                    onChange={(e) => onChange({ dateOfBirth: e.target.value })}
+                    className={fieldClass}
+                    autoComplete="bday"
                   />
                 </div>
                 {(draft.kind === 'caregiver' || draft.kind === 'family') && (

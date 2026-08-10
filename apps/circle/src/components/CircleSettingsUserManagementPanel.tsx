@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
-import { collection, doc, onSnapshot, type Firestore } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot, type Firestore } from 'firebase/firestore';
 import { History, Loader2, Mail, Pencil, Plus, RefreshCw, ShieldOff, Trash2, Users } from 'lucide-react';
 import {
   clampRelationship,
@@ -38,6 +38,7 @@ import {
   type CircleInvitePreviewItem,
   mergeContactWithMemberContactProfile,
   mergeContactWithMemberNotifyPreferences,
+  composeContactDisplayName,
   parseMemberContactProfile,
   parseMemberNotifyPreferences,
   type CircleManagedContact,
@@ -143,9 +144,18 @@ function statusClass(status: CircleInviteListItem['status']) {
 }
 
 function contactToDraft(contact: CircleManagedContact): ContactEditorDraft {
+  const firstName = contact.firstName || '';
+  const lastName = contact.lastName || '';
   return {
     id: contact.id,
-    name: contact.name,
+    name: composeContactDisplayName({
+      firstName,
+      lastName,
+      name: contact.name,
+    }),
+    firstName,
+    lastName,
+    dateOfBirth: contact.dateOfBirth || '',
     email: contact.email,
     mobile: contact.mobile,
     relationship: contact.relationship,
@@ -183,6 +193,9 @@ function draftFingerprint(draft: ContactEditorDraft): string {
   return JSON.stringify({
     id: draft.id ?? '',
     name: draft.name.trim(),
+    firstName: draft.firstName.trim(),
+    lastName: draft.lastName.trim(),
+    dateOfBirth: draft.dateOfBirth.trim(),
     email: draft.email.trim(),
     mobile: draft.mobile.trim(),
     relationship: draft.relationship.trim(),
@@ -198,6 +211,9 @@ function draftFingerprint(draft: ContactEditorDraft): string {
 
 const EMPTY_DRAFT: ContactEditorDraft = {
   name: '',
+  firstName: '',
+  lastName: '',
+  dateOfBirth: '',
   email: '',
   mobile: '',
   relationship: 'Spouse',
@@ -324,6 +340,24 @@ function resolvedInviteAccessLabel(
   return translateCircleMemberAccessLabel(t, item.role, item.proxyTier);
 }
 
+function resolvedInviteDisplayName(
+  item: CircleInviteListItem,
+  contacts: CircleManagedContact[],
+  memberContactProfileByEmail: Map<string, CircleMemberContactProfile>,
+): string {
+  const email = normalizeInviteEmail(item.invitedEmail);
+  const linked = contacts.find((contact) => normalizeInviteEmail(contact.email) === email);
+  if (linked) {
+    const merged = mergeContactWithMemberContactProfile(
+      linked,
+      memberContactProfileByEmail.get(email) ?? null,
+    );
+    const composed = composeContactDisplayName(merged);
+    if (composed) return composed;
+  }
+  return item.displayName?.trim() || item.invitedEmail;
+}
+
 type ResendEmailTarget =
   | { kind: 'introduction'; source: 'contact'; contact: CircleManagedContact }
   | { kind: 'introduction'; source: 'invite'; item: CircleInviteListItem }
@@ -407,7 +441,9 @@ function PersonRow({
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
-          <p className="font-bold text-slate-800 truncate">{contact.name || t('admin.users.unnamed')}</p>
+          <p className="font-bold text-slate-800 truncate">
+            {composeContactDisplayName(contact) || t('admin.users.unnamed')}
+          </p>
           <span
             className={cn(
               'shrink-0 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border',
@@ -589,19 +625,31 @@ export function CircleSettingsUserManagementPanel({
     }
 
     return onSnapshot(collection(db, 'patients', patient.patientId, 'members'), (snap) => {
-      const notifyNext = new Map<string, CircleMemberNotifyPreferences>();
-      const profileNext = new Map<string, CircleMemberContactProfile>();
-      snap.forEach((memberDoc) => {
-        const data = memberDoc.data() as Record<string, unknown>;
-        const email = normalizeInviteEmail(String(data.invitedEmail ?? ''));
-        if (!email) return;
-        const prefs = parseMemberNotifyPreferences(data);
-        if (prefs) notifyNext.set(email, prefs);
-        const profile = parseMemberContactProfile(data);
-        if (profile) profileNext.set(email, profile);
-      });
-      setMemberNotifyByEmail(notifyNext);
-      setMemberContactProfileByEmail(profileNext);
+      void (async () => {
+        const notifyNext = new Map<string, CircleMemberNotifyPreferences>();
+        const profileNext = new Map<string, CircleMemberContactProfile>();
+        await Promise.all(
+          snap.docs.map(async (memberDoc) => {
+            const data = memberDoc.data() as Record<string, unknown>;
+            const email = normalizeInviteEmail(String(data.invitedEmail ?? ''));
+            if (!email) return;
+            const prefs = parseMemberNotifyPreferences(data);
+            if (prefs) notifyNext.set(email, prefs);
+
+            const prefsContactSnap = await getDoc(
+              doc(db, 'patients', patient.patientId, 'members', memberDoc.id, 'prefs', 'contact'),
+            );
+            const profile = parseMemberContactProfile(
+              prefsContactSnap.exists()
+                ? (prefsContactSnap.data() as Record<string, unknown>)
+                : data,
+            );
+            if (profile) profileNext.set(email, profile);
+          }),
+        );
+        setMemberNotifyByEmail(notifyNext);
+        setMemberContactProfileByEmail(profileNext);
+      })();
     });
   }, [db, isPendingProvision, patient?.patientId]);
 
@@ -744,7 +792,9 @@ export function CircleSettingsUserManagementPanel({
     return [...contacts].sort((a, b) => {
       const kindDiff = order.indexOf(a.kind) - order.indexOf(b.kind);
       if (kindDiff !== 0) return kindDiff;
-      return (a.name || a.email).localeCompare(b.name || b.email);
+      const aName = composeContactDisplayName(a) || a.email;
+      const bName = composeContactDisplayName(b) || b.email;
+      return aName.localeCompare(bName);
     });
   }, [contacts]);
 
@@ -896,6 +946,11 @@ export function CircleSettingsUserManagementPanel({
   const persistContact = async (): Promise<CircleManagedContact | undefined> => {
     if (!patient?.patientId) return;
     const currentDraft = draftRef.current;
+    const composedName = composeContactDisplayName({
+      firstName: currentDraft.firstName,
+      lastName: currentDraft.lastName,
+      name: currentDraft.name,
+    });
     const normalizedEmail = currentDraft.email.trim();
     const normalizedMobile = currentDraft.mobile.trim();
     const nextMessage = currentDraft.message && !!normalizedEmail;
@@ -914,7 +969,10 @@ export function CircleSettingsUserManagementPanel({
       patient.patientId,
       {
         id: currentDraft.id,
-        name: currentDraft.name,
+        name: composedName,
+        firstName: currentDraft.firstName,
+        lastName: currentDraft.lastName,
+        dateOfBirth: currentDraft.dateOfBirth,
         email: normalizedEmail,
         mobile: normalizedMobile,
         relationship: clampRelationship(currentDraft.kind, currentDraft.relationship),
@@ -954,9 +1012,19 @@ export function CircleSettingsUserManagementPanel({
 
   const handleSaveContact = async () => {
     if (!patient?.patientId) return;
-    if (!draft.name.trim()) {
+    const composedName = composeContactDisplayName({
+      firstName: draft.firstName,
+      lastName: draft.lastName,
+      name: draft.name,
+    });
+    if (!composedName) {
       setEditorError(t('admin.users.nameRequired'));
       return;
+    }
+    if (composedName !== draft.name.trim()) {
+      const nextDraft = { ...draft, name: composedName };
+      draftRef.current = nextDraft;
+      setDraft(nextDraft);
     }
     if (draft.kind !== 'contact' && !draft.email.trim()) {
       setEditorError(t('admin.users.emailRequired'));
@@ -1348,7 +1416,11 @@ export function CircleSettingsUserManagementPanel({
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 min-w-0">
                               <p className="font-bold text-slate-800 truncate">
-                                {item.displayName || item.invitedEmail}
+                                {resolvedInviteDisplayName(
+                                  item,
+                                  contacts,
+                                  memberContactProfileByEmail,
+                                )}
                               </p>
                               {isSelf && (
                                 <span className="shrink-0 px-2 py-0.5 rounded-md bg-violet-100 text-violet-700 text-[10px] font-bold uppercase">
@@ -1429,7 +1501,11 @@ export function CircleSettingsUserManagementPanel({
                           className="p-3 rounded-xl border border-slate-100 bg-white/80 opacity-90"
                         >
                           <p className="text-sm font-semibold text-slate-600 truncate">
-                            {item.displayName || item.invitedEmail}
+                            {resolvedInviteDisplayName(
+                              item,
+                              contacts,
+                              memberContactProfileByEmail,
+                            )}
                           </p>
                           <p className="text-xs text-slate-400 truncate">{item.invitedEmail}</p>
                         </div>
