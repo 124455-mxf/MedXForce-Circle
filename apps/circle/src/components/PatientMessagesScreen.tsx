@@ -313,6 +313,8 @@ export function PatientMessagesScreen({
   hiddenAtByMessageId,
   unreadCount,
   draftGuardRef,
+  messagesInboxIntent = null,
+  onMessagesInboxIntentConsumed,
 }: {
   user: User;
   patient: CirclePatientSummary;
@@ -324,6 +326,8 @@ export function PatientMessagesScreen({
   hiddenAtByMessageId: Record<string, number>;
   unreadCount: number;
   draftGuardRef?: MutableRefObject<UnsavedReplyDraftGuard | null>;
+  messagesInboxIntent?: CircleMessagesInboxView | null;
+  onMessagesInboxIntentConsumed?: () => void;
 }) {
   const t = useCircleT();
   const { language } = useCircleI18nContext();
@@ -369,6 +373,16 @@ export function PatientMessagesScreen({
   const [olderInboxExpanded, setOlderInboxExpanded] = useState(false);
   const [readTick, setReadTick] = useState(0);
   const compactChrome = useCircleCompactChrome();
+
+  useEffect(() => {
+    if (!messagesInboxIntent) return;
+    if (messagesInboxIntent === 'communication_log' && !canViewCommunicationLog(patient.role)) {
+      onMessagesInboxIntentConsumed?.();
+      return;
+    }
+    setInboxView(messagesInboxIntent);
+    onMessagesInboxIntentConsumed?.();
+  }, [messagesInboxIntent, onMessagesInboxIntentConsumed, patient.role]);
 
   const memberAudience = useMemo(
     () => ({ uid: user.uid, email: normalizedEmail }),

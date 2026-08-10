@@ -129,6 +129,9 @@ export function CircleMainShell({
     thread: CircleMemberThreadKind;
     view: CirclePostInboxView;
   } | null>(null);
+  const [messagesInboxIntent, setMessagesInboxIntent] = useState<
+    'communication_log' | 'in_out' | null
+  >(null);
   const [galleryIntent, setGalleryIntent] = useState<CircleGalleryIntent | null>(null);
   const [dropInConfirmOpen, setDropInConfirmOpen] = useState(false);
   const [dropInSentThisOpen, setDropInSentThisOpen] = useState(false);
@@ -190,6 +193,18 @@ export function CircleMainShell({
 
   const handleCircleInboxIntentConsumed = useCallback(() => {
     setCircleInboxIntent(null);
+  }, []);
+
+  const handleOpenMessagesInbox = useCallback(
+    (view: 'communication_log' | 'in_out') => {
+      setMessagesInboxIntent(view);
+      handleTabChange('messages');
+    },
+    [handleTabChange],
+  );
+
+  const handleMessagesInboxIntentConsumed = useCallback(() => {
+    setMessagesInboxIntent(null);
   }, []);
 
   const handleGalleryIntentConsumed = useCallback(() => {
@@ -612,6 +627,7 @@ export function CircleMainShell({
               onGoToTab={handleGoToTab}
               onOpenAdminAccess={handleOpenAdminAccess}
               onOpenCircleFolder={handleOpenCircleFolder}
+              onOpenMessagesInbox={handleOpenMessagesInbox}
               onOpenRichMediaReactions={handleOpenRichMediaReactions}
               onOpenAnalyticsDetail={handleOpenAnalyticsDetail}
               onOpenVisitCapture={
@@ -639,6 +655,8 @@ export function CircleMainShell({
                 hiddenAtByMessageId={threadState.hiddenAtByMessageId}
                 unreadCount={threadState.unreadCount}
                 draftGuardRef={replyDraftGuardRef}
+                messagesInboxIntent={messagesInboxIntent}
+                onMessagesInboxIntentConsumed={handleMessagesInboxIntentConsumed}
               />
               </Suspense>
             </div>

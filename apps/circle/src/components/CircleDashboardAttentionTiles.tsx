@@ -1,5 +1,6 @@
 import {
   Calendar,
+  ClipboardList,
   Heart,
   Megaphone,
   MessageCircle,
@@ -97,6 +98,8 @@ function circleFolderThreadForRole(
 export function CircleDashboardAttentionTiles({
   memberRole,
   messageUnreadCount,
+  icuDailySummaryUnreadCount = 0,
+  showIcuDailyNotesTile = false,
   announcementsUnreadCount,
   announcementsOpenUnreadCount,
   announcementsRestrictedUnreadCount,
@@ -114,6 +117,7 @@ export function CircleDashboardAttentionTiles({
   richMediaReactionsRecencyTint = 'neutral',
   messagingEnabled,
   onOpenMessages,
+  onOpenIcuDailyNotes,
   onOpenCircleFolder,
   onOpenCheckIns,
   onOpenRichMediaReactions,
@@ -123,6 +127,10 @@ export function CircleDashboardAttentionTiles({
 }: {
   memberRole: string;
   messageUnreadCount: number;
+  /** Unread ICU daily summaries (subset of message unread). */
+  icuDailySummaryUnreadCount?: number;
+  /** When true, show a dedicated ICU notes tile and exclude those from Messages. */
+  showIcuDailyNotesTile?: boolean;
   announcementsUnreadCount: number;
   announcementsOpenUnreadCount: number;
   announcementsRestrictedUnreadCount: number;
@@ -140,6 +148,7 @@ export function CircleDashboardAttentionTiles({
   richMediaReactionsRecencyTint?: AlertAttentionRecencyUrgency;
   messagingEnabled: boolean;
   onOpenMessages?: () => void;
+  onOpenIcuDailyNotes?: () => void;
   onOpenCircleFolder?: (thread: CircleMemberThreadKind, folder: CircleInboxFolder) => void;
   onOpenCheckIns?: () => void;
   onOpenRichMediaReactions?: () => void;
@@ -150,13 +159,28 @@ export function CircleDashboardAttentionTiles({
   const t = useCircleT();
   const canSeeDropIns = canSeeCircleRestrictedThread(memberRole);
 
+  const directMessageUnread = showIcuDailyNotesTile
+    ? Math.max(0, messageUnreadCount - icuDailySummaryUnreadCount)
+    : messageUnreadCount;
+
   const unreadTiles: AttentionTileSpec[] = [];
 
-  if (messagingEnabled && messageUnreadCount > 0) {
+  if (showIcuDailyNotesTile && icuDailySummaryUnreadCount > 0) {
+    unreadTiles.push({
+      key: 'icu-daily-notes',
+      label: t('dashboard.attentionIcuDailyNotes'),
+      count: icuDailySummaryUnreadCount,
+      detail: t('dashboard.attentionIcuDailyNotesWaiting'),
+      icon: ClipboardList,
+      onClick: onOpenIcuDailyNotes ?? onOpenMessages,
+    });
+  }
+
+  if (messagingEnabled && directMessageUnread > 0) {
     unreadTiles.push({
       key: 'messages',
       label: t('dashboard.attentionMessages'),
-      count: messageUnreadCount,
+      count: directMessageUnread,
       detail: t('dashboard.attentionMessagesWaiting'),
       icon: MessageSquare,
       onClick: onOpenMessages,
@@ -241,7 +265,8 @@ export function CircleDashboardAttentionTiles({
   }
 
   const totalUnread =
-    (messagingEnabled ? messageUnreadCount : 0) +
+    (showIcuDailyNotesTile ? icuDailySummaryUnreadCount : 0) +
+    (messagingEnabled ? directMessageUnread : 0) +
     discussionsUnreadCount +
     announcementsUnreadCount +
     (canSeeDropIns ? dropInsUnreadCount : 0) +

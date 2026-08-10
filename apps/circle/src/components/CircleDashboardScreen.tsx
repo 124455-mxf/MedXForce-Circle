@@ -26,6 +26,7 @@ import {
   canInviteMembers,
   canSeeCareTeamDashboardReminders,
   canSeePatientScheduleNudgeTiles,
+  canViewCommunicationLog,
   canViewPatientProfileTab,
   canViewRemoteSettingsTab,
   canSendPatientRemoteCommands,
@@ -110,6 +111,11 @@ import {
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import { isPatientDoNotDisturbSection } from '../hooks/usePatientOnlinePresence';
 import { analyticsSummaryFooterText } from '../lib/circleAnalyticsI18n';
+import { countUnreadIcuDailySummaries } from '../lib/circleCommunicationLog';
+import {
+  CIRCLE_MSG_READ_CHANGED,
+  isCommunicationLogSummaryUnread,
+} from '../lib/circleMessageRead';
 import {
   assistiveDevicesLabelT,
   circlePatientFirstName,
@@ -177,6 +183,8 @@ interface CircleDashboardScreenProps {
   onGoToTab: (tab: CircleMainTab) => void;
   onOpenAdminAccess?: () => void;
   onOpenCircleFolder?: (thread: CircleMemberThreadKind, folder: CircleInboxFolder) => void;
+  /** Open Messages on a specific inbox folder (e.g. ICU communication log). */
+  onOpenMessagesInbox?: (view: 'communication_log' | 'in_out') => void;
   onOpenRichMediaReactions?: () => void;
   onOpenAnalyticsDetail: (metricId: AnalyticsMetricId) => void;
   onOpenVisitCapture?: () => void;
@@ -711,6 +719,7 @@ export function CircleDashboardScreen({
   onGoToTab,
   onOpenAdminAccess,
   onOpenCircleFolder,
+  onOpenMessagesInbox,
   onOpenRichMediaReactions,
   onOpenAnalyticsDetail,
   onOpenVisitCapture,
@@ -772,6 +781,25 @@ export function CircleDashboardScreen({
     repliesByMessageId: threadRepliesByMessageId,
     loading: threadsLoading,
   } = useCirclePatientThreadsContext();
+  const [messageReadTick, setMessageReadTick] = useState(0);
+  useEffect(() => {
+    const onReadChanged = () => setMessageReadTick((n) => n + 1);
+    window.addEventListener(CIRCLE_MSG_READ_CHANGED, onReadChanged);
+    return () => window.removeEventListener(CIRCLE_MSG_READ_CHANGED, onReadChanged);
+  }, []);
+  const icuDailySummaryUnreadCount = useMemo(() => {
+    void messageReadTick;
+    return countUnreadIcuDailySummaries(
+      threadRawMessages,
+      patient.patientId,
+      canViewCommunicationLog(memberRole),
+      (msg) => isCommunicationLogSummaryUnread(msg, patient.patientId, msg.id),
+    );
+  }, [memberRole, messageReadTick, patient.patientId, threadRawMessages]);
+  const showIcuDailyNotesTile =
+    remoteSettings?.appMode === 'icu' &&
+    canViewCommunicationLog(memberRole) &&
+    icuDailySummaryUnreadCount > 0;
   const { firstEngagementAt, loading: firstEngagementLoading } = usePatientFirstEngagementAt(
     threadRawMessages,
     threadRepliesByMessageId,
@@ -1645,6 +1673,8 @@ export function CircleDashboardScreen({
         <CircleDashboardAttentionTiles
           memberRole={memberRole}
           messageUnreadCount={unreadCount}
+          icuDailySummaryUnreadCount={icuDailySummaryUnreadCount}
+          showIcuDailyNotesTile={showIcuDailyNotesTile}
           announcementsUnreadCount={circleAnnouncementsUnreadCount}
           announcementsOpenUnreadCount={circleAnnouncementsOpenUnreadCount}
           announcementsRestrictedUnreadCount={circleAnnouncementsRestrictedUnreadCount}
@@ -1661,7 +1691,14 @@ export function CircleDashboardScreen({
           richMediaReactionsFromPatient={richMediaReactionsFromPatient}
           richMediaReactionsRecencyTint={richMediaReactionsRecencyTint}
           messagingEnabled={caps.messaging === true}
-          onOpenMessages={() => onGoToTab('messages')}
+          onOpenMessages={() =>
+            onOpenMessagesInbox ? onOpenMessagesInbox('in_out') : onGoToTab('messages')
+          }
+          onOpenIcuDailyNotes={() =>
+            onOpenMessagesInbox
+              ? onOpenMessagesInbox('communication_log')
+              : onGoToTab('messages')
+          }
           onOpenCircleFolder={onOpenCircleFolder}
           onOpenCheckIns={() => onOpenAnalyticsDetail('daily-check-in')}
           onOpenRichMediaReactions={
