@@ -43,6 +43,13 @@ export type RemoteDailyCheckInSettings = {
   questions?: DailyCheckInQuestion[];
 };
 
+/** Quiet hours on by default (10 PM–6 AM). Keep in sync with patient app DEFAULT_DAILY_CHECKIN_QUIET_HOURS. */
+export const REMOTE_DAILY_CHECKIN_QUIET_HOURS = {
+  enabled: true,
+  start: '22:00',
+  end: '06:00',
+} as const;
+
 export type RemoteActivityVisibility = {
   enabled?: boolean;
   mind?: boolean;
@@ -550,11 +557,17 @@ function parseDailyCheckIn(raw: unknown): RemoteDailyCheckInSettings | undefined
   const quietHours =
     qhRaw && typeof qhRaw === 'object'
       ? {
-          enabled: asBool((qhRaw as Record<string, unknown>).enabled) ?? false,
-          start: asString((qhRaw as Record<string, unknown>).start) ?? '22:00',
-          end: asString((qhRaw as Record<string, unknown>).end) ?? '06:00',
+          enabled:
+            asBool((qhRaw as Record<string, unknown>).enabled) ??
+            REMOTE_DAILY_CHECKIN_QUIET_HOURS.enabled,
+          start:
+            asString((qhRaw as Record<string, unknown>).start) ??
+            REMOTE_DAILY_CHECKIN_QUIET_HOURS.start,
+          end:
+            asString((qhRaw as Record<string, unknown>).end) ??
+            REMOTE_DAILY_CHECKIN_QUIET_HOURS.end,
         }
-      : { enabled: false, start: '22:00', end: '06:00' };
+      : { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS };
   const questions = Array.isArray(d.questions)
     ? sanitizeDailyCheckInQuestions(d.questions)
     : undefined;
@@ -897,9 +910,9 @@ export function extractRemoteSettingsFromPreferences(
     dailyCheckIn: {
       enabled: !!(dailyRaw?.enabled ?? false),
       quietHours: {
-        enabled: !!(quietRaw?.enabled ?? false),
-        start: asString(quietRaw?.start) ?? '22:00',
-        end: asString(quietRaw?.end) ?? '06:00',
+        enabled: !!(quietRaw?.enabled ?? REMOTE_DAILY_CHECKIN_QUIET_HOURS.enabled),
+        start: asString(quietRaw?.start) ?? REMOTE_DAILY_CHECKIN_QUIET_HOURS.start,
+        end: asString(quietRaw?.end) ?? REMOTE_DAILY_CHECKIN_QUIET_HOURS.end,
       },
       ...(Array.isArray(dailyRaw?.questions)
         ? {
@@ -1084,12 +1097,6 @@ export function canViewRemoteSettingsTab(
   return !!capabilities?.remoteSettings;
 }
 
-const REMOTE_DAILY_CHECKIN_QUIET_HOURS = {
-  enabled: true,
-  start: '22:00',
-  end: '06:00',
-} as const;
-
 const REMOTE_PROXY_PRESET_BY_MODE: Record<
   RemoteAppMode,
   Pick<
@@ -1173,7 +1180,7 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
       journeyDiary: { allowViewSharedEntries: false },
       dailyCheckIn: {
         enabled: false,
-        quietHours: { enabled: false, start: '22:00', end: '06:00' },
+        quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS },
       },
       visibleAreas: visibleAll,
       contentFontSize: 'medium',
@@ -1308,7 +1315,7 @@ export function setRemoteDailyCheckIn(
 ): PatientRemoteSettingsDoc {
   const current = doc.dailyCheckIn ?? {
     enabled: false,
-    quietHours: { enabled: false, start: '22:00', end: '06:00' },
+    quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS },
   };
   return {
     ...doc,

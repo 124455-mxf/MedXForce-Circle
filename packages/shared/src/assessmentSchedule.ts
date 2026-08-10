@@ -489,6 +489,37 @@ export function buildDefaultAssessmentScheduleRules(
   return rules;
 }
 
+/** True when stored rules look like ICU/Hospital force-off leftovers (all released items off). */
+export function assessmentScheduleLooksFullyDisabled(
+  schedule: unknown,
+): boolean {
+  const local = sanitizeAssessmentSchedulePreferences(schedule);
+  const rules = local.rules ?? {};
+  const released = SCHEDULABLE_ASSESSMENTS.filter((item) => item.released);
+  if (released.length === 0) return false;
+  const hasAnyStored = released.some((item) => !!rules[item.id]);
+  if (!hasAnyStored) return false;
+  return released.every((item) => rules[item.id]?.enabled === false);
+}
+
+/** Restore phase defaults for Daily Life (and clear stale all-off rules from ICU/Hospital). */
+export function withDailyLifeAssessmentScheduleDefaults<T extends Record<string, unknown>>(
+  preferences: T,
+): T {
+  const phase =
+    (preferences.fullUserDetails as { clinical?: { treatmentPhase?: string } } | null | undefined)
+      ?.clinical?.treatmentPhase ?? null;
+  const current = sanitizeAssessmentSchedulePreferences(preferences.assessmentSchedule);
+  return {
+    ...preferences,
+    assessmentSchedule: {
+      ...current,
+      rules: buildDefaultAssessmentScheduleRules(phase),
+      updatedAt: Date.now(),
+    },
+  };
+}
+
 function isFeatureEnabled(
   preferences: { featuresVisibility?: Record<string, unknown> },
   featureKey: string,

@@ -15,6 +15,10 @@ export type OwnContactProfilePatch = {
 };
 
 export function memberContactProfileRef(db: Firestore, patientId: string, memberUid: string) {
+  return doc(db, 'patients', patientId, 'members', memberUid, 'prefs', 'contact');
+}
+
+function memberContactProfileLegacyRef(db: Firestore, patientId: string, memberUid: string) {
   return doc(db, 'patients', patientId, 'members', memberUid);
 }
 
@@ -54,11 +58,16 @@ export async function readMemberContactProfile(
   memberUid: string,
 ): Promise<CircleMemberContactProfile | null> {
   const snap = await getDoc(memberContactProfileRef(db, patientId, memberUid));
-  if (!snap.exists()) return null;
-  return parseMemberContactProfile(snap.data() as Record<string, unknown>);
+  if (snap.exists()) {
+    return parseMemberContactProfile(snap.data() as Record<string, unknown>);
+  }
+  // Legacy: profile lived on the member root doc.
+  const legacy = await getDoc(memberContactProfileLegacyRef(db, patientId, memberUid));
+  if (!legacy.exists()) return null;
+  return parseMemberContactProfile(legacy.data() as Record<string, unknown>);
 }
 
-/** Circle members store self-edited name / language / relationship on members/{uid}. */
+/** Circle members store self-edited name / language / relationship on prefs/contact. */
 export async function writeMemberContactProfile(
   db: Firestore,
   patientId: string,
@@ -66,10 +75,8 @@ export async function writeMemberContactProfile(
   patch: OwnContactProfilePatch,
   defaults: CircleMemberContactProfile,
 ): Promise<CircleMemberContactProfile> {
-  const snap = await getDoc(memberContactProfileRef(db, patientId, memberUid));
-  const existing = snap.exists()
-    ? parseMemberContactProfile(snap.data() as Record<string, unknown>) ?? defaults
-    : defaults;
+  const existing =
+    (await readMemberContactProfile(db, patientId, memberUid)) ?? defaults;
 
   const name = patch.name !== undefined ? patch.name.trim() : existing.name;
   if (!name) {

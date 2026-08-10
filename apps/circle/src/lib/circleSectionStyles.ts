@@ -23,14 +23,10 @@ export const circleSectionTitleClass = cn(
 
 export const circleSectionSubtitleClass = cn(
   'text-xs text-slate-500 mt-0.5 leading-relaxed',
-  `${short}line-clamp-2`,
 );
 
-/** Secondary hint under tabs — one line on short screens instead of hidden. */
-export const circleSectionContextHintClass = cn(
-  'text-xs text-slate-500 leading-relaxed',
-  `${short}line-clamp-1`,
-);
+/** Secondary hint under tabs — always wrap; never ellipsize instructional copy. */
+export const circleSectionContextHintClass = cn('text-xs text-slate-500 leading-relaxed');
 
 export const circleSectionBodyClass =
   'flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-contain';

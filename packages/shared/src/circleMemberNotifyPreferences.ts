@@ -15,6 +15,10 @@ export type OwnNotifyPreferencesPatch = {
 };
 
 export function memberNotifyPreferencesRef(db: Firestore, patientId: string, memberUid: string) {
+  return doc(db, 'patients', patientId, 'members', memberUid, 'prefs', 'notifications');
+}
+
+function memberNotifyPreferencesLegacyRef(db: Firestore, patientId: string, memberUid: string) {
   return doc(db, 'patients', patientId, 'members', memberUid);
 }
 
@@ -50,11 +54,16 @@ export async function readMemberNotifyPreferences(
   memberUid: string,
 ): Promise<CircleMemberNotifyPreferences | null> {
   const snap = await getDoc(memberNotifyPreferencesRef(db, patientId, memberUid));
-  if (!snap.exists()) return null;
-  return parseMemberNotifyPreferences(snap.data() as Record<string, unknown>);
+  if (snap.exists()) {
+    return parseMemberNotifyPreferences(snap.data() as Record<string, unknown>);
+  }
+  // Legacy: preference lived on the member root doc.
+  const legacy = await getDoc(memberNotifyPreferencesLegacyRef(db, patientId, memberUid));
+  if (!legacy.exists()) return null;
+  return parseMemberNotifyPreferences(legacy.data() as Record<string, unknown>);
 }
 
-/** Circle members store notify prefs on their own members/{uid} row (not the patient contact arrays). */
+/** Circle members store notify prefs on members/{uid}/prefs/notifications. */
 export async function writeMemberNotifyPreferences(
   db: Firestore,
   patientId: string,
@@ -62,10 +71,8 @@ export async function writeMemberNotifyPreferences(
   patch: OwnNotifyPreferencesPatch,
   defaults: CircleMemberNotifyPreferences,
 ): Promise<CircleMemberNotifyPreferences> {
-  const snap = await getDoc(memberNotifyPreferencesRef(db, patientId, memberUid));
-  const existing = snap.exists()
-    ? parseMemberNotifyPreferences(snap.data() as Record<string, unknown>) ?? defaults
-    : defaults;
+  const existing =
+    (await readMemberNotifyPreferences(db, patientId, memberUid)) ?? defaults;
 
   const next: CircleMemberNotifyPreferences = {
     alert: patch.alert !== undefined ? patch.alert : existing.alert,

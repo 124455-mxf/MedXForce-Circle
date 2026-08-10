@@ -55,16 +55,7 @@ export function CircleWorkTabSectionIntro({
             <h3 className={circleSectionTitleClass}>{title}</h3>
             {titleExtra ? <span className="inline-flex shrink-0">{titleExtra}</span> : null}
           </div>
-          {subtitle && (
-            <p
-              className={cn(
-                circleSectionSubtitleClass,
-                '[@media(max-height:740px)]:line-clamp-1',
-              )}
-            >
-              {subtitle}
-            </p>
-          )}
+          {subtitle && <p className={circleSectionSubtitleClass}>{subtitle}</p>}
         </div>
         {trailing}
       </div>

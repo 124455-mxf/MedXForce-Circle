@@ -12,7 +12,8 @@ export type CircleAppHeaderVariant = 'comfortable' | 'compact';
 const HEADER_SHELL_CLASS = 'shrink-0 flex items-start gap-2.5 min-w-0 mb-1';
 const LOGO_BOX_CLASS =
   'bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shrink-0 w-11 h-11';
-const TITLE_CLASS = 'font-bold text-slate-800 leading-tight text-xl truncate';
+const TITLE_CLASS =
+  'font-bold text-slate-800 leading-tight text-xl min-w-0 break-words [overflow-wrap:anywhere]';
 
 type CircleAppHeaderProps = {
   variant: CircleAppHeaderVariant;
@@ -131,9 +132,13 @@ export function CircleAppHeader({
       <div className="min-w-0 flex-1 pt-0.5">
         {compact ? (
           <>
-            <div className="flex items-center gap-1.5 min-w-0">
+            <div className="flex items-start gap-1.5 min-w-0">
               <h1 className={TITLE_CLASS}>{headerTitle}</h1>
-              <PatientOnlineIndicator online={patientOnline} showWhenOffline />
+              <PatientOnlineIndicator
+                online={patientOnline}
+                showWhenOffline
+                className="mt-1.5 shrink-0"
+              />
             </div>
             <PatientPresenceCaption
               online={patientOnline}
@@ -145,7 +150,7 @@ export function CircleAppHeader({
         ) : (
           <>
             <h1 className={TITLE_CLASS}>MedXForce Circle</h1>
-            <p className="text-xs text-slate-500 truncate mt-0.5 leading-normal">{t('common.friendsFamily')}</p>
+            <p className="text-xs text-slate-500 mt-0.5 leading-normal">{t('common.friendsFamily')}</p>
           </>
         )}
       </div>

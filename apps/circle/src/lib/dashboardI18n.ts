@@ -355,46 +355,49 @@ export function localizeBirthdayReminder(
 
   const todayStart = startOfDay(today);
   const thisYearBirthday = new Date(today.getFullYear(), dob.getMonth(), dob.getDate());
-  const delta = daysBetween(thisYearBirthday, todayStart);
+  // daysFromBirthday: negative = upcoming, 0 = today, positive = already passed
+  const daysFromBirthday = daysBetween(thisYearBirthday, todayStart);
 
-  if (delta < -3 || delta > 7) return null;
+  // Match patient dashboard window: up to 7 days before, 2 days after.
+  if (daysFromBirthday < -7 || daysFromBirthday > 2) return null;
 
   const name = patientFriendlyDisplayName(snapshot, patientDisplayName);
   const ageOnBirthday = thisYearBirthday.getFullYear() - dob.getFullYear();
   const birthdayLabel = formatMonthDay(language, thisYearBirthday);
+  const daysUntil = daysFromBirthday < 0 ? -daysFromBirthday : 0;
 
   let headline = '';
   let body = '';
-  if (delta > 1) {
-    headline = t('dashboard.reminders.birthdayInDays', { name, count: delta });
+  if (daysFromBirthday < -1) {
+    headline = t('dashboard.reminders.birthdayInDays', { name, count: daysUntil });
     body =
       ageOnBirthday > 0
         ? t('dashboard.reminders.turningOnDate', { age: ageOnBirthday, date: birthdayLabel })
         : t('dashboard.reminders.birthdayOnDate', { date: birthdayLabel });
-  } else if (delta === 1) {
+  } else if (daysFromBirthday === -1) {
     headline = t('dashboard.reminders.birthdayTomorrow', { name });
     body =
       ageOnBirthday > 0
         ? t('dashboard.reminders.turningAge', { age: ageOnBirthday })
         : t('dashboard.reminders.goodMomentReachOut');
-  } else if (delta === 0) {
+  } else if (daysFromBirthday === 0) {
     headline = t('dashboard.reminders.birthdayToday', { name });
     body =
       ageOnBirthday > 0
         ? t('dashboard.reminders.celebratingToday', { age: ageOnBirthday })
         : t('dashboard.reminders.goodMomentReachOut');
-  } else if (delta === -1) {
+  } else if (daysFromBirthday === 1) {
     headline = t('dashboard.reminders.birthdayYesterday', { name });
     body = t('dashboard.reminders.belatedNote');
   } else {
     headline = t('dashboard.reminders.birthdayDaysAgo', {
       name,
-      count: Math.abs(delta),
+      count: daysFromBirthday,
     });
     body = t('dashboard.reminders.belatedNote');
   }
 
-  return { headline, body, daysUntil: delta };
+  return { headline, body, daysUntil };
 }
 
 export function localizeOnsetMilestone(
@@ -419,15 +422,15 @@ export function localizeOnsetMilestone(
           ? t('dashboard.reminders.oneYearSinceOnset')
           : t('dashboard.reminders.yearsUpAndRunning', { years });
       const body =
-        delta > 1
-          ? t('dashboard.reminders.yearMarkInDays', { years, days: delta })
-          : delta === 1
+        delta < -1
+          ? t('dashboard.reminders.yearMarkInDays', { years, days: -delta })
+          : delta === -1
             ? t('dashboard.reminders.yearMarkTomorrow', { years })
             : delta === 0
               ? t('dashboard.reminders.todayMarksYearsSinceOnset', { years })
               : t('dashboard.reminders.yearMarkDaysAgo', {
                   years,
-                  days: Math.abs(delta),
+                  days: delta,
                 });
       return { headline, body };
     }

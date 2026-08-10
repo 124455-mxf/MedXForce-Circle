@@ -9,6 +9,7 @@ import {
   Image as ImageIcon,
   MessageCircle,
   MessageSquare,
+  Keyboard,
   SlidersHorizontal,
   Sparkles,
   Stethoscope,
@@ -135,6 +136,8 @@ import {
 import {
   DASHBOARD_RECENCY_TINT_CLASSES,
   DASHBOARD_STATS_DAYS,
+  activityDaysFromTimeline,
+  type DashboardActivityDay,
   getAlertAttentionRecencyUrgency,
   getDailyCheckInRecencyUrgency,
   getDiaryRecencyUrgency,
@@ -187,11 +190,14 @@ interface CircleDashboardScreenProps {
 }
 
 const DASHBOARD_WIDGET_BASE_CLASS =
-  'w-full h-full p-4 sm:p-5 rounded-2xl border text-left transition-colors flex flex-col';
+  'w-full h-full p-3.5 sm:p-4 rounded-2xl border text-left transition-colors flex flex-col shadow-sm';
 
 const DASHBOARD_WIDGET_CELL_CLASS = 'h-[10rem] sm:h-[10.5rem]';
+const DASHBOARD_LAST7_WIDGET_CELL_CLASS = 'min-h-[12rem] sm:min-h-[12.5rem] h-full';
 const DASHBOARD_SECTION_TITLE_CLASS =
-  'text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5';
+  'text-xs font-bold text-slate-600 uppercase tracking-wider px-0.5';
+
+type DashboardWidgetIconTone = 'blue' | 'emerald' | 'amber' | 'rose' | 'sky' | 'violet';
 
 type DashboardWidgetSpec = {
   key: string;
@@ -205,13 +211,71 @@ type DashboardWidgetSpec = {
   recencyTint?: AlertAttentionRecencyUrgency;
   /** Optional mode-colored card chrome (e.g. ICU / Hospital / Daily Life). */
   accentClass?: string;
+  /** Large primary number/status for Last 7 days readability. */
+  heroValue?: string | number;
+  heroMuted?: boolean;
+  iconTone?: DashboardWidgetIconTone;
+  activityDays?: DashboardActivityDay[];
 };
+
+const WIDGET_ICON_TONE_CLASSES: Record<DashboardWidgetIconTone, string> = {
+  blue: 'bg-blue-100 text-blue-700',
+  emerald: 'bg-emerald-100 text-emerald-700',
+  amber: 'bg-amber-100 text-amber-800',
+  rose: 'bg-rose-100 text-rose-700',
+  sky: 'bg-sky-100 text-sky-700',
+  violet: 'bg-violet-100 text-violet-700',
+};
+
+function iconToneFromRecency(
+  tint: AlertAttentionRecencyUrgency | undefined,
+): DashboardWidgetIconTone {
+  if (tint === 'green') return 'emerald';
+  if (tint === 'orange') return 'amber';
+  if (tint === 'red') return 'rose';
+  return 'blue';
+}
+
+function WeekActivityDots({
+  days,
+}: {
+  days: DashboardActivityDay[];
+}) {
+  const t = useCircleT();
+  const maxValue = Math.max(1, ...days.map((day) => day.value));
+
+  return (
+    <div className="mt-auto pt-2.5" aria-label={t('dashboard.weekActivityAria')}>
+      <div className="flex items-end gap-1 h-7">
+        {days.map((day) => {
+          // Empty days stay a short stub; active days scale by count vs week max.
+          const heightPct =
+            day.value <= 0 ? 22 : Math.max(36, Math.round((day.value / maxValue) * 100));
+          return (
+            <span
+              key={day.dateKey}
+              title={`${day.dateKey}: ${day.value}`}
+              className={cn(
+                'flex-1 rounded-sm transition-[height] min-h-[3px]',
+                day.isActive ? 'bg-blue-500' : 'bg-slate-200',
+                day.isToday && 'ring-2 ring-blue-200 ring-offset-1',
+              )}
+              style={{ height: `${heightPct}%` }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
   const Icon = spec.icon;
   const rows = [spec.row1, spec.row2, spec.row3].filter(
     (row): row is ReactNode => row != null && row !== '',
   );
+  const hasHero = spec.heroValue != null && spec.heroValue !== '';
+  const iconTone = spec.iconTone ?? iconToneFromRecency(spec.recencyTint);
 
   return (
     <button
@@ -222,15 +286,60 @@ function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
         spec.accentClass ?? DASHBOARD_RECENCY_TINT_CLASSES[spec.recencyTint ?? 'neutral'],
       )}
     >
-      <Icon size={20} className="text-blue-600 mb-2" />
-      <p className="font-bold text-slate-800 text-sm sm:text-base">{spec.title}</p>
-      <div className="text-xs text-slate-500 mt-1 leading-snug flex-1 flex flex-col justify-end gap-0.5">
-        {rows.map((row, index) => (
-          <p key={index} className="line-clamp-2">
-            {row}
-          </p>
-        ))}
+      <div className="flex items-center gap-2.5 mb-2 min-w-0">
+        <span
+          className={cn(
+            'w-9 h-9 rounded-xl flex items-center justify-center shrink-0',
+            WIDGET_ICON_TONE_CLASSES[iconTone],
+          )}
+        >
+          <Icon size={18} aria-hidden />
+        </span>
+        <p className="font-bold text-slate-800 text-sm sm:text-[0.95rem] leading-snug min-w-0">
+          {spec.title}
+        </p>
       </div>
+
+      {hasHero ? (
+        <>
+          <p
+            className={cn(
+              'font-bold tracking-tight leading-none text-3xl sm:text-[2rem]',
+              spec.heroMuted ? 'text-slate-400' : 'text-slate-900',
+            )}
+          >
+            {spec.heroValue}
+          </p>
+          <div className="mt-2 space-y-0.5 min-w-0">
+            {rows.map((row, index) => (
+              <p
+                key={index}
+                className={cn(
+                  'leading-snug line-clamp-2',
+                  index === 0
+                    ? 'text-sm text-slate-700 font-medium'
+                    : 'text-[13px] text-slate-600',
+                )}
+              >
+                {row}
+              </p>
+            ))}
+          </div>
+          {spec.activityDays && spec.activityDays.length > 0 ? (
+            <WeekActivityDots days={spec.activityDays} />
+          ) : (
+            <div className="flex-1" />
+          )}
+        </>
+      ) : (
+        <div className="text-sm text-slate-600 mt-0.5 leading-snug flex-1 flex flex-col justify-end gap-0.5">
+          {rows.map((row, index) => (
+            <p key={index} className="line-clamp-2">
+              {row}
+            </p>
+          ))}
+        </div>
+      )}
     </button>
   );
 }
@@ -547,20 +656,25 @@ function RecordVisitCaptureWidget({
 function DashboardSection({
   title,
   widgets,
+  dense = false,
 }: {
   title: string;
   widgets: DashboardWidgetSpec[];
+  /** Taller cells for Last 7 days hero + week dots. */
+  dense?: boolean;
 }) {
   if (widgets.length === 0) return null;
+
+  const cellClass = dense ? DASHBOARD_LAST7_WIDGET_CELL_CLASS : DASHBOARD_WIDGET_CELL_CLASS;
 
   return (
     <section className="space-y-2">
       <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{title}</h3>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 items-stretch">
         {widgets.map((widget) => (
           <div
             key={widget.key}
-            className={widget.span === 'full' ? 'col-span-2' : DASHBOARD_WIDGET_CELL_CLASS}
+            className={widget.span === 'full' ? 'col-span-2' : cellClass}
           >
             <DashboardWidget spec={widget} />
           </div>
@@ -886,12 +1000,27 @@ export function CircleDashboardScreen({
       icon: Bell,
       ...(analyticsLoading
         ? loadingRows(t('common.loading'))
-        : {
-            row1: dashboardPlural(t, 'alert', alertStats.alerts),
-            row2: dashboardPlural(t, 'attention', alertStats.attentions),
-            row3: lastLine(alertAttentionSummary?.latestAt),
-            recencyTint: getAlertAttentionRecencyUrgency(alertAttentionSummary?.latestAt),
-          }),
+        : (() => {
+            const recencyTint = getAlertAttentionRecencyUrgency(alertAttentionSummary?.latestAt);
+            const quiet = alertStats.alerts === 0;
+            return {
+              heroValue: alertStats.alerts,
+              heroMuted: quiet,
+              iconTone: iconToneFromRecency(recencyTint),
+              row1: quiet
+                ? t('dashboard.quietAlertsWeek')
+                : dashboardPlural(t, 'alert', alertStats.alerts),
+              row2:
+                alertStats.attentions > 0
+                  ? dashboardPlural(t, 'attentionsThisWeek', alertStats.attentions)
+                  : t('dashboard.noAttentionsThisWeek'),
+              row3: lastLine(alertAttentionSummary?.latestAt),
+              recencyTint,
+              activityDays: activityDaysFromTimeline(alertDetail?.timeline, (point) => {
+                return point.alert + point.attention;
+              }),
+            };
+          })()),
       onClick: () => onOpenAnalyticsDetail('alert-attention'),
     });
 
@@ -902,35 +1031,56 @@ export function CircleDashboardScreen({
         icon: Calendar,
         ...(analyticsLoading
           ? loadingRows(t('common.loading'))
-          : {
-              ...(dailyDetail
-                ? checkInStats.total > 0
-                  ? {
-                      row1: dashboardPlural(t, 'completed', checkInStats.completed),
-                      row2: dashboardPlural(t, 'skipped', checkInStats.skipped),
-                      row3: lastLine(dailyCheckInLatestAt),
-                    }
-                  : {
-                      row1: t('dashboard.skipRate', { rate: dailyDetail.skipRate }),
-                      row2: t('dashboard.lastFilled', {
-                        when: formatDashboardTimestamp(t, language, dailyCheckIn?.latestAt),
-                      }),
-                      row3: lastLine(dailyCheckInLatestAt),
-                    }
-                : {
-                    row1: dailyCheckIn
-                      ? analyticsSummaryFooterText(t, dailyCheckIn, language)
-                      : t('dashboard.noCheckInsYet'),
-                    row2: t('common.last7Days'),
-                    row3: lastLine(dailyCheckIn?.latestAt),
-                  }),
-              recencyTint: getDailyCheckInRecencyUrgency({
+          : (() => {
+              const recencyTint = getDailyCheckInRecencyUrgency({
                 completedInWindow: checkInStats.completed,
                 skippedInWindow: checkInStats.skipped,
                 latestCompletedAt: dailyCheckInLatestAt,
                 hasHistory: !!(dailyDetail || dailyCheckIn?.latestAt),
-              }),
-            }),
+              });
+              const quiet = checkInStats.completed === 0;
+              if (dailyDetail && checkInStats.total > 0) {
+                return {
+                  heroValue: checkInStats.completed,
+                  heroMuted: quiet,
+                  iconTone: iconToneFromRecency(recencyTint),
+                  row1: quiet
+                    ? t('dashboard.checkInsQuietWeek')
+                    : dashboardPlural(t, 'checkInsThisWeek', checkInStats.completed),
+                  row2: dashboardPlural(t, 'skipped', checkInStats.skipped),
+                  row3: lastLine(dailyCheckInLatestAt),
+                  recencyTint,
+                  activityDays: activityDaysFromTimeline(dailyDetail.timeline, (point) => {
+                    return point.completed;
+                  }),
+                };
+              }
+              if (dailyDetail) {
+                return {
+                  heroValue: checkInStats.completed,
+                  heroMuted: true,
+                  iconTone: iconToneFromRecency(recencyTint),
+                  row1: t('dashboard.checkInsQuietWeek'),
+                  row2: t('dashboard.skipRate', { rate: dailyDetail.skipRate }),
+                  row3: lastLine(dailyCheckInLatestAt),
+                  recencyTint,
+                  activityDays: activityDaysFromTimeline(dailyDetail.timeline, (point) => {
+                    return point.completed;
+                  }),
+                };
+              }
+              return {
+                heroValue: checkInStats.completed,
+                heroMuted: quiet,
+                iconTone: iconToneFromRecency(recencyTint),
+                row1: dailyCheckIn
+                  ? analyticsSummaryFooterText(t, dailyCheckIn, language)
+                  : t('dashboard.noCheckInsYet'),
+                row2: t('common.last7Days'),
+                row3: lastLine(dailyCheckIn?.latestAt),
+                recencyTint,
+              };
+            })()),
         onClick: () => onOpenAnalyticsDetail('daily-check-in'),
       });
     }
@@ -942,16 +1092,27 @@ export function CircleDashboardScreen({
         icon: MessageSquare,
         ...(analyticsLoading
           ? loadingRows(t('common.loading'))
-          : {
-              row1: dashboardPlural(t, 'messaging', communicationStats.messaging),
-              row2:
-                caps.messaging && messageCount > 0
-                  ? dashboardPlural(t, 'thread', messageCount)
-                  : t('common.last7Days'),
-              row3: caps.messaging
-                ? t('common.unread', { count: formatCircleBadgeCount(unreadCount) })
-                : undefined,
-            }),
+          : (() => {
+              const quiet = communicationStats.messaging === 0;
+              return {
+                heroValue: communicationStats.messaging,
+                heroMuted: quiet,
+                iconTone: quiet ? 'sky' : 'blue',
+                row1: quiet
+                  ? t('dashboard.noNewMessagesWeek')
+                  : dashboardPlural(t, 'messagesThisWeek', communicationStats.messaging),
+                row2:
+                  caps.messaging && messageCount > 0
+                    ? dashboardPlural(t, 'thread', messageCount)
+                    : t('common.last7Days'),
+                row3: caps.messaging
+                  ? t('common.unread', { count: formatCircleBadgeCount(unreadCount) })
+                  : undefined,
+                activityDays: activityDaysFromTimeline(speechDetail?.timeline, (point) => {
+                  return point.messaging;
+                }),
+              };
+            })()),
         onClick: () => onGoToTab(caps.messaging ? 'messages' : 'analytics'),
       });
     }
@@ -959,14 +1120,28 @@ export function CircleDashboardScreen({
     lastSevenDayWidgets.push({
       key: 'communication',
       title: t('dashboard.communication'),
-      icon: MessageSquare,
+      icon: Keyboard,
       ...(analyticsLoading
         ? loadingRows(t('common.loading'))
-        : {
-            row1: dashboardPlural(t, 'communicationStat', communicationStats.communication),
-            row2: formatCommunicationInputMethod(speechDetail?.lastCommunicationInputMethod),
-            row3: dashboardPlural(t, 'companion', companionLast7),
-          }),
+        : (() => {
+            const quiet = communicationStats.communication === 0;
+            return {
+              heroValue: communicationStats.communication,
+              heroMuted: quiet,
+              iconTone: 'violet',
+              row1: quiet
+                ? t('dashboard.noCommunicationWeek')
+                : dashboardPlural(t, 'communicationThisWeek', communicationStats.communication),
+              row2: formatCommunicationInputMethod(speechDetail?.lastCommunicationInputMethod),
+              row3:
+                companionLast7 > 0
+                  ? dashboardPlural(t, 'companion', companionLast7)
+                  : t('dashboard.noCompanionChats'),
+              activityDays: activityDaysFromTimeline(speechDetail?.timeline, (point) => {
+                return point.communication;
+              }),
+            };
+          })()),
       onClick: () => onGoToTab('analytics'),
     });
 
@@ -982,10 +1157,22 @@ export function CircleDashboardScreen({
                 soulDetail?.totalPhotoCount ?? soulDetail?.photoCount ?? 0;
               const unseenCount =
                 soulDetail?.unseenMediaCount ?? soulDetail?.unseenPhotoCount ?? 0;
+              const quiet = vitalityGamesLast7 === 0;
               return {
-                row1: dashboardPlural(t, 'gamesPlayed', vitalityGamesLast7),
-                row2: dashboardPlural(t, 'picture', pictureCount),
+                heroValue: vitalityGamesLast7,
+                heroMuted: quiet,
+                iconTone: 'amber',
+                row1: quiet
+                  ? t('dashboard.noMindGamesWeek')
+                  : dashboardPlural(t, 'gamesPlayed', vitalityGamesLast7),
+                row2:
+                  pictureCount > 0
+                    ? dashboardPlural(t, 'picture', pictureCount)
+                    : t('dashboard.noPicturesYet'),
                 row3: dashboardPlural(t, 'unseen', unseenCount),
+                activityDays: activityDaysFromTimeline(vitalityDetail?.timeline, (point) => {
+                  return point.games;
+                }),
               };
             })()),
         onClick: () => onGoToTab('analytics'),
@@ -999,13 +1186,21 @@ export function CircleDashboardScreen({
         icon: ClipboardList,
         ...(analyticsLoading
           ? loadingRows(t('common.loading'))
-          : {
-              row1: t('dashboard.finished', { count: assessmentsLast7 }),
-              row2: latestAssessment.title
-                ? t('dashboard.lastAssessment', { title: latestAssessment.title })
-                : t('dashboard.noAssessmentsYet'),
-              row3: lastLine(latestAssessment.latestAt),
-            }),
+          : (() => {
+              const quiet = assessmentsLast7 === 0;
+              return {
+                heroValue: assessmentsLast7,
+                heroMuted: quiet,
+                iconTone: 'sky',
+                row1: quiet
+                  ? t('dashboard.noAssessmentsWeek')
+                  : dashboardPlural(t, 'assessmentsFinishedWeek', assessmentsLast7),
+                row2: latestAssessment.title
+                  ? t('dashboard.lastAssessment', { title: latestAssessment.title })
+                  : t('dashboard.noAssessmentsYet'),
+                row3: lastLine(latestAssessment.latestAt),
+              };
+            })()),
         onClick: () => onGoToTab('analytics'),
       });
     }
@@ -1020,6 +1215,9 @@ export function CircleDashboardScreen({
         ? loadingRows(t('common.loading'))
         : diaryPreview.sharedCount === 0
           ? {
+              heroValue: 0,
+              heroMuted: true,
+              iconTone: 'violet' as const,
               row1: t('dashboard.noSharedEntries'),
               row2: t('dashboard.addRecoveryNote'),
             }
@@ -1032,11 +1230,17 @@ export function CircleDashboardScreen({
                   ? t('dashboard.yourLatestEntry')
                   : t('dashboard.fromSender', { name: latest.authorName })
                 : undefined;
+              const weekCount = diaryPreview.entriesLast7;
+              const hero = weekCount > 0 ? weekCount : diaryPreview.sharedCount;
+              const recencyTint = getDiaryRecencyUrgency(latestAt);
 
               return {
+                heroValue: hero,
+                heroMuted: false,
+                iconTone: iconToneFromRecency(recencyTint),
                 row1:
-                  diaryPreview.entriesLast7 > 0
-                    ? dashboardPlural(t, 'entriesThisWeek', diaryPreview.entriesLast7)
+                  weekCount > 0
+                    ? dashboardPlural(t, 'entriesThisWeek', weekCount)
                     : dashboardPlural(t, 'entry', diaryPreview.sharedCount),
                 row2: latest ? diaryEntryPreviewLine(latest) : t('dashboard.tapToReadJournal'),
                 row3: latest?.isMilestone
@@ -1044,7 +1248,7 @@ export function CircleDashboardScreen({
                   : mood
                     ? `${mood} · ${authorLine ?? lastLine(latestAt)}`
                     : authorLine ?? lastLine(latestAt),
-                recencyTint: getDiaryRecencyUrgency(latestAt),
+                recencyTint,
               };
             })()),
       onClick: () => onGoToTab('diary'),
@@ -1055,13 +1259,24 @@ export function CircleDashboardScreen({
     key: 'circle',
     title: t('dashboard.circleMessages'),
     icon: Users,
-    row1: dashboardPlural(t, 'post', circlePostCount),
-    row2:
-      circleUnreadCount > 0
-        ? t('common.unread', { count: formatCircleBadgeCount(circleUnreadCount) })
-        : circlePostCount === 0
-          ? t('dashboard.noFamilyPostsYet')
-          : t('dashboard.allCaughtUp'),
+    ...(circlePostCount === 0
+      ? {
+          heroValue: 0,
+          heroMuted: true,
+          iconTone: 'sky' as const,
+          row1: t('dashboard.noFamilyPostsYet'),
+          row2: t('dashboard.allCaughtUp'),
+        }
+      : {
+          heroValue: circleUnreadCount > 0 ? circleUnreadCount : circlePostCount,
+          heroMuted: false,
+          iconTone: (circleUnreadCount > 0 ? 'rose' : 'sky') as const,
+          row1:
+            circleUnreadCount > 0
+              ? t('common.unread', { count: formatCircleBadgeCount(circleUnreadCount) })
+              : t('dashboard.allCaughtUp'),
+          row2: dashboardPlural(t, 'post', circlePostCount),
+        }),
     onClick: () => onGoToTab('circle'),
   });
 
@@ -1078,11 +1293,17 @@ export function CircleDashboardScreen({
         ? loadingRows(t('common.loading'))
         : galleryDashboard.myUploadCount === 0
           ? {
+              heroValue: 0,
+              heroMuted: true,
+              iconTone: 'amber' as const,
               row1: t('dashboard.shareMoment'),
               row2: t('dashboard.uploadPhotoForFamily'),
             }
           : galleryDashboard.reactionsOnMyUploadsLast7 > 0
             ? {
+                heroValue: galleryDashboard.reactionsOnMyUploadsLast7,
+                heroMuted: false,
+                iconTone: 'emerald' as const,
                 row1: dashboardPlural(
                   t,
                   'reactionsThisWeek',
@@ -1103,11 +1324,17 @@ export function CircleDashboardScreen({
               }
             : galleryDashboard.reactionsOnMyUploads > 0
               ? {
+                  heroValue: galleryDashboard.reactionsOnMyUploads,
+                  heroMuted: false,
+                  iconTone: 'amber' as const,
                   row1: dashboardPlural(t, 'reactionsOnYourPhotos', galleryDashboard.reactionsOnMyUploads),
                   row2: t('dashboard.noneLast7Days'),
                   row3: dashboardPlural(t, 'sharedPhotos', galleryDashboard.myUploadCount),
                 }
               : {
+                  heroValue: galleryDashboard.myUploadCount,
+                  heroMuted: false,
+                  iconTone: 'amber' as const,
                   row1: dashboardPlural(t, 'sharedPhotos', galleryDashboard.myUploadCount),
                   row2: t('dashboard.noReactionsYetTap'),
                 }),
@@ -1128,6 +1355,9 @@ export function CircleDashboardScreen({
           ? loadingRows(t('common.loading'))
           : galleryDashboard.reactionsLast7 > 0
             ? {
+                heroValue: galleryDashboard.reactionsLast7,
+                heroMuted: false,
+                iconTone: 'rose' as const,
                 row1: dashboardPlural(t, 'reactionsThisWeek', galleryDashboard.reactionsLast7),
                 row2: dashboardPlural(t, 'photosInGallery', galleryDashboard.photoCount),
                 row3:
@@ -1140,6 +1370,9 @@ export function CircleDashboardScreen({
               }
             : galleryDashboard.totalReactions > 0
               ? {
+                  heroValue: galleryDashboard.totalReactions,
+                  heroMuted: false,
+                  iconTone: 'rose' as const,
                   row1: dashboardPlural(t, 'reactionsOnFamilyPhotos', galleryDashboard.totalReactions),
                   row2: dashboardPlural(t, 'sharedPhotos', galleryDashboard.photoCount),
                   row3:
@@ -1149,6 +1382,9 @@ export function CircleDashboardScreen({
                 }
               : galleryDashboard.photoCount > 0
                 ? {
+                    heroValue: galleryDashboard.photoCount,
+                    heroMuted: false,
+                    iconTone: 'rose' as const,
                     row1: dashboardPlural(t, 'sharedPhotos', galleryDashboard.photoCount),
                     row2:
                       unseenGalleryCount > 0
@@ -1156,6 +1392,9 @@ export function CircleDashboardScreen({
                         : t('dashboard.beFirstToReact'),
                   }
                 : {
+                    heroValue: 0,
+                    heroMuted: true,
+                    iconTone: 'rose' as const,
                     row1: t('dashboard.noPhotosYet'),
                     row2: t('dashboard.uploadMemory'),
                   }),
@@ -1486,13 +1725,13 @@ export function CircleDashboardScreen({
         {familyGalleryWidget || showCircleMap || showCheckInWellnessRing ? (
           <section className="space-y-2">
             <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionStayConnected')}</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 items-stretch">
               {familyGalleryWidget ? (
                 <>
-                  <div className={DASHBOARD_WIDGET_CELL_CLASS}>
+                  <div className={DASHBOARD_LAST7_WIDGET_CELL_CLASS}>
                     <DashboardWidget spec={familyGalleryWidget} />
                   </div>
-                  <div className={DASHBOARD_WIDGET_CELL_CLASS}>
+                  <div className={DASHBOARD_LAST7_WIDGET_CELL_CLASS}>
                     <CircleGalleryRotatingPreviewWidget
                       photos={galleryDashboard.previewPhotos}
                       loading={galleryDashboard.loading}
@@ -1534,11 +1773,12 @@ export function CircleDashboardScreen({
           <DashboardSection
             title={t('dashboard.sectionLast7Days')}
             widgets={visibleLastSevenDayWidgets}
+            dense
           />
         ) : null}
 
         {visibleYouWidgets.length > 0 ? (
-          <DashboardSection title={t('dashboard.sectionYou')} widgets={visibleYouWidgets} />
+          <DashboardSection title={t('dashboard.sectionYou')} widgets={visibleYouWidgets} dense />
         ) : null}
       </div>
 

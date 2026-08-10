@@ -10,6 +10,56 @@ import type {
 
 export const DASHBOARD_STATS_DAYS = 7;
 
+export type DashboardActivityDay = {
+  dateKey: string;
+  isToday: boolean;
+  isActive: boolean;
+  /** Raw count for that day (drives mini bar height). */
+  value: number;
+};
+
+function localDateKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/** Oldest → today, rolling last 7 calendar days (for week activity bars). */
+export function buildRollingLast7ActivityDays(
+  valueOnDate: (dateKey: string) => number,
+): DashboardActivityDay[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayKey = localDateKey(today);
+
+  return Array.from({ length: DASHBOARD_STATS_DAYS }, (_, index) => {
+    const day = new Date(today);
+    day.setDate(today.getDate() - (DASHBOARD_STATS_DAYS - 1 - index));
+    const dateKey = localDateKey(day);
+    const value = Math.max(0, valueOnDate(dateKey) || 0);
+    return {
+      dateKey,
+      isToday: dateKey === todayKey,
+      isActive: value > 0,
+      value,
+    };
+  });
+}
+
+export function activityDaysFromTimeline<T extends { date: string }>(
+  timeline: T[] | undefined,
+  valueOf: (point: T) => number,
+): DashboardActivityDay[] {
+  const totals = new Map<string, number>();
+  for (const point of timeline ?? []) {
+    if (!point?.date) continue;
+    const next = (totals.get(point.date) ?? 0) + valueOf(point);
+    totals.set(point.date, next);
+  }
+  return buildRollingLast7ActivityDays((dateKey) => totals.get(dateKey) ?? 0);
+}
+
 export const DASHBOARD_ASSESSMENT_METRIC_IDS = [
   'impact',
   'pain',

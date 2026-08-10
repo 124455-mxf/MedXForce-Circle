@@ -173,39 +173,42 @@ export function resolveBirthdayReminder(
 
   const todayStart = startOfDay(today);
   const thisYearBirthday = new Date(today.getFullYear(), dob.getMonth(), dob.getDate());
-  const delta = daysBetween(thisYearBirthday, todayStart);
+  // daysFromBirthday: negative = upcoming, 0 = today, positive = already passed
+  const daysFromBirthday = daysBetween(thisYearBirthday, todayStart);
 
-  if (delta < -3 || delta > 7) return null;
+  // Match patient dashboard window: up to 7 days before, 2 days after.
+  if (daysFromBirthday < -7 || daysFromBirthday > 2) return null;
 
   const name = displayProfileName(snapshot, patientDisplayName);
   const ageOnBirthday = thisYearBirthday.getFullYear() - dob.getFullYear();
+  const daysUntil = daysFromBirthday < 0 ? -daysFromBirthday : 0;
 
   let headline = '';
   let body = '';
-  if (delta > 1) {
-    headline = `${name}'s birthday is in ${delta} days`;
+  if (daysFromBirthday < -1) {
+    headline = `${name}'s birthday is in ${daysUntil} days`;
     body =
       ageOnBirthday > 0
         ? `Turning ${ageOnBirthday} on ${thisYearBirthday.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}.`
         : `Birthday on ${thisYearBirthday.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}.`;
-  } else if (delta === 1) {
+  } else if (daysFromBirthday === -1) {
     headline = `${name}'s birthday is tomorrow`;
     body = ageOnBirthday > 0 ? `Turning ${ageOnBirthday}.` : 'A good moment to reach out.';
-  } else if (delta === 0) {
+  } else if (daysFromBirthday === 0) {
     headline = `Today is ${name}'s birthday`;
     body = ageOnBirthday > 0 ? `Celebrating ${ageOnBirthday} today.` : 'A good moment to reach out.';
-  } else if (delta === -1) {
+  } else if (daysFromBirthday === 1) {
     headline = `${name}'s birthday was yesterday`;
     body = 'There is still time for a belated note or call.';
   } else {
-    headline = `${name}'s birthday was ${Math.abs(delta)} days ago`;
+    headline = `${name}'s birthday was ${daysFromBirthday} days ago`;
     body = 'There is still time for a belated note or call.';
   }
 
   return {
     visible: true,
     patientName: name,
-    daysUntil: delta,
+    daysUntil,
     turningAge: ageOnBirthday > 0 ? ageOnBirthday : null,
     headline,
     body,
@@ -233,13 +236,13 @@ export function resolveOnsetMilestone(
           ? '1 year since initial onset'
           : `${years} years up and running`;
       const body =
-        delta > 1
-          ? `The ${years}-year mark is in ${delta} days.`
-          : delta === 1
+        delta < -1
+          ? `The ${years}-year mark is in ${-delta} days.`
+          : delta === -1
             ? `The ${years}-year mark is tomorrow.`
             : delta === 0
               ? `Today marks ${years} year${years === 1 ? '' : 's'} since onset.`
-              : `The ${years}-year mark was ${Math.abs(delta)} day${Math.abs(delta) === 1 ? '' : 's'} ago.`;
+              : `The ${years}-year mark was ${delta} day${delta === 1 ? '' : 's'} ago.`;
       return { visible: true, headline, body, daysSinceOnset: daysSince };
     }
   }

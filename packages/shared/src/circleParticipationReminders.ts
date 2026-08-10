@@ -6,7 +6,7 @@ export const PARTICIPATION_REMINDER_WINDOW_MS = 28 * 24 * 60 * 60 * 1000;
 /** Care-team and profile reminders resurface sooner — proxy action is time-sensitive. */
 export const CARE_ACTION_REMINDER_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
 
-/** Celebration tiles (birthday / onset) use the same window as the UI (-3 to +7 days). */
+/** Celebration tiles (birthday / onset): patient-aligned window (~7 days before through a few days after). */
 export const CELEBRATION_REMINDER_SNOOZE_MS = 11 * 24 * 60 * 60 * 1000;
 
 export type CircleParticipationReminderKind =

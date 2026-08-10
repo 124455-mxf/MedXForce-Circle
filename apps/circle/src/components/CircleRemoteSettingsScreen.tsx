@@ -6,6 +6,7 @@ import {
   REMOTE_APP_MODES,
   REMOTE_DASHBOARD_PRESETS,
   REMOTE_ASSESSMENT_VISIBILITY_TOGGLES,
+  REMOTE_DAILY_CHECKIN_QUIET_HOURS,
   REMOTE_FEATURE_TOGGLES,
   REMOTE_HOSPITAL_OPTIONAL_FEATURES_DEFAULTS,
   REMOTE_ICU_OPTIONAL_FEATURES_DEFAULTS,
@@ -708,20 +709,31 @@ export function CircleRemoteSettingsScreen({
                 <ToggleRow
                   label={t('remoteSettings.quietHours')}
                   description={t('remoteSettings.quietHoursDesc')}
-                  enabled={settings.dailyCheckIn?.quietHours?.enabled ?? false}
+                  enabled={
+                    settings.dailyCheckIn?.quietHours?.enabled ??
+                    REMOTE_DAILY_CHECKIN_QUIET_HOURS.enabled
+                  }
                   onToggle={() =>
                     patch(
                       setRemoteDailyCheckIn(settings, {
                         quietHours: {
-                          enabled: !(settings.dailyCheckIn?.quietHours?.enabled ?? false),
-                          start: settings.dailyCheckIn?.quietHours?.start ?? '22:00',
-                          end: settings.dailyCheckIn?.quietHours?.end ?? '06:00',
+                          enabled: !(
+                            settings.dailyCheckIn?.quietHours?.enabled ??
+                            REMOTE_DAILY_CHECKIN_QUIET_HOURS.enabled
+                          ),
+                          start:
+                            settings.dailyCheckIn?.quietHours?.start ??
+                            REMOTE_DAILY_CHECKIN_QUIET_HOURS.start,
+                          end:
+                            settings.dailyCheckIn?.quietHours?.end ??
+                            REMOTE_DAILY_CHECKIN_QUIET_HOURS.end,
                         },
                       }),
                     )
                   }
                 />
-                {settings.dailyCheckIn?.quietHours?.enabled && (
+                {(settings.dailyCheckIn?.quietHours?.enabled ??
+                  REMOTE_DAILY_CHECKIN_QUIET_HOURS.enabled) && (
                   <div className="grid grid-cols-2 gap-2 px-1">
                     <label className="space-y-1">
                       <span className="text-[10px] font-bold text-slate-400 uppercase">
@@ -729,14 +741,21 @@ export function CircleRemoteSettingsScreen({
                       </span>
                       <input
                         type="time"
-                        value={settings.dailyCheckIn?.quietHours?.start ?? '22:00'}
+                        value={
+                          settings.dailyCheckIn?.quietHours?.start ??
+                          REMOTE_DAILY_CHECKIN_QUIET_HOURS.start
+                        }
                         onChange={(e) =>
                           patch(
                             setRemoteDailyCheckIn(settings, {
                               quietHours: {
-                                enabled: settings.dailyCheckIn?.quietHours?.enabled ?? false,
+                                enabled:
+                                  settings.dailyCheckIn?.quietHours?.enabled ??
+                                  REMOTE_DAILY_CHECKIN_QUIET_HOURS.enabled,
                                 start: e.target.value,
-                                end: settings.dailyCheckIn?.quietHours?.end ?? '06:00',
+                                end:
+                                  settings.dailyCheckIn?.quietHours?.end ??
+                                  REMOTE_DAILY_CHECKIN_QUIET_HOURS.end,
                               },
                             }),
                           )
@@ -750,13 +769,20 @@ export function CircleRemoteSettingsScreen({
                       </span>
                       <input
                         type="time"
-                        value={settings.dailyCheckIn?.quietHours?.end ?? '06:00'}
+                        value={
+                          settings.dailyCheckIn?.quietHours?.end ??
+                          REMOTE_DAILY_CHECKIN_QUIET_HOURS.end
+                        }
                         onChange={(e) =>
                           patch(
                             setRemoteDailyCheckIn(settings, {
                               quietHours: {
-                                enabled: settings.dailyCheckIn?.quietHours?.enabled ?? false,
-                                start: settings.dailyCheckIn?.quietHours?.start ?? '22:00',
+                                enabled:
+                                  settings.dailyCheckIn?.quietHours?.enabled ??
+                                  REMOTE_DAILY_CHECKIN_QUIET_HOURS.enabled,
+                                start:
+                                  settings.dailyCheckIn?.quietHours?.start ??
+                                  REMOTE_DAILY_CHECKIN_QUIET_HOURS.start,
                                 end: e.target.value,
                               },
                             }),

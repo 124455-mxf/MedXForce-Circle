@@ -226,7 +226,7 @@ function CelebrationCard({
       ) : null}
       <div
         className={cn(
-          'flex min-h-0 flex-1 flex-col gap-2.5 text-left',
+          'flex flex-1 flex-col gap-2.5 text-left',
           (isPreview || dismissKind) && 'pr-8',
         )}
       >
@@ -244,14 +244,15 @@ function CelebrationCard({
         >
           <Icon size={18} />
         </div>
-        <div className="min-w-0 flex-1 flex flex-col gap-1">
-          <p className="font-bold text-slate-800 text-xs sm:text-sm leading-snug line-clamp-2">
+        <div className="min-w-0 flex flex-col gap-1">
+          <p className="font-bold text-slate-800 text-xs sm:text-sm leading-snug">
             {headline}
           </p>
           <p
             className={cn(
               'text-[11px] sm:text-xs text-slate-600 leading-relaxed',
-              hasFooter ? 'line-clamp-2' : 'line-clamp-3',
+              // Soft clamp only when a footer/action steals vertical space.
+              hasFooter ? 'line-clamp-4' : '',
             )}
           >
             {body}
@@ -550,6 +551,8 @@ export function CircleDashboardCelebrationSection({
       headline: birthday.headline,
       body: birthday.body,
       dismissKind: 'birthday',
+      // Circle members cannot initiate patient messages — open Diary to record a birthday moment.
+      onOpen: () => onGoToTab('diary'),
     });
   } else if (previewBirthday) {
     tiles.push({
@@ -559,6 +562,7 @@ export function CircleDashboardCelebrationSection({
       headline: previewBirthday.headline,
       body: previewBirthday.body,
       isPreview: true,
+      onOpen: () => onGoToTab('diary'),
     });
   }
 
@@ -877,14 +881,15 @@ export function CircleDashboardCelebrationSection({
           {t('dashboard.previewRemindersHint')}
         </p>
       ) : null}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 items-stretch">
         {tiles.map((tile) => (
           <div
             key={tile.key}
             className={cn(
+              'h-full',
               tile.actionLabel || tile.footerNote
-                ? 'h-[12rem] sm:h-[12.5rem]'
-                : 'h-[10rem] sm:h-[10.5rem]',
+                ? 'min-h-[12rem] sm:min-h-[12.5rem]'
+                : 'min-h-[10rem] sm:min-h-[10.5rem]',
             )}
           >
             <CelebrationCard
