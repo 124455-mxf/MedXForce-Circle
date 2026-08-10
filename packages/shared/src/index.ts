@@ -38,6 +38,7 @@ export * from './treatmentPhase';
 export * from './countries';
 export * from './careTransitionReadiness';
 export * from './diaryEntries';
+export * from './diaryTranslationDisplay';
 export * from './diaryCareMilestones';
 export * from './circleMessageInboxHide';
 export * from './messageReplyVisibility';

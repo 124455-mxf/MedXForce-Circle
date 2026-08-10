@@ -20,6 +20,10 @@ import {
   resolveCareDiaryMilestoneCopy,
   shouldRecordCareDiaryMilestone,
 } from './diaryCareMilestones';
+import type { DiaryEntryTranslation } from './diaryTranslationDisplay';
+
+export type { DiaryEntryTranslation } from './diaryTranslationDisplay';
+export { resolveDiaryEntryText } from './diaryTranslationDisplay';
 
 /** Who can see the entry — private stays with the author (and patient); circle is visible to all members. */
 export type DiaryEntryVisibility = 'private' | 'circle' | 'shared_with_patient';
@@ -49,6 +53,10 @@ export interface CircleDiaryEntry {
   entryKind: 'human' | 'system';
   isMilestone: boolean;
   sourceRef?: string | null;
+  /** Detected language of the original title/body. */
+  sourceLanguage?: string;
+  /** Auto-translations for other viewer languages (patient / circle members). */
+  translations?: DiaryEntryTranslation[];
   createdAt: number;
   updatedAt: number;
 }
@@ -92,6 +100,10 @@ function parseDiaryVisibility(value: unknown): DiaryEntryVisibility {
 export function parseDiaryEntry(id: string, data: Record<string, unknown>): CircleDiaryEntry {
   const moodRaw = String(data.mood || '');
   const mood = DIARY_MOOD_VALUES.has(moodRaw) ? (moodRaw as DiaryEntryMood) : undefined;
+  const translations = parseDiaryTranslations(data.translations);
+  const sourceLanguage = data.sourceLanguage
+    ? String(data.sourceLanguage).trim()
+    : undefined;
   return {
     id,
     patientId: String(data.patientId || ''),
@@ -105,9 +117,31 @@ export function parseDiaryEntry(id: string, data: Record<string, unknown>): Circ
     entryKind: data.entryKind === 'system' ? 'system' : 'human',
     isMilestone: !!data.isMilestone,
     sourceRef: data.sourceRef ? String(data.sourceRef) : null,
+    ...(sourceLanguage ? { sourceLanguage } : {}),
+    ...(translations.length > 0 ? { translations } : {}),
     createdAt: Number(data.createdAt || 0),
     updatedAt: Number(data.updatedAt || data.createdAt || 0),
   };
+}
+
+function parseDiaryTranslations(raw: unknown): DiaryEntryTranslation[] {
+  if (!Array.isArray(raw)) return [];
+  const out: DiaryEntryTranslation[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Record<string, unknown>;
+    const language = String(row.language || '').trim();
+    const text = String(row.text || '').trim();
+    if (!language || !text) continue;
+    const title = row.title != null ? String(row.title).trim() : undefined;
+    out.push({
+      language,
+      text,
+      ...(title ? { title } : {}),
+      ...(row.isAuto ? { isAuto: true } : {}),
+    });
+  }
+  return out;
 }
 
 export function emptyDiaryDraft(experienceAt = Date.now()): CircleDiaryEntryDraft {
@@ -117,7 +151,6 @@ export function emptyDiaryDraft(experienceAt = Date.now()): CircleDiaryEntryDraf
     mood: '',
     experienceAt,
     visibility: 'circle',
-    entryKind: 'human',
     isMilestone: false,
   };
 }
@@ -201,6 +234,8 @@ export async function createDiaryEntry(
     authorUid: string;
     authorName: string;
     draft: CircleDiaryEntryDraft;
+    sourceLanguage?: string;
+    translations?: DiaryEntryTranslation[];
   },
 ): Promise<string> {
   const now = Date.now();
@@ -219,6 +254,10 @@ export async function createDiaryEntry(
     visibility: params.draft.visibility,
     entryKind: 'human',
     isMilestone: !!params.draft.isMilestone,
+    ...(params.sourceLanguage ? { sourceLanguage: params.sourceLanguage } : {}),
+    ...(params.translations && params.translations.length > 0
+      ? { translations: params.translations }
+      : {}),
     createdAt: now,
     updatedAt: now,
   });
@@ -231,6 +270,8 @@ export async function updateDiaryEntry(
     patientId: string;
     entryId: string;
     draft: CircleDiaryEntryDraft;
+    sourceLanguage?: string;
+    translations?: DiaryEntryTranslation[];
   },
 ): Promise<void> {
   const now = Date.now();
@@ -245,6 +286,10 @@ export async function updateDiaryEntry(
     experienceAt: params.draft.experienceAt || now,
     visibility: params.draft.visibility,
     isMilestone: !!params.draft.isMilestone,
+    ...(params.sourceLanguage != null
+      ? { sourceLanguage: params.sourceLanguage || '' }
+      : {}),
+    ...(params.translations != null ? { translations: params.translations } : {}),
     updatedAt: now,
   });
 }

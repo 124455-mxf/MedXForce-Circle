@@ -44,7 +44,11 @@ import { useCircleCompactChrome } from '../lib/circleChromeContext';
 import { useCircleToast } from '../hooks/useCircleToast';
 import { CircleAppToast } from './CircleAppToast';
 import { CircleDiaryEntryModal } from './CircleDiaryEntryModal';
-import { CircleDiaryEntryBodyPreview } from './CircleDiaryEntryBodyPreview';
+import { CircleDiaryTranslatedContent } from './CircleDiaryTranslatedContent';
+import { useCircleRemoteSettingsFromShell } from '../context/CircleSelectedPatientContext';
+import { useCircleI18nContext } from '../lib/circleI18nContext';
+import { normalizeCircleUiLanguage } from '../lib/circleLanguages';
+import { buildCircleDiaryTranslations } from '../lib/buildCircleDiaryTranslations';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 import { CircleFolderCountBadge } from './CircleCountBadge';
 import { DiaryEntryDeleteConfirmModal } from './DiaryEntryDeleteConfirmModal';
@@ -70,12 +74,14 @@ function DiaryTimelineEntry({
   entry,
   isOwn,
   patientDisplayName,
+  viewerLanguage,
   onEdit,
   onDelete,
 }: {
   entry: CircleDiaryEntry;
   isOwn: boolean;
   patientDisplayName: string;
+  viewerLanguage: ReturnType<typeof normalizeCircleUiLanguage>;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -190,10 +196,13 @@ function DiaryTimelineEntry({
           </div>
         </div>
 
-        {entry.title?.trim() && (
-          <h3 className="font-bold text-slate-800 text-sm">{entry.title.trim()}</h3>
-        )}
-        <CircleDiaryEntryBodyPreview text={entry.body} />
+        <CircleDiaryTranslatedContent
+          title={entry.title}
+          body={entry.body}
+          translations={entry.translations}
+          viewerLanguage={viewerLanguage}
+          translateIfMissing={!isSystem}
+        />
       </article>
     </li>
   );
@@ -201,6 +210,11 @@ function DiaryTimelineEntry({
 
 export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps) {
   const t = useCircleT();
+  const { language: viewerLanguage } = useCircleI18nContext();
+  const { settings: remoteSettings } = useCircleRemoteSettingsFromShell();
+  const patientLanguage = normalizeCircleUiLanguage(
+    remoteSettings?.primaryLanguage || 'English',
+  );
   const [filter, setFilter] = useState<DiaryListFilter>('circle');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<CircleDiaryEntry | null>(null);
@@ -248,11 +262,19 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
       setSaving(true);
       setError(null);
       try {
+        const { sourceLanguage, translations } = await buildCircleDiaryTranslations({
+          title: draft.title,
+          body: draft.body,
+          targetLanguages: [patientLanguage, viewerLanguage],
+          fallbackSourceLanguage: viewerLanguage,
+        });
         if (editingEntry) {
           await updateDiaryEntry(db, {
             patientId: patient.patientId,
             entryId: editingEntry.id,
             draft,
+            sourceLanguage,
+            translations,
           });
           showToast(t('diary.toastUpdated'));
         } else {
@@ -261,6 +283,8 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
             authorUid: user.uid,
             authorName,
             draft,
+            sourceLanguage,
+            translations,
           });
           showToast(t('diary.toastSaved'));
         }
@@ -272,7 +296,17 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
         setSaving(false);
       }
     },
-    [authorName, db, editingEntry, patient.patientId, showToast, t, user.uid],
+    [
+      authorName,
+      db,
+      editingEntry,
+      patient.patientId,
+      patientLanguage,
+      showToast,
+      t,
+      user.uid,
+      viewerLanguage,
+    ],
   );
 
   const confirmDeleteEntry = useCallback(async () => {
@@ -375,6 +409,7 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
                     entry={entry}
                     isOwn={entry.authorUid === user.uid}
                     patientDisplayName={patient.displayName}
+                    viewerLanguage={viewerLanguage}
                     onEdit={() => openEdit(entry)}
                     onDelete={() => setDeleteTarget(entry)}
                   />
