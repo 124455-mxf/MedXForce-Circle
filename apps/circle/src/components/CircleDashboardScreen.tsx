@@ -1259,24 +1259,34 @@ export function CircleDashboardScreen({
     key: 'circle',
     title: t('dashboard.circleMessages'),
     icon: Users,
-    ...(circlePostCount === 0
+    ...(circleUnreadCount > 0
       ? {
-          heroValue: 0,
-          heroMuted: true,
-          iconTone: 'sky' as const,
-          row1: t('dashboard.noFamilyPostsYet'),
-          row2: t('dashboard.allCaughtUp'),
-        }
-      : {
-          heroValue: circleUnreadCount > 0 ? circleUnreadCount : circlePostCount,
+          // Hero = unread only (lifetime post totals are not a glance metric).
+          heroValue: formatCircleBadgeCount(circleUnreadCount),
           heroMuted: false,
-          iconTone: (circleUnreadCount > 0 ? 'rose' : 'sky') as const,
-          row1:
-            circleUnreadCount > 0
-              ? t('common.unread', { count: formatCircleBadgeCount(circleUnreadCount) })
-              : t('dashboard.allCaughtUp'),
-          row2: dashboardPlural(t, 'post', circlePostCount),
-        }),
+          iconTone: 'rose' as const,
+          row1: t('common.unread', { count: formatCircleBadgeCount(circleUnreadCount) }),
+          row2: t(`dashboard.post_${circlePostCount === 1 ? 'one' : 'other'}`, {
+            count: formatCircleBadgeCount(circlePostCount),
+          }),
+        }
+      : circlePostCount === 0
+        ? {
+            heroValue: 0,
+            heroMuted: true,
+            iconTone: 'sky' as const,
+            row1: t('dashboard.noFamilyPostsYet'),
+            row2: t('dashboard.allCaughtUp'),
+          }
+        : {
+            heroValue: 0,
+            heroMuted: true,
+            iconTone: 'sky' as const,
+            row1: t('dashboard.allCaughtUp'),
+            row2: t(`dashboard.post_${circlePostCount === 1 ? 'one' : 'other'}`, {
+              count: formatCircleBadgeCount(circlePostCount),
+            }),
+          }),
     onClick: () => onGoToTab('circle'),
   });
 
