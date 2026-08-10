@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Languages, Loader2 } from 'lucide-react';
 import {
   resolveDiaryEntryText,
@@ -22,6 +22,17 @@ type CircleDiaryTranslatedContentProps = {
   translateIfMissing?: boolean;
 };
 
+const liveDiaryCache = new Map<string, { title?: string; body: string }>();
+
+function translationsFingerprint(
+  translations: DiaryEntryTranslation[] | undefined,
+): string {
+  if (!translations?.length) return '';
+  return translations
+    .map((row) => `${row.language}:${row.title ?? ''}:${row.text}`)
+    .join('|');
+}
+
 export function CircleDiaryTranslatedContent({
   title,
   body,
@@ -30,15 +41,20 @@ export function CircleDiaryTranslatedContent({
   translateIfMissing = true,
 }: CircleDiaryTranslatedContentProps) {
   const t = useCircleT();
+  const translationKey = translationsFingerprint(translations);
   const resolved = useMemo(
     () => resolveDiaryEntryText({ title, body, translations }, viewerLanguage),
-    [title, body, translations, viewerLanguage],
+    // Content identity is captured by translationKey + title/body.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [title, body, translationKey, viewerLanguage],
   );
   const [showOriginal, setShowOriginal] = useState(false);
   const [liveTitle, setLiveTitle] = useState<string | null>(null);
   const [liveBody, setLiveBody] = useState<string | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
+  const failedKeyRef = useRef<string | null>(null);
 
+  const cacheKey = `${viewerLanguage}::${resolved.originalTitle}::${resolved.originalBody}`;
   const needsLiveTranslation =
     translateIfMissing &&
     !resolved.hasTranslation &&
@@ -46,13 +62,23 @@ export function CircleDiaryTranslatedContent({
 
   useEffect(() => {
     setShowOriginal(false);
+    const cached = liveDiaryCache.get(cacheKey);
+    if (cached) {
+      setLiveTitle(cached.title ?? null);
+      setLiveBody(cached.body);
+      setIsTranslating(false);
+      return;
+    }
     setLiveTitle(null);
     setLiveBody(null);
     setIsTranslating(false);
-  }, [title, body, translations, viewerLanguage]);
+  }, [cacheKey]);
 
   useEffect(() => {
     if (!needsLiveTranslation) return;
+    if (liveDiaryCache.has(cacheKey)) return;
+    if (failedKeyRef.current === cacheKey) return;
+
     let cancelled = false;
     setIsTranslating(true);
     void (async () => {
@@ -64,23 +90,33 @@ export function CircleDiaryTranslatedContent({
       ]);
       if (cancelled) return;
       const bodyTrim = nextBody.trim();
-      if (bodyTrim && bodyTrim !== resolved.originalBody) {
-        setLiveBody(bodyTrim);
-      }
       const titleTrim = nextTitle.trim();
-      if (titleTrim && titleTrim !== resolved.originalTitle) {
-        setLiveTitle(titleTrim);
+      const bodyOk = !!bodyTrim && bodyTrim !== resolved.originalBody;
+      const titleOk = !!titleTrim && titleTrim !== resolved.originalTitle;
+      if (!bodyOk && !titleOk) {
+        failedKeyRef.current = cacheKey;
+        setIsTranslating(false);
+        return;
       }
+      const cached = {
+        body: bodyOk ? bodyTrim : resolved.originalBody,
+        ...(titleOk ? { title: titleTrim } : {}),
+      };
+      liveDiaryCache.set(cacheKey, cached);
+      setLiveBody(bodyOk ? bodyTrim : null);
+      setLiveTitle(titleOk ? titleTrim : null);
       setIsTranslating(false);
     })();
+
     return () => {
       cancelled = true;
     };
   }, [
     needsLiveTranslation,
+    cacheKey,
+    viewerLanguage,
     resolved.originalBody,
     resolved.originalTitle,
-    viewerLanguage,
   ]);
 
   const hasTranslation =
