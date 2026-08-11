@@ -700,7 +700,7 @@ export function PatientGalleryScreen({
     setMessage(null);
     setUploadProgress({ index: 1, total: fileList.length, phase: 'preparing' });
     try {
-      await uploadCircleGalleryMediaToAlbum({
+      const result = await uploadCircleGalleryMediaToAlbum({
         db,
         storage,
         patientId: patient.patientId,
@@ -715,11 +715,32 @@ export function PatientGalleryScreen({
       setUploadCaption('');
       await loadAll();
       await loadAlbumDetail(selectedAlbum);
-      setMessage(
-        fileList.length === 1
-          ? t('gallery.toastPhotoUploaded')
-          : t('gallery.toastItemsUploaded', { count: fileList.length }),
-      );
+
+      const uploaded = result.uploadedIds.length;
+      const failed = result.failed.length;
+      if (uploaded === 0) {
+        const first = result.failed[0]?.message;
+        setError(first || t('gallery.errorUploadFailed'));
+      } else if (failed > 0) {
+        setMessage(
+          t('gallery.toastItemsUploadedPartial', {
+            uploaded,
+            total: result.attempted,
+            failed,
+          }),
+        );
+        setError(
+          t('gallery.errorUploadPartial', {
+            failed,
+            total: result.attempted,
+            detail: result.failed[0]?.message || '',
+          }),
+        );
+      } else if (uploaded === 1) {
+        setMessage(t('gallery.toastPhotoUploaded'));
+      } else {
+        setMessage(t('gallery.toastItemsUploaded', { count: uploaded }));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('gallery.errorUploadFailed'));
     } finally {

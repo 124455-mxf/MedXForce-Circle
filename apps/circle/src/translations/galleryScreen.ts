@@ -51,7 +51,7 @@ export const galleryScreenEnglish = {
   descriptionOptionalPlaceholder: 'Description (optional)',
   choosePhotosOrVideos: 'Choose photos or videos',
   uploadResizeHint:
-    'Large photos are resized for faster sharing — this may take a moment.',
+    'Large photos are resized for faster sharing — this may take a moment. On iPhone, open photos in Photos first if they are still in iCloud.',
   addExisting: 'Add existing ({{count}})',
   mediaVideo: 'Video',
   mediaPhoto: 'Photo',
@@ -68,6 +68,8 @@ export const galleryScreenEnglish = {
   toastAlbumCreated: 'Album created.',
   toastPhotoUploaded: 'Photo uploaded.',
   toastItemsUploaded: '{{count}} items uploaded.',
+  toastItemsUploadedPartial:
+    'Uploaded {{uploaded}} of {{total}}. {{failed}} could not be uploaded.',
   toastDescriptionSaved: 'Description saved.',
   toastDeleted: 'Deleted.',
   toastAlbumDeleted: 'Album deleted.',
@@ -77,6 +79,8 @@ export const galleryScreenEnglish = {
   errorLoadAlbum: 'Could not load album.',
   errorCreateAlbum: 'Could not create album.',
   errorUploadFailed: 'Upload failed.',
+  errorUploadPartial:
+    '{{failed}} of {{total}} failed. {{detail}} Tip: on iPhone, open photos in the Photos app first so iCloud finishes downloading.',
   errorSaveDescription: 'Could not save description.',
   errorDelete: 'Could not delete.',
   errorDeleteAlbum: 'Could not delete album.',
@@ -139,7 +143,7 @@ export const galleryScreenGerman = {
   descriptionOptionalPlaceholder: 'Beschreibung (optional)',
   choosePhotosOrVideos: 'Fotos oder Videos auswählen',
   uploadResizeHint:
-    'Große Fotos werden für schnelleres Teilen verkleinert — das kann einen Moment dauern.',
+    'Große Fotos werden für schnelleres Teilen verkleinert — das kann einen Moment dauern. Am iPhone Fotos zuerst in der Fotos-App öffnen, wenn sie noch in iCloud sind.',
   addExisting: 'Vorhandenes hinzufügen ({{count}})',
   mediaVideo: 'Video',
   mediaPhoto: 'Foto',
@@ -156,6 +160,8 @@ export const galleryScreenGerman = {
   toastAlbumCreated: 'Album erstellt.',
   toastPhotoUploaded: 'Foto hochgeladen.',
   toastItemsUploaded: '{{count}} Elemente hochgeladen.',
+  toastItemsUploadedPartial:
+    '{{uploaded}} von {{total}} hochgeladen. {{failed}} konnten nicht hochgeladen werden.',
   toastDescriptionSaved: 'Beschreibung gespeichert.',
   toastDeleted: 'Gelöscht.',
   toastAlbumDeleted: 'Album gelöscht.',
@@ -165,6 +171,8 @@ export const galleryScreenGerman = {
   errorLoadAlbum: 'Album konnte nicht geladen werden.',
   errorCreateAlbum: 'Album konnte nicht erstellt werden.',
   errorUploadFailed: 'Upload fehlgeschlagen.',
+  errorUploadPartial:
+    '{{failed}} von {{total}} fehlgeschlagen. {{detail}} Tipp: Öffnen Sie Fotos zuerst in der Fotos-App, damit iCloud sie vollständig lädt.',
   errorSaveDescription: 'Beschreibung konnte nicht gespeichert werden.',
   errorDelete: 'Löschen fehlgeschlagen.',
   errorDeleteAlbum: 'Album konnte nicht gelöscht werden.',
@@ -244,6 +252,8 @@ export const galleryScreenSpanish = {
   toastAlbumCreated: 'Álbum creado.',
   toastPhotoUploaded: 'Foto subida.',
   toastItemsUploaded: '{{count}} elementos subidos.',
+  toastItemsUploadedPartial:
+    'Se subieron {{uploaded}} de {{total}}. {{failed}} no se pudieron subir.',
   toastDescriptionSaved: 'Descripción guardada.',
   toastDeleted: 'Eliminado.',
   toastAlbumDeleted: 'Álbum eliminado.',
@@ -253,6 +263,8 @@ export const galleryScreenSpanish = {
   errorLoadAlbum: 'No se pudo cargar el álbum.',
   errorCreateAlbum: 'No se pudo crear el álbum.',
   errorUploadFailed: 'Error al subir.',
+  errorUploadPartial:
+    'Fallaron {{failed}} de {{total}}. {{detail}} Consejo: en el iPhone, abra las fotos en la app Fotos para que iCloud termine de descargarlas.',
   errorSaveDescription: 'No se pudo guardar la descripción.',
   errorDelete: 'No se pudo eliminar.',
   errorDeleteAlbum: 'No se pudo eliminar el álbum.',
@@ -332,6 +344,8 @@ export const galleryScreenPolish = {
   toastAlbumCreated: 'Album utworzony.',
   toastPhotoUploaded: 'Zdjęcie przesłane.',
   toastItemsUploaded: 'Przesłano {{count}} elementów.',
+  toastItemsUploadedPartial:
+    'Przesłano {{uploaded}} z {{total}}. Nie udało się przesłać {{failed}}.',
   toastDescriptionSaved: 'Opis zapisany.',
   toastDeleted: 'Usunięto.',
   toastAlbumDeleted: 'Album usunięty.',
@@ -341,6 +355,8 @@ export const galleryScreenPolish = {
   errorLoadAlbum: 'Nie udało się załadować albumu.',
   errorCreateAlbum: 'Nie udało się utworzyć albumu.',
   errorUploadFailed: 'Przesyłanie nie powiodło się.',
+  errorUploadPartial:
+    'Nie udało się przesłać {{failed}} z {{total}}. {{detail}} Wskazówka: na iPhonie najpierw otwórz zdjęcia w aplikacji Zdjęcia, aby iCloud je pobrał.',
   errorSaveDescription: 'Nie udało się zapisać opisu.',
   errorDelete: 'Nie udało się usunąć.',
   errorDeleteAlbum: 'Nie udało się usunąć albumu.',
