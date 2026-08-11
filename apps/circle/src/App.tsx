@@ -15,6 +15,7 @@ import {
   acceptPendingCircleInvites,
   ensureMemberCapabilitiesForUser,
   ensureManagedContactsForAcceptedMembersForUser,
+  syncManagedContactNamesFromMemberProfilesForUser,
   repairInactiveAcceptedMemberDocsForUser,
   repairOrphanAcceptedInvitesForUser,
   reconcileAcceptedMemberRolesForUser,
@@ -180,6 +181,11 @@ export default function App() {
     await ensureMemberCapabilitiesForUser(firebase.db, currentUser.uid);
     if (currentUser.email) {
       await ensureManagedContactsForAcceptedMembersForUser(
+        firebase.db,
+        currentUser.uid,
+        currentUser.email,
+      );
+      await syncManagedContactNamesFromMemberProfilesForUser(
         firebase.db,
         currentUser.uid,
         currentUser.email,

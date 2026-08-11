@@ -1,16 +1,28 @@
-import { doc, getDoc, setDoc, type Firestore } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  where,
+  type Firestore,
+} from 'firebase/firestore';
 import type { CircleManagedContact } from './circleContactManagement';
 import {
   composeContactDisplayName,
   findManagedContactByEmail,
   listPatientManagedContacts,
   normalizeContactDateOfBirth,
+  upsertPatientManagedContact,
 } from './circleContactManagement';
 import {
   circleInviteRefForPatientEmail,
   lookupCircleInviteByPatientEmail,
+  type CircleInviteRecord,
 } from './circleInvites';
 import { normalizeInviteEmail } from './patientPermissions';
+import { isFirestoreQuotaError } from './firestoreQuota';
 
 export type CircleMemberContactProfile = {
   name: string;
@@ -217,6 +229,43 @@ export async function updateOwnCircleContactProfile(
 
   const merged = mergeContactWithMemberContactProfile(existing, nextProfile);
 
+  // Keep patient caregivers / friends list in sync — Circle UI merges prefs for display,
+  // but the patient app reads the managed-contact `name` field directly.
+  try {
+    await upsertPatientManagedContact(
+      db,
+      patientId,
+      {
+        ...merged,
+        name: nextProfile.name,
+        firstName: nextProfile.firstName,
+        lastName: nextProfile.lastName,
+        dateOfBirth: nextProfile.dateOfBirth,
+        language: nextProfile.language,
+        relationship: nextProfile.relationship || existing.relationship,
+      },
+      {
+        syncInvite: false,
+        updateAccessIndex: false,
+      },
+    );
+  } catch (err) {
+    console.warn('[Circle] Managed contact name sync skipped —', err);
+  }
+
+  try {
+    await setDoc(
+      doc(db, 'patients', patientId, 'members', memberUid),
+      {
+        displayName: nextProfile.name,
+        updatedAt: Date.now(),
+      },
+      { merge: true },
+    );
+  } catch (err) {
+    console.warn('[Circle] Member displayName sync skipped —', err);
+  }
+
   // Keep invite list labels aligned with the composed display name.
   const invite = await lookupCircleInviteByPatientEmail(
     db,
@@ -240,4 +289,83 @@ export async function updateOwnCircleContactProfile(
   }
 
   return merged;
+}
+
+/**
+ * Heal: copy member contactProfile (first/last name) onto the patient managed-contact
+ * row when the patient list still has a stale display name (e.g. email local-part).
+ */
+export async function syncManagedContactNamesFromMemberProfilesForUser(
+  db: Firestore,
+  uid: string,
+  actorEmail: string,
+): Promise<number> {
+  const email = normalizeInviteEmail(actorEmail);
+  if (!email) return 0;
+
+  const invitesSnap = await getDocs(
+    query(
+      collection(db, 'circle_invites'),
+      where('acceptedByUid', '==', uid),
+      where('status', '==', 'accepted'),
+    ),
+  );
+  if (invitesSnap.empty) return 0;
+
+  let synced = 0;
+  for (const inviteDoc of invitesSnap.docs) {
+    const invite = inviteDoc.data() as CircleInviteRecord;
+    const patientId = invite.patientId;
+    if (!patientId) continue;
+
+    try {
+      const profile = await readMemberContactProfile(db, patientId, uid);
+      if (!profile?.name?.trim()) continue;
+
+      const contacts = await listPatientManagedContacts(db, patientId);
+      const existing = findManagedContactByEmail(contacts, invite.invitedEmail || email);
+      if (!existing) continue;
+
+      const currentName = composeContactDisplayName(existing);
+      const sameName = currentName === profile.name;
+      const sameParts =
+        (existing.firstName || '') === profile.firstName &&
+        (existing.lastName || '') === profile.lastName;
+      if (sameName && sameParts) continue;
+
+      await upsertPatientManagedContact(
+        db,
+        patientId,
+        {
+          ...existing,
+          name: profile.name,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          dateOfBirth: profile.dateOfBirth || existing.dateOfBirth || '',
+          language: profile.language || existing.language,
+          relationship: profile.relationship || existing.relationship,
+        },
+        {
+          syncInvite: false,
+          updateAccessIndex: false,
+        },
+      );
+
+      await setDoc(
+        doc(db, 'patients', patientId, 'members', uid),
+        { displayName: profile.name, updatedAt: Date.now() },
+        { merge: true },
+      );
+
+      synced += 1;
+    } catch (err) {
+      if (isFirestoreQuotaError(err)) {
+        console.warn('[Circle] Contact name heal skipped — Firestore daily write quota exceeded.');
+        break;
+      }
+      console.warn('[Circle] Contact name heal skipped for patient', invite.patientId, err);
+    }
+  }
+
+  return synced;
 }
