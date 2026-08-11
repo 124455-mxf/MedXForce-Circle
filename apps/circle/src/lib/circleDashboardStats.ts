@@ -27,7 +27,7 @@ function localDateKey(date: Date): string {
 
 /** Oldest → today, rolling last 7 calendar days (for week activity bars). */
 export function buildRollingLast7ActivityDays(
-  valueOnDate: (dateKey: string) => number,
+  valueOnDate: (dateKey: string, dayIndex: number) => number,
 ): DashboardActivityDay[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -37,7 +37,7 @@ export function buildRollingLast7ActivityDays(
     const day = new Date(today);
     day.setDate(today.getDate() - (DASHBOARD_STATS_DAYS - 1 - index));
     const dateKey = localDateKey(day);
-    const value = Math.max(0, valueOnDate(dateKey) || 0);
+    const value = Math.max(0, valueOnDate(dateKey, index) || 0);
     return {
       dateKey,
       isToday: dateKey === todayKey,
@@ -51,13 +51,15 @@ export function activityDaysFromTimeline<T extends { date: string }>(
   timeline: T[] | undefined,
   valueOf: (point: T) => number,
 ): DashboardActivityDay[] {
-  const totals = new Map<string, number>();
-  for (const point of timeline ?? []) {
-    if (!point?.date) continue;
-    const next = (totals.get(point.date) ?? 0) + valueOf(point);
-    totals.set(point.date, next);
-  }
-  return buildRollingLast7ActivityDays((dateKey) => totals.get(dateKey) ?? 0);
+  // Analytics timelines use display labels (e.g. "Aug 11"), not YYYY-MM-DD.
+  // They are contiguous day buckets ending today, so align the last 7 by index.
+  const last7 = (timeline ?? []).slice(-DASHBOARD_STATS_DAYS);
+  const offset = DASHBOARD_STATS_DAYS - last7.length;
+  return buildRollingLast7ActivityDays((_dateKey, dayIndex) => {
+    const pointIndex = dayIndex - offset;
+    if (pointIndex < 0 || pointIndex >= last7.length) return 0;
+    return Math.max(0, valueOf(last7[pointIndex]!));
+  });
 }
 
 export const DASHBOARD_ASSESSMENT_METRIC_IDS = [
