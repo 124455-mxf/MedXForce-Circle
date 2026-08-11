@@ -12,8 +12,7 @@ import {
   formatCareCalendarTimeRange,
   getCalendarWeekDays,
   buildScheduleWeekTimeSlots,
-  SCHEDULE_WEEK_VIEW_START_HOUR,
-  SCHEDULE_WEEK_VIEW_END_HOUR,
+  resolveScheduleWeekViewHours,
   SCHEDULE_WEEK_SLOT_MINUTES,
   mergeAttendeeResponses,
   parseAttendeeResponseSummary,
@@ -44,8 +43,6 @@ import {
 } from '../lib/circleScheduleLayout';
 import { cn } from '../lib/utils';
 
-const DAY_START_MINUTES = SCHEDULE_WEEK_VIEW_START_HOUR * 60;
-const DAY_END_MINUTES = SCHEDULE_WEEK_VIEW_END_HOUR * 60;
 const SLOT_HEIGHT_PX = 48;
 const MOBILE_VISIBLE_DAYS = 3;
 
@@ -95,12 +92,8 @@ type CircleScheduleWeekViewProps = {
   onRecordVisit?: (entryId: string) => void;
 };
 
-function buildWeekTimeSlots(): number[] {
-  return buildScheduleWeekTimeSlots();
-}
-
-function minutesToTop(minutes: number): number {
-  return ((minutes - DAY_START_MINUTES) / SCHEDULE_WEEK_SLOT_MINUTES) * SLOT_HEIGHT_PX;
+function minutesToTop(minutes: number, dayStartMinutes: number): number {
+  return ((minutes - dayStartMinutes) / SCHEDULE_WEEK_SLOT_MINUTES) * SLOT_HEIGHT_PX;
 }
 
 function eventBlockHeight(startMinutes: number, endMinutes: number | undefined): number {
@@ -236,7 +229,23 @@ export function CircleScheduleWeekView({
     t(`dashboard.careCalendar.${key}`, params);
 
   const weekDays = useMemo(() => getCalendarWeekDays(weekAnchor), [weekAnchor]);
-  const timeSlots = buildWeekTimeSlots();
+  const weekCareEvents = useMemo(() => {
+    const events: CareCalendarDayEvent[] = [];
+    for (const day of weekDays) {
+      events.push(...(careByDay.get(careCalendarDateKey(day)) ?? []));
+    }
+    return events;
+  }, [weekDays, careByDay]);
+  const { startHour, endHour } = useMemo(
+    () => resolveScheduleWeekViewHours(weekCareEvents),
+    [weekCareEvents],
+  );
+  const dayStartMinutes = startHour * 60;
+  const dayEndMinutes = endHour * 60;
+  const timeSlots = useMemo(
+    () => buildScheduleWeekTimeSlots(startHour, endHour),
+    [startHour, endHour],
+  );
   const gridHeight = timeSlots.length * SLOT_HEIGHT_PX;
   const maxMobileDayOffset = Math.max(0, weekDays.length - MOBILE_VISIBLE_DAYS);
 
@@ -317,6 +326,8 @@ export function CircleScheduleWeekView({
             compactHeaders
             gridHeight={gridHeight}
             timeSlots={timeSlots}
+            dayStartMinutes={dayStartMinutes}
+            dayEndMinutes={dayEndMinutes}
             calendarByDay={calendarByDay}
             careByDay={careByDay}
             todayKey={todayKey}
@@ -337,6 +348,8 @@ export function CircleScheduleWeekView({
             timeColumnWidth="3.5rem"
             gridHeight={gridHeight}
             timeSlots={timeSlots}
+            dayStartMinutes={dayStartMinutes}
+            dayEndMinutes={dayEndMinutes}
             calendarByDay={calendarByDay}
             careByDay={careByDay}
             todayKey={todayKey}
@@ -395,6 +408,8 @@ function WeekDaysGrid({
   compactHeaders = false,
   gridHeight,
   timeSlots,
+  dayStartMinutes,
+  dayEndMinutes,
   calendarByDay,
   careByDay,
   todayKey,
@@ -412,6 +427,8 @@ function WeekDaysGrid({
   compactHeaders?: boolean;
   gridHeight: number;
   timeSlots: number[];
+  dayStartMinutes: number;
+  dayEndMinutes: number;
   calendarByDay: Map<string, AssessmentScheduleDayEvent[]>;
   careByDay: Map<string, CareCalendarDayEvent[]>;
   todayKey: string;
@@ -534,9 +551,9 @@ function WeekDaysGrid({
 
             {careEvents.map((event) => {
               const start = event.startTimeMinutes ?? 9 * 60;
-              if (start < DAY_START_MINUTES || start >= DAY_END_MINUTES) return null;
+              if (start < dayStartMinutes || start >= dayEndMinutes) return null;
               const end = event.endTimeMinutes;
-              const top = minutesToTop(start);
+              const top = minutesToTop(start, dayStartMinutes);
               const height = eventBlockHeight(start, end);
               const isSelected =
                 selection?.event.entryId === event.entryId && selection.dateKey === dateKey;

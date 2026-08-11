@@ -613,15 +613,56 @@ export function buildScheduleTimeSlots(
   return slots;
 }
 
-/** Week grid uses a shorter day range and hourly rows for readability. */
+/** Week grid default range — keeps the grid compact when the week is quiet. */
 export const SCHEDULE_WEEK_VIEW_START_HOUR = 8;
 export const SCHEDULE_WEEK_VIEW_END_HOUR = 18;
+/** Expand week grid at least this early/late when appointments fall outside the default. */
+export const SCHEDULE_WEEK_VIEW_MIN_HOUR = SCHEDULE_DAY_VIEW_START_HOUR;
+export const SCHEDULE_WEEK_VIEW_MAX_HOUR = SCHEDULE_DAY_VIEW_END_HOUR;
 export const SCHEDULE_WEEK_SLOT_MINUTES = 60;
 
-export function buildScheduleWeekTimeSlots(): number[] {
+/**
+ * Expand the week hour window to include care events outside the default 8–18 range,
+ * clamped to the day-view bounds (6–22).
+ */
+export function resolveScheduleWeekViewHours(
+  events: Array<{ startTimeMinutes?: number | null; endTimeMinutes?: number | null }>,
+): { startHour: number; endHour: number } {
+  let startHour = SCHEDULE_WEEK_VIEW_START_HOUR;
+  let endHour = SCHEDULE_WEEK_VIEW_END_HOUR;
+
+  for (const event of events) {
+    const start = event.startTimeMinutes;
+    if (typeof start === 'number' && Number.isFinite(start) && start >= 0) {
+      const hour = Math.floor(start / 60);
+      startHour = Math.min(startHour, Math.max(SCHEDULE_WEEK_VIEW_MIN_HOUR, hour));
+    }
+    const end =
+      typeof event.endTimeMinutes === 'number' && Number.isFinite(event.endTimeMinutes)
+        ? event.endTimeMinutes
+        : typeof start === 'number' && Number.isFinite(start)
+          ? start + SCHEDULE_WEEK_SLOT_MINUTES
+          : null;
+    if (typeof end === 'number' && end > 0) {
+      // Include the hour slot that contains the end (exclusive end uses ceil).
+      const endHourNeeded = Math.max(1, Math.ceil(end / 60));
+      endHour = Math.max(endHour, Math.min(SCHEDULE_WEEK_VIEW_MAX_HOUR, endHourNeeded));
+    }
+  }
+
+  if (endHour <= startHour) {
+    endHour = Math.min(SCHEDULE_WEEK_VIEW_MAX_HOUR, startHour + 1);
+  }
+  return { startHour, endHour };
+}
+
+export function buildScheduleWeekTimeSlots(
+  startHour = SCHEDULE_WEEK_VIEW_START_HOUR,
+  endHour = SCHEDULE_WEEK_VIEW_END_HOUR,
+): number[] {
   return buildScheduleTimeSlots(
-    SCHEDULE_WEEK_VIEW_START_HOUR,
-    SCHEDULE_WEEK_VIEW_END_HOUR,
+    startHour,
+    endHour,
     SCHEDULE_WEEK_SLOT_MINUTES,
   );
 }
