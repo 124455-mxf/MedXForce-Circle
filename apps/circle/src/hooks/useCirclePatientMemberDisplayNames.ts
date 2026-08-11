@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { collection, doc, onSnapshot, type Firestore, type QuerySnapshot } from 'firebase/firestore';
 import {
+  composeContactDisplayName,
   listPatientManagedContacts,
   normalizeInviteEmail,
   parseMemberContactProfile,
@@ -38,7 +39,7 @@ export function useCirclePatientMemberDisplayNames(
       const nameByEmail = new Map(
         latestContacts.map((contact) => [
           normalizeInviteEmail(contact.email),
-          contact.name?.trim() || '',
+          composeContactDisplayName(contact),
         ]),
       );
 

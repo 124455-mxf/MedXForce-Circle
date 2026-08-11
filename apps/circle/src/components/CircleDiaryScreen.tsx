@@ -40,6 +40,7 @@ import {
   circleWorkTabPanelClass,
 } from '../lib/circleSectionStyles';
 import { useCircleDiaryEntries, type DiaryListFilter } from '../hooks/useCircleDiaryEntries';
+import { useCirclePatientMemberDisplayNames } from '../hooks/useCirclePatientMemberDisplayNames';
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
 import { useCircleToast } from '../hooks/useCircleToast';
 import { CircleAppToast } from './CircleAppToast';
@@ -48,6 +49,7 @@ import { CircleDiaryTranslatedContent } from './CircleDiaryTranslatedContent';
 import { useCircleRemoteSettingsFromShell } from '../context/CircleSelectedPatientContext';
 import { useCircleI18nContext } from '../lib/circleI18nContext';
 import { normalizeCircleUiLanguage } from '../lib/circleLanguages';
+import { resolveCircleDiaryAuthorLabel } from '../lib/resolveCircleDiaryAuthorLabel';
 import { buildCircleDiaryTranslations } from '../lib/buildCircleDiaryTranslations';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 import { CircleFolderCountBadge } from './CircleCountBadge';
@@ -74,6 +76,7 @@ function DiaryTimelineEntry({
   entry,
   isOwn,
   patientDisplayName,
+  displayNameByUid,
   viewerLanguage,
   onEdit,
   onDelete,
@@ -81,6 +84,7 @@ function DiaryTimelineEntry({
   entry: CircleDiaryEntry;
   isOwn: boolean;
   patientDisplayName: string;
+  displayNameByUid: Record<string, string>;
   viewerLanguage: ReturnType<typeof normalizeCircleUiLanguage>;
   onEdit: () => void;
   onDelete: () => void;
@@ -92,11 +96,11 @@ function DiaryTimelineEntry({
   const mood = diaryMoodLabelI18n(t, entry.mood);
   const shared = isDiaryEntrySharedWithCircle(entry);
   const showMilestone = isSystem || entry.isMilestone;
-  const authorLabel = isSystem
-    ? t('diary.badgeCareMilestone')
-    : isPatientAuthor
-      ? patientDisplayName
-      : entry.authorName;
+  const authorLabel = resolveCircleDiaryAuthorLabel(entry, {
+    patientDisplayName,
+    displayNameByUid,
+    systemAuthorLabel: t('diary.badgeCareMilestone'),
+  });
 
   return (
     <li className="relative pl-6">
@@ -231,6 +235,7 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
     user,
     filter,
   );
+  const memberDisplayNames = useCirclePatientMemberDisplayNames(db, patient.patientId);
 
   const authorName = useMemo(() => {
     return user.displayName?.trim() || user.email?.split('@')[0] || t('circle.circleMemberFallback');
@@ -411,6 +416,7 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
                     entry={entry}
                     isOwn={entry.authorUid === user.uid}
                     patientDisplayName={patient.displayName}
+                    displayNameByUid={memberDisplayNames.byUid}
                     viewerLanguage={viewerLanguage}
                     onEdit={() => openEdit(entry)}
                     onDelete={() => setDeleteTarget(entry)}
