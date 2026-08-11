@@ -25,6 +25,7 @@ import { CirclePatientLanguagePill } from './CirclePatientLanguagePill';
 import { useCirclePatientMemberDisplayNames } from '../hooks/useCirclePatientMemberDisplayNames';
 import { useCircleRemoteSettingsFromShell } from '../context/CircleSelectedPatientContext';
 import { normalizeCircleUiLanguage } from '../lib/circleLanguages';
+import { translatePatientMessageForViewer } from '../lib/circlePatientMessageTranslate';
 import { resolveCircleReplySenderLabel } from '../lib/circleReplySenderDisplay';
 
 import type {
@@ -704,6 +705,18 @@ export function PatientMessagesScreen({
       const now = Date.now();
       const replyId = `reply_${now}_${Math.random().toString(36).slice(2, 8)}`;
 
+      // Store patient-language translation so the patient app can show English (etc.)
+      // without relying on a browser Gemini key.
+      let translations: { language: string; text: string; isAuto: boolean }[] = [];
+      try {
+        const translated = (await translatePatientMessageForViewer(text, patientLanguage)).trim();
+        if (translated && translated !== text) {
+          translations = [{ language: patientLanguage, text: translated, isAuto: true }];
+        }
+      } catch (err) {
+        console.warn('[PatientMessagesScreen] Reply patient-language translate skipped —', err);
+      }
+
       const replyDoc = {
         id: replyId,
         patientId: patient.patientId,
@@ -716,6 +729,7 @@ export function PatientMessagesScreen({
         channel: 'app' as const,
         externalId: replyId,
         timestamp: now,
+        ...(translations.length > 0 ? { translations } : {}),
       };
 
       await setDoc(
@@ -746,6 +760,7 @@ export function PatientMessagesScreen({
     db,
     normalizedEmail,
     patient.patientId,
+    patientLanguage,
     replyText,
     selectedMessage,
     selectedMessageId,
