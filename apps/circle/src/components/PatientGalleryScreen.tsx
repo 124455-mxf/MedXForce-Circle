@@ -64,6 +64,7 @@ import {
   circleBrowsePillListClass,
   circleTabButtonClass,
   circleTabListClass,
+  circleHeaderActionButtonClass,
   circleWorkTabHeaderClass,
   circleWorkTabPanelClass,
 } from '../lib/circleSectionStyles';
@@ -902,11 +903,11 @@ export function PatientGalleryScreen({
                         setManageScreen('albums');
                         setMessage(null);
                       }}
-                      className="shrink-0 w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm hover:bg-blue-700 transition-colors"
+                      className={circleHeaderActionButtonClass}
                       aria-label={t('gallery.uploadAriaLabel')}
                       title={t('gallery.uploadTitle')}
                     >
-                      <Upload size={18} />
+                      <Plus size={18} className="[@media(max-height:740px)]:size-4" />
                     </button>
                   ) : undefined
                 }

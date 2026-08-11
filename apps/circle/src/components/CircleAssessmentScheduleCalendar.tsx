@@ -30,6 +30,7 @@ import {
   type CircleAssessmentScheduleContext,
 } from '../lib/circleAssessmentScheduleMetrics';
 import { cn } from '../lib/utils';
+import { circleHeaderActionButtonClass } from '../lib/circleSectionStyles';
 import { useCircleScheduleShowAppointmentDetails } from '../hooks/useCircleScheduleShowAppointmentDetails';
 
 type CircleAssessmentScheduleCalendarProps = {
@@ -434,10 +435,11 @@ export function CircleAssessmentScheduleCalendar({
               <button
                 type="button"
                 onClick={() => onAddAppointment(selectedDateKey)}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-violet-600 text-white text-[10px] font-bold hover:bg-violet-700"
+                className={circleHeaderActionButtonClass}
+                aria-label={ct('addTitle')}
+                title={ct('addTitle')}
               >
-                <Plus size={14} />
-                {ct('addShort')}
+                <Plus size={18} className="[@media(max-height:740px)]:size-4" />
               </button>
             )}
             <button
@@ -471,7 +473,7 @@ export function CircleAssessmentScheduleCalendar({
               <button
                 type="button"
                 onClick={() => onAddAppointment(selectedDateKey)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-700"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700"
               >
                 <Plus size={14} />
                 {ct('addShort')}
@@ -562,10 +564,11 @@ export function CircleAssessmentScheduleCalendar({
             <button
               type="button"
               onClick={() => onAddAppointment(addDateKey)}
-              className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-700"
+              className={circleHeaderActionButtonClass}
+              aria-label={ct('addTitle')}
+              title={ct('addTitle')}
             >
-              <Plus size={16} />
-              {ct('addShort')}
+              <Plus size={18} className="[@media(max-height:740px)]:size-4" />
             </button>
           )}
         </div>
@@ -681,7 +684,7 @@ export function CircleAssessmentScheduleCalendar({
             <button
               type="button"
               onClick={() => onAddAppointment(selectedDateKey)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-700"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700"
             >
               <Plus size={16} />
               {ct('addShort')}
