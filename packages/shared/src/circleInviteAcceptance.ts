@@ -27,10 +27,165 @@ import {
   resolveCircleAccessForInviteEmail,
 } from './circleMemberRoles';
 import {
+  findManagedContactByEmail,
+  listPatientManagedContacts,
+  upsertPatientManagedContact,
+  type CircleContactKind,
+} from './circleContactManagement';
+import {
   hasRepairedMemberCapabilitiesThisSession,
   isFirestoreQuotaError,
   markMemberCapabilitiesRepairedThisSession,
 } from './firestoreQuota';
+
+function contactKindForMemberRole(role: CircleMemberRole): CircleContactKind {
+  if (role === 'friend') return 'friend';
+  if (role === 'family') return 'family';
+  return 'caregiver';
+}
+
+function displayNameForEnsuredContact(email: string, displayName?: string): string {
+  const trimmed = displayName?.trim();
+  if (trimmed) return trimmed;
+  const local = email.split('@')[0]?.trim();
+  return local || 'Circle member';
+}
+
+/**
+ * Accepted Circle members need a patient managed-contact row for "My contact details"
+ * and patient-app Circle lists. Invites can be accepted even when that row was deleted
+ * or never created (re-invite / orphan invite).
+ */
+export async function ensureManagedContactForAcceptedMember(
+  db: Firestore,
+  patientId: string,
+  params: {
+    email: string;
+    role: CircleMemberRole | string;
+    proxyTier?: ProxyTier;
+    displayName?: string;
+    contactId?: string;
+  },
+): Promise<boolean> {
+  const email = normalizeInviteEmail(params.email);
+  if (!email) return false;
+
+  const existing = findManagedContactByEmail(
+    await listPatientManagedContacts(db, patientId),
+    email,
+  );
+  if (existing) return false;
+
+  const role = normalizeMemberRole(String(params.role || 'caregiver'));
+  const kind = contactKindForMemberRole(role);
+  const notify =
+    kind === 'contact'
+      ? { message: true, sms: false, alert: false, attention: false }
+      : { message: true, sms: true, alert: true, attention: true };
+
+  await upsertPatientManagedContact(
+    db,
+    patientId,
+    {
+      id: params.contactId?.trim() || undefined,
+      name: displayNameForEnsuredContact(email, params.displayName),
+      firstName: '',
+      lastName: '',
+      dateOfBirth: '',
+      email,
+      mobile: '',
+      relationship: '',
+      kind,
+      language: 'English',
+      ...notify,
+      circleRole: role,
+      ...(role === 'proxy' && params.proxyTier ? { proxyTier: params.proxyTier } : {}),
+    },
+    {
+      // Invite is already accepted — do not re-sync status/role from this heal.
+      syncInvite: false,
+      // Own-contact rules omit circleAccessByEmail; proxies may still refresh index below.
+      updateAccessIndex: false,
+    },
+  );
+
+  try {
+    const patientSnap = await getDoc(doc(db, 'patients', patientId));
+    if (patientSnap.exists()) {
+      await publishCircleAccessIndexFromPatientDoc(
+        db,
+        patientId,
+        patientSnap.data() as PatientContactArrays,
+      );
+    }
+  } catch (err) {
+    console.warn('[Circle] Access index refresh after contact ensure skipped —', err);
+  }
+
+  return true;
+}
+
+/** Backfill missing patient contacts for all accepted invites of this member. */
+export async function ensureManagedContactsForAcceptedMembersForUser(
+  db: Firestore,
+  uid: string,
+  actorEmail: string,
+): Promise<number> {
+  const email = normalizeInviteEmail(actorEmail);
+  if (!email) return 0;
+
+  const invitesSnap = await getDocs(
+    query(
+      collection(db, 'circle_invites'),
+      where('acceptedByUid', '==', uid),
+      where('status', '==', 'accepted'),
+    ),
+  );
+  if (invitesSnap.empty) return 0;
+
+  let created = 0;
+  for (const inviteDoc of invitesSnap.docs) {
+    const invite = inviteDoc.data() as CircleInviteRecord;
+    const memberSnap = await getDoc(doc(db, 'patients', invite.patientId, 'members', uid));
+    if (!memberSnap.exists()) continue;
+    const memberData = memberSnap.data() as {
+      role?: string;
+      proxyTier?: string;
+      displayName?: string;
+      status?: string;
+    };
+    if (String(memberData.status || 'active') !== 'active') continue;
+
+    const role = normalizeMemberRole(String(memberData.role || invite.role || 'caregiver'));
+    const proxyTier =
+      role === 'proxy'
+        ? memberData.proxyTier === 'backup' || invite.proxyTier === 'backup'
+          ? 'backup'
+          : 'primary'
+        : undefined;
+
+    try {
+      const didCreate = await ensureManagedContactForAcceptedMember(db, invite.patientId, {
+        email: invite.invitedEmail || email,
+        role,
+        proxyTier,
+        displayName:
+          (typeof memberData.displayName === 'string' && memberData.displayName.trim()) ||
+          invite.displayName,
+        contactId: invite.contactId,
+      });
+      if (didCreate) created += 1;
+    } catch (err) {
+      if (isFirestoreQuotaError(err)) {
+        console.warn('[Circle] Contact ensure skipped — Firestore daily write quota exceeded.');
+        break;
+      }
+      console.warn('[Circle] Could not ensure contact for patient', invite.patientId, err);
+    }
+  }
+
+  return created;
+}
 
 function memberDocNeedsCapabilityRepair(
   stored: Partial<PatientCapabilities> | undefined,
@@ -311,6 +466,18 @@ export async function acceptPendingCircleInvites(
         } catch (err) {
           console.warn('[Circle] Contact demotion sync skipped —', err);
         }
+      }
+
+      try {
+        await ensureManagedContactForAcceptedMember(db, invite.patientId, {
+          email,
+          role: effectiveRole,
+          proxyTier: effectiveTier,
+          displayName: invite.displayName,
+          contactId: invite.contactId,
+        });
+      } catch (err) {
+        console.warn('[Circle] Contact ensure after accept skipped —', err);
       }
 
       accepted.push(

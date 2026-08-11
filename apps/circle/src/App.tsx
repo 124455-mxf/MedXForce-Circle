@@ -14,6 +14,7 @@ import { MedXForceBrandLogo } from './components/MedXForceBrandLogo';
 import {
   acceptPendingCircleInvites,
   ensureMemberCapabilitiesForUser,
+  ensureManagedContactsForAcceptedMembersForUser,
   repairInactiveAcceptedMemberDocsForUser,
   repairOrphanAcceptedInvitesForUser,
   reconcileAcceptedMemberRolesForUser,
@@ -177,6 +178,13 @@ export default function App() {
     await repairInactiveAcceptedMemberDocsForUser(firebase.db, currentUser.uid);
     await reconcileAcceptedMemberRolesForUser(firebase.db, currentUser.uid);
     await ensureMemberCapabilitiesForUser(firebase.db, currentUser.uid);
+    if (currentUser.email) {
+      await ensureManagedContactsForAcceptedMembersForUser(
+        firebase.db,
+        currentUser.uid,
+        currentUser.email,
+      );
+    }
     const list = await listCirclePatientsAndProvisionsForUser(firebase.db, currentUser.uid);
     setPatients(list);
     for (const invite of accepted) {
