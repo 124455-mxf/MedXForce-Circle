@@ -11,9 +11,9 @@ export const diaryScreenEnglish = {
   tabCircleStoryCompact: 'Shared',
   tabCircleStoryAria: 'Circle story',
   tabCircleStoryAriaWithCount: 'Circle story, {{count}} shared entries',
-  hintMine: 'Your personal entries — change sharing when you edit an entry.',
+  hintMine: 'Your private entries only. Shared posts appear under Circle story.',
   hintCircle: 'Entries shared by circle members and the patient, woven into one timeline.',
-  emptyMine: 'No entries yet. Tap + to capture your first moment.',
+  emptyMine: 'No private entries yet. Tap + and keep an entry private to see it here.',
   emptyCircle: 'No shared entries yet. New entries are shared with the circle by default.',
   badgePatient: 'Patient',
   badgeCircleMember: 'Circle member',
@@ -87,10 +87,11 @@ export const diaryScreenGerman = {
   tabCircleStoryAria: 'Circle-Geschichte',
   tabCircleStoryAriaWithCount: 'Circle-Geschichte, {{count}} geteilte Einträge',
   hintMine:
-    'Ihre persönlichen Einträge — Teilen können Sie beim Bearbeiten eines Eintrags ändern.',
+    'Nur Ihre privaten Einträge. Geteilte Beiträge erscheinen unter Circle-Geschichte.',
   hintCircle:
     'Vom Patienten und Circle-Mitgliedern geteilte Einträge, zu einer gemeinsamen Zeitleiste verwoben.',
-  emptyMine: 'Noch keine Einträge. Tippen Sie auf +, um Ihren ersten Moment festzuhalten.',
+  emptyMine:
+    'Noch keine privaten Einträge. Tippen Sie auf + und lassen Sie einen Eintrag privat, um ihn hier zu sehen.',
   emptyCircle:
     'Noch keine geteilten Einträge. Neue Einträge werden standardmäßig mit dem Circle geteilt.',
   badgePatient: 'Patient',
@@ -165,10 +166,11 @@ export const diaryScreenSpanish = {
   tabCircleStoryAria: 'Historia del círculo',
   tabCircleStoryAriaWithCount: 'Historia del círculo, {{count}} entradas compartidas',
   hintMine:
-    'Sus entradas personales — cambie el uso compartido al editar una entrada.',
+    'Solo sus entradas privadas. Las publicaciones compartidas aparecen en Historia del círculo.',
   hintCircle:
     'Entradas compartidas por miembros del círculo y el paciente, entrelazadas en una línea de tiempo.',
-  emptyMine: 'Aún no hay entradas. Toque + para capturar su primer momento.',
+  emptyMine:
+    'Aún no hay entradas privadas. Toque + y mantenga una entrada privada para verla aquí.',
   emptyCircle:
     'Aún no hay entradas compartidas. Las nuevas entradas se comparten con el círculo por defecto.',
   badgePatient: 'Paciente',
@@ -243,10 +245,11 @@ export const diaryScreenPolish = {
   tabCircleStoryAria: 'Historia Circle',
   tabCircleStoryAriaWithCount: 'Historia Circle, {{count}} udostępnionych wpisów',
   hintMine:
-    'Twoje osobiste wpisy — udostępnianie możesz zmienić przy edycji wpisu.',
+    'Tylko Twoje prywatne wpisy. Udostępnione posty są w Historii Circle.',
   hintCircle:
     'Wpisy udostępnione przez członków kręgu i pacjenta, splecione w jedną oś czasu.',
-  emptyMine: 'Brak wpisów. Dotknij +, aby zapisać pierwszą chwilę.',
+  emptyMine:
+    'Brak prywatnych wpisów. Dotknij + i zostaw wpis jako prywatny, aby zobaczyć go tutaj.',
   emptyCircle:
     'Brak udostępnionych wpisów. Nowe wpisy domyślnie są udostępniane kręgowi.',
   badgePatient: 'Pacjent',

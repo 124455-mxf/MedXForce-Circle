@@ -311,6 +311,11 @@ export function isDiaryEntrySharedWithCircle(entry: CircleDiaryEntry): boolean {
   return entry.visibility === 'circle' || entry.visibility === 'shared_with_patient';
 }
 
+/** Private journal entries — visible only to the author in My journal. */
+export function isDiaryEntryPrivate(entry: CircleDiaryEntry): boolean {
+  return entry.visibility === 'private';
+}
+
 async function diaryMilestoneAlreadyRecorded(
   db: Firestore,
   patientId: string,

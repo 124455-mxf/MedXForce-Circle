@@ -288,6 +288,8 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
           });
           showToast(t('diary.toastSaved'));
         }
+        // Keep the active tab aligned with where the entry now lives.
+        setFilter(draft.visibility === 'private' ? 'mine' : 'circle');
         setModalOpen(false);
         setEditingEntry(null);
       } catch (err) {
