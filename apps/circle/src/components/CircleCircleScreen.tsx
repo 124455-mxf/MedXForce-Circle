@@ -690,11 +690,12 @@ export function CircleCircleScreen({
     if (!text || replySending || !selectedPost || !selectedPostSupportsReplies) return;
     setReplySending(true);
     setReplySendError(null);
+    let translations: Awaited<ReturnType<typeof buildCircleThreadPostTranslations>> = [];
     try {
       const targetLanguages = [
         ...new Set(Object.values(memberLanguages.byUid)),
       ] as CircleUiLanguage[];
-      const translations = await buildCircleThreadPostTranslations(
+      translations = await buildCircleThreadPostTranslations(
         text,
         viewerLanguage,
         targetLanguages,
@@ -711,17 +712,48 @@ export function CircleCircleScreen({
         ...(translations.length > 0 ? { translations } : {}),
       });
       setReplyDraft('');
-      if (selectedPost) {
-        markCirclePostThreadReadThroughActivity(
-          patient.patientId,
-          user.uid,
-          activeThread,
-          selectedPost.id,
-          Date.now(),
-        );
-      }
+      markCirclePostThreadReadThroughActivity(
+        patient.patientId,
+        user.uid,
+        activeThread,
+        selectedPost.id,
+        Date.now(),
+      );
     } catch (err) {
-      setReplySendError(err instanceof Error ? err.message : t('circle.replyFailed'));
+      const message = err instanceof Error ? err.message : t('circle.replyFailed');
+      // If stored translations trip rules/size edge cases, retry once without them.
+      if (
+        translations.length > 0 &&
+        /permission-denied|insufficient permissions/i.test(message)
+      ) {
+        try {
+          await createCircleMemberThreadPostReply(db, {
+            patientId: patient.patientId,
+            threadKind: activeThread,
+            postId: selectedPost.id,
+            post: selectedPost,
+            authorUid: user.uid,
+            authorName,
+            authorRole: memberRole,
+            text,
+          });
+          setReplyDraft('');
+          markCirclePostThreadReadThroughActivity(
+            patient.patientId,
+            user.uid,
+            activeThread,
+            selectedPost.id,
+            Date.now(),
+          );
+          return;
+        } catch (retryErr) {
+          setReplySendError(
+            retryErr instanceof Error ? retryErr.message : t('circle.replyFailed'),
+          );
+          return;
+        }
+      }
+      setReplySendError(message);
     } finally {
       setReplySending(false);
     }
