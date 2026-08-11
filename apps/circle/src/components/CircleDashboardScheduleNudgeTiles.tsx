@@ -8,6 +8,7 @@ import {
 import { DASHBOARD_RECENCY_TINT_CLASSES } from '../lib/circleDashboardStats';
 import { cn } from '../lib/utils';
 import { formatCircleBadgeCount } from './CircleCountBadge';
+import { dashboardTileTitleClass } from '../lib/circleSectionStyles';
 
 function ScheduleNudgeTile({
   label,
@@ -45,7 +46,7 @@ function ScheduleNudgeTile({
     >
       <div className="flex items-center gap-2 w-full min-w-0">
         <Icon size={16} className="shrink-0 text-blue-600" aria-hidden />
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate">
+        <span className={cn(dashboardTileTitleClass, 'truncate')}>
           {label}
         </span>
       </div>

@@ -136,3 +136,11 @@ export const circleAnalyticsMetricRowClass = cn(
 );
 
 export const circleCompactCardClass = cn('border rounded-2xl p-4', `${short}p-3`);
+
+/** Home dashboard area labels (Patient App, Patient activity, …). */
+export const dashboardSectionTitleClass =
+  'text-xs font-bold text-slate-600 uppercase tracking-wider px-0.5';
+
+/** Home dashboard tile titles (Remote settings, Check-ins, …). */
+export const dashboardTileTitleClass =
+  'font-bold text-slate-800 text-sm sm:text-[0.95rem] leading-snug min-w-0';

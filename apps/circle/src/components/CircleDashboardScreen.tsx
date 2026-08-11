@@ -159,6 +159,10 @@ import {
 } from '../lib/circleDashboardStats';
 
 import { cn } from '../lib/utils';
+import {
+  dashboardSectionTitleClass,
+  dashboardTileTitleClass,
+} from '../lib/circleSectionStyles';
 import { formatCircleBadgeCount } from './CircleCountBadge';
 
 interface CircleDashboardScreenProps {
@@ -203,8 +207,7 @@ const DASHBOARD_WIDGET_BASE_CLASS =
 
 const DASHBOARD_WIDGET_CELL_CLASS = 'h-[10rem] sm:h-[10.5rem]';
 const DASHBOARD_LAST7_WIDGET_CELL_CLASS = 'min-h-[12rem] sm:min-h-[12.5rem] h-full';
-const DASHBOARD_SECTION_TITLE_CLASS =
-  'text-xs font-bold text-slate-600 uppercase tracking-wider px-0.5';
+const DASHBOARD_SECTION_TITLE_CLASS = dashboardSectionTitleClass;
 
 type DashboardWidgetIconTone = 'blue' | 'emerald' | 'amber' | 'rose' | 'sky' | 'violet';
 
@@ -304,7 +307,7 @@ function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
         >
           <Icon size={18} aria-hidden />
         </span>
-        <p className="font-bold text-slate-800 text-sm sm:text-[0.95rem] leading-snug min-w-0">
+        <p className={dashboardTileTitleClass}>
           {spec.title}
         </p>
       </div>

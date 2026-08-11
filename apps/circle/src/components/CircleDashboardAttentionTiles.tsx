@@ -24,6 +24,10 @@ import {
   CircleDashboardScheduleNudgeTiles,
 } from './CircleDashboardScheduleNudgeTiles';
 import type { CircleScheduleNudgeCounts } from '../lib/circleDashboardScheduleNudges';
+import {
+  dashboardSectionTitleClass,
+  dashboardTileTitleClass,
+} from '../lib/circleSectionStyles';
 
 export type CircleInboxFolder = 'discussion' | 'announcements' | 'drop_ins' | 'visit_captures';
 
@@ -67,7 +71,7 @@ function AttentionTile({
           )}
           aria-hidden
         />
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate">
+        <span className={cn(dashboardTileTitleClass, 'truncate')}>
           {spec.label}
         </span>
       </div>
@@ -292,7 +296,7 @@ export function CircleDashboardAttentionTiles({
       {unreadTiles.length > 0 ? (
         <section className="space-y-2">
           <div className="flex items-center justify-between gap-2 px-0.5">
-            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            <h3 className={dashboardSectionTitleClass}>
               {t('dashboard.sectionNeedsAttention')}
             </h3>
             <span className="inline-flex items-center rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white tabular-nums">
@@ -309,7 +313,7 @@ export function CircleDashboardAttentionTiles({
 
       {showPatientActivitySection ? (
         <section className="space-y-2">
-          <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5">
+          <h3 className={dashboardSectionTitleClass}>
             {t('dashboard.sectionPatientActivity')}
           </h3>
           <div className="grid grid-cols-2 gap-3">
