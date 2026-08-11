@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  increment,
   onSnapshot,
   orderBy,
   query,
@@ -128,7 +129,7 @@ export async function createCircleMemberThreadPostReply(
     patientId: string;
     threadKind: CircleMemberThreadKind;
     postId: string;
-    post: Pick<CircleMemberThreadPost, 'text' | 'postKind' | 'replyCount'>;
+    post: Pick<CircleMemberThreadPost, 'text' | 'postKind'>;
     authorUid: string;
     authorName: string;
     authorRole: CircleMemberRole;
@@ -154,7 +155,6 @@ export async function createCircleMemberThreadPostReply(
     params.postId,
   );
   const replyRef = doc(repliesCol);
-  const priorCount = params.post.replyCount ?? 0;
   const previewText =
     body.length <= 120 ? body : `${body.slice(0, 120).trimEnd()}…`;
 
@@ -170,9 +170,11 @@ export async function createCircleMemberThreadPostReply(
     createdAt: now,
     ...(params.translations?.length ? { translations: params.translations } : {}),
   });
+  // Use increment so a stale client replyCount cannot fail rules
+  // (incoming.replyCount must equal existing + 1) after earlier replies.
   batch.update(postRef, {
     respondLocked: true,
-    replyCount: priorCount + 1,
+    replyCount: increment(1),
     lastReplyAt: now,
     lastReplyAuthorUid: params.authorUid,
     lastReplyAuthorName: params.authorName.trim() || 'Circle member',
