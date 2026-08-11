@@ -45,9 +45,11 @@ export async function sendCircleWelcomeEmail(params: {
   memberName?: string;
   patientName?: string;
   roleLabel?: string;
+  roleKey?: string;
   invitedByName?: string;
   invitedByEmail?: string;
   proxySlotDemotionNote?: string;
+  language?: string;
 }): Promise<{ success: boolean; message?: string }> {
   const base = patientApiBaseUrl();
   if (!base) {
@@ -90,7 +92,10 @@ export async function notifyCircleProxySlotDemotion(params: {
   patientName?: string;
   requestedProxyLabel: string;
   demotedRoleLabel: string;
+  requestedProxyRoleKey?: string;
+  demotedRoleKey?: string;
   audience: 'newcomer' | 'slot_holder';
+  language?: string;
 }): Promise<{ success: boolean; message?: string }> {
   const base = patientApiBaseUrl();
   if (!base) {
@@ -120,6 +125,7 @@ export async function sendWelcomeEmailsForAcceptedInvites(
   user: User,
   accepted: AcceptedCircleInviteSummary[],
   patients: CirclePatientSummary[],
+  language?: string,
 ): Promise<void> {
   const email = user.email?.trim();
   if (!email || accepted.length === 0) return;
@@ -146,7 +152,9 @@ export async function sendWelcomeEmailsForAcceptedInvites(
           memberName,
           patientName,
           roleLabel,
+          roleKey: invite.role,
           invitedByName: patientName,
+          language,
           ...(demotionNote ? { proxySlotDemotionNote: demotionNote } : {}),
         });
 
@@ -185,7 +193,10 @@ export async function sendWelcomeEmailsForAcceptedInvites(
             patientName,
             requestedProxyLabel,
             demotedRoleLabel,
+            requestedProxyRoleKey: 'proxy',
+            demotedRoleKey: invite.demotedToRole,
             audience: 'newcomer',
+            language,
           });
           if (newcomerNotify.success) {
             localStorage.setItem(newcomerKey, '1');
@@ -213,7 +224,10 @@ export async function sendWelcomeEmailsForAcceptedInvites(
               patientName,
               requestedProxyLabel,
               demotedRoleLabel,
+              requestedProxyRoleKey: 'proxy',
+              demotedRoleKey: invite.demotedToRole,
               audience: 'slot_holder',
+              language,
             });
             if (holderNotify.success) {
               localStorage.setItem(holderKey, '1');

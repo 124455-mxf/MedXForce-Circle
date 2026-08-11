@@ -200,7 +200,7 @@ export default function App() {
         break;
       }
     }
-    void sendWelcomeEmailsForAcceptedInvites(currentUser, accepted, list).catch((err) => {
+    void sendWelcomeEmailsForAcceptedInvites(currentUser, accepted, list, language).catch((err) => {
       console.warn('[Circle] Welcome email dispatch failed:', err);
     });
     return { list, accepted };
