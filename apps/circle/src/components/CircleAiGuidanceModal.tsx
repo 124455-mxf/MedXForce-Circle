@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Mic, MicOff, Sparkles, X } from 'lucide-react';
+import { Check, Copy, Loader2, Mic, MicOff, Sparkles, X } from 'lucide-react';
 import type { CircleMemberRole } from '@medxforce/shared';
 import { askCircleAiGuidance, isCircleAiAssistAvailable } from '../lib/circleAiAssist';
 import { CIRCLE_AI_PRIVACY_DISCLOSURE } from '../lib/circleAiGuardrails';
@@ -31,6 +31,7 @@ export function CircleAiGuidanceModal({
   const [answer, setAnswer] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const { isRecording, micError, setMicError, toggleRecording, stopRecording } = useDictation();
 
   const canIncludeContext = Boolean(recentContext?.trim());
@@ -46,6 +47,7 @@ export function CircleAiGuidanceModal({
       setError(null);
       setIncludeRecentMessages(false);
       setLoading(false);
+      setCopied(false);
       setMicError(null);
       stopRecording();
     }
@@ -67,6 +69,17 @@ export function CircleAiGuidanceModal({
     void toggleRecording(() => question, setQuestionText);
   };
 
+  const handleCopyGuidance = useCallback(async () => {
+    if (!answer?.trim()) return;
+    try {
+      await navigator.clipboard.writeText(answer.trim());
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard unavailable */
+    }
+  }, [answer]);
+
   const handleAsk = async () => {
     const q = question.trim();
     if (!q || loading) return;
@@ -74,6 +87,7 @@ export function CircleAiGuidanceModal({
     setLoading(true);
     setError(null);
     setAnswer(null);
+    setCopied(false);
     try {
       const result = await askCircleAiGuidance({
         question: q,
@@ -95,6 +109,7 @@ export function CircleAiGuidanceModal({
     setMicError(null);
     setAnswer(null);
     setError(null);
+    setCopied(false);
     setQuestion('');
     setIncludeRecentMessages(false);
   };
@@ -225,6 +240,15 @@ export function CircleAiGuidanceModal({
                 </p>
                 <CircleAiGuidanceContent text={answer} />
               </div>
+
+              <button
+                type="button"
+                onClick={() => void handleCopyGuidance()}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+              >
+                {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                {copied ? t('circle.copied') : t('circle.copyMessage')}
+              </button>
             </div>
           )}
 
