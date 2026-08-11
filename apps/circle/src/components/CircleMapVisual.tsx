@@ -234,7 +234,8 @@ export function CircleMapVisual({
       </AnimatePresence>
 
       <div
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none flex flex-col items-center"
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+        aria-label={model.patientName}
       >
         <ContactCircleAvatar
           photoUrl={model.patientPhotoUrl}
@@ -244,11 +245,6 @@ export function CircleMapVisual({
           )}
           iconSize={compact ? 16 : 22}
         />
-        {!compact && (
-          <p className="mt-1.5 max-w-[88px] text-center text-[11px] font-normal text-slate-600 leading-tight truncate">
-            {model.patientName}
-          </p>
-        )}
       </div>
 
       {!compact && activeNode && (
