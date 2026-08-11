@@ -208,6 +208,24 @@ export function formatCareCalendarAttendeeSummary(
   return list.map((attendee) => attendee.name).join(', ');
 }
 
+/** True when the patient is explicitly on the invite list. */
+export function careCalendarEventIncludesPatient(
+  event: { attendees?: CareCalendarAttendee[] | null },
+): boolean {
+  return (event.attendees ?? []).some((attendee) => attendee.role === 'patient');
+}
+
+/**
+ * Circle-only: invitees are set, but the patient is not among them.
+ * Missing/empty attendees stays a general appointment (still shown on the patient dashboard).
+ */
+export function isCareCalendarCircleOnlyForPatient(
+  event: { attendees?: CareCalendarAttendee[] | null },
+): boolean {
+  const attendees = event.attendees ?? [];
+  return attendees.length > 0 && !careCalendarEventIncludesPatient(event);
+}
+
 export function careCalendarAttendeeRoleLabelKey(role: CareCalendarAttendeeRole): string {
   if (role === 'patient') return 'circleRoles.patient';
   return `circleRoles.${role === 'other' ? 'caregiver' : role}`;
