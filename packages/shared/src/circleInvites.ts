@@ -29,6 +29,11 @@ export interface CircleInviteRecord {
   /** When the introduction / invite email was sent (patient API). */
   introductionEmailSentAt?: number;
   introductionReminderSentAt?: number;
+  /** Accept demoted from proxy because primary/backup slot was already filled. */
+  proxySlotDemotedAt?: number;
+  proxySlotDemotedTo?: CircleMemberRole;
+  requestedProxyTier?: 'primary' | 'backup';
+  proxySlotHeldByEmail?: string;
 }
 
 export function buildCircleInviteRecord(params: {

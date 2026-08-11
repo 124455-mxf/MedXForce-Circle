@@ -14,9 +14,17 @@ function joinNotifyStorageKey(patientId: string, email: string): string {
   return `mxJoinNotifySent:${patientId}:${email.toLowerCase()}`;
 }
 
+function proxyDemotionNotifyStorageKey(
+  patientId: string,
+  audience: string,
+  email: string,
+): string {
+  return `mxProxyDemotionNotify:${patientId}:${audience}:${email.toLowerCase()}`;
+}
+
 function formatRoleLabel(role: string, proxyTier?: string): string {
   if (role === 'proxy') {
-    return proxyTier === 'backup' ? 'Backup proxy' : 'Proxy';
+    return proxyTier === 'backup' ? 'Backup proxy' : 'Primary proxy';
   }
   const labels: Record<string, string> = {
     caregiver: 'Caregiver',
@@ -28,6 +36,10 @@ function formatRoleLabel(role: string, proxyTier?: string): string {
   return labels[role] || role.charAt(0).toUpperCase() + role.slice(1);
 }
 
+function formatRequestedProxyLabel(tier?: 'primary' | 'backup'): string {
+  return tier === 'backup' ? 'Backup proxy' : 'Primary proxy';
+}
+
 export async function sendCircleWelcomeEmail(params: {
   email: string;
   memberName?: string;
@@ -35,6 +47,7 @@ export async function sendCircleWelcomeEmail(params: {
   roleLabel?: string;
   invitedByName?: string;
   invitedByEmail?: string;
+  proxySlotDemotionNote?: string;
 }): Promise<{ success: boolean; message?: string }> {
   const base = patientApiBaseUrl();
   if (!base) {
@@ -69,6 +82,40 @@ export async function notifyCircleMemberJoined(params: {
   return res.json() as Promise<{ success: boolean; message?: string }>;
 }
 
+export async function notifyCircleProxySlotDemotion(params: {
+  recipientEmail: string;
+  recipientName?: string;
+  memberEmail: string;
+  memberName?: string;
+  patientName?: string;
+  requestedProxyLabel: string;
+  demotedRoleLabel: string;
+  audience: 'newcomer' | 'slot_holder';
+}): Promise<{ success: boolean; message?: string }> {
+  const base = patientApiBaseUrl();
+  if (!base) {
+    return { success: false, message: 'Patient API URL not configured.' };
+  }
+
+  const res = await fetch(`${base}/api/notify-circle-proxy-slot-demotion`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  return res.json() as Promise<{ success: boolean; message?: string }>;
+}
+
+export function proxySlotDemotionToastMessage(
+  invite: AcceptedCircleInviteSummary,
+): string | null {
+  if (!invite.proxySlotDemoted || !invite.demotedToRole || !invite.requestedProxyTier) {
+    return null;
+  }
+  const requested = formatRequestedProxyLabel(invite.requestedProxyTier);
+  const demoted = formatRoleLabel(invite.demotedToRole);
+  return `The ${requested.toLowerCase()} spot was already taken, so you joined as ${demoted}.`;
+}
+
 export async function sendWelcomeEmailsForAcceptedInvites(
   user: User,
   accepted: AcceptedCircleInviteSummary[],
@@ -89,6 +136,9 @@ export async function sendWelcomeEmailsForAcceptedInvites(
       const patient = patients.find((entry) => entry.patientId === invite.patientId);
       const patientName = patient?.displayName || 'your patient';
       const roleLabel = formatRoleLabel(invite.role, invite.proxyTier);
+      const demotionNote = invite.proxySlotDemoted
+        ? `You were invited as ${formatRequestedProxyLabel(invite.requestedProxyTier)}, but that spot was already taken. You joined as ${roleLabel} instead.`
+        : undefined;
 
       if (localStorage.getItem(storageKey) !== '1') {
         const result = await sendCircleWelcomeEmail({
@@ -97,6 +147,7 @@ export async function sendWelcomeEmailsForAcceptedInvites(
           patientName,
           roleLabel,
           invitedByName: patientName,
+          ...(demotionNote ? { proxySlotDemotionNote: demotionNote } : {}),
         });
 
         if (result.success) {
@@ -118,6 +169,61 @@ export async function sendWelcomeEmailsForAcceptedInvites(
           localStorage.setItem(notifyKey, '1');
         } else {
           console.warn('[Circle] Join notify email not sent:', notify.message || invite.patientId);
+        }
+      }
+
+      if (invite.proxySlotDemoted && invite.demotedToRole && invite.requestedProxyTier) {
+        const requestedProxyLabel = formatRequestedProxyLabel(invite.requestedProxyTier);
+        const demotedRoleLabel = formatRoleLabel(invite.demotedToRole);
+        const newcomerKey = proxyDemotionNotifyStorageKey(invite.patientId, 'newcomer', email);
+        if (localStorage.getItem(newcomerKey) !== '1') {
+          const newcomerNotify = await notifyCircleProxySlotDemotion({
+            recipientEmail: email,
+            recipientName: memberName,
+            memberEmail: email,
+            memberName,
+            patientName,
+            requestedProxyLabel,
+            demotedRoleLabel,
+            audience: 'newcomer',
+          });
+          if (newcomerNotify.success) {
+            localStorage.setItem(newcomerKey, '1');
+          } else {
+            console.warn(
+              '[Circle] Newcomer demotion email not sent:',
+              newcomerNotify.message || invite.patientId,
+            );
+          }
+        }
+
+        const holderEmail = invite.slotHolderEmail?.trim();
+        if (holderEmail) {
+          const holderKey = proxyDemotionNotifyStorageKey(
+            invite.patientId,
+            'slot_holder',
+            holderEmail,
+          );
+          if (localStorage.getItem(holderKey) !== '1') {
+            const holderNotify = await notifyCircleProxySlotDemotion({
+              recipientEmail: holderEmail,
+              recipientName: invite.slotHolderName,
+              memberEmail: email,
+              memberName,
+              patientName,
+              requestedProxyLabel,
+              demotedRoleLabel,
+              audience: 'slot_holder',
+            });
+            if (holderNotify.success) {
+              localStorage.setItem(holderKey, '1');
+            } else {
+              console.warn(
+                '[Circle] Slot-holder demotion email not sent:',
+                holderNotify.message || invite.patientId,
+              );
+            }
+          }
         }
       }
     }),

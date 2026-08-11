@@ -36,7 +36,9 @@ import { useCircleStartupSequence } from './hooks/useCircleStartupSequence';
 import { collection, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import { consumeAuthRedirectOnce, firebase } from './lib/firebaseClient';
 import { CIRCLE_BUILD_ID } from './lib/circleBuildId';
-import { sendWelcomeEmailsForAcceptedInvites } from './services/circleWelcomeEmailApi';
+import { sendWelcomeEmailsForAcceptedInvites, proxySlotDemotionToastMessage } from './services/circleWelcomeEmailApi';
+import { useCircleToast } from './hooks/useCircleToast';
+import { CircleAppToast } from './components/CircleAppToast';
 import { useCircleI18n } from './hooks/useCircleI18n';
 import { CircleI18nProvider } from './lib/circleI18nContext';
 import { useCircleTextSize } from './hooks/useCircleTextSize';
@@ -73,6 +75,7 @@ export default function App() {
   const [startupPreferenceReady, setStartupPreferenceReady] = useState(false);
   const { language, t, setLanguage } = useCircleI18n(firebase.db, user);
   const { textSize, setTextSize } = useCircleTextSize(firebase.db, user);
+  const { toast, showToast } = useCircleToast(7000);
 
   const selectedPatientForSettings = useMemo(() => {
     if (patients.length === 0) return null;
@@ -176,6 +179,13 @@ export default function App() {
     await ensureMemberCapabilitiesForUser(firebase.db, currentUser.uid);
     const list = await listCirclePatientsAndProvisionsForUser(firebase.db, currentUser.uid);
     setPatients(list);
+    for (const invite of accepted) {
+      const demotionMessage = proxySlotDemotionToastMessage(invite);
+      if (demotionMessage) {
+        showToast(demotionMessage, 'info');
+        break;
+      }
+    }
     void sendWelcomeEmailsForAcceptedInvites(currentUser, accepted, list).catch((err) => {
       console.warn('[Circle] Welcome email dispatch failed:', err);
     });
@@ -669,6 +679,7 @@ export default function App() {
     <CircleI18nProvider language={language} t={t} setLanguage={setLanguage}>
       <CircleTextSizeProvider textSize={textSize} setTextSize={setTextSize}>
         {appBody}
+        <CircleAppToast message={toast?.message ?? null} tone={toast?.tone} />
       </CircleTextSizeProvider>
     </CircleI18nProvider>
   );
