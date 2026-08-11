@@ -1,5 +1,5 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { Firestore } from 'firebase/firestore';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -115,6 +115,29 @@ function defaultMobileDayOffset(weekDays: Date[], todayKey: string): number {
   return Math.max(0, Math.min(todayIdx - 1, weekDays.length - MOBILE_VISIBLE_DAYS));
 }
 
+function attendeesSignature(attendees: CareCalendarAttendee[] | undefined): string {
+  if (!attendees?.length) return '';
+  return attendees
+    .map(
+      (attendee) =>
+        `${attendee.contactId}:${attendee.response ?? 'pending'}:${attendee.respondedAt ?? ''}:${attendee.respondedByUid ?? ''}`,
+    )
+    .join('|');
+}
+
+function inviteeUidMapSignature(map: Record<string, string> | undefined): string {
+  if (!map) return '';
+  return Object.entries(map)
+    .map(([contactId, uid]) => `${contactId}:${uid}`)
+    .sort()
+    .join('|');
+}
+
+/**
+ * Live-merge attendee RSVP badges from the care_calendar doc.
+ * Keep fallback/uid-map out of effect deps — callers often pass freshly merged
+ * arrays each render, and resetting to a stale selection.event caused PENDING↔GOING flicker.
+ */
 function useLiveMergedAttendees(
   db: Firestore | undefined,
   patientId: string | undefined,
@@ -123,10 +146,18 @@ function useLiveMergedAttendees(
   inviteeMemberUidByContactId?: Record<string, string>,
 ): CareCalendarAttendee[] | undefined {
   const [attendees, setAttendees] = useState(fallback);
+  const fallbackRef = useRef(fallback);
+  fallbackRef.current = fallback;
+  const inviteeUidMapRef = useRef(inviteeMemberUidByContactId);
+  inviteeUidMapRef.current = inviteeMemberUidByContactId;
+  const attendeesSigRef = useRef(attendeesSignature(fallback));
+  const inviteeUidMapSigRef = useRef(inviteeUidMapSignature(inviteeMemberUidByContactId));
 
   useEffect(() => {
-    setAttendees(fallback);
-  }, [entryId, fallback]);
+    setAttendees(fallbackRef.current);
+    attendeesSigRef.current = attendeesSignature(fallbackRef.current);
+    inviteeUidMapSigRef.current = inviteeUidMapSignature(inviteeUidMapRef.current);
+  }, [entryId]);
 
   useEffect(() => {
     if (!db || !patientId || !entryId) return;
@@ -138,7 +169,7 @@ function useLiveMergedAttendees(
         const data = snap.data();
         const rawAttendees = Array.isArray(data.attendees)
           ? (data.attendees as CareCalendarAttendee[])
-          : fallback;
+          : fallbackRef.current;
         const summary = parseAttendeeResponseSummary(data.attendeeResponseSummary);
         const uidMap =
           data.inviteeMemberUidByContactId &&
@@ -149,14 +180,25 @@ function useLiveMergedAttendees(
                   .map(([contactId, uid]) => [String(contactId), String(uid)])
                   .filter(([contactId, uid]) => Boolean(contactId) && Boolean(uid)),
               )
-            : inviteeMemberUidByContactId;
-        setAttendees(mergeAttendeeResponses(rawAttendees, summary, uidMap) ?? fallback);
+            : inviteeUidMapRef.current;
+        const merged = mergeAttendeeResponses(rawAttendees, summary, uidMap) ?? fallbackRef.current;
+        const mergedSig = attendeesSignature(merged);
+        const uidMapSig = inviteeUidMapSignature(uidMap);
+        if (
+          mergedSig === attendeesSigRef.current &&
+          uidMapSig === inviteeUidMapSigRef.current
+        ) {
+          return;
+        }
+        attendeesSigRef.current = mergedSig;
+        inviteeUidMapSigRef.current = uidMapSig;
+        setAttendees(merged);
       },
       () => {
         /* read may be denied for legacy entries */
       },
     );
-  }, [db, entryId, fallback, inviteeMemberUidByContactId, patientId]);
+  }, [db, entryId, patientId]);
 
   return attendees ?? fallback;
 }
@@ -710,15 +752,24 @@ function WeekAppointmentDetail({
 }) {
   const [expandedOpen, setExpandedOpen] = useState(false);
   const { event, dateKey } = selection;
+  const fallbackAttendees = useMemo(
+    () =>
+      mergeAttendeeResponses(
+        event.attendees,
+        event.attendeeResponseSummary,
+        event.inviteeMemberUidByContactId,
+      ) ?? event.attendees,
+    [
+      event.attendeeResponseSummary,
+      event.attendees,
+      event.inviteeMemberUidByContactId,
+    ],
+  );
   const displayAttendees = useLiveMergedAttendees(
     db,
     patientId,
     event.entryId,
-    mergeAttendeeResponses(
-      event.attendees,
-      event.attendeeResponseSummary,
-      event.inviteeMemberUidByContactId,
-    ) ?? event.attendees,
+    fallbackAttendees,
     event.inviteeMemberUidByContactId,
   );
   const timeLabel = formatCareCalendarTimeRange(event.startTimeMinutes, event.endTimeMinutes);
