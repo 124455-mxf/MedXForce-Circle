@@ -369,7 +369,7 @@ export const appShellEnglish = {
     circleMap: {
       badge: 'Circle map',
       title: 'Your circle of care',
-      tileTitle: 'Your circle map',
+      tileTitle: 'Circle Map',
       tileSubtitle: '{{count}} people around {{name}}',
       tileCta: 'Tap to explore',
       manageContacts: 'Manage contacts',
@@ -426,7 +426,7 @@ export const appShellEnglish = {
       },
     },
     checkInWellnessRing: {
-      title: 'Daily check-in pulse',
+      title: 'Check-In Pulse',
       subtitle: 'Last {{days}} days · green center is better',
       tileSubtitle: 'This week · tap a day below',
       badge: 'Wellness pulse',
@@ -1540,7 +1540,7 @@ export const appShellGerman = {
     circleMap: {
       badge: 'Kreis-Karte',
       title: 'Ihr Betreuungskreis',
-      tileTitle: 'Ihre Kreis-Karte',
+      tileTitle: 'Kreis-Karte',
       tileSubtitle: '{{count}} Personen um {{name}}',
       tileCta: 'Tippen zum Erkunden',
       manageContacts: 'Kontakte verwalten',
