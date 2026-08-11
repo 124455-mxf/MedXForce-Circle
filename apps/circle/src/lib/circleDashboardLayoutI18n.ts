@@ -5,6 +5,7 @@ export const DASHBOARD_WIDGET_TITLE_KEYS: Record<CircleDashboardWidgetKey, strin
   'daily-check-in': 'dashboard.dailyCheckIn',
   messages: 'dashboard.messages',
   communication: 'dashboard.communication',
+  companion: 'dashboard.companionTitle',
   vitality: 'dashboard.vitality',
   assessments: 'dashboard.assessments',
   diary: 'dashboard.diary',

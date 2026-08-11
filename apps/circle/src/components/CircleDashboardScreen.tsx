@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Bell,
+  Bot,
   BookOpen,
   Calendar,
   ChevronDown,
@@ -1141,7 +1142,7 @@ export function CircleDashboardScreen({
                 }),
               };
             })()),
-        onClick: () => onGoToTab(caps.messaging ? 'messages' : 'analytics'),
+        onClick: () => onOpenAnalyticsDetail('speech-history'),
       });
     }
 
@@ -1161,16 +1162,39 @@ export function CircleDashboardScreen({
                 ? t('dashboard.noCommunicationWeek')
                 : dashboardPlural(t, 'communicationThisWeek', communicationStats.communication),
               row2: formatCommunicationInputMethod(speechDetail?.lastCommunicationInputMethod),
-              row3:
-                companionLast7 > 0
-                  ? dashboardPlural(t, 'companion', companionLast7)
-                  : t('dashboard.noCompanionChats'),
+              row3: t('common.last7Days'),
               activityDays: activityDaysFromTimeline(speechDetail?.timeline, (point) => {
                 return point.communication;
               }),
             };
           })()),
-      onClick: () => onGoToTab('analytics'),
+      onClick: () =>
+        onOpenMessagesInbox ? onOpenMessagesInbox('in_out') : onGoToTab('messages'),
+    });
+
+    lastSevenDayWidgets.push({
+      key: 'companion',
+      title: t('dashboard.companionTitle'),
+      icon: Bot,
+      ...(analyticsLoading
+        ? loadingRows(t('common.loading'))
+        : (() => {
+            const quiet = companionLast7 === 0;
+            return {
+              heroValue: companionLast7,
+              heroMuted: quiet,
+              iconTone: quiet ? 'sky' : 'violet',
+              row1: quiet
+                ? t('dashboard.noCompanionChats')
+                : dashboardPlural(t, 'companion', companionLast7),
+              row2: t('common.last7Days'),
+              row3: undefined,
+              activityDays: activityDaysFromTimeline(companionDetail?.timeline, (point) => {
+                return Math.max(0, point.conversations + point.interactions - point.detected);
+              }),
+            };
+          })()),
+      onClick: () => onOpenAnalyticsDetail('ai-conversation'),
     });
 
     if (patientVitalityFeatureEnabled) {

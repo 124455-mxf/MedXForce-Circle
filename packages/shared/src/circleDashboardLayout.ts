@@ -13,6 +13,7 @@ export type CircleDashboardWidgetKey =
   | 'daily-check-in'
   | 'messages'
   | 'communication'
+  | 'companion'
   | 'vitality'
   | 'assessments'
   | 'diary'
@@ -46,6 +47,7 @@ export const ALL_CUSTOMIZABLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
   'daily-check-in',
   'messages',
   'communication',
+  'companion',
   'vitality',
   'assessments',
   'diary',
@@ -106,6 +108,7 @@ export const FRIEND_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = 
   'daily-check-in',
   'messages',
   'communication',
+  'companion',
   'vitality',
   'assessments',
   'diary',
@@ -135,6 +138,7 @@ export const CIRCLE_DASHBOARD_WIDGET_SECTIONS: Record<
     'daily-check-in',
     'messages',
     'communication',
+    'companion',
     'vitality',
     'assessments',
   ],
