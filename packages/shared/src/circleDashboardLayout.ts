@@ -294,6 +294,7 @@ export function isCircleDashboardWidgetAvailable(
     case 'daily-check-in':
     case 'messages':
     case 'communication':
+    case 'companion':
     case 'vitality':
     case 'assessments':
     case 'diary':
