@@ -1,16 +1,21 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
+import { useMemo } from 'react';
 import { Activity } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type {
   CheckInWellnessRingFrame,
   DailyCheckInMetricAverages,
 } from '../lib/circleCheckInWellnessMetrics';
-import { CheckInWellnessRingVisual } from './CheckInWellnessRingVisual';
+import { useCheckInWellnessDayPlayback } from '../hooks/useCheckInWellnessDayPlayback';
+import {
+  CheckInWellnessRingVisual,
+  CheckInWellnessWeekControls,
+} from './CheckInWellnessRingVisual';
 
 type CircleDashboardCheckInWellnessTileProps = {
   averages: DailyCheckInMetricAverages;
   frames?: CheckInWellnessRingFrame[];
-  /** Full-row layout: title left, larger ring right. */
+  /** Full-row layout: title + day picker left, larger ring right. */
   wide?: boolean;
   onOpenModal?: () => void;
   onOpenDetails?: () => void;
@@ -22,7 +27,7 @@ type CircleDashboardCheckInWellnessTileProps = {
 
 export function CircleDashboardCheckInWellnessTile({
   averages,
-  frames,
+  frames = [],
   wide = false,
   onOpenModal,
   onOpenDetails,
@@ -31,6 +36,19 @@ export function CircleDashboardCheckInWellnessTile({
   bodyClassName,
   className,
 }: CircleDashboardCheckInWellnessTileProps) {
+  const weekFrameKey = useMemo(
+    () =>
+      frames
+        .map((frame) => `${frame.date}:${frame.hasCheckIn}:${frame.mood}:${frame.pain}:${frame.sleep}`)
+        .join('|'),
+    [frames],
+  );
+  const { selectedIndex, setSelectedIndex } = useCheckInWellnessDayPlayback(
+    frames.length,
+    weekFrameKey,
+    frames.length > 0,
+  );
+
   const cta = onOpenDetails ? (
     <button
       type="button"
@@ -79,10 +97,10 @@ export function CircleDashboardCheckInWellnessTile({
 
       <div
         className={cn(
-          'relative z-10 flex min-w-0 pointer-events-none',
+          'relative z-10 flex min-w-0',
           wide
-            ? 'w-[42%] sm:w-[38%] flex-col justify-between shrink-0'
-            : 'flex-col h-full',
+            ? 'w-[42%] sm:w-[40%] flex-col justify-between shrink-0 gap-3'
+            : 'flex-col h-full pointer-events-none',
         )}
       >
         <div className={cn('flex min-w-0', wide ? 'flex-col gap-3' : 'items-center gap-3 mb-2')}>
@@ -98,13 +116,23 @@ export function CircleDashboardCheckInWellnessTile({
             >
               {t('dashboard.checkInWellnessRing.title')}
             </p>
-            <p className={cn('text-xs text-slate-500 mt-0.5 leading-snug', bodyClassName)}>
-              {t('dashboard.checkInWellnessRing.tileSubtitle')}
-            </p>
           </div>
         </div>
 
-        {wide ? cta : null}
+        {wide && frames.length > 0 ? (
+          <div className="relative z-20 pointer-events-auto">
+            <CheckInWellnessWeekControls
+              frames={frames}
+              selectedIndex={selectedIndex}
+              onSelect={setSelectedIndex}
+              compact
+              aside
+              t={t}
+            />
+          </div>
+        ) : null}
+
+        {wide ? <div className="mt-auto">{cta}</div> : null}
 
         {!wide ? (
           <>
@@ -113,6 +141,8 @@ export function CircleDashboardCheckInWellnessTile({
                 averages={averages}
                 frames={frames}
                 compact
+                selectedIndex={selectedIndex}
+                onSelectedIndexChange={setSelectedIndex}
                 t={t}
                 className="h-full"
               />
@@ -123,11 +153,14 @@ export function CircleDashboardCheckInWellnessTile({
       </div>
 
       {wide ? (
-        <div className="relative z-20 flex-1 min-h-0 min-w-0 -my-1 -mr-2 pointer-events-auto">
+        <div className="relative z-20 flex-1 min-h-0 min-w-0 -my-2 -mr-2 sm:-my-2.5 sm:-mr-2.5 pointer-events-auto">
           <CheckInWellnessRingVisual
             averages={averages}
             frames={frames}
             compact
+            hideWeekControls
+            selectedIndex={selectedIndex}
+            onSelectedIndexChange={setSelectedIndex}
             t={t}
             className="h-full"
           />
