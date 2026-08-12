@@ -125,7 +125,7 @@ export function CircleDashboardCircleMapSection({
 
   return (
     <>
-      <div className={wide ? 'h-[14rem] sm:h-[15.5rem]' : 'h-[13rem] sm:h-[14rem]'}>
+      <div className={wide ? 'h-[15rem] sm:h-[16.5rem]' : 'h-[13rem] sm:h-[14rem]'}>
         <CircleDashboardCircleMapTile
           preferences={preferences}
           messages={messages}

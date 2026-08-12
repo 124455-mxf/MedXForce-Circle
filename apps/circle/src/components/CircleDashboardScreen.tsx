@@ -1878,12 +1878,15 @@ export function CircleDashboardScreen({
                 </div>
               ) : null}
               {showCheckInWellnessRing ? (
-                <CircleDashboardCheckInWellnessSection
-                  memberRole={memberRole}
-                  answerTrend={dailyDetail?.answerTrend}
-                  enabled={showCheckInWellnessRing}
-                  onOpenDetails={() => onOpenAnalyticsDetail('daily-check-in')}
-                />
+                <div className="col-span-2">
+                  <CircleDashboardCheckInWellnessSection
+                    memberRole={memberRole}
+                    answerTrend={dailyDetail?.answerTrend}
+                    enabled={showCheckInWellnessRing}
+                    wide
+                    onOpenDetails={() => onOpenAnalyticsDetail('daily-check-in')}
+                  />
+                </div>
               ) : null}
             </div>
           </section>

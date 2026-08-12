@@ -7,10 +7,7 @@ import {
   resolveCareCalendarPatientAttendee,
   type CareCalendarAttendeeOption,
 } from '@medxforce/shared';
-import {
-  loadCircleMapPhotosByContactId,
-  loadCircleMapPhotosByEmail,
-} from '../lib/circleMapPhotos';
+import { loadCircleMapPhotoMaps } from '../lib/circleMapPhotos';
 
 export function useCareCalendarAttendeeOptions(
   db: Firestore | undefined,
@@ -54,15 +51,10 @@ export function useCareCalendarAttendeeOptions(
         patient,
       });
 
-      const [photosByEmail, photosByContactId] = await Promise.all([
-        loadCircleMapPhotosByEmail(db, patientId),
-        loadCircleMapPhotosByContactId(db, patientId),
-      ]);
+      const { byEmail, byContactId } = await loadCircleMapPhotoMaps(db, patientId);
 
       if (!cancelled) {
-        setOptions(
-          enrichCareCalendarAttendeeOptionsWithPhotos(base, photosByContactId, photosByEmail),
-        );
+        setOptions(enrichCareCalendarAttendeeOptionsWithPhotos(base, byContactId, byEmail));
       }
     })();
     return () => {

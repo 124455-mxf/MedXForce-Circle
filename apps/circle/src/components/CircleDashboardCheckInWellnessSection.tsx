@@ -17,6 +17,8 @@ type CircleDashboardCheckInWellnessSectionProps = {
   answerTrend?: DailyCheckInAnswerTrendPoint[];
   enabled: boolean;
   preview?: boolean;
+  /** Full-row Stay Connected tile. */
+  wide?: boolean;
   onOpenDetails?: () => void;
 };
 
@@ -25,6 +27,7 @@ export function CircleDashboardCheckInWellnessSection({
   answerTrend,
   enabled,
   preview = false,
+  wide = false,
   onOpenDetails,
 }: CircleDashboardCheckInWellnessSectionProps) {
   const t = useCircleT();
@@ -57,10 +60,11 @@ export function CircleDashboardCheckInWellnessSection({
 
   return (
     <>
-      <div className="h-[13rem] sm:h-[14rem]">
+      <div className={wide ? 'h-[15rem] sm:h-[16.5rem]' : 'h-[13rem] sm:h-[14rem]'}>
         <CircleDashboardCheckInWellnessTile
           averages={averages}
           frames={frames}
+          wide={wide}
           onOpenModal={() => setOpen(true)}
           onOpenDetails={onOpenDetails}
           t={t}

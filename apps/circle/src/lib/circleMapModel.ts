@@ -231,6 +231,10 @@ export function resolveCircleMapContactPhoto(
   const email = normalizeInviteEmail(String(contact.email || ''));
   if (email && options.photosByEmail?.[email]) return options.photosByEmail[email];
 
+  const fromContact =
+    String(contact.photoUrl || contact.avatarUrl || contact.profilePicture || '').trim();
+  if (fromContact) return fromContact;
+
   const online = options.onlineNow?.find(
     (member) => normalizeInviteEmail(member.email) === email,
   );
@@ -338,9 +342,13 @@ function layoutNodes(
     const members = grouped.get(ring.key) ?? [];
     members.sort((a, b) => a.name.localeCompare(b.name));
     const radius = radiusByKey.get(ring.key) ?? ringStart + ringPosition * ringStep;
+    const count = Math.max(members.length, 1);
+    // Twist each ring so nodes don't stack on the same rays across rings.
+    const ringTwist = ringPosition * ((Math.PI * 2) / 5);
+    // With 1–2 people, start near the east so they sit left/right instead of top/bottom.
+    const baseAngle = count <= 2 ? ringTwist : -Math.PI / 2 + ringTwist;
     members.forEach((node, index) => {
-      const angle =
-        (Math.PI * 2 * index) / Math.max(members.length, 1) - Math.PI / 2 + ringPosition * 0.1;
+      const angle = baseAngle + (Math.PI * 2 * index) / count;
       laidOut.push({ ...node, radius, angle });
     });
   });

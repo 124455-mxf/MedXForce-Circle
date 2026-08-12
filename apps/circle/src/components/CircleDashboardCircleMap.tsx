@@ -315,8 +315,8 @@ export function DashboardCircleMapTile({
       type="button"
       onClick={onOpen}
       className={cn(
-        'text-left p-4 sm:p-5 w-full h-full flex bg-white rounded-[28px] border border-violet-100 shadow-sm hover:shadow-lg hover:border-violet-200 transition-all group overflow-hidden relative',
-        wide ? 'flex-row items-stretch gap-3 sm:gap-5' : 'flex-col',
+        'text-left w-full h-full flex bg-white rounded-[28px] border border-violet-100 shadow-sm hover:shadow-lg hover:border-violet-200 transition-all group overflow-hidden relative',
+        wide ? 'flex-row items-stretch pl-4 sm:pl-5 py-3 sm:py-4 pr-1 sm:pr-2 gap-2 sm:gap-3' : 'flex-col p-4 sm:p-5',
       )}
     >
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-[radial-gradient(circle_at_30%_20%,rgba(139,92,246,0.06),transparent_55%)]" />
@@ -324,7 +324,7 @@ export function DashboardCircleMapTile({
         className={cn(
           'relative flex min-w-0',
           wide
-            ? 'w-[42%] sm:w-[38%] flex-col justify-between shrink-0'
+            ? 'w-[30%] sm:w-[28%] flex-col justify-between shrink-0 py-1'
             : 'items-center gap-3 mb-2',
         )}
       >
@@ -335,12 +335,6 @@ export function DashboardCircleMapTile({
           <div className="min-w-0">
             <p className={cn('font-bold text-slate-800 text-sm sm:text-base leading-snug', titleClassName)}>
               {t('dashboard.circleMap.tileTitle')}
-            </p>
-            <p className={cn('text-xs text-slate-500 mt-0.5 leading-snug', bodyClassName)}>
-              {t('dashboard.circleMap.tileSubtitle', {
-                count: model.nodes.length,
-                name: model.patientName,
-              })}
             </p>
           </div>
         </div>
@@ -361,7 +355,14 @@ export function DashboardCircleMapTile({
           wide ? 'flex-1' : 'flex-1 -mx-2',
         )}
       >
-        <CircleMapVisual model={model} mode="roles" compact t={t} className="h-full" />
+        <CircleMapVisual
+          model={model}
+          mode="roles"
+          compact
+          emphasized={wide}
+          t={t}
+          className="h-full"
+        />
       </div>
       {wide ? null : (
         <p

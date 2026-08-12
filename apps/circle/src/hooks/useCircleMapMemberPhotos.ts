@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Firestore } from 'firebase/firestore';
-import {
-  loadCircleMapPhotosByContactId,
-  loadCircleMapPhotosByEmail,
-} from '../lib/circleMapPhotos';
+import { loadCircleMapPhotoMaps } from '../lib/circleMapPhotos';
 
 export function useCircleMapMemberPhotos(
   db: Firestore | undefined,
@@ -22,10 +19,7 @@ export function useCircleMapMemberPhotos(
 
     let active = true;
     const load = async () => {
-      const [byEmail, byContactId] = await Promise.all([
-        loadCircleMapPhotosByEmail(db, patientId),
-        loadCircleMapPhotosByContactId(db, patientId),
-      ]);
+      const { byEmail, byContactId } = await loadCircleMapPhotoMaps(db, patientId);
       if (active) {
         setPhotosByEmail(byEmail);
         setPhotosByContactId(byContactId);
