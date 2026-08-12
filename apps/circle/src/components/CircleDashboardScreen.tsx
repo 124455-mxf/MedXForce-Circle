@@ -1839,7 +1839,7 @@ export function CircleDashboardScreen({
           </section>
         ) : null}
 
-        {familyGalleryWidget || showCircleMap || showCheckInWellnessRing ? (
+        {familyGalleryWidget || showCircleMap ? (
           <section className="space-y-2">
             <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionStayConnected')}</h3>
             <div className="grid grid-cols-2 gap-3 items-stretch">
@@ -1877,27 +1877,37 @@ export function CircleDashboardScreen({
                   />
                 </div>
               ) : null}
-              {showCheckInWellnessRing ? (
-                <div className="col-span-2">
-                  <CircleDashboardCheckInWellnessSection
-                    memberRole={memberRole}
-                    answerTrend={dailyDetail?.answerTrend}
-                    enabled={showCheckInWellnessRing}
-                    wide
-                    onOpenDetails={() => onOpenAnalyticsDetail('daily-check-in')}
-                  />
-                </div>
-              ) : null}
             </div>
           </section>
         ) : null}
 
-        {visibleLastSevenDayWidgets.length > 0 ? (
-          <DashboardSection
-            title={t('dashboard.sectionLast7Days')}
-            widgets={visibleLastSevenDayWidgets}
-            dense
-          />
+        {visibleLastSevenDayWidgets.length > 0 || showCheckInWellnessRing ? (
+          <section className="space-y-2">
+            <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionLast7Days')}</h3>
+            {showCheckInWellnessRing ? (
+              <CircleDashboardCheckInWellnessSection
+                memberRole={memberRole}
+                answerTrend={dailyDetail?.answerTrend}
+                enabled={showCheckInWellnessRing}
+                wide
+                onOpenDetails={() => onOpenAnalyticsDetail('daily-check-in')}
+              />
+            ) : null}
+            {visibleLastSevenDayWidgets.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3 items-stretch">
+                {visibleLastSevenDayWidgets.map((widget) => (
+                  <div
+                    key={widget.key}
+                    className={
+                      widget.span === 'full' ? 'col-span-2' : DASHBOARD_LAST7_WIDGET_CELL_CLASS
+                    }
+                  >
+                    <DashboardWidget spec={widget} />
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </section>
         ) : null}
 
         {visibleYouWidgets.length > 0 ? (

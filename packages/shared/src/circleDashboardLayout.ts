@@ -136,6 +136,7 @@ export const CIRCLE_DASHBOARD_WIDGET_SECTIONS: Record<
   last7days: [
     'alert-attention',
     'daily-check-in',
+    'check-in-wellness-ring',
     'messages',
     'communication',
     'companion',
@@ -143,7 +144,7 @@ export const CIRCLE_DASHBOARD_WIDGET_SECTIONS: Record<
     'assessments',
   ],
   you: ['diary', 'circle', 'gallery-engagement'],
-  stayConnected: ['media-gallery', 'circle-map', 'check-in-wellness-ring'],
+  stayConnected: ['media-gallery', 'circle-map'],
   patientApp: ['remote-settings', 'user-profile'],
 };
 
