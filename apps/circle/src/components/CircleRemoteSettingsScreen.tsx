@@ -55,6 +55,7 @@ import {
   circleSectionHeaderStackClass,
   circleWorkTabHeaderClass,
   circleWorkTabPanelClass,
+  dashboardSectionTitleClass,
 } from '../lib/circleSectionStyles';
 import { useCircleRemoteSettingsFromShell } from '../context/CircleSelectedPatientContext';
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
@@ -172,11 +173,7 @@ function writeQuickToggle(
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5">
-      {children}
-    </h4>
-  );
+  return <h4 className={dashboardSectionTitleClass}>{children}</h4>;
 }
 
 function ProxyToggleList({
@@ -567,7 +564,7 @@ export function CircleRemoteSettingsScreen({
             ) : null}
           </section>
 
-          <section className="space-y-2">
+          <section className="space-y-2 pt-3">
             <div className="flex items-center justify-between gap-2 px-0.5">
               <SectionLabel>{t('remoteSettings.dashboardView')}</SectionLabel>
               {patientSetDashboardLayout && storedDashboardPreset ? (
