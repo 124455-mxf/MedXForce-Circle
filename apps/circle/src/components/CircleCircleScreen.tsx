@@ -428,6 +428,17 @@ export function CircleCircleScreen({
       setInboxView('discussion');
     }
   }, [inboxView, inboxViews]);
+
+  const showComposer =
+    inboxView === 'discussion' || (inboxView === 'announcements' && canPostAnnouncement);
+
+  useEffect(() => {
+    if (!showComposer) {
+      setComposerOpen(false);
+      setAiGuidanceOpen(false);
+    }
+  }, [showComposer]);
+
   const { iconViews: inboxIconViews, textViews: inboxTextViews } = useMemo(
     () => partitionCirclePostInboxViews(inboxViews),
     [inboxViews],
@@ -1054,16 +1065,6 @@ export function CircleCircleScreen({
       </>
     );
   }
-
-  const showComposer =
-    inboxView === 'discussion' || (inboxView === 'announcements' && canPostAnnouncement);
-
-  useEffect(() => {
-    if (!showComposer) {
-      setComposerOpen(false);
-      setAiGuidanceOpen(false);
-    }
-  }, [showComposer]);
 
   const showAiGuidanceAction = showComposer && isCircleAiAssistAvailable();
 
