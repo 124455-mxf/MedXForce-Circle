@@ -42,6 +42,7 @@ import {
   circleSectionHeaderStackClass,
   circleWorkTabHeaderClass,
   circleWorkTabPanelClass,
+  dashboardSectionTitleClass,
 } from '../lib/circleSectionStyles';
 import { useCircleAnalyticsSummaries } from '../hooks/useCircleAnalyticsSummaries';
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
@@ -177,7 +178,7 @@ function AnalyticsMetricRow({
       </div>
       <p
         className={cn(
-          'flex-1 min-w-0 text-sm font-normal leading-snug truncate',
+          'flex-1 min-w-0 text-base font-normal leading-snug truncate',
           unreleased ? 'text-slate-400' : 'text-slate-800',
         )}
       >
@@ -306,7 +307,7 @@ export function CircleAnalyticsScreen({
 
               return (
                 <section key={section.id} className="space-y-1.5">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5 pt-0.5">
+                  <h4 className={cn(dashboardSectionTitleClass, 'pt-0.5')}>
                     {analyticsSectionTitle(t, section.id)}
                   </h4>
                   <div className="flex flex-col gap-1.5">
