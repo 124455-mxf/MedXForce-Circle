@@ -1108,8 +1108,7 @@ export function CircleDashboardScreen({
                 row1: dailyCheckIn
                   ? analyticsSummaryFooterText(t, dailyCheckIn, language)
                   : t('dashboard.noCheckInsYet'),
-                row2: t('common.last7Days'),
-                row3: lastLine(dailyCheckIn?.latestAt),
+                row2: lastLine(dailyCheckIn?.latestAt),
                 recencyTint,
               };
             })()),
@@ -1136,7 +1135,7 @@ export function CircleDashboardScreen({
                 row2:
                   caps.messaging && messageCount > 0
                     ? dashboardPlural(t, 'thread', messageCount)
-                    : t('common.last7Days'),
+                    : '',
                 row3: caps.messaging
                   ? t('common.unread', { count: formatCircleBadgeCount(unreadCount) })
                   : undefined,
@@ -1165,7 +1164,6 @@ export function CircleDashboardScreen({
                 ? t('dashboard.noCommunicationWeek')
                 : dashboardPlural(t, 'communicationThisWeek', communicationStats.communication),
               row2: formatCommunicationInputMethod(speechDetail?.lastCommunicationInputMethod),
-              row3: t('common.last7Days'),
               activityDays: activityDaysFromTimeline(speechDetail?.timeline, (point) => {
                 return point.communication;
               }),
@@ -1190,8 +1188,7 @@ export function CircleDashboardScreen({
               row1: quiet
                 ? t('dashboard.noCompanionChats')
                 : dashboardPlural(t, 'companion', companionLast7),
-              row2: t('common.last7Days'),
-              row3: undefined,
+              row2: '',
               activityDays: activityDaysFromTimeline(companionDetail?.timeline, (point) => {
                 return Math.max(0, point.conversations + point.interactions - point.detected);
               }),

@@ -81,6 +81,7 @@ import {
   formatMissingCoreProfileFieldsT,
   patientFriendlyDisplayName,
 } from '../lib/dashboardI18n';
+import { dashboardSectionTitleClass } from '../lib/circleSectionStyles';
 import { cn } from '../lib/utils';
 import type { CircleMainTab } from './CircleBottomNav';
 import { useCircleParticipationReminderSnoozes } from '../hooks/useCircleParticipationReminderSnoozes';
@@ -873,7 +874,7 @@ export function CircleDashboardCelebrationSection({
 
   return (
     <section className="space-y-2">
-      <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5">
+      <h3 className={dashboardSectionTitleClass}>
         {t('dashboard.sectionReminders')}
       </h3>
       {previewReminders ? (
