@@ -58,7 +58,7 @@ export function CircleMemberReplyCard({
           text={reply.text}
           translations={reply.translations}
           viewerLanguage={viewerLanguage}
-          className="text-slate-700 text-sm font-medium leading-relaxed"
+          className="text-slate-700 text-base font-medium leading-relaxed"
           t={t}
           translateIfMissing
         />

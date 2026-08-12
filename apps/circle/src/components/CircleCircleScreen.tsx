@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
-import { Loader2, CalendarClock, ClipboardList, Megaphone, MessageCircle, Shield, Stethoscope, Trash2, Undo2, Users } from 'lucide-react';
+import { Loader2, CalendarClock, ClipboardList, Megaphone, MessageCircle, Plus, Shield, Sparkles, Stethoscope, Trash2, Undo2, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
   canDeleteCircleThreadPostForEveryone,
@@ -42,7 +42,11 @@ import {
   translateCircleMemberRole,
 } from '../lib/circleScreenI18n';
 import {
-  circleSectionComposerClass,
+  circleHeaderActionButtonClass,
+  circleInboxIconTabExtraClass,
+  circleInboxTabStripClass,
+  circleInboxTextTabExtraClass,
+  CIRCLE_INBOX_TAB_ICON_SIZE,
   circleSectionContextHintClass,
   circleSectionEmptyStateClass,
   circleSectionHeaderClass,
@@ -53,6 +57,8 @@ import {
   circleWorkTabHeaderClass,
   circleWorkTabPanelClass,
 } from '../lib/circleSectionStyles';
+import { isCircleAiAssistAvailable } from '../lib/circleAiAssist';
+import { CircleAiGuidanceModal } from './CircleAiGuidanceModal';
 import { useCircleMemberThread } from '../hooks/useCircleMemberThread';
 import { useCircleMemberThreadPostReplies } from '../hooks/useCircleMemberThreadPostReplies';
 import {
@@ -202,6 +208,8 @@ function circlePostInboxTabIcon(view: CirclePostInboxView): LucideIcon | null {
       return CalendarClock;
     case 'drop_ins':
       return MessageCircle;
+    case 'hidden':
+      return Trash2;
     default:
       return null;
   }
@@ -219,6 +227,8 @@ function circlePostInboxTabIconClass(view: CirclePostInboxView, active: boolean)
     case 'appointments':
       return 'text-amber-600';
     case 'drop_ins':
+      return 'text-blue-600';
+    case 'hidden':
       return 'text-blue-600';
     default:
       return 'text-slate-500';
@@ -282,6 +292,8 @@ export function CircleCircleScreen({
   const [inboxView, setInboxView] = useState<CirclePostInboxView>('discussion');
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [aiGuidanceOpen, setAiGuidanceOpen] = useState(false);
   const [replyDraft, setReplyDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [replySending, setReplySending] = useState(false);
@@ -663,6 +675,7 @@ export function CircleCircleScreen({
         ...(translations.length > 0 ? { translations } : {}),
       });
       setDraft('');
+      setComposerOpen(false);
     } catch (err) {
       setSendError(err instanceof Error ? err.message : t('circle.sendFailed'));
     } finally {
@@ -889,10 +902,10 @@ export function CircleCircleScreen({
                       </span>
                     ) : null}
                   </div>
-                  <p className="text-sm font-bold truncate leading-snug text-slate-800">{title}</p>
-                  <p className="text-[10px] mt-0.5 truncate text-slate-400">{authorLine}</p>
+                  <p className="text-base font-bold truncate leading-snug text-slate-800">{title}</p>
+                  <p className="text-xs mt-0.5 truncate text-slate-400">{authorLine}</p>
                   {snippet ? (
-                    <p className="text-[11px] mt-0.5 line-clamp-2 leading-relaxed text-slate-500">
+                    <p className="text-sm mt-0.5 line-clamp-2 leading-relaxed text-slate-500">
                       {snippet}
                     </p>
                   ) : null}
@@ -1043,7 +1056,16 @@ export function CircleCircleScreen({
   }
 
   const showComposer =
-    (inboxView === 'discussion' || (inboxView === 'announcements' && canPostAnnouncement));
+    inboxView === 'discussion' || (inboxView === 'announcements' && canPostAnnouncement);
+
+  useEffect(() => {
+    if (!showComposer) {
+      setComposerOpen(false);
+      setAiGuidanceOpen(false);
+    }
+  }, [showComposer]);
+
+  const showAiGuidanceAction = showComposer && isCircleAiAssistAvailable();
 
   const composerPlaceholder =
     inboxView === 'announcements'
@@ -1085,8 +1107,46 @@ export function CircleCircleScreen({
                 </span>
               ) : undefined
             }
+            trailing={
+              showComposer ? (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {showAiGuidanceAction ? (
+                    <button
+                      type="button"
+                      onClick={() => setAiGuidanceOpen(true)}
+                      className={cn(
+                        circleHeaderActionButtonClass,
+                        'bg-violet-100 text-violet-700 hover:bg-violet-200 hover:text-violet-800',
+                      )}
+                      aria-label={t('common.aria.privateAiGuidance')}
+                      title={t('common.aria.privateAiGuidance')}
+                    >
+                      <Sparkles size={18} className="[@media(max-height:740px)]:size-4" />
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setComposerOpen(true)}
+                    className={circleHeaderActionButtonClass}
+                    aria-label={
+                      inboxView === 'announcements'
+                        ? t('circle.composeAnnouncementAria')
+                        : t('circle.composePostAria')
+                    }
+                    title={
+                      inboxView === 'announcements'
+                        ? t('circle.composeAnnouncementTitle')
+                        : t('circle.composePostTitle')
+                    }
+                  >
+                    <Plus size={18} className="[@media(max-height:740px)]:size-4" />
+                  </button>
+                </div>
+              ) : undefined
+            }
           />
 
+          {canRestricted ? (
           <div className={circleTabListClass} role="tablist" aria-label={t('circle.threadsAria')}>
             <button
               type="button"
@@ -1104,33 +1164,32 @@ export function CircleCircleScreen({
                 <CircleTabCountBadge count={openUnreadCount} />
               </span>
             </button>
-            {canRestricted && (
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeThread === 'restricted'}
-                onClick={() => setActiveThread('restricted')}
-                className={circleTabButtonClass(activeThread === 'restricted')}
-              >
-                <span className="inline-flex items-center justify-center gap-1.5">
-                  <Shield size={14} className="shrink-0 [@media(max-height:740px)]:hidden" />
-                  <ResponsiveTabLabel
-                    long={t('circle.tabCareCoordinationLong')}
-                    compact={t('circle.tabCareCoordinationCompact')}
-                  />
-                  <CircleTabCountBadge count={restrictedUnreadCount} />
-                </span>
-              </button>
-            )}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeThread === 'restricted'}
+              onClick={() => setActiveThread('restricted')}
+              className={circleTabButtonClass(activeThread === 'restricted')}
+            >
+              <span className="inline-flex items-center justify-center gap-1.5">
+                <Shield size={14} className="shrink-0 [@media(max-height:740px)]:hidden" />
+                <ResponsiveTabLabel
+                  long={t('circle.tabCareCoordinationLong')}
+                  compact={t('circle.tabCareCoordinationCompact')}
+                />
+                <CircleTabCountBadge count={restrictedUnreadCount} />
+              </span>
+            </button>
           </div>
+          ) : null}
 
           <p className={cn(circleSectionContextHintClass, 'px-0')}>
             {circleThreadDescriptionI18n(t, activeThread)}
           </p>
 
           <CircleHorizontalScrollStrip
-            className="w-full min-w-0 rounded-xl bg-slate-100 p-1"
-            innerClassName="gap-0.5"
+            className={cn('w-full min-w-0', circleInboxTabStripClass)}
+            innerClassName="gap-1"
             role="tablist"
             aria-label={t('circle.inboxTabBucketsAria')}
           >
@@ -1148,12 +1207,12 @@ export function CircleCircleScreen({
                   onClick={() => setInboxView(view)}
                   className={circleTabButtonClass(
                     active,
-                    'shrink-0 flex-none justify-center min-w-[2.125rem] px-2 py-2',
+                    circleInboxIconTabExtraClass,
                   )}
                 >
                   <span className="relative inline-flex items-center justify-center pr-1 pt-0.5">
                     <Icon
-                      size={16}
+                      size={CIRCLE_INBOX_TAB_ICON_SIZE}
                       className={circlePostInboxTabIconClass(view, active)}
                       aria-hidden
                     />
@@ -1164,28 +1223,59 @@ export function CircleCircleScreen({
             })}
             {showInboxTabDivider ? (
               <span
-                className="w-px h-5 bg-slate-200/90 shrink-0 mx-0.5 self-center"
+                className="w-px h-7 bg-slate-200/90 shrink-0 mx-0.5 self-center"
                 aria-hidden
               />
             ) : null}
-            {inboxTextViews.map((view) => (
-              <button
-                key={view}
-                type="button"
-                role="tab"
-                aria-selected={inboxView === view}
-                onClick={() => setInboxView(view)}
-                className={circleTabButtonClass(
-                  inboxView === view,
-                  'shrink-0 flex-none justify-center px-3 py-2',
-                )}
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  {circlePostInboxTabLabel(t, view)}
-                  <CircleFolderCountBadge {...inboxTabCounts[view]} />
-                </span>
-              </button>
-            ))}
+            {inboxTextViews.map((view) => {
+              const active = inboxView === view;
+              if (view === 'hidden') {
+                const Icon = circlePostInboxTabIcon(view);
+                return (
+                  <button
+                    key={view}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    aria-label={circlePostInboxTabLabel(t, view)}
+                    onClick={() => setInboxView(view)}
+                    className={circleTabButtonClass(
+                      active,
+                      circleInboxIconTabExtraClass,
+                    )}
+                  >
+                    <span className="relative inline-flex items-center justify-center pr-1 pt-0.5">
+                      {Icon ? (
+                        <Icon
+                          size={CIRCLE_INBOX_TAB_ICON_SIZE}
+                          className={circlePostInboxTabIconClass(view, active)}
+                          aria-hidden
+                        />
+                      ) : null}
+                      <CircleFolderCountBadge {...inboxTabCounts[view]} placement="overlay" />
+                    </span>
+                  </button>
+                );
+              }
+              return (
+                <button
+                  key={view}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setInboxView(view)}
+                  className={circleTabButtonClass(
+                    active,
+                    circleInboxTextTabExtraClass,
+                  )}
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    {circlePostInboxTabLabel(t, view)}
+                    <CircleFolderCountBadge {...inboxTabCounts[view]} />
+                  </span>
+                </button>
+              );
+            })}
           </CircleHorizontalScrollStrip>
 
           <div className="flex items-start justify-between gap-2">
@@ -1275,27 +1365,35 @@ export function CircleCircleScreen({
         </div>
 
         {showComposer ? (
-          <div className={circleSectionComposerClass}>
-            <CircleExpandableMessageComposer
-              value={draft}
-              onChange={setDraft}
-              placeholder={composerPlaceholder}
-              disabled={sending}
-              sending={sending}
-              onClear={() => setDraft('')}
-              onSend={handleSend}
-              clearLabel={t('circle.clear')}
-              sendLabel={composerSendLabel}
-              sendingLabel={t('circle.sending')}
-              maxLength={5000}
-              expandTitle={composerExpandTitle}
-              aiGuidance={{
-                threadLabel: circleThreadLabelI18n(t, activeThread),
-                memberRole,
-                recentContext: recentContext || undefined,
-              }}
-            />
-          </div>
+          <CircleExpandableMessageComposer
+            presentation="overlay"
+            expanded={composerOpen}
+            onExpandedChange={setComposerOpen}
+            showAiButton={false}
+            value={draft}
+            onChange={setDraft}
+            placeholder={composerPlaceholder}
+            disabled={sending}
+            sending={sending}
+            onClear={() => setDraft('')}
+            onSend={handleSend}
+            clearLabel={t('circle.clear')}
+            sendLabel={composerSendLabel}
+            sendingLabel={t('circle.sending')}
+            maxLength={5000}
+            expandTitle={composerExpandTitle}
+            error={sendError}
+          />
+        ) : null}
+
+        {showAiGuidanceAction ? (
+          <CircleAiGuidanceModal
+            open={aiGuidanceOpen}
+            onClose={() => setAiGuidanceOpen(false)}
+            threadLabel={circleThreadLabelI18n(t, activeThread)}
+            memberRole={memberRole}
+            recentContext={recentContext || undefined}
+          />
         ) : null}
       </div>
 

@@ -86,7 +86,7 @@ export function CirclePostBodyRenderer({
         text={post.text}
         translations={post.translations}
         viewerLanguage={viewerLanguage}
-        className="text-slate-700 font-medium"
+        className="text-slate-700 text-base font-medium"
         t={t}
         disableTruncate={disableTruncate}
       />
@@ -97,7 +97,7 @@ export function CirclePostBodyRenderer({
     return (
       <CircleMessageBodyPreview
         text={post.text}
-        className="text-slate-700"
+        className="text-slate-700 text-base"
         boldFirstLine={resolvedBoldFirstLine}
         disableTruncate={disableTruncate}
       />
@@ -109,7 +109,7 @@ export function CirclePostBodyRenderer({
       text={post.text}
       translations={post.translations}
       viewerLanguage={viewerLanguage}
-      className="text-slate-700 font-medium"
+      className="text-slate-700 text-base font-medium"
       t={t}
       translateIfMissing
       boldFirstLine={resolvedBoldFirstLine}

@@ -201,7 +201,7 @@ export async function resolveCircleThreadAudienceUids(
 }
 
 export function circleMemberThreadLabel(kind: CircleMemberThreadKind): string {
-  return kind === 'open' ? 'Circle conversation' : 'Care coordination';
+  return kind === 'open' ? 'Everybody' : 'Care team';
 }
 
 export function circleMemberThreadDescription(kind: CircleMemberThreadKind): string {

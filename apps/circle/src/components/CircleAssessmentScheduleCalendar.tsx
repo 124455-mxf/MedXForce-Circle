@@ -294,16 +294,16 @@ export function CircleAssessmentScheduleCalendar({
   const isCurrentWeek = weekDays.some((day) => assessmentScheduleDateKey(day) === todayKey);
 
   const viewModeSelector = enableViewModes ? (
-    <div className="flex w-full rounded-xl border border-slate-100 p-0.5 bg-slate-50 shrink-0">
+    <div className="flex w-full rounded-2xl border border-slate-100 p-1.5 bg-slate-100 shrink-0">
       {VIEW_MODES.map((mode) => (
         <button
           key={mode}
           type="button"
           onClick={() => setViewMode(mode)}
           className={cn(
-            'flex-1 min-w-0 px-2 py-1.5 rounded-lg text-xs font-bold leading-none whitespace-nowrap text-center transition-colors',
+            'flex-1 min-w-0 px-3 py-2.5 rounded-xl text-sm font-bold leading-none whitespace-nowrap text-center transition-colors',
             viewMode === mode
-              ? 'bg-white text-slate-800 shadow-sm'
+              ? 'bg-white text-blue-600 shadow-sm'
               : 'text-slate-500 hover:text-slate-700',
           )}
         >
@@ -314,11 +314,11 @@ export function CircleAssessmentScheduleCalendar({
   ) : null;
 
   const dateNavButtonClass =
-    'shrink-0 p-2 rounded-xl border border-slate-100 text-slate-500 hover:bg-slate-50';
+    'shrink-0 p-2.5 rounded-xl border border-slate-100 text-slate-500 hover:bg-slate-50';
   const dateNavLabelClass =
-    'flex-1 min-w-0 px-1 text-xs font-bold text-slate-700 text-center truncate';
+    'flex-1 min-w-0 px-1 text-sm sm:text-base font-bold text-slate-700 text-center truncate';
   const dateNavJumpClass =
-    'shrink-0 px-2.5 py-1.5 rounded-xl border border-slate-100 text-xs font-bold text-slate-600 hover:bg-slate-50 whitespace-nowrap';
+    'shrink-0 px-3 py-2 rounded-xl border border-slate-100 text-sm font-bold text-slate-600 hover:bg-slate-50 whitespace-nowrap';
 
   const dateNavigation = enableViewModes ? (
     <div className="flex flex-row items-center justify-center gap-1 w-full min-w-0">
@@ -330,7 +330,7 @@ export function CircleAssessmentScheduleCalendar({
             className={dateNavButtonClass}
             aria-label={t('schedulePage.views.prevDay')}
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={20} />
           </button>
           {selectedDateKey !== todayKey ? (
             <button
@@ -348,7 +348,7 @@ export function CircleAssessmentScheduleCalendar({
             className={dateNavButtonClass}
             aria-label={t('schedulePage.views.nextDay')}
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={20} />
           </button>
         </>
       )}
@@ -360,7 +360,7 @@ export function CircleAssessmentScheduleCalendar({
             className={dateNavButtonClass}
             aria-label={t('dashboard.assessmentScheduleCalendar.prevMonth')}
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={20} />
           </button>
           <span className={dateNavLabelClass}>{monthLabel}</span>
           <button
@@ -369,7 +369,7 @@ export function CircleAssessmentScheduleCalendar({
             className={dateNavButtonClass}
             aria-label={t('dashboard.assessmentScheduleCalendar.nextMonth')}
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={20} />
           </button>
         </>
       )}
@@ -390,7 +390,7 @@ export function CircleAssessmentScheduleCalendar({
             className={dateNavButtonClass}
             aria-label={t('schedulePage.views.prevWeek')}
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={20} />
           </button>
           <span className={dateNavLabelClass}>{weekLabel}</span>
           <button
@@ -399,7 +399,7 @@ export function CircleAssessmentScheduleCalendar({
             className={dateNavButtonClass}
             aria-label={t('schedulePage.views.nextWeek')}
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={20} />
           </button>
         </>
       )}
@@ -548,7 +548,10 @@ export function CircleAssessmentScheduleCalendar({
   return (
     <div
       className={cn(
-        'h-full min-h-0 rounded-2xl border border-slate-100 bg-white flex flex-col overflow-hidden p-5 space-y-4',
+        'h-full min-h-0 flex flex-col overflow-hidden',
+        enableViewModes
+          ? 'px-4 pb-4 space-y-4'
+          : 'rounded-2xl border border-slate-100 bg-white p-5 space-y-4',
         viewMode === 'week' && 'min-h-0 tablet-portrait:min-h-0',
       )}
     >

@@ -42,7 +42,7 @@ export function CircleMessageBodyPreview({
 
   if (titleLine !== null) {
     return (
-      <div className={cn('text-slate-800 leading-relaxed text-sm whitespace-pre-wrap', className)}>
+      <div className={cn('text-slate-800 leading-relaxed text-base whitespace-pre-wrap', className)}>
         <p className="font-bold text-slate-900">{titleLine}</p>
         {restBody ? (
           <p className={cn(restBody && 'mt-1.5')}>
@@ -69,7 +69,7 @@ export function CircleMessageBodyPreview({
       : `${body.slice(0, MESSAGE_BODY_PREVIEW_CHARS).trimEnd()}…`;
 
   return (
-    <p className={cn('text-slate-800 leading-relaxed text-sm whitespace-pre-wrap', className)}>
+    <p className={cn('text-slate-800 leading-relaxed text-base whitespace-pre-wrap', className)}>
       {displayText}
       {needsTruncateAll ? (
         <button

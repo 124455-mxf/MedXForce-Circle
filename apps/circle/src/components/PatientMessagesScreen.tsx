@@ -58,6 +58,10 @@ import {
   circleSectionEmptyCardClass,
   circleSectionPanelClass,
   circleSectionTitleClass,
+  circleInboxIconTabExtraClass,
+  circleInboxTabStripClass,
+  circleInboxTextTabExtraClass,
+  CIRCLE_INBOX_TAB_ICON_SIZE,
   circleTabButtonClass,
   circleWorkTabHeaderClass,
   circleWorkTabPanelClass,
@@ -151,7 +155,7 @@ function IcuUtteranceCard({
           })}
         </span>
       </div>
-      <p className="text-slate-700 text-sm font-medium leading-relaxed whitespace-pre-wrap">
+      <p className="text-slate-700 text-base font-medium leading-relaxed whitespace-pre-wrap">
         {entry.text}
       </p>
     </div>
@@ -293,7 +297,7 @@ function CircleReplyCard({
         text={reply.text}
         translations={reply.translations}
         viewerLanguage={viewerLanguage}
-        className="text-slate-700 font-medium"
+        className="text-slate-700 text-base font-medium"
         t={t}
         translateIfMissing={fromPatient}
       />
@@ -1055,11 +1059,11 @@ export function PatientMessagesScreen({
                   ) : null
                 )}
               </div>
-              <p className={cn('text-sm font-bold truncate leading-snug', summaryRow ? 'text-indigo-950' : 'text-slate-800')}>
+              <p className={cn('text-base font-bold truncate leading-snug', summaryRow ? 'text-indigo-950' : 'text-slate-800')}>
                 {title}
               </p>
               {snippet ? (
-                <p className={cn('text-[11px] mt-0.5 line-clamp-2 leading-relaxed', summaryRow ? 'text-indigo-700/80' : 'text-slate-500')}>
+                <p className={cn('text-sm mt-0.5 line-clamp-2 leading-relaxed', summaryRow ? 'text-indigo-700/80' : 'text-slate-500')}>
                   {snippet}
                 </p>
               ) : null}
@@ -1106,8 +1110,8 @@ export function PatientMessagesScreen({
             }
           />
           <CircleHorizontalScrollStrip
-            className="rounded-xl bg-slate-100 p-1"
-            innerClassName="gap-0.5"
+            className={circleInboxTabStripClass}
+            innerClassName="gap-1"
             role="tablist"
             aria-label={t('messages.tabBucketsAria')}
           >
@@ -1120,12 +1124,12 @@ export function PatientMessagesScreen({
               onClick={() => setInboxView('communication_log')}
               className={circleTabButtonClass(
                 inboxView === 'communication_log',
-                'shrink-0 flex-none justify-center min-w-[2.125rem] px-2 py-2',
+                circleInboxIconTabExtraClass,
               )}
             >
               <span className="relative inline-flex items-center justify-center pr-1 pt-0.5">
                 <ClipboardList
-                  size={16}
+                  size={CIRCLE_INBOX_TAB_ICON_SIZE}
                   className={inboxView === 'communication_log' ? 'text-indigo-600' : 'text-slate-500'}
                   aria-hidden
                 />
@@ -1144,12 +1148,12 @@ export function PatientMessagesScreen({
               onClick={() => setInboxView('alert')}
               className={circleTabButtonClass(
                 inboxView === 'alert',
-                'shrink-0 flex-none justify-center min-w-[2.125rem] px-2 py-2',
+                circleInboxIconTabExtraClass,
               )}
             >
               <span className="relative inline-flex items-center justify-center pr-1 pt-0.5">
                 <AlertCircle
-                  size={16}
+                  size={CIRCLE_INBOX_TAB_ICON_SIZE}
                   className={inboxView === 'alert' ? 'text-red-600' : 'text-slate-500'}
                   aria-hidden
                 />
@@ -1164,19 +1168,19 @@ export function PatientMessagesScreen({
               onClick={() => setInboxView('attention')}
               className={circleTabButtonClass(
                 inboxView === 'attention',
-                'shrink-0 flex-none justify-center min-w-[2.125rem] px-2 py-2',
+                circleInboxIconTabExtraClass,
               )}
             >
               <span className="relative inline-flex items-center justify-center pr-1 pt-0.5">
                 <Bell
-                  size={16}
+                  size={CIRCLE_INBOX_TAB_ICON_SIZE}
                   className={inboxView === 'attention' ? 'text-blue-600' : 'text-slate-500'}
                   aria-hidden
                 />
                 <CircleFolderCountBadge {...inboxTabCounts.attention} placement="overlay" />
               </span>
             </button>
-            <span className="w-px h-5 bg-slate-200/90 shrink-0 mx-0.5 self-center" aria-hidden />
+            <span className="w-px h-7 bg-slate-200/90 shrink-0 mx-0.5 self-center" aria-hidden />
             <button
               type="button"
               role="tab"
@@ -1184,10 +1188,10 @@ export function PatientMessagesScreen({
               onClick={() => setInboxView('in_out')}
               className={circleTabButtonClass(
                 inboxView === 'in_out',
-                'shrink-0 flex-none justify-center px-2.5 py-2',
+                circleInboxTextTabExtraClass,
               )}
             >
-              <span className="inline-flex items-center justify-center gap-1">
+              <span className="inline-flex items-center justify-center gap-1.5">
                 {t('messages.tabInOut')}
                 <CircleFolderCountBadge {...inboxTabCounts.in_out} />
               </span>
@@ -1196,15 +1200,20 @@ export function PatientMessagesScreen({
               type="button"
               role="tab"
               aria-selected={inboxView === 'archived'}
+              aria-label={t('messages.tabArchived')}
               onClick={() => setInboxView('archived')}
               className={circleTabButtonClass(
                 inboxView === 'archived',
-                'shrink-0 flex-none justify-center px-2.5 py-2',
+                circleInboxIconTabExtraClass,
               )}
             >
-              <span className="inline-flex items-center justify-center gap-1">
-                {t('messages.tabArchived')}
-                <CircleFolderCountBadge {...inboxTabCounts.archived} />
+              <span className="relative inline-flex items-center justify-center pr-1 pt-0.5">
+                <Trash2
+                  size={CIRCLE_INBOX_TAB_ICON_SIZE}
+                  className={inboxView === 'archived' ? 'text-blue-600' : 'text-slate-500'}
+                  aria-hidden
+                />
+                <CircleFolderCountBadge {...inboxTabCounts.archived} placement="overlay" />
               </span>
             </button>
             {canViewDeleted ? (
@@ -1215,10 +1224,10 @@ export function PatientMessagesScreen({
               onClick={() => setInboxView('deleted')}
               className={circleTabButtonClass(
                 inboxView === 'deleted',
-                'shrink-0 flex-none justify-center px-2.5 py-2',
+                circleInboxTextTabExtraClass,
               )}
             >
-              <span className="inline-flex items-center justify-center gap-1">
+              <span className="inline-flex items-center justify-center gap-1.5">
                 {t('messages.tabDeleted')}
                 <CircleFolderCountBadge {...inboxTabCounts.deleted} />
               </span>
@@ -1543,7 +1552,7 @@ export function PatientMessagesScreen({
                 text={selectedMessage.text}
                 translations={selectedMessage.translations}
                 viewerLanguage={language}
-                className="text-slate-700 font-medium"
+                className="text-slate-700 text-base font-medium"
                 t={t}
                 translateIfMissing
               />
@@ -1654,7 +1663,7 @@ export function PatientMessagesScreen({
             text={selectedMessage.text}
             translations={selectedMessage.translations}
             viewerLanguage={language}
-            className="text-slate-700 font-medium"
+            className="text-slate-700 text-base font-medium"
             t={t}
             translateIfMissing
             disableTruncate
@@ -1662,6 +1671,7 @@ export function PatientMessagesScreen({
         ) : selectedAlertKind ? (
           <CircleMessageBodyPreview
             text={messagesThreadBodyText(selectedMessage, language)}
+            className="text-base"
             disableTruncate
           />
         ) : null}

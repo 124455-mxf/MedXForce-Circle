@@ -27,21 +27,21 @@ export const remotePromptsModalEnglish = {
     '{{name}} accepted your drop-in request. You can chat live until either of you ends the conversation.',
   dropInDeclinedBody: '{{name}} declined your drop-in request.',
   dropInShareTitle: 'Share drop-in transcript?',
-  dropInShareTitleOpen: 'Share to Circle conversation?',
-  dropInShareTitleRestricted: 'Share to Care coordination?',
+  dropInShareTitleOpen: 'Share to Everybody?',
+  dropInShareTitleRestricted: 'Share to Care team?',
   dropInShareBody:
-    'Nothing is shared automatically. You can post a transcript of this drop-in conversation to Care coordination for proxies and caregivers only.',
+    'Nothing is shared automatically. You can post a transcript of this drop-in conversation to Care team for proxies and caregivers only.',
   dropInShareBodyOpen:
-    'Nothing is shared automatically. Post a transcript to Circle conversation so friends, family, and other circle members can read it.',
+    'Nothing is shared automatically. Post a transcript to Everybody so friends, family, and other circle members can read it.',
   dropInShareBodyRestricted:
-    'Nothing is shared automatically. Post a transcript to Care coordination for proxies and caregivers only.',
+    'Nothing is shared automatically. Post a transcript to Care team for proxies and caregivers only.',
   dropInShareBodyOpenPatientInitiated:
-    'Post a transcript to Circle conversation for friends, family, and other circle members. A copy will also be saved in {{name}}\'s Messages (In/Out) on their tablet.',
+    'Post a transcript to Everybody for friends, family, and other circle members. A copy will also be saved in {{name}}\'s Messages (In/Out) on their tablet.',
   dropInShareBodyRestrictedPatientInitiated:
-    'Post a transcript to Care coordination for your care team. A copy will also be saved in {{name}}\'s Messages (In/Out) on their tablet.',
+    'Post a transcript to Care team for your care team. A copy will also be saved in {{name}}\'s Messages (In/Out) on their tablet.',
   dropInShareAlsoCareTeam: 'Also notify care team',
   dropInShareAlsoCareTeamHint:
-    'Also post a copy to Care coordination so proxies and caregivers on the care team can read it.',
+    'Also post a copy to Care team so proxies and caregivers on the care team can read it.',
   dropInShareDontShare: "Don't share",
   dropInShareButton: 'Share',
   dropInChatTitle: 'Drop-in with {{name}}',
@@ -126,21 +126,21 @@ export const remotePromptsModalGerman = {
     '{{name}} hat Ihre Spontan-Anfrage angenommen. Sie können live chatten, bis einer von Ihnen das Gespräch beendet.',
   dropInDeclinedBody: '{{name}} hat Ihre Spontan-Anfrage abgelehnt.',
   dropInShareTitle: 'Spontan-Protokoll teilen?',
-  dropInShareTitleOpen: 'In Circle-Gespräch teilen?',
-  dropInShareTitleRestricted: 'In Pflegekoordination teilen?',
+  dropInShareTitleOpen: 'Unter Alle teilen?',
+  dropInShareTitleRestricted: 'Im Pflegeteam teilen?',
   dropInShareBody:
-    'Es wird nichts automatisch geteilt. Sie können ein Protokoll dieses Spontangesprächs in der Pflegekoordination veröffentlichen – nur für Stellvertreter und Betreuende.',
+    'Es wird nichts automatisch geteilt. Sie können ein Protokoll dieses Spontangesprächs unter Pflegeteam veröffentlichen – nur für Stellvertreter und Betreuende.',
   dropInShareBodyOpen:
-    'Es wird nichts automatisch geteilt. Veröffentlichen Sie ein Protokoll im Circle-Gespräch, damit Freunde, Familie und andere Circle-Mitglieder es lesen können.',
+    'Es wird nichts automatisch geteilt. Veröffentlichen Sie ein Protokoll unter Alle, damit Freunde, Familie und andere Circle-Mitglieder es lesen können.',
   dropInShareBodyRestricted:
-    'Es wird nichts automatisch geteilt. Veröffentlichen Sie ein Protokoll in der Pflegekoordination – nur für Stellvertreter und Betreuende.',
+    'Es wird nichts automatisch geteilt. Veröffentlichen Sie ein Protokoll unter Pflegeteam – nur für Stellvertreter und Betreuende.',
   dropInShareBodyOpenPatientInitiated:
-    'Veröffentlichen Sie ein Protokoll im Circle-Gespräch für Freunde, Familie und andere Circle-Mitglieder. Eine Kopie wird auch in {{name}}s Nachrichten (Ein/Aus) auf dem Tablet gespeichert.',
+    'Veröffentlichen Sie ein Protokoll unter Alle für Freunde, Familie und andere Circle-Mitglieder. Eine Kopie wird auch in {{name}}s Nachrichten (Ein/Aus) auf dem Tablet gespeichert.',
   dropInShareBodyRestrictedPatientInitiated:
-    'Veröffentlichen Sie ein Protokoll in der Pflegekoordination für Ihr Betreuungsteam. Eine Kopie wird auch in {{name}}s Nachrichten (Ein/Aus) auf dem Tablet gespeichert.',
+    'Veröffentlichen Sie ein Protokoll unter Pflegeteam für Ihr Betreuungsteam. Eine Kopie wird auch in {{name}}s Nachrichten (Ein/Aus) auf dem Tablet gespeichert.',
   dropInShareAlsoCareTeam: 'Auch Betreuungsteam informieren',
   dropInShareAlsoCareTeamHint:
-    'Zusätzlich in der Pflegekoordination veröffentlichen, damit Stellvertreter und Betreuende es lesen können.',
+    'Zusätzlich unter Pflegeteam veröffentlichen, damit Stellvertreter und Betreuende es lesen können.',
   dropInShareDontShare: 'Nicht teilen',
   dropInShareButton: 'Teilen',
   dropInChatTitle: 'Spontangespräch mit {{name}}',
@@ -225,21 +225,21 @@ export const remotePromptsModalSpanish = {
     '{{name}} aceptó su solicitud de entrada. Pueden chatear en vivo hasta que uno de ustedes termine la conversación.',
   dropInDeclinedBody: '{{name}} rechazó su solicitud de entrada.',
   dropInShareTitle: '¿Compartir transcripción del drop-in?',
-  dropInShareTitleOpen: '¿Compartir en conversación del Circle?',
-  dropInShareTitleRestricted: '¿Compartir en coordinación de cuidados?',
+  dropInShareTitleOpen: '¿Compartir en Todos?',
+  dropInShareTitleRestricted: '¿Compartir en Equipo de cuidado?',
   dropInShareBody:
-    'No se comparte nada automáticamente. Puede publicar una transcripción de esta conversación en coordinación de cuidados solo para apoderados y cuidadores.',
+    'No se comparte nada automáticamente. Puede publicar una transcripción de esta conversación en Equipo de cuidado solo para apoderados y cuidadores.',
   dropInShareBodyOpen:
-    'No se comparte nada automáticamente. Publique una transcripción en la conversación del Circle para que amigos, familiares y otros miembros puedan leerla.',
+    'No se comparte nada automáticamente. Publique una transcripción en Todos para que amigos, familiares y otros miembros puedan leerla.',
   dropInShareBodyRestricted:
-    'No se comparte nada automáticamente. Publique una transcripción en coordinación de cuidados solo para apoderados y cuidadores.',
+    'No se comparte nada automáticamente. Publique una transcripción en Equipo de cuidado solo para apoderados y cuidadores.',
   dropInShareBodyOpenPatientInitiated:
-    'Publique una transcripción en la conversación del Circle para amigos, familiares y otros miembros. También se guardará una copia en Mensajes (Entrada/Salida) de {{name}} en su tableta.',
+    'Publique una transcripción en Todos para amigos, familiares y otros miembros. También se guardará una copia en Mensajes (Entrada/Salida) de {{name}} en su tableta.',
   dropInShareBodyRestrictedPatientInitiated:
-    'Publique una transcripción en coordinación de cuidados para su equipo de cuidados. También se guardará una copia en Mensajes (Entrada/Salida) de {{name}} en su tableta.',
+    'Publique una transcripción en Equipo de cuidado para su equipo de cuidados. También se guardará una copia en Mensajes (Entrada/Salida) de {{name}} en su tableta.',
   dropInShareAlsoCareTeam: 'También avisar al equipo de cuidados',
   dropInShareAlsoCareTeamHint:
-    'Publique también una copia en coordinación de cuidados para que apoderados y cuidadores puedan leerla.',
+    'Publique también una copia en Equipo de cuidado para que apoderados y cuidadores puedan leerla.',
   dropInShareDontShare: 'No compartir',
   dropInShareButton: 'Compartir',
   dropInChatTitle: 'Conversación con {{name}}',
@@ -324,21 +324,21 @@ export const remotePromptsModalPolish = {
     '{{name}} zaakceptował(a) Twoją prośbę o dołączenie. Możecie rozmawiać na żywo, dopóki jedna ze stron nie zakończy rozmowy.',
   dropInDeclinedBody: '{{name}} odrzucił(a) Twoją prośbę o dołączenie.',
   dropInShareTitle: 'Udostępnić transkrypcję drop-in?',
-  dropInShareTitleOpen: 'Udostępnić w rozmowie Circle?',
-  dropInShareTitleRestricted: 'Udostępnić w koordynacji opieki?',
+  dropInShareTitleOpen: 'Udostępnić w Wszyscy?',
+  dropInShareTitleRestricted: 'Udostępnić w Zespół opieki?',
   dropInShareBody:
-    'Nic nie jest udostępniane automatycznie. Możesz opublikować transkrypcję tej rozmowy w koordynacji opieki wyłącznie dla pełnomocników i opiekunów.',
+    'Nic nie jest udostępniane automatycznie. Możesz opublikować transkrypcję tej rozmowy w Zespół opieki wyłącznie dla pełnomocników i opiekunów.',
   dropInShareBodyOpen:
-    'Nic nie jest udostępniane automatycznie. Opublikuj transkrypcję w rozmowie Circle, aby znajomi, rodzina i inni członkowie mogli ją przeczytać.',
+    'Nic nie jest udostępniane automatycznie. Opublikuj transkrypcję w Wszyscy, aby znajomi, rodzina i inni członkowie mogli ją przeczytać.',
   dropInShareBodyRestricted:
-    'Nic nie jest udostępniane automatycznie. Opublikuj transkrypcję w koordynacji opieki wyłącznie dla pełnomocników i opiekunów.',
+    'Nic nie jest udostępniane automatycznie. Opublikuj transkrypcję w Zespół opieki wyłącznie dla pełnomocników i opiekunów.',
   dropInShareBodyOpenPatientInitiated:
-    'Opublikuj transkrypcję w rozmowie Circle dla znajomych, rodziny i innych członków. Kopia zostanie też zapisana w Wiadomościach (Wej./Wyj.) {{name}} na tablecie.',
+    'Opublikuj transkrypcję w Wszyscy dla znajomych, rodziny i innych członków. Kopia zostanie też zapisana w Wiadomościach (Wej./Wyj.) {{name}} na tablecie.',
   dropInShareBodyRestrictedPatientInitiated:
-    'Opublikuj transkrypcję w koordynacji opieki dla zespołu opieki. Kopia zostanie też zapisana w Wiadomościach (Wej./Wyj.) {{name}} na tablecie.',
+    'Opublikuj transkrypcję w Zespół opieki dla zespołu opieki. Kopia zostanie też zapisana w Wiadomościach (Wej./Wyj.) {{name}} na tablecie.',
   dropInShareAlsoCareTeam: 'Powiadom też zespół opieki',
   dropInShareAlsoCareTeamHint:
-    'Opublikuj też kopię w koordynacji opieki, aby pełnomocnicy i opiekunowie mogli ją przeczytać.',
+    'Opublikuj też kopię w Zespół opieki, aby pełnomocnicy i opiekunowie mogli ją przeczytać.',
   dropInShareDontShare: 'Nie udostępniaj',
   dropInShareButton: 'Udostępnij',
   dropInChatTitle: 'Rozmowa z {{name}}',

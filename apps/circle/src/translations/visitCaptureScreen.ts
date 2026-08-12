@@ -31,7 +31,7 @@ export const visitCaptureScreenEnglish = {
   shareWithCareTeam: 'Share with care team',
   shareWithCircle: 'Share with the circle',
   doneTitle: 'Shared with your care team',
-  doneHiddenHint: "You won't see this in Care coordination — only the care team can.",
+  doneHiddenHint: "You won't see this in Care team — only the care team can.",
   doneButton: 'Done',
   failedBody:
     "We couldn't process this visit. Your recordings are still saved locally until you delete them.",
@@ -76,7 +76,7 @@ export const visitCaptureScreenGerman = {
   shareWithCircle: 'Mit dem Kreis teilen',
   doneTitle: 'Mit Ihrem Pflegeteam geteilt',
   doneHiddenHint:
-    'Sie sehen dies nicht in der Pflegekoordination — nur das Pflegeteam kann.',
+    'Sie sehen dies nicht unter Pflegeteam — nur das Pflegeteam kann.',
   doneButton: 'Fertig',
   failedBody:
     'Dieser Besuch konnte nicht verarbeitet werden. Ihre Aufnahmen bleiben lokal gespeichert, bis Sie sie löschen.',
