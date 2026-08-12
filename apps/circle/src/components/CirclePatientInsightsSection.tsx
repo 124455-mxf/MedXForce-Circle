@@ -21,7 +21,11 @@ import {
 import type { CirclePatientProfileSnapshot } from '@medxforce/shared';
 import type { CirclePatientSummary } from '@medxforce/shared';
 import { useCircleT } from '../lib/circleI18nContext';
-import { insightLabelT, localizeInsightItem, patientFriendlyDisplayName } from '../lib/dashboardI18n';
+import {
+  circlePatientFirstName,
+  insightLabelT,
+  localizeInsightItem,
+} from '../lib/dashboardI18n';
 import { cn } from '../lib/utils';
 
 type CirclePatientInsightsSectionProps = {
@@ -135,8 +139,8 @@ export function CirclePatientInsightsSection({
   if (items.length === 0) return null;
 
   const counts = countFilledPatientInsights(items);
-  const friendlyName = patientFriendlyDisplayName(snapshot, patient.displayName);
-  const sectionTitle = t('dashboard.getToKnow', { name: friendlyName });
+  const firstName = circlePatientFirstName(snapshot, patient.displayName);
+  const sectionTitle = t('dashboard.getToKnow', { name: firstName });
 
   return (
     <section className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
@@ -147,7 +151,9 @@ export function CirclePatientInsightsSection({
         aria-expanded={expanded}
       >
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-bold text-slate-800 leading-snug">{sectionTitle}</h3>
+          <h3 className="font-bold text-slate-800 text-sm sm:text-base leading-snug">
+            {sectionTitle}
+          </h3>
           <p className="text-xs font-medium text-slate-500 mt-1 leading-snug">
             {t('dashboard.insightsAvailable', { count: counts.filled, total: counts.total })}
           </p>

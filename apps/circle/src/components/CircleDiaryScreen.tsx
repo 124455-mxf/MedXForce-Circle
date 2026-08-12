@@ -122,12 +122,58 @@ function DiaryTimelineEntry({
           isCareTeamEntry && 'ml-2 sm:ml-4 border-l-4 border-l-blue-200',
         )}
       >
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-blue-700">
               {formatDiaryDate(entry.experienceAt)}
             </p>
-            <p className="text-sm font-semibold text-slate-800 mt-0.5">{authorLabel}</p>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold uppercase shrink-0',
+                  shared ? 'bg-violet-50 text-violet-600' : 'bg-slate-100 text-slate-500',
+                )}
+              >
+                {shared ? (
+                  isPatientAuthor ? (
+                    <Heart size={12} />
+                  ) : (
+                    <Users size={12} />
+                  )
+                ) : (
+                  <Lock size={12} />
+                )}
+                {shared
+                  ? isPatientAuthor
+                    ? t('diary.badgePatientStory')
+                    : t('diary.badgeShared')
+                  : t('diary.badgePrivate')}
+              </span>
+              {isOwn && !isSystem && (
+                <div className="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={onEdit}
+                    className="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                    aria-label={t('diary.editEntryAria')}
+                  >
+                    <Pencil size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onDelete}
+                    className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50"
+                    aria-label={t('diary.deleteEntryAria')}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-slate-800">{authorLabel}</p>
             {isSystem && (
               <p className="text-[10px] font-bold uppercase tracking-wide text-violet-500 mt-0.5">
                 {t('diary.badgeMilestone')}
@@ -144,60 +190,22 @@ function DiaryTimelineEntry({
               </p>
             )}
           </div>
-          <div className="flex items-center gap-1.5 flex-wrap justify-end">
-            {mood && (
-              <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold uppercase">
-                {mood}
-              </span>
-            )}
-            {showMilestone && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 text-[10px] font-bold uppercase">
-                {isSystem ? <Sparkles size={10} /> : <Star size={10} />}
-                {t('diary.badgeMilestone')}
-              </span>
-            )}
-            <span
-              className={cn(
-                'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold uppercase shrink-0',
-                shared ? 'bg-violet-50 text-violet-600' : 'bg-slate-100 text-slate-500',
+
+          {(mood || showMilestone) && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {mood && (
+                <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold uppercase">
+                  {mood}
+                </span>
               )}
-            >
-              {shared ? (
-                isPatientAuthor ? (
-                  <Heart size={12} />
-                ) : (
-                  <Users size={12} />
-                )
-              ) : (
-                <Lock size={12} />
+              {showMilestone && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 text-[10px] font-bold uppercase">
+                  {isSystem ? <Sparkles size={10} /> : <Star size={10} />}
+                  {t('diary.badgeMilestone')}
+                </span>
               )}
-              {shared
-                ? isPatientAuthor
-                  ? t('diary.badgePatientStory')
-                  : t('diary.badgeShared')
-                : t('diary.badgePrivate')}
-            </span>
-            {isOwn && !isSystem && (
-              <div className="flex items-center gap-0.5">
-                <button
-                  type="button"
-                  onClick={onEdit}
-                  className="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50"
-                  aria-label={t('diary.editEntryAria')}
-                >
-                  <Pencil size={15} />
-                </button>
-                <button
-                  type="button"
-                  onClick={onDelete}
-                  className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50"
-                  aria-label={t('diary.deleteEntryAria')}
-                >
-                  <Trash2 size={15} />
-                </button>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         <CircleDiaryTranslatedContent

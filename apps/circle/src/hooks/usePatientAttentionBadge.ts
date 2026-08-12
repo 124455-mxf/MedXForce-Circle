@@ -23,6 +23,10 @@ import {
 /**
  * Lightweight badge hook for background patients — avoids mounting the full
  * thread UI stack (alert attention state, per-screen thread consumers).
+ *
+ * Runs outside CircleSelectedPatientProvider, so remote settings are not available
+ * here. ICU communication-log eligibility still works when summaries already exist
+ * (count > 0); empty eligibility is only needed in the selected-patient Messages UI.
  */
 export function usePatientAttentionBadge(
   db: Firestore,

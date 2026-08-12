@@ -194,6 +194,7 @@ export type RemoteSettingsPayload = {
   useAiAssistant?: boolean;
   aiConversation?: boolean;
   allowSendMessages?: boolean;
+  autoSendMessage?: boolean;
   showUserInSidebar?: boolean;
   showQuickSettings?: boolean;
   showSettingsInSidebar?: boolean;
@@ -817,6 +818,7 @@ export function parsePatientRemoteSettings(
     useAiAssistant: asBool(data.useAiAssistant),
     aiConversation: asBool(data.aiConversation),
     allowSendMessages: asBool(data.allowSendMessages),
+    autoSendMessage: asBool(data.autoSendMessage),
     showUserInSidebar: asBool(data.showUserInSidebar),
     showQuickSettings: asBool(data.showQuickSettings),
     showSettingsInSidebar: asBool(data.showSettingsInSidebar),
@@ -900,6 +902,7 @@ export function extractRemoteSettingsFromPreferences(
     useAiAssistant: preferences.useAiAssistant !== false,
     aiConversation: !!preferences.aiConversation,
     allowSendMessages: preferences.allowSendMessages !== false,
+    autoSendMessage: !!preferences.autoSendMessage,
     showUserInSidebar: !!preferences.showUserInSidebar,
     showQuickSettings: preferences.showQuickSettings !== false,
     showSettingsInSidebar: preferences.showSettingsInSidebar !== false,

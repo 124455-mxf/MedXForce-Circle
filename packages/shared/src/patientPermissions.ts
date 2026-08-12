@@ -183,6 +183,30 @@ export function canViewCommunicationLog(role: string): boolean {
   return normalizeMemberRole(role) !== 'friend';
 }
 
+type IcuCommunicationSummaryRemoteSettings = {
+  appMode?: 'intensive_care' | 'hospital' | 'user';
+  autoSendMessage?: boolean;
+};
+
+/** Patient tablet is in ICU with auto-send enabled (or legacy doc omits autoSendMessage). */
+export function isIcuCommunicationSummaryEligible(
+  remoteSettings: IcuCommunicationSummaryRemoteSettings | null | undefined,
+): boolean {
+  if (remoteSettings?.appMode !== 'intensive_care') return false;
+  return remoteSettings.autoSendMessage !== false;
+}
+
+/** Show Communication log tab when summaries may arrive or already exist. */
+export function canShowIcuCommunicationLogInbox(
+  role: string,
+  remoteSettings: IcuCommunicationSummaryRemoteSettings | null | undefined,
+  existingSummaryCount: number,
+): boolean {
+  if (!canViewCommunicationLog(role)) return false;
+  if (existingSummaryCount > 0) return true;
+  return isIcuCommunicationSummaryEligible(remoteSettings);
+}
+
 export function normalizeInviteEmail(email: string): string {
   return email.trim().toLowerCase();
 }

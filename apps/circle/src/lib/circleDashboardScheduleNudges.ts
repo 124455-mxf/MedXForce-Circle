@@ -3,6 +3,7 @@ import {
   countPatientAppointmentsRemainingToday,
   countPatientAppointmentsUpcomingWithinDays,
   countUpcomingScheduledAssessmentsWithinDays,
+  findImminentCareCalendarAppointments,
   getScheduledDueAssessments,
   isScheduleEnabled,
   type CareCalendarEntry,
@@ -16,6 +17,8 @@ export type CircleScheduleNudgeCounts = {
   upcomingAssessments: number;
   appointmentsToday: number;
   upcomingAppointments: number;
+  /** Appointments starting within the schedule imminent window (same as Today banner). */
+  imminentAppointments: number;
 };
 
 export function computeCircleScheduleNudgeCounts(params: {
@@ -55,6 +58,8 @@ export function computeCircleScheduleNudgeCounts(params: {
       CIRCLE_SCHEDULE_NUDGE_UPCOMING_DAYS,
       now,
     ),
+    imminentAppointments: findImminentCareCalendarAppointments(params.careEntries, { now })
+      .length,
   };
 }
 
@@ -67,5 +72,6 @@ export function buildPreviewScheduleNudgeCounts(
     upcomingAssessments: Math.max(live.upcomingAssessments, 4),
     appointmentsToday: Math.max(live.appointmentsToday, 1),
     upcomingAppointments: Math.max(live.upcomingAppointments, 3),
+    imminentAppointments: Math.max(live.imminentAppointments, 1),
   };
 }

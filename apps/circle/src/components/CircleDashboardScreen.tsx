@@ -27,7 +27,7 @@ import {
   canInviteMembers,
   canSeeCareTeamDashboardReminders,
   canSeePatientScheduleNudgeTiles,
-  canViewCommunicationLog,
+  canShowIcuCommunicationLogInbox,
   canViewPatientProfileTab,
   canViewRemoteSettingsTab,
   canSendPatientRemoteCommands,
@@ -37,6 +37,7 @@ import {
   isRemoteSettingsCustomized,
   normalizeMemberRole,
   shouldHideDeclinedAppointmentForContact,
+  SCHEDULE_IMMINENT_BANNER_REFRESH_MS,
   type AnalyticsMetricId,
   type CirclePatientSummary,
   type CircleMemberThreadKind,
@@ -112,7 +113,7 @@ import {
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import { isPatientDoNotDisturbSection } from '../hooks/usePatientOnlinePresence';
 import { analyticsSummaryFooterText } from '../lib/circleAnalyticsI18n';
-import { countUnreadIcuDailySummaries } from '../lib/circleCommunicationLog';
+import { countUnreadIcuDailySummaries, isIcuDailySummary } from '../lib/circleCommunicationLog';
 import {
   CIRCLE_MSG_READ_CHANGED,
   isCommunicationLogSummaryUnread,
@@ -190,7 +191,6 @@ interface CircleDashboardScreenProps {
   onOpenCircleFolder?: (thread: CircleMemberThreadKind, folder: CircleInboxFolder) => void;
   /** Open Messages on a specific inbox folder (e.g. ICU communication log). */
   onOpenMessagesInbox?: (view: 'communication_log' | 'in_out') => void;
-  onOpenRichMediaReactions?: () => void;
   onOpenAnalyticsDetail: (metricId: AnalyticsMetricId) => void;
   onOpenVisitCapture?: () => void;
   onRequestDropIn?: () => void;
@@ -750,7 +750,6 @@ export function CircleDashboardScreen({
   onOpenAdminAccess,
   onOpenCircleFolder,
   onOpenMessagesInbox,
-  onOpenRichMediaReactions,
   onOpenAnalyticsDetail,
   onOpenVisitCapture,
   onRequestDropIn,
@@ -796,6 +795,7 @@ export function CircleDashboardScreen({
   const showEngagementStats = caps.viewEngagementTrends !== false;
   const showRemoteSettings = canViewRemoteSettingsTab(caps);
   const showLiveTile = memberRole !== 'friend';
+  const showGetToKnow = isWidgetVisible('patient-insights');
   const showCircleMap = memberRole !== 'friend' && isWidgetVisible('circle-map');
   const canOpenPatientProfile = canViewPatientProfileTab(caps);
   const canManageTeam = canInviteMembers(caps);
@@ -817,19 +817,26 @@ export function CircleDashboardScreen({
     window.addEventListener(CIRCLE_MSG_READ_CHANGED, onReadChanged);
     return () => window.removeEventListener(CIRCLE_MSG_READ_CHANGED, onReadChanged);
   }, []);
+  const icuSummaryCount = useMemo(
+    () => threadRawMessages.filter((msg) => isIcuDailySummary(msg)).length,
+    [threadRawMessages],
+  );
+  const showCommunicationLogInbox = useMemo(
+    () =>
+      canShowIcuCommunicationLogInbox(memberRole, remoteSettings, icuSummaryCount),
+    [icuSummaryCount, memberRole, remoteSettings],
+  );
   const icuDailySummaryUnreadCount = useMemo(() => {
     void messageReadTick;
     return countUnreadIcuDailySummaries(
       threadRawMessages,
       patient.patientId,
-      canViewCommunicationLog(memberRole),
+      showCommunicationLogInbox,
       (msg) => isCommunicationLogSummaryUnread(msg, patient.patientId, msg.id),
     );
-  }, [memberRole, messageReadTick, patient.patientId, threadRawMessages]);
+  }, [messageReadTick, patient.patientId, showCommunicationLogInbox, threadRawMessages]);
   const showIcuDailyNotesTile =
-    remoteSettings?.appMode === 'icu' &&
-    canViewCommunicationLog(memberRole) &&
-    icuDailySummaryUnreadCount > 0;
+    showCommunicationLogInbox && icuDailySummaryUnreadCount > 0;
   const { firstEngagementAt, loading: firstEngagementLoading } = usePatientFirstEngagementAt(
     threadRawMessages,
     threadRepliesByMessageId,
@@ -914,6 +921,21 @@ export function CircleDashboardScreen({
   );
   const previewReminders = useMemo(() => isPatientInsightsPreviewRemindersEnabled(), []);
   const previewOfflineAlert = previewReminders ? buildPreviewPatientOfflineAlert() : null;
+  const showPatientLocale = isWidgetVisible('patient-locale') || previewReminders;
+  const liveTileVisible =
+    patientPresence.online && showLiveTile && !previewOfflineAlert;
+  /** With Get to know on, tuck locale under Live and drop the section title. */
+  const showPatientLocaleUnderLive = showGetToKnow && showPatientLocale && liveTileVisible;
+
+  const [scheduleNudgeNow, setScheduleNudgeNow] = useState(() => new Date());
+  useEffect(() => {
+    if (!showScheduleNudgeTiles) return;
+    const id = window.setInterval(
+      () => setScheduleNudgeNow(new Date()),
+      SCHEDULE_IMMINENT_BANNER_REFRESH_MS,
+    );
+    return () => window.clearInterval(id);
+  }, [showScheduleNudgeTiles]);
 
   const scheduleNudgeCounts = useMemo(() => {
     if (!showScheduleNudgeTiles) return null;
@@ -921,6 +943,7 @@ export function CircleDashboardScreen({
       assessmentSchedule: assessmentScheduleContext,
       careEntries: visibleCareCalendarEntries,
       scheduleEnabled: remoteSettings?.featuresVisibility?.schedule !== false,
+      now: scheduleNudgeNow,
     });
     const gated: CircleScheduleNudgeCounts = patientAssessmentsFeatureEnabled
       ? live
@@ -931,6 +954,7 @@ export function CircleDashboardScreen({
     patientAssessmentsFeatureEnabled,
     previewReminders,
     remoteSettings?.featuresVisibility?.schedule,
+    scheduleNudgeNow,
     showScheduleNudgeTiles,
     visibleCareCalendarEntries,
   ]);
@@ -987,17 +1011,8 @@ export function CircleDashboardScreen({
     memberRole !== 'friend' &&
     showEngagementStats &&
     isWidgetVisible('check-in-wellness-ring');
-  const dailyCheckInsCompletedForDisplay = dailyCheckInEnabled
-    ? checkInStats.completed
-    : 0;
   const dailyCheckInLatestAt =
     dailyDetail?.latestCompletedAt ?? dailyCheckIn?.latestAt ?? null;
-  const dailyCheckInRecencyTint = getDailyCheckInRecencyUrgency({
-    completedInWindow: dailyCheckInsCompletedForDisplay,
-    skippedInWindow: dailyCheckInEnabled ? checkInStats.skipped : 0,
-    latestCompletedAt: dailyCheckInEnabled ? dailyCheckInLatestAt : null,
-    hasHistory: dailyCheckInEnabled && !!(dailyDetail || dailyCheckIn?.latestAt),
-  });
   const vitalityGamesLast7 = sumVitalityGamesLast7(vitalityDetail?.timeline);
   const assessmentsLast7 = sumAssessmentsLast7(byMetricId);
   const latestAssessment = getLatestAssessment(byMetricId);
@@ -1490,14 +1505,6 @@ export function CircleDashboardScreen({
       }
     : null;
 
-  const richMediaReactionsFromPatient = galleryDashboard.patientReactionsLast7 > 0;
-  const richMediaReactionsCount =
-    canSeeGallery && !galleryDashboard.loading && richMediaReactionsFromPatient
-      ? galleryDashboard.patientReactionsTotal
-      : 0;
-  const richMediaReactionsRecencyTint: AlertAttentionRecencyUrgency =
-    richMediaReactionsCount > 0 ? 'green' : 'neutral';
-
   if (showRemoteSettings) {
     const checkInOn = remoteSettings?.dailyCheckIn?.enabled === true;
     const checkInLabel = checkInOn
@@ -1683,7 +1690,11 @@ export function CircleDashboardScreen({
               <LivePatientWidget
                 onlineDurationLabel={liveOnlineDurationLabel}
                 activeSectionLabel={formatPatientActiveSectionT(t, patientPresence.activeSection)}
-                patientName={patientFriendlyDisplayName(profileSnapshot, patient.displayName)}
+                patientName={
+                  showGetToKnow
+                    ? circlePatientFirstName(profileSnapshot, patient.displayName)
+                    : patientFriendlyDisplayName(profileSnapshot, patient.displayName)
+                }
                 patientId={patient.patientId}
                 memberUid={user.uid}
                 patientContextLines={livePatientContextLines}
@@ -1712,6 +1723,24 @@ export function CircleDashboardScreen({
           </div>
         ) : null}
 
+        {showPatientLocaleUnderLive ? (
+          <CircleDashboardPatientLocaleWidget
+            db={db}
+            patientId={patient.patientId}
+            snapshot={profileSnapshot}
+            hideTitle
+          />
+        ) : null}
+
+        {showGetToKnow && liveTileVisible ? (
+          <CirclePatientInsightsSection
+            patient={patient}
+            snapshot={profileSnapshot}
+            loading={profileLoading}
+            onOpenProfile={canOpenPatientProfile ? () => onGoToTab('patient-profile') : undefined}
+          />
+        ) : null}
+
         {showPatientOfflineAlert && patientOfflineAlertDays != null ? (
           <CircleDashboardPatientOfflineTile
             daysAway={patientOfflineAlertDays}
@@ -1735,11 +1764,6 @@ export function CircleDashboardScreen({
           visitCapturesUnreadCount={circleVisitCapturesUnreadCount}
           visitCapturesOpenUnreadCount={circleVisitCapturesOpenUnreadCount}
           visitCapturesRestrictedUnreadCount={circleVisitCapturesRestrictedUnreadCount}
-          dailyCheckInsCompletedCount={dailyCheckInsCompletedForDisplay}
-          dailyCheckInsRecencyTint={dailyCheckInRecencyTint}
-          richMediaReactionsCount={richMediaReactionsCount}
-          richMediaReactionsFromPatient={richMediaReactionsFromPatient}
-          richMediaReactionsRecencyTint={richMediaReactionsRecencyTint}
           messagingEnabled={caps.messaging === true}
           onOpenMessages={() =>
             onOpenMessagesInbox ? onOpenMessagesInbox('in_out') : onGoToTab('messages')
@@ -1750,10 +1774,6 @@ export function CircleDashboardScreen({
               : onGoToTab('messages')
           }
           onOpenCircleFolder={onOpenCircleFolder}
-          onOpenCheckIns={() => onOpenAnalyticsDetail('daily-check-in')}
-          onOpenRichMediaReactions={
-            onOpenRichMediaReactions ?? (() => onGoToTab('media'))
-          }
           scheduleNudgeCounts={showScheduleNudgeTiles ? scheduleNudgeCounts : null}
           scheduleEnabled={scheduleEnabledForNudges}
           onOpenSchedule={() => onGoToTab('schedule')}
@@ -1783,7 +1803,7 @@ export function CircleDashboardScreen({
           onOpenAdminAccess={onOpenAdminAccess}
         />
 
-        {isWidgetVisible('patient-locale') || previewReminders ? (
+        {showPatientLocale && !showPatientLocaleUnderLive ? (
           <CircleDashboardPatientLocaleWidget
             db={db}
             patientId={patient.patientId}
@@ -1791,7 +1811,7 @@ export function CircleDashboardScreen({
           />
         ) : null}
 
-        {isWidgetVisible('patient-insights') ? (
+        {showGetToKnow && !liveTileVisible ? (
           <CirclePatientInsightsSection
             patient={patient}
             snapshot={profileSnapshot}

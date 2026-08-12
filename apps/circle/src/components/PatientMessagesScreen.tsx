@@ -6,7 +6,7 @@ import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import {
   canCircleMemberReplyToPatientMessage,
-  canViewCommunicationLog,
+  canShowIcuCommunicationLogInbox,
   canViewDeletedPatientMessages,
   circlePatientMessageBucket,
   circleRepliesAfterInboxHide,
@@ -379,16 +379,6 @@ export function PatientMessagesScreen({
   const [readTick, setReadTick] = useState(0);
   const compactChrome = useCircleCompactChrome();
 
-  useEffect(() => {
-    if (!messagesInboxIntent) return;
-    if (messagesInboxIntent === 'communication_log' && !canViewCommunicationLog(patient.role)) {
-      onMessagesInboxIntentConsumed?.();
-      return;
-    }
-    setInboxView(messagesInboxIntent);
-    onMessagesInboxIntentConsumed?.();
-  }, [messagesInboxIntent, onMessagesInboxIntentConsumed, patient.role]);
-
   const memberAudience = useMemo(
     () => ({ uid: user.uid, email: normalizedEmail }),
     [normalizedEmail, user.uid],
@@ -404,10 +394,25 @@ export function PatientMessagesScreen({
     [patient.role],
   );
 
-  const canViewCommLog = useMemo(
-    () => canViewCommunicationLog(patient.role),
-    [patient.role],
+  const showCommunicationLogTab = useMemo(
+    () =>
+      canShowIcuCommunicationLogInbox(
+        patient.role,
+        remoteSettings,
+        communicationLog.length,
+      ),
+    [communicationLog.length, patient.role, remoteSettings],
   );
+
+  useEffect(() => {
+    if (!messagesInboxIntent) return;
+    if (messagesInboxIntent === 'communication_log' && !showCommunicationLogTab) {
+      onMessagesInboxIntentConsumed?.();
+      return;
+    }
+    setInboxView(messagesInboxIntent);
+    onMessagesInboxIntentConsumed?.();
+  }, [messagesInboxIntent, onMessagesInboxIntentConsumed, showCommunicationLogTab]);
 
   const inboxDirectMessages = useMemo(
     () =>
@@ -423,10 +428,10 @@ export function PatientMessagesScreen({
     if (!canViewDeleted && inboxView === 'deleted') {
       setInboxView('in_out');
     }
-    if (!canViewCommLog && inboxView === 'communication_log') {
+    if (!showCommunicationLogTab && inboxView === 'communication_log') {
       setInboxView('in_out');
     }
-  }, [canViewCommLog, canViewDeleted, inboxView]);
+  }, [showCommunicationLogTab, canViewDeleted, inboxView]);
 
   const unreadCommunicationLog = useMemo(
     () =>
@@ -528,7 +533,7 @@ export function PatientMessagesScreen({
       return;
     }
     if (isIcuDailySummary(selected)) {
-      if (!canViewCommLog || inboxView !== 'communication_log') {
+      if (!showCommunicationLogTab || inboxView !== 'communication_log') {
         setSelectedMessageId(null);
       }
       return;
@@ -537,7 +542,7 @@ export function PatientMessagesScreen({
     if (!messageMatchesInboxView(selected, inboxView, replies, patient.patientId)) {
       setSelectedMessageId(null);
     }
-  }, [canViewCommLog, communicationLog, inboxDirectMessages, inboxView, patient.patientId, repliesByMessageId, selectedMessageId]);
+  }, [showCommunicationLogTab, communicationLog, inboxDirectMessages, inboxView, patient.patientId, repliesByMessageId, selectedMessageId]);
 
   useEffect(() => {
     const onReadChanged = (event: Event) => {
@@ -1115,7 +1120,7 @@ export function PatientMessagesScreen({
             role="tablist"
             aria-label={t('messages.tabBucketsAria')}
           >
-            {canViewCommLog ? (
+            {showCommunicationLogTab ? (
             <button
               type="button"
               role="tab"
@@ -1236,7 +1241,7 @@ export function PatientMessagesScreen({
           </CircleHorizontalScrollStrip>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-          {canViewCommLog && inboxView === 'communication_log' ? (
+          {showCommunicationLogTab && inboxView === 'communication_log' ? (
             communicationLog.length > 0 ? (
               <>
                 <div className="flex items-center gap-2 px-4 py-3 bg-indigo-50/60 border-b border-indigo-100">

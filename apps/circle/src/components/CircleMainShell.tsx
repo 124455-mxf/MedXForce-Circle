@@ -211,11 +211,6 @@ export function CircleMainShell({
     setGalleryIntent(null);
   }, []);
 
-  const handleOpenRichMediaReactions = useCallback(() => {
-    setGalleryIntent({ type: 'open-album', albumKind: 'reactions' });
-    handleTabChange('media');
-  }, [handleTabChange]);
-
   const selectedPatient = useMemo((): CirclePatientSummary | null => {
     if (patients.length === 0) return null;
     if (selectedPatientId) {
@@ -413,6 +408,7 @@ export function CircleMainShell({
     selectedPatient?.patientId ?? '',
     user,
     selectedPatient?.role ?? 'friend',
+    remoteSettings,
   );
 
   const alertAttention = useCircleAlertAttentionState(
@@ -628,7 +624,6 @@ export function CircleMainShell({
               onOpenAdminAccess={handleOpenAdminAccess}
               onOpenCircleFolder={handleOpenCircleFolder}
               onOpenMessagesInbox={handleOpenMessagesInbox}
-              onOpenRichMediaReactions={handleOpenRichMediaReactions}
               onOpenAnalyticsDetail={handleOpenAnalyticsDetail}
               onOpenVisitCapture={
                 showVisitCapture ? () => handleOpenVisitCapture() : undefined

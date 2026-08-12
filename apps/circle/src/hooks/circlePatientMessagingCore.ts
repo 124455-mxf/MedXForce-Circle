@@ -9,11 +9,12 @@ import {
 } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import {
-  canViewCommunicationLog,
+  canShowIcuCommunicationLogInbox,
   isCirclePatientMessageActive,
   isPatientReplyVisibleToCircleMember,
   normalizeInviteEmail,
   shouldShowCircleThreadInInbox,
+  type PatientRemoteSettingsDoc,
 } from '@medxforce/shared';
 import { isIcuDailySummary } from '../lib/circleCommunicationLog';
 import {
@@ -253,8 +254,14 @@ export function buildCirclePatientInboxMessages(
   hiddenAtByMessageId: Record<string, number>,
   repliesByMessageId: Record<string, CircleThreadReply[]>,
   memberRole: string,
+  remoteSettings?: Pick<PatientRemoteSettingsDoc, 'appMode' | 'autoSendMessage'> | null,
 ): CircleThreadMessage[] {
-  const showCommunicationLog = canViewCommunicationLog(memberRole);
+  const existingSummaryCount = rawMessages.filter((msg) => isIcuDailySummary(msg)).length;
+  const showCommunicationLog = canShowIcuCommunicationLogInbox(
+    memberRole,
+    remoteSettings,
+    existingSummaryCount,
+  );
   return rawMessages.filter((msg) => {
     if (isIcuDailySummary(msg)) return showCommunicationLog;
     const hiddenAt = hiddenAtByMessageId[msg.id];
@@ -273,11 +280,18 @@ export function computeCirclePatientMessageUnreadCount(params: {
   user: User;
   normalizedEmail: string;
   readTick?: number;
+  remoteSettings?: Pick<PatientRemoteSettingsDoc, 'appMode' | 'autoSendMessage'> | null;
 }): number {
-  const { messages, repliesByMessageId, patientId, memberRole, user, normalizedEmail } = params;
+  const { messages, repliesByMessageId, patientId, memberRole, user, normalizedEmail, remoteSettings } =
+    params;
   void params.readTick;
 
-  const showCommunicationLog = canViewCommunicationLog(memberRole);
+  const existingSummaryCount = messages.filter((m) => isIcuDailySummary(m)).length;
+  const showCommunicationLog = canShowIcuCommunicationLogInbox(
+    memberRole,
+    remoteSettings,
+    existingSummaryCount,
+  );
   const memberAudience = { uid: user.uid, email: normalizedEmail };
 
   return messages.filter((m) => {
