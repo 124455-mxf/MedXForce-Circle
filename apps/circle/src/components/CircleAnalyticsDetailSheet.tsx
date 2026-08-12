@@ -358,7 +358,7 @@ export function CircleAnalyticsDetailSheet({ summary, onClose }: CircleAnalytics
           <div className="flex justify-center pt-2.5 pb-1 sm:hidden" aria-hidden>
             <div className="w-10 h-1 rounded-full bg-slate-200" />
           </div>
-          <div className="flex items-center justify-between gap-3 px-4 pb-4 border-b border-slate-100">
+          <div className="flex items-center justify-between gap-3 px-4 pb-4 sm:pt-4 border-b border-slate-100">
             <div className="flex items-center gap-3 min-w-0">
               {Icon && (
                 <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
