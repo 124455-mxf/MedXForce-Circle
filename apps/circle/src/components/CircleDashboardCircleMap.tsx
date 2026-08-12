@@ -272,6 +272,8 @@ type DashboardCircleMapTileProps = {
   photosByContactId?: Record<string, string>;
   patientPhotoUrl?: string;
   preview?: boolean;
+  /** Full-row layout: title left, larger map right. */
+  wide?: boolean;
   onOpen: () => void;
   t: (key: string, params?: Record<string, unknown>) => string;
   titleClassName?: string;
@@ -287,6 +289,7 @@ export function DashboardCircleMapTile({
   photosByContactId,
   patientPhotoUrl,
   preview = false,
+  wide = false,
   onOpen,
   t,
   titleClassName,
@@ -311,29 +314,65 @@ export function DashboardCircleMapTile({
     <button
       type="button"
       onClick={onOpen}
-      className="text-left p-4 sm:p-5 w-full h-full flex flex-col bg-white rounded-[28px] border border-violet-100 shadow-sm hover:shadow-lg hover:border-violet-200 transition-all group overflow-hidden relative"
+      className={cn(
+        'text-left p-4 sm:p-5 w-full h-full flex bg-white rounded-[28px] border border-violet-100 shadow-sm hover:shadow-lg hover:border-violet-200 transition-all group overflow-hidden relative',
+        wide ? 'flex-row items-stretch gap-3 sm:gap-5' : 'flex-col',
+      )}
     >
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-[radial-gradient(circle_at_30%_20%,rgba(139,92,246,0.06),transparent_55%)]" />
-      <div className="relative flex items-center gap-3 mb-2">
-        <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center group-hover:bg-violet-600 group-hover:text-white transition-colors">
-          <Sparkles size={20} />
+      <div
+        className={cn(
+          'relative flex min-w-0',
+          wide
+            ? 'w-[42%] sm:w-[38%] flex-col justify-between shrink-0'
+            : 'items-center gap-3 mb-2',
+        )}
+      >
+        <div className={cn('flex min-w-0', wide ? 'flex-col gap-3' : 'items-center gap-3')}>
+          <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center group-hover:bg-violet-600 group-hover:text-white transition-colors shrink-0">
+            <Sparkles size={20} />
+          </div>
+          <div className="min-w-0">
+            <p className={cn('font-bold text-slate-800 text-sm sm:text-base leading-snug', titleClassName)}>
+              {t('dashboard.circleMap.tileTitle')}
+            </p>
+            <p className={cn('text-xs text-slate-500 mt-0.5 leading-snug', bodyClassName)}>
+              {t('dashboard.circleMap.tileSubtitle', {
+                count: model.nodes.length,
+                name: model.patientName,
+              })}
+            </p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className={cn('font-bold text-slate-800', titleClassName)}>{t('dashboard.circleMap.tileTitle')}</p>
-          <p className={cn('text-xs text-slate-500', bodyClassName)}>
-            {t('dashboard.circleMap.tileSubtitle', {
-              count: model.nodes.length,
-              name: model.patientName,
-            })}
+        {wide ? (
+          <p
+            className={cn(
+              'relative text-[11px] font-bold uppercase tracking-wider text-violet-600',
+              bodyClassName,
+            )}
+          >
+            {t('dashboard.circleMap.tileCta')}
           </p>
-        </div>
+        ) : null}
       </div>
-      <div className="relative flex-1 min-h-0 -mx-2">
+      <div
+        className={cn(
+          'relative min-h-0 min-w-0',
+          wide ? 'flex-1' : 'flex-1 -mx-2',
+        )}
+      >
         <CircleMapVisual model={model} mode="roles" compact t={t} className="h-full" />
       </div>
-      <p className={cn('relative text-[11px] font-bold uppercase tracking-wider text-violet-600 mt-2', bodyClassName)}>
-        {t('dashboard.circleMap.tileCta')}
-      </p>
+      {wide ? null : (
+        <p
+          className={cn(
+            'relative text-[11px] font-bold uppercase tracking-wider text-violet-600 mt-2',
+            bodyClassName,
+          )}
+        >
+          {t('dashboard.circleMap.tileCta')}
+        </p>
+      )}
     </button>
   );
 }

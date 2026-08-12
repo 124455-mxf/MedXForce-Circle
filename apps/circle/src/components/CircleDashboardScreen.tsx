@@ -1858,21 +1858,24 @@ export function CircleDashboardScreen({
                 </>
               ) : null}
               {showCircleMap ? (
-                <CircleDashboardCircleMapSection
-                  db={db}
-                  patientId={patient.patientId}
-                  memberRole={memberRole}
-                  patientDisplayName={patient.displayName}
-                  patientPhotoUrl={
-                    profileSnapshot?.identity.profilePicture?.trim() || patient.photoUrl?.trim()
-                  }
-                  patientNickName={profileSnapshot?.identity.nickName?.trim()}
-                  galleryPhotos={galleryDashboard.previewPhotos}
-                  enabled={showCircleMap}
-                  onManageContacts={
-                    canManageTeam ? () => onGoToTab('admin') : undefined
-                  }
-                />
+                <div className="col-span-2">
+                  <CircleDashboardCircleMapSection
+                    db={db}
+                    patientId={patient.patientId}
+                    memberRole={memberRole}
+                    patientDisplayName={patient.displayName}
+                    patientPhotoUrl={
+                      profileSnapshot?.identity.profilePicture?.trim() || patient.photoUrl?.trim()
+                    }
+                    patientNickName={profileSnapshot?.identity.nickName?.trim()}
+                    galleryPhotos={galleryDashboard.previewPhotos}
+                    enabled={showCircleMap}
+                    wide
+                    onManageContacts={
+                      canManageTeam ? () => onGoToTab('admin') : undefined
+                    }
+                  />
+                </div>
               ) : null}
               {showCheckInWellnessRing ? (
                 <CircleDashboardCheckInWellnessSection

@@ -83,6 +83,8 @@ type CircleDashboardCircleMapSectionProps = {
   patientNickName?: string;
   galleryPhotos: FamilyGalleryPreviewPhoto[];
   enabled: boolean;
+  /** Full-row Stay Connected tile — more room for the map visual. */
+  wide?: boolean;
   onManageContacts?: () => void;
 };
 
@@ -95,6 +97,7 @@ export function CircleDashboardCircleMapSection({
   patientNickName,
   galleryPhotos,
   enabled,
+  wide = false,
   onManageContacts,
 }: CircleDashboardCircleMapSectionProps) {
   const t = useCircleT();
@@ -122,7 +125,7 @@ export function CircleDashboardCircleMapSection({
 
   return (
     <>
-      <div className="h-[13rem] sm:h-[14rem]">
+      <div className={wide ? 'h-[14rem] sm:h-[15.5rem]' : 'h-[13rem] sm:h-[14rem]'}>
         <CircleDashboardCircleMapTile
           preferences={preferences}
           messages={messages}
@@ -130,6 +133,7 @@ export function CircleDashboardCircleMapSection({
           photosByEmail={photosByEmail}
           photosByContactId={photosByContactId}
           patientPhotoUrl={patientPhotoUrl}
+          wide={wide}
           onOpen={() => setOpen(true)}
           t={t}
         />
