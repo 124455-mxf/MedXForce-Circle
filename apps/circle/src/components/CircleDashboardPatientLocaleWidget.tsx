@@ -23,7 +23,7 @@ export function CircleDashboardPatientLocaleWidget({
   db: Firestore;
   patientId: string;
   snapshot: CirclePatientProfileSnapshot | null;
-  /** When true, omit the "Where patient is now" section heading (e.g. under Live). */
+  /** When true, omit the Patient Overview section heading (e.g. under Live). */
   hideTitle?: boolean;
 }) {
   const t = useCircleT();
@@ -103,7 +103,7 @@ export function CircleDashboardPatientLocaleWidget({
     <section className="space-y-2">
       {hideTitle ? null : (
         <h3 className={dashboardSectionTitleClass}>
-          {t('dashboard.sectionPatientLocale')}
+          {t('dashboard.sectionPatientOverview')}
         </h3>
       )}
       {previewReminders ? (

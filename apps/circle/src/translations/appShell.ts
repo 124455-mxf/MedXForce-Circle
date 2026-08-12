@@ -681,7 +681,7 @@ export const appShellEnglish = {
     sectionReminders: 'Reminders',
     sectionParticipationReminders: 'Participation reminders',
     sectionPatientLocale: 'Where patient is now',
-    sectionPatientOverview: 'Patient overview',
+    sectionPatientOverview: 'Patient Overview',
     customizePatientInsights: 'Get to know patient',
     customizeReminderGalleryUpload: 'Photo sharing reminder',
     customizeReminderDiaryEntry: 'Journal entry reminder',

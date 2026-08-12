@@ -1820,6 +1820,30 @@ export function CircleDashboardScreen({
           />
         ) : null}
 
+        {showCircleMap ? (
+          <section className="space-y-2">
+            {!(showPatientLocale && !showPatientLocaleUnderLive) ? (
+              <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>
+                {t('dashboard.sectionPatientOverview')}
+              </h3>
+            ) : null}
+            <CircleDashboardCircleMapSection
+              db={db}
+              patientId={patient.patientId}
+              memberRole={memberRole}
+              patientDisplayName={patient.displayName}
+              patientPhotoUrl={
+                profileSnapshot?.identity.profilePicture?.trim() || patient.photoUrl?.trim()
+              }
+              patientNickName={profileSnapshot?.identity.nickName?.trim()}
+              galleryPhotos={galleryDashboard.previewPhotos}
+              enabled={showCircleMap}
+              wide
+              onManageContacts={canManageTeam ? () => onGoToTab('admin') : undefined}
+            />
+          </section>
+        ) : null}
+
         {visiblePatientAppWidgets.length > 0 ? (
           <section className="space-y-2">
             <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionPatientApp')}</h3>
@@ -1839,44 +1863,20 @@ export function CircleDashboardScreen({
           </section>
         ) : null}
 
-        {familyGalleryWidget || showCircleMap ? (
+        {familyGalleryWidget ? (
           <section className="space-y-2">
             <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionStayConnected')}</h3>
             <div className="grid grid-cols-2 gap-3 items-stretch">
-              {familyGalleryWidget ? (
-                <>
-                  <div className={DASHBOARD_LAST7_WIDGET_CELL_CLASS}>
-                    <DashboardWidget spec={familyGalleryWidget} />
-                  </div>
-                  <div className={DASHBOARD_LAST7_WIDGET_CELL_CLASS}>
-                    <CircleGalleryRotatingPreviewWidget
-                      photos={galleryDashboard.previewPhotos}
-                      loading={galleryDashboard.loading}
-                      onOpenGallery={() => onGoToTab('media')}
-                    />
-                  </div>
-                </>
-              ) : null}
-              {showCircleMap ? (
-                <div className="col-span-2">
-                  <CircleDashboardCircleMapSection
-                    db={db}
-                    patientId={patient.patientId}
-                    memberRole={memberRole}
-                    patientDisplayName={patient.displayName}
-                    patientPhotoUrl={
-                      profileSnapshot?.identity.profilePicture?.trim() || patient.photoUrl?.trim()
-                    }
-                    patientNickName={profileSnapshot?.identity.nickName?.trim()}
-                    galleryPhotos={galleryDashboard.previewPhotos}
-                    enabled={showCircleMap}
-                    wide
-                    onManageContacts={
-                      canManageTeam ? () => onGoToTab('admin') : undefined
-                    }
-                  />
-                </div>
-              ) : null}
+              <div className={DASHBOARD_LAST7_WIDGET_CELL_CLASS}>
+                <DashboardWidget spec={familyGalleryWidget} />
+              </div>
+              <div className={DASHBOARD_LAST7_WIDGET_CELL_CLASS}>
+                <CircleGalleryRotatingPreviewWidget
+                  photos={galleryDashboard.previewPhotos}
+                  loading={galleryDashboard.loading}
+                  onOpenGallery={() => onGoToTab('media')}
+                />
+              </div>
             </div>
           </section>
         ) : null}

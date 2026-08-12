@@ -131,7 +131,7 @@ export const CIRCLE_DASHBOARD_WIDGET_SECTIONS: Record<
   CircleDashboardLayoutSection,
   CircleDashboardWidgetKey[]
 > = {
-  patientOverview: ['patient-locale', 'patient-insights'],
+  patientOverview: ['patient-locale', 'patient-insights', 'circle-map'],
   reminders: ['reminder-gallery-upload', 'reminder-diary-entry'],
   last7days: [
     'alert-attention',
@@ -144,7 +144,7 @@ export const CIRCLE_DASHBOARD_WIDGET_SECTIONS: Record<
     'assessments',
   ],
   you: ['diary', 'circle', 'gallery-engagement'],
-  stayConnected: ['media-gallery', 'circle-map'],
+  stayConnected: ['media-gallery'],
   patientApp: ['remote-settings', 'user-profile'],
 };
 
