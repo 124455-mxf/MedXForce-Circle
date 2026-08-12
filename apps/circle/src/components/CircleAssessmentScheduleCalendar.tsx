@@ -68,6 +68,7 @@ type CircleAssessmentScheduleCalendarProps = {
   compact?: boolean;
   hideHeader?: boolean;
   enableViewModes?: boolean;
+  hideInlineAddButton?: boolean;
   onRecordVisit?: (entryId: string) => void;
 };
 
@@ -141,6 +142,7 @@ export function CircleAssessmentScheduleCalendar({
   compact = false,
   hideHeader = false,
   enableViewModes = false,
+  hideInlineAddButton = false,
   onRecordVisit,
 }: CircleAssessmentScheduleCalendarProps) {
   const ct = (key: string, params?: Record<string, unknown>) =>
@@ -563,7 +565,7 @@ export function CircleAssessmentScheduleCalendar({
       >
         <div className="flex items-center gap-2">
           <div className="flex-1 min-w-0">{viewModeSelector}</div>
-          {onAddAppointment && (
+          {onAddAppointment && !hideInlineAddButton && (
             <button
               type="button"
               onClick={() => onAddAppointment(addDateKey)}

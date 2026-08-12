@@ -1,5 +1,5 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { AnalyticsMetricId, CircleMemberRole, CirclePatientSummary, PatientAnalyticsSummary, PatientCapabilities, RemoteAssessmentSchedule } from '@medxforce/shared';
@@ -31,6 +31,7 @@ export type CircleDashboardAssessmentScheduleSectionProps = {
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
   onRecordVisit?: (entryId: string) => void;
   onManageClinicalReferences?: () => void;
+  onRegisterAddAppointment?: (add: ((dateKey?: string) => void) | null) => void;
 };
 
 export function CircleDashboardAssessmentScheduleSection({
@@ -52,6 +53,7 @@ export function CircleDashboardAssessmentScheduleSection({
   onOpenAssessment,
   onRecordVisit,
   onManageClinicalReferences,
+  onRegisterAddAppointment,
 }: CircleDashboardAssessmentScheduleSectionProps) {
   const { inviteContext, memberContactId, contact: ownContact, loading: ownContactLoading, inviteContextReady } =
     useCircleMemberInviteContext(db, user, patient);
@@ -128,14 +130,21 @@ export function CircleDashboardAssessmentScheduleSection({
   );
 
   const canManageAppointments = canViewRemoteSettingsTab(capabilities);
+  const sectionVisible = enabled && normalizeMemberRole(memberRole) !== 'friend';
 
-  if (!enabled || normalizeMemberRole(memberRole) === 'friend') return null;
-
-  const openCreate = (dateKey?: string) => {
+  const openCreate = useCallback((dateKey?: string) => {
     setEditEntryId(null);
     setInitialDateKey(dateKey);
     setModalOpen(true);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!fullPage || !sectionVisible) return;
+    onRegisterAddAppointment?.(canManageAppointments ? openCreate : null);
+    return () => onRegisterAddAppointment?.(null);
+  }, [canManageAppointments, fullPage, onRegisterAddAppointment, openCreate, sectionVisible]);
+
+  if (!sectionVisible) return null;
 
   const openEdit = (entryId: string) => {
     setEditEntryId(entryId);
@@ -201,6 +210,7 @@ export function CircleDashboardAssessmentScheduleSection({
           compact={!fullPage}
           hideHeader={fullPage}
           enableViewModes={fullPage}
+          hideInlineAddButton={fullPage}
           onRecordVisit={onRecordVisit}
         />
       </div>

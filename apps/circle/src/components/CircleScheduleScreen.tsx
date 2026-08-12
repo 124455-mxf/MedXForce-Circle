@@ -1,5 +1,6 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { Calendar } from 'lucide-react';
+import { Calendar, Plus } from 'lucide-react';
+import { useCallback, useState } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { AnalyticsMetricId, CirclePatientSummary } from '@medxforce/shared';
@@ -11,6 +12,7 @@ import { useCircleCompactChrome } from '../lib/circleChromeContext';
 import { useCircleT } from '../lib/circleI18nContext';
 import { cn } from '../lib/utils';
 import {
+  circleHeaderActionButtonClass,
   circleSectionEmptyStateClass,
   circleWorkTabHeaderClass,
   circleWorkTabPanelClass,
@@ -41,6 +43,10 @@ export function CircleScheduleScreen({
   const { byMetricId } = useCircleAnalyticsSummaries(db, patient);
   const { snapshot: profileSnapshot } = useCirclePatientProfileSnapshot(db, patient.patientId);
   const { settings: remoteSettings } = useCircleRemoteSettingsFromShell();
+  const [addAppointment, setAddAppointment] = useState<((dateKey?: string) => void) | null>(null);
+  const registerAddAppointment = useCallback((add: ((dateKey?: string) => void) | null) => {
+    setAddAppointment(() => add);
+  }, []);
 
   // Circle Schedule is for the care team — independent of patient-tablet Schedule visibility.
   const scheduleTabEnabled = memberRole !== 'friend';
@@ -74,6 +80,19 @@ export function CircleScheduleScreen({
             iconClassName="text-blue-600"
             title={t('dashboard.assessmentScheduleCalendar.title')}
             subtitle={t('dashboard.assessmentScheduleCalendar.subtitle')}
+            trailing={
+              addAppointment ? (
+                <button
+                  type="button"
+                  onClick={() => addAppointment()}
+                  className={circleHeaderActionButtonClass}
+                  aria-label={t('dashboard.careCalendar.addTitle')}
+                  title={t('dashboard.careCalendar.addTitle')}
+                >
+                  <Plus size={18} className="[@media(max-height:740px)]:size-4" />
+                </button>
+              ) : undefined
+            }
           />
         </div>
         <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
@@ -96,6 +115,7 @@ export function CircleScheduleScreen({
             onOpenAssessment={onOpenAssessment}
             onRecordVisit={onRecordVisit}
             onManageClinicalReferences={onManageClinicalReferences}
+            onRegisterAddAppointment={registerAddAppointment}
           />
         </div>
       </div>
