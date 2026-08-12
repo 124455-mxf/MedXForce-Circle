@@ -281,6 +281,44 @@ function WeekActivityDots({
   );
 }
 
+function DashboardWidgetRow({
+  row,
+  index,
+  heroLayout,
+}: {
+  row: ReactNode;
+  index: number;
+  heroLayout: boolean;
+}) {
+  if (typeof row === 'string') {
+    return (
+      <p
+        className={cn(
+          'leading-snug line-clamp-2',
+          heroLayout
+            ? index === 0
+              ? 'text-sm text-slate-700 font-medium'
+              : 'text-[13px] text-slate-600'
+            : undefined,
+        )}
+      >
+        {row}
+      </p>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        'min-w-0 leading-snug',
+        heroLayout && (index === 0 ? 'text-sm' : 'text-[13px]'),
+      )}
+    >
+      {row}
+    </div>
+  );
+}
+
 function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
   const Icon = spec.icon;
   const rows = [spec.row1, spec.row2, spec.row3].filter(
@@ -324,17 +362,7 @@ function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
           </p>
           <div className="mt-2 space-y-0.5 min-w-0">
             {rows.map((row, index) => (
-              <p
-                key={index}
-                className={cn(
-                  'leading-snug line-clamp-2',
-                  index === 0
-                    ? 'text-sm text-slate-700 font-medium'
-                    : 'text-[13px] text-slate-600',
-                )}
-              >
-                {row}
-              </p>
+              <DashboardWidgetRow key={index} row={row} index={index} heroLayout />
             ))}
           </div>
           {spec.activityDays && spec.activityDays.length > 0 ? (
@@ -344,11 +372,9 @@ function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
           )}
         </>
       ) : (
-        <div className="text-sm text-slate-600 mt-0.5 leading-snug flex-1 flex flex-col justify-end gap-0.5">
+        <div className="text-sm text-slate-600 mt-0.5 leading-snug flex-1 flex flex-col justify-end gap-0.5 min-w-0">
           {rows.map((row, index) => (
-            <p key={index} className="line-clamp-2">
-              {row}
-            </p>
+            <DashboardWidgetRow key={index} row={row} index={index} heroLayout={false} />
           ))}
         </div>
       )}
@@ -1488,18 +1514,18 @@ export function CircleDashboardScreen({
       row1: remoteSettingsLoading ? (
         t('dashboard.modeLoading')
       ) : appMode ? (
-        <span className="inline-flex items-center gap-1.5 min-w-0">
-          <span className="shrink-0 text-slate-500">{t('dashboard.modePrefix')}</span>
+        <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+          <span className="text-slate-500">{t('dashboard.modePrefix')}</span>
           <span
             className={cn(
-              'shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide',
+              'px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide whitespace-nowrap',
               remoteAppModeCurrentBadgeClass(appMode),
             )}
           >
             {t(`dashboard.appModes.${appMode}`)}
           </span>
           {remoteCustomized ? (
-            <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide text-amber-800 bg-amber-50 border border-amber-100">
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide whitespace-nowrap text-amber-800 bg-amber-50 border border-amber-100">
               {t('dashboard.modeCustomBadge')}
             </span>
           ) : null}
