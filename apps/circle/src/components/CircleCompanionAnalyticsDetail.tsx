@@ -126,7 +126,7 @@ function TrendSummary({
 
       className={cn(
 
-        'inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase',
+        'inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[12px] font-bold uppercase',
 
         colorClass,
 
@@ -172,7 +172,7 @@ function MetricCell({
 
     <div className="space-y-0.5 min-w-0">
 
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">{label}</p>
+      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">{label}</p>
 
       <p className={cn('text-lg font-black leading-none tabular-nums', valueClass ?? 'text-slate-800')}>
 
@@ -180,7 +180,7 @@ function MetricCell({
 
       </p>
 
-      {hint && <p className="text-[9px] text-slate-400 leading-snug pt-0.5">{hint}</p>}
+      {hint && <p className="text-[11px] text-slate-400 leading-snug pt-0.5">{hint}</p>}
 
     </div>
 
@@ -208,7 +208,7 @@ function TopTopicsList({
 
   if (safeItems.length === 0) {
 
-    return <p className="text-[11px] text-slate-400 italic py-2">{t('analytics.noTopicsInPeriod')}</p>;
+    return <p className="text-[13px] text-slate-400 italic py-2">{t('analytics.noTopicsInPeriod')}</p>;
 
   }
 
@@ -220,9 +220,9 @@ function TopTopicsList({
 
         <li key={idx} className="flex items-center justify-between gap-2 min-w-0">
 
-          <span className="text-[11px] font-semibold text-slate-700 truncate flex-1">{item.label}</span>
+          <span className="text-[13px] font-semibold text-slate-700 truncate flex-1">{item.label}</span>
 
-          <span className="text-[11px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md shrink-0">
+          <span className="text-[13px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md shrink-0">
 
             {item.count}
 
@@ -334,7 +334,7 @@ export function CircleCompanionAnalyticsDetail({
 
       <div className="px-3 py-2 border-b border-slate-100 bg-blue-50/60">
 
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
+        <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
 
           {analyticsWindowDaysLabel(t, 30)}
 
@@ -346,11 +346,11 @@ export function CircleCompanionAnalyticsDetail({
 
         <div>
 
-          <p className="text-[10px] font-bold text-blue-500 uppercase">{t('analytics.metrics.companion')}</p>
+          <p className="text-[12px] font-bold text-blue-500 uppercase">{t('analytics.metrics.companion')}</p>
 
           <p className="text-3xl font-black text-blue-600 leading-none mt-1 tabular-nums">{total}</p>
 
-          <p className="text-[9px] text-slate-400 mt-1 leading-snug">
+          <p className="text-[11px] text-slate-400 mt-1 leading-snug">
 
             Total companion events in the last 30 days (sessions, exchanges, and related activity).
 
@@ -414,7 +414,7 @@ export function CircleCompanionAnalyticsDetail({
 
           <div className="flex items-center justify-between gap-2">
 
-            <span className="text-[10px] font-bold text-slate-400 uppercase">{t('analytics.trend')}</span>
+            <span className="text-[12px] font-bold text-slate-400 uppercase">{t('analytics.trend')}</span>
 
             <TrendSummary trend={trend} t={t} />
 
@@ -422,7 +422,7 @@ export function CircleCompanionAnalyticsDetail({
 
           <div className="flex items-center justify-between gap-2">
 
-            <span className="text-[10px] font-bold text-slate-400 uppercase">{t('analytics.chart')}</span>
+            <span className="text-[12px] font-bold text-slate-400 uppercase">{t('analytics.chart')}</span>
 
             <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg">
 
@@ -510,7 +510,7 @@ export function CircleCompanionAnalyticsDetail({
 
                     tickLine={false}
 
-                    tick={{ fontSize: 9, fill: '#94a3b8' }}
+                    tick={{ fontSize: 13, fill: '#94a3b8' }}
 
                     allowDecimals={false}
 
@@ -530,7 +530,7 @@ export function CircleCompanionAnalyticsDetail({
 
                       boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)',
 
-                      fontSize: '11px',
+                      fontSize: '13px',
 
                     }}
 
@@ -606,7 +606,7 @@ export function CircleCompanionAnalyticsDetail({
 
                     tickLine={false}
 
-                    tick={{ fontSize: 9, fill: '#94a3b8' }}
+                    tick={{ fontSize: 13, fill: '#94a3b8' }}
 
                     allowDecimals={false}
 
@@ -626,7 +626,7 @@ export function CircleCompanionAnalyticsDetail({
 
                       boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)',
 
-                      fontSize: '11px',
+                      fontSize: '13px',
 
                     }}
 
@@ -658,7 +658,7 @@ export function CircleCompanionAnalyticsDetail({
 
         ) : (
 
-          <p className="text-[11px] text-slate-400 text-center leading-relaxed py-2">
+          <p className="text-[13px] text-slate-400 text-center leading-relaxed py-2">
 
             {t('analytics.chartNotSynced')}
 
@@ -670,7 +670,7 @@ export function CircleCompanionAnalyticsDetail({
 
         <div className="space-y-2 pt-2 border-t border-slate-50">
 
-          <p className="text-[10px] font-bold text-slate-400 uppercase">{t('analytics.companion.topTopics')}</p>
+          <p className="text-[12px] font-bold text-slate-400 uppercase">{t('analytics.companion.topTopics')}</p>
 
           <TopTopicsList items={topTopics} t={t} />
 

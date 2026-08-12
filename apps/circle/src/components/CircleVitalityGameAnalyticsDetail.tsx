@@ -158,7 +158,7 @@ function AccuracyTrendRow({
 
     <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3 space-y-1">
 
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
         {t('analytics.trend')}
 
@@ -170,7 +170,7 @@ function AccuracyTrendRow({
 
           className={cn(
 
-            'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold',
+            'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[13px] font-bold',
 
             copy.colorClass,
 
@@ -186,7 +186,7 @@ function AccuracyTrendRow({
 
       </div>
 
-      <p className="text-[9px] text-slate-400 leading-snug">{copy.hint}</p>
+      <p className="text-[11px] text-slate-400 leading-snug">{copy.hint}</p>
 
     </div>
 
@@ -242,7 +242,7 @@ export function CircleVitalityGameAnalyticsDetail({
 
       <div className="px-3 py-2 border-b border-slate-100 bg-purple-50/50">
 
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
+        <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
 
           {analyticsWindowDaysLabel(t, 30)}
 
@@ -251,7 +251,7 @@ export function CircleVitalityGameAnalyticsDetail({
       </div>
 
       <div className="p-4 space-y-4">
-        <p className="text-[11px] text-slate-500 leading-snug">
+        <p className="text-[13px] text-slate-500 leading-snug">
           {t('analytics.vitalityGame.includesSpeechGames')}
         </p>
 
@@ -259,7 +259,7 @@ export function CircleVitalityGameAnalyticsDetail({
 
           <div className="space-y-0.5">
 
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
               {t('analytics.vitalityGame.gamesPlayed')}
 
@@ -275,7 +275,7 @@ export function CircleVitalityGameAnalyticsDetail({
 
           <div className="space-y-0.5">
 
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
               {t('analytics.vitalityGame.avgAccuracy')}
 
@@ -291,7 +291,7 @@ export function CircleVitalityGameAnalyticsDetail({
 
           <div className="space-y-0.5">
 
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
               {t('analytics.vitalityGame.difficulty')}
 
@@ -307,7 +307,7 @@ export function CircleVitalityGameAnalyticsDetail({
 
           <div className="space-y-0.5">
 
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
               {t('analytics.vitalityGame.totalTime')}
 
@@ -341,7 +341,7 @@ export function CircleVitalityGameAnalyticsDetail({
 
             <div>
 
-              <p className="text-[10px] font-bold text-slate-400 uppercase">{t('analytics.chart')}</p>
+              <p className="text-[12px] font-bold text-slate-400 uppercase">{t('analytics.chart')}</p>
 
             </div>
 
@@ -435,7 +435,7 @@ export function CircleVitalityGameAnalyticsDetail({
 
                     tickLine={false}
 
-                    tick={{ fontSize: 9, fill: '#94a3b8' }}
+                    tick={{ fontSize: 13, fill: '#94a3b8' }}
 
                     width={24}
 
@@ -453,7 +453,7 @@ export function CircleVitalityGameAnalyticsDetail({
 
                     tickLine={false}
 
-                    tick={{ fontSize: 9, fill: '#94a3b8' }}
+                    tick={{ fontSize: 13, fill: '#94a3b8' }}
 
                     width={28}
 
@@ -471,7 +471,7 @@ export function CircleVitalityGameAnalyticsDetail({
 
                       boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)',
 
-                      fontSize: '11px',
+                      fontSize: '13px',
 
                     }}
 
@@ -533,7 +533,7 @@ export function CircleVitalityGameAnalyticsDetail({
 
                     tickLine={false}
 
-                    tick={{ fontSize: 9, fill: '#94a3b8' }}
+                    tick={{ fontSize: 13, fill: '#94a3b8' }}
 
                     width={24}
 
@@ -551,7 +551,7 @@ export function CircleVitalityGameAnalyticsDetail({
 
                     tickLine={false}
 
-                    tick={{ fontSize: 9, fill: '#94a3b8' }}
+                    tick={{ fontSize: 13, fill: '#94a3b8' }}
 
                     width={28}
 
@@ -569,7 +569,7 @@ export function CircleVitalityGameAnalyticsDetail({
 
                       boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)',
 
-                      fontSize: '11px',
+                      fontSize: '13px',
 
                     }}
 
@@ -637,7 +637,7 @@ export function CircleVitalityGameAnalyticsDetail({
 
         ) : (
 
-          <p className="text-[11px] text-slate-400 text-center leading-relaxed py-2">
+          <p className="text-[13px] text-slate-400 text-center leading-relaxed py-2">
 
             {t('analytics.chartNotSynced')}
 

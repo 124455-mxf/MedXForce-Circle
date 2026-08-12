@@ -128,7 +128,7 @@ function ShareTrendRow({
 
     <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3 space-y-1">
 
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
         {t('analytics.trend')}
 
@@ -140,7 +140,7 @@ function ShareTrendRow({
 
           className={cn(
 
-            'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold',
+            'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[13px] font-bold',
 
             copy.colorClass,
 
@@ -156,7 +156,7 @@ function ShareTrendRow({
 
       </div>
 
-      <p className="text-[9px] text-slate-400 leading-snug">{copy.hint}</p>
+      <p className="text-[11px] text-slate-400 leading-snug">{copy.hint}</p>
 
     </div>
 
@@ -194,7 +194,7 @@ export function CircleSoulAnalyticsDetail({
 
       <div className="px-3 py-2 border-b border-slate-100 bg-rose-50/50">
 
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
+        <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
 
           {analyticsWindowDaysLabel(t, 30)}
 
@@ -208,7 +208,7 @@ export function CircleSoulAnalyticsDetail({
 
           <div className="space-y-0.5">
 
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
               {t('analytics.soul.albums')}
 
@@ -224,7 +224,7 @@ export function CircleSoulAnalyticsDetail({
 
           <div className="space-y-0.5">
 
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
               {t('analytics.soul.photos')}
 
@@ -240,7 +240,7 @@ export function CircleSoulAnalyticsDetail({
 
           <div className="space-y-0.5">
 
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
               {t('analytics.soul.videos')}
 
@@ -256,7 +256,7 @@ export function CircleSoulAnalyticsDetail({
 
           <div className="space-y-0.5">
 
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
               {t('analytics.soul.unseen')}
 
@@ -288,7 +288,7 @@ export function CircleSoulAnalyticsDetail({
 
           <div className="space-y-0.5">
 
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
               {t('analytics.soul.reactions')}
 
@@ -304,7 +304,7 @@ export function CircleSoulAnalyticsDetail({
 
           <div className="space-y-0.5 min-w-0">
 
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
               {t('analytics.soul.lastShared')}
 

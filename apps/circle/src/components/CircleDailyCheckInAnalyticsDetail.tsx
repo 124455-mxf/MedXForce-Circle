@@ -99,11 +99,11 @@ function EngagementTrendRow({
   const Icon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
   return (
     <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3 space-y-1">
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">{t('analytics.trend')}</p>
+      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">{t('analytics.trend')}</p>
       <div className="flex items-center gap-2">
         <span
           className={cn(
-            'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold',
+            'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[13px] font-bold',
             copy.colorClass,
           )}
         >
@@ -111,7 +111,7 @@ function EngagementTrendRow({
           {copy.label}
         </span>
       </div>
-      <p className="text-[9px] text-slate-400 leading-snug">{copy.hint}</p>
+      <p className="text-[11px] text-slate-400 leading-snug">{copy.hint}</p>
     </div>
   );
 }
@@ -131,7 +131,7 @@ function AnswerTrendLegend({
       {items.map((item) => (
         <span
           key={item.key}
-          className="inline-flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase"
+          className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase"
         >
           {'dashed' in item && item.dashed ? (
             <svg width="12" height="3" aria-hidden className="shrink-0">
@@ -170,7 +170,7 @@ function ParticipationLegend({ t }: { t: ReturnType<typeof useCircleT> }) {
       {items.map((item) => (
         <span
           key={item.key}
-          className="inline-flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase"
+          className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase"
         >
           <span
             className="inline-block w-2.5 h-2.5 rounded-sm shrink-0"
@@ -270,13 +270,13 @@ function LatestAnswers({
 
   return (
     <div className="space-y-2">
-      <p className="text-[10px] font-bold text-slate-400 uppercase">{point.label}</p>
+      <p className="text-[12px] font-bold text-slate-400 uppercase">{point.label}</p>
       <div className="flex flex-wrap gap-1.5">
         {chips.map((chip) => (
           <span
             key={chip.label}
             className={cn(
-              'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold',
+              'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[12px] font-bold',
               chip.color,
             )}
           >
@@ -352,7 +352,7 @@ export function CircleDailyCheckInAnalyticsDetail({
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="px-3 py-2 border-b border-slate-100 bg-emerald-50/50">
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
+        <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
           {analyticsWindowDaysLabel(t, 30)}
         </p>
       </div>
@@ -363,7 +363,7 @@ export function CircleDailyCheckInAnalyticsDetail({
               key={card.key}
               className={cn('rounded-2xl border border-slate-100 p-3 space-y-1', card.bg)}
             >
-              <p className="text-[9px] font-bold text-slate-400 uppercase">{t(card.labelKey)}</p>
+              <p className="text-[11px] font-bold text-slate-400 uppercase">{t(card.labelKey)}</p>
               <p className={cn('text-2xl font-black leading-none tabular-nums', card.color)}>
                 {values[card.key]}
               </p>
@@ -388,7 +388,7 @@ export function CircleDailyCheckInAnalyticsDetail({
                 key={item.key}
                 className={cn('rounded-xl border border-slate-100 p-2.5 space-y-0.5', item.bg)}
               >
-                <p className="text-[8px] font-bold text-slate-400 uppercase leading-tight">
+                <p className="text-[10px] font-bold text-slate-400 uppercase leading-tight">
                   {t(`analytics.dailyCheckIn.${item.key}`)}
                 </p>
                 <p className={cn('text-lg font-black tabular-nums leading-none', item.color)}>
@@ -401,7 +401,7 @@ export function CircleDailyCheckInAnalyticsDetail({
 
         <div className="pt-3 border-t border-slate-50 space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] font-bold text-slate-400 uppercase">
+            <p className="text-[12px] font-bold text-slate-400 uppercase">
               {chartView === 'answers'
                 ? t('analytics.dailyCheckIn.answerTrends')
                 : t('analytics.dailyCheckIn.participation')}
@@ -452,7 +452,7 @@ export function CircleDailyCheckInAnalyticsDetail({
                     ticks={[0, 3, 6, 9, 10]}
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 9, fill: '#94a3b8' }}
+                    tick={{ fontSize: 13, fill: '#94a3b8' }}
                     width={32}
                   />
                   <YAxis
@@ -462,7 +462,7 @@ export function CircleDailyCheckInAnalyticsDetail({
                     ticks={[1, 2, 3]}
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 9, fill: '#94a3b8' }}
+                    tick={{ fontSize: 13, fill: '#94a3b8' }}
                     width={28}
                   />
                   <Tooltip
@@ -480,7 +480,7 @@ export function CircleDailyCheckInAnalyticsDetail({
                       borderRadius: '12px',
                       border: 'none',
                       boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)',
-                      fontSize: '11px',
+                      fontSize: '13px',
                     }}
                   />
                   {answerChartData.some((p) => p.pain != null) && (
@@ -533,7 +533,7 @@ export function CircleDailyCheckInAnalyticsDetail({
               <AnswerTrendLegend chartData={answerChartData} t={t} />
             </div>
           ) : (
-            <p className="text-[11px] text-slate-400 text-center leading-relaxed py-2">
+            <p className="text-[13px] text-slate-400 text-center leading-relaxed py-2">
               {completed > 0
                 ? t('analytics.dailyCheckIn.answerTrendsNotSynced')
                 : t('analytics.dailyCheckIn.noCheckInsInWindow')}
@@ -559,7 +559,7 @@ export function CircleDailyCheckInAnalyticsDetail({
                     borderRadius: '12px',
                     border: 'none',
                     boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)',
-                    fontSize: '11px',
+                    fontSize: '13px',
                   }}
                 />
                 <Bar
@@ -591,7 +591,7 @@ export function CircleDailyCheckInAnalyticsDetail({
             <ParticipationLegend t={t} />
           </div>
         ) : (
-          <p className="text-[11px] text-slate-400 text-center leading-relaxed py-2">
+          <p className="text-[13px] text-slate-400 text-center leading-relaxed py-2">
             {t('analytics.dailyCheckIn.participationNotSynced')}
           </p>
         )}

@@ -128,7 +128,7 @@ function TrendBadge({
 
       <Icon size={14} />
 
-      <span className="text-[11px] font-bold text-slate-600">
+      <span className="text-[13px] font-bold text-slate-600">
 
         {analyticsTrendImprovingDeclining(t, trend, higherIsBetter)}
 
@@ -164,7 +164,7 @@ function DomainCard({
 
     <div className="rounded-2xl border border-slate-100 bg-white p-3 space-y-2">
 
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">{label}</p>
+      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">{label}</p>
 
       <div className="flex items-end justify-between gap-2">
 
@@ -174,7 +174,7 @@ function DomainCard({
 
       </div>
 
-      <p className="text-[10px] text-slate-400 font-semibold tabular-nums">
+      <p className="text-[12px] text-slate-400 font-semibold tabular-nums">
 
         {data.change > 0 ? `+${data.change}` : data.change}
 
@@ -262,7 +262,7 @@ export function CircleNeurologicalAnalyticsDetail({
 
       <div className="px-3 py-2 border-b border-slate-100 bg-purple-50/50">
 
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
+        <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
 
           {analyticsWindowDaysLabel(t, 30)}
 
@@ -276,7 +276,7 @@ export function CircleNeurologicalAnalyticsDetail({
 
           <div className="space-y-0.5">
 
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
               {t('analytics.vision.assessments')}
 
@@ -288,7 +288,7 @@ export function CircleNeurologicalAnalyticsDetail({
 
           <div className="space-y-0.5">
 
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
               {t('analytics.neurological.overallCognitive')}
 
@@ -300,7 +300,7 @@ export function CircleNeurologicalAnalyticsDetail({
 
           <div className="space-y-0.5">
 
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
               {t('analytics.trend')}
 
@@ -340,13 +340,13 @@ export function CircleNeurologicalAnalyticsDetail({
 
           <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-3 space-y-2">
 
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
               {t('analytics.neurological.latestSnapshot')}
 
             </p>
 
-            <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div className="grid grid-cols-2 gap-2 text-[13px]">
 
               <div className="flex items-center justify-between gap-2">
 
@@ -356,7 +356,7 @@ export function CircleNeurologicalAnalyticsDetail({
 
                   className={cn(
 
-                    'px-2 py-0.5 rounded-md font-bold uppercase text-[10px]',
+                    'px-2 py-0.5 rounded-md font-bold uppercase text-[12px]',
 
                     resultClass(latestSnapshot.namingSuccess),
 
@@ -378,7 +378,7 @@ export function CircleNeurologicalAnalyticsDetail({
 
                   className={cn(
 
-                    'px-2 py-0.5 rounded-md font-bold uppercase text-[10px]',
+                    'px-2 py-0.5 rounded-md font-bold uppercase text-[12px]',
 
                     resultClass(latestSnapshot.comprehensionSuccess),
 
@@ -400,7 +400,7 @@ export function CircleNeurologicalAnalyticsDetail({
 
                   className={cn(
 
-                    'px-2 py-0.5 rounded-md font-bold uppercase text-[10px]',
+                    'px-2 py-0.5 rounded-md font-bold uppercase text-[12px]',
 
                     resultClass(latestSnapshot.sequenceSuccess),
 
@@ -470,13 +470,13 @@ export function CircleNeurologicalAnalyticsDetail({
 
                 <CircleAnalyticsChartXAxis variant="sparse" />
 
-                <YAxis domain={[0, 10]} tick={{ fontSize: 9, fill: '#94a3b8' }} width={28} />
+                <YAxis domain={[0, 10]} tick={{ fontSize: 13, fill: '#94a3b8' }} width={28} />
 
                 <Tooltip
 
                   labelFormatter={circleAnalyticsTooltipLabelFormatter}
 
-                  contentStyle={{ fontSize: 11, borderRadius: 12, border: '1px solid #e2e8f0' }}
+                  contentStyle={{ fontSize: 13, borderRadius: 12, border: '1px solid #e2e8f0' }}
 
                 />
 
@@ -508,7 +508,7 @@ export function CircleNeurologicalAnalyticsDetail({
 
         ) : (
 
-          <p className="text-[11px] text-slate-400 italic text-center py-2">
+          <p className="text-[13px] text-slate-400 italic text-center py-2">
 
             {t('analytics.chartNotSynced')}
 

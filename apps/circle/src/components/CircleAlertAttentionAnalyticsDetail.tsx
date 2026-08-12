@@ -52,7 +52,7 @@ function TrendSummary({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase',
+        'inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[12px] font-bold uppercase',
         colorClass,
       )}
     >
@@ -94,29 +94,29 @@ export function CircleAlertAttentionAnalyticsDetail({
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="px-3 py-2 border-b border-slate-100 bg-orange-50/60">
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
+        <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
           {analyticsWindowDaysLabel(t, 30)}
         </p>
       </div>
       <div className="p-4 space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-0.5 min-w-0">
-            <p className="text-[9px] font-bold text-red-500 uppercase tracking-tight">{alertLabel}</p>
+            <p className="text-[11px] font-bold text-red-500 uppercase tracking-tight">{alertLabel}</p>
             <p className="text-2xl font-black text-red-600 leading-none tabular-nums">{alerts}</p>
           </div>
           <div className="space-y-0.5 min-w-0">
-            <p className="text-[9px] font-bold text-blue-500 uppercase tracking-tight">{attentionLabel}</p>
+            <p className="text-[11px] font-bold text-blue-500 uppercase tracking-tight">{attentionLabel}</p>
             <p className="text-2xl font-black text-blue-600 leading-none tabular-nums">{attentions}</p>
           </div>
         </div>
 
         <div className="pt-3 border-t border-slate-50 space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">{t('analytics.trend')}</span>
+            <span className="text-[12px] font-bold text-slate-400 uppercase">{t('analytics.trend')}</span>
             <TrendSummary trend={trend} t={t} />
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase">{t('analytics.chart')}</span>
+            <span className="text-[12px] font-bold text-slate-400 uppercase">{t('analytics.chart')}</span>
             <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg">
               <button
                 type="button"
@@ -160,7 +160,7 @@ export function CircleAlertAttentionAnalyticsDetail({
                   <YAxis
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 9, fill: '#94a3b8' }}
+                    tick={{ fontSize: 13, fill: '#94a3b8' }}
                     allowDecimals={false}
                     width={32}
                   />
@@ -170,7 +170,7 @@ export function CircleAlertAttentionAnalyticsDetail({
                       borderRadius: '12px',
                       border: 'none',
                       boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)',
-                      fontSize: '11px',
+                      fontSize: '13px',
                     }}
                   />
                   <Line
@@ -199,7 +199,7 @@ export function CircleAlertAttentionAnalyticsDetail({
                   <YAxis
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 9, fill: '#94a3b8' }}
+                    tick={{ fontSize: 13, fill: '#94a3b8' }}
                     allowDecimals={false}
                     width={32}
                   />
@@ -209,7 +209,7 @@ export function CircleAlertAttentionAnalyticsDetail({
                       borderRadius: '12px',
                       border: 'none',
                       boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)',
-                      fontSize: '11px',
+                      fontSize: '13px',
                     }}
                   />
                   <Bar dataKey="alert" name={alertLabel} fill="#ef4444" radius={[3, 3, 0, 0]} />
@@ -224,7 +224,7 @@ export function CircleAlertAttentionAnalyticsDetail({
             />
           </div>
         ) : (
-          <p className="text-[11px] text-slate-400 text-center leading-relaxed py-2">
+          <p className="text-[13px] text-slate-400 text-center leading-relaxed py-2">
             {t('analytics.chartNotSynced')}
           </p>
         )}

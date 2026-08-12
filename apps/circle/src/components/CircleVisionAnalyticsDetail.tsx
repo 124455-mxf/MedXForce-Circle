@@ -118,7 +118,7 @@ function TrendBadge({
 
       <Icon size={14} />
 
-      <span className="text-[11px] font-bold text-slate-600">
+      <span className="text-[13px] font-bold text-slate-600">
 
         {analyticsTrendHigherLowerStable(t, trend)}
 
@@ -154,7 +154,7 @@ function CategoryCard({
 
     <div className="rounded-2xl border border-slate-100 bg-white p-3 space-y-2">
 
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">{label}</p>
+      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">{label}</p>
 
       <div className="flex items-center justify-between gap-2">
 
@@ -244,7 +244,7 @@ export function CircleVisionAnalyticsDetail({
 
       <div className="px-3 py-2 border-b border-slate-100 bg-indigo-50/50">
 
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
+        <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
 
           {analyticsWindowDaysLabel(t, 30)}
 
@@ -258,7 +258,7 @@ export function CircleVisionAnalyticsDetail({
 
           <div className="space-y-0.5">
 
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
               {t('analytics.entries30Days')}
 
@@ -270,7 +270,7 @@ export function CircleVisionAnalyticsDetail({
 
           <div className="space-y-0.5">
 
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
               {t('analytics.vision.avgSeverity')}
 
@@ -282,7 +282,7 @@ export function CircleVisionAnalyticsDetail({
 
           <div className="space-y-0.5">
 
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
 
               {t('analytics.trend')}
 
@@ -348,7 +348,7 @@ export function CircleVisionAnalyticsDetail({
 
                   tickLine={false}
 
-                  tick={{ fontSize: 9, fill: '#94a3b8' }}
+                  tick={{ fontSize: 13, fill: '#94a3b8' }}
 
                   width={24}
 
@@ -366,7 +366,7 @@ export function CircleVisionAnalyticsDetail({
 
                     boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)',
 
-                    fontSize: '11px',
+                    fontSize: '13px',
 
                   }}
 
@@ -450,7 +450,7 @@ export function CircleVisionAnalyticsDetail({
 
         ) : (
 
-          <p className="text-[11px] text-slate-400 text-center leading-relaxed py-2">
+          <p className="text-[13px] text-slate-400 text-center leading-relaxed py-2">
 
             {t('analytics.chartNotSynced')}
 
@@ -464,7 +464,7 @@ export function CircleVisionAnalyticsDetail({
 
           <div className="pt-3 border-t border-slate-50 space-y-2">
 
-            <p className="text-[10px] font-bold text-slate-400 uppercase">
+            <p className="text-[12px] font-bold text-slate-400 uppercase">
 
               {t('analytics.vision.latestFindings')}
 
@@ -482,7 +482,7 @@ export function CircleVisionAnalyticsDetail({
 
                 >
 
-                  <span className="text-[11px] font-semibold text-slate-600 truncate">
+                  <span className="text-[13px] font-semibold text-slate-600 truncate">
 
                     {finding.label}
 
@@ -492,7 +492,7 @@ export function CircleVisionAnalyticsDetail({
 
                     className={cn(
 
-                      'shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-lg max-w-[55%] truncate',
+                      'shrink-0 text-[12px] font-bold px-2 py-0.5 rounded-lg max-w-[55%] truncate',
 
                       findingStatusClass(finding.status),
 

@@ -186,7 +186,7 @@ function AnalyticsMetricRow({
       </p>
       <div
         className={cn(
-          'flex items-center gap-1 shrink-0 max-w-[46%] text-[10px] font-bold uppercase tracking-wider',
+          'flex items-center gap-1 shrink-0 max-w-[46%] text-[12px] font-bold uppercase tracking-wider',
           unreleased
             ? 'text-slate-400'
             : todayAlertAttention

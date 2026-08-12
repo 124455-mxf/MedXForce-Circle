@@ -128,7 +128,7 @@ function TrendSummary({
 
   return (
 
-    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase', colorClass)}>
+    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[12px] font-bold uppercase', colorClass)}>
 
       <Icon size={12} />
 
@@ -160,7 +160,7 @@ function TopTopicsList({
 
   if (safeItems.length === 0) {
 
-    return <p className="text-[11px] text-slate-400 italic py-2">{t('analytics.noTopicsInPeriod')}</p>;
+    return <p className="text-[13px] text-slate-400 italic py-2">{t('analytics.noTopicsInPeriod')}</p>;
 
   }
 
@@ -172,9 +172,9 @@ function TopTopicsList({
 
         <li key={idx} className="flex items-center justify-between gap-2 min-w-0">
 
-          <span className="text-[11px] font-semibold text-slate-700 truncate flex-1">{item.label}</span>
+          <span className="text-[13px] font-semibold text-slate-700 truncate flex-1">{item.label}</span>
 
-          <span className="text-[11px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md shrink-0">
+          <span className="text-[13px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md shrink-0">
 
             {item.count}
 
@@ -288,7 +288,7 @@ export function CircleMessagesAnalyticsDetail({
 
       <div className="px-3 py-2 border-b border-slate-100 bg-blue-50/60">
 
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
+        <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
 
           {analyticsWindowDaysLabel(t, 30)}
 
@@ -302,7 +302,7 @@ export function CircleMessagesAnalyticsDetail({
 
           <div className="space-y-0.5 min-w-0">
 
-            <p className="text-[9px] font-bold text-blue-500 uppercase tracking-tight">{communicationLabel}</p>
+            <p className="text-[11px] font-bold text-blue-500 uppercase tracking-tight">{communicationLabel}</p>
 
             <p className="text-2xl font-black text-blue-600 leading-none tabular-nums">{communication}</p>
 
@@ -310,7 +310,7 @@ export function CircleMessagesAnalyticsDetail({
 
           <div className="space-y-0.5 min-w-0">
 
-            <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-tight">{messagingLabel}</p>
+            <p className="text-[11px] font-bold text-emerald-500 uppercase tracking-tight">{messagingLabel}</p>
 
             <p className="text-2xl font-black text-emerald-600 leading-none tabular-nums">{messaging}</p>
 
@@ -328,13 +328,13 @@ export function CircleMessagesAnalyticsDetail({
 
               <div key={row.key} className="flex items-center justify-between gap-2">
 
-                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter truncate">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter truncate">
 
                   {t(row.labelKey)}
 
                 </span>
 
-                <span className="text-[9px] font-black text-emerald-500 bg-emerald-50 px-1 rounded-sm min-w-[14px] text-center">
+                <span className="text-[11px] font-black text-emerald-500 bg-emerald-50 px-1 rounded-sm min-w-[14px] text-center">
 
                   {safeBreakdownValue(messagingBreakdown, row.key)}
 
@@ -354,7 +354,7 @@ export function CircleMessagesAnalyticsDetail({
 
           <div className="flex items-center justify-between gap-2">
 
-            <span className="text-[10px] font-bold text-slate-400 uppercase">{t('analytics.trend')}</span>
+            <span className="text-[12px] font-bold text-slate-400 uppercase">{t('analytics.trend')}</span>
 
             <TrendSummary trend={trend} t={t} />
 
@@ -362,7 +362,7 @@ export function CircleMessagesAnalyticsDetail({
 
           <div className="flex items-center justify-between gap-2">
 
-            <span className="text-[10px] font-bold text-slate-400 uppercase">{t('analytics.chart')}</span>
+            <span className="text-[12px] font-bold text-slate-400 uppercase">{t('analytics.chart')}</span>
 
             <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg">
 
@@ -442,7 +442,7 @@ export function CircleMessagesAnalyticsDetail({
 
                     tickLine={false}
 
-                    tick={{ fontSize: 9, fill: '#94a3b8' }}
+                    tick={{ fontSize: 13, fill: '#94a3b8' }}
 
                     allowDecimals={false}
 
@@ -462,7 +462,7 @@ export function CircleMessagesAnalyticsDetail({
 
                       boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)',
 
-                      fontSize: '11px',
+                      fontSize: '13px',
 
                     }}
 
@@ -520,7 +520,7 @@ export function CircleMessagesAnalyticsDetail({
 
                     tickLine={false}
 
-                    tick={{ fontSize: 9, fill: '#94a3b8' }}
+                    tick={{ fontSize: 13, fill: '#94a3b8' }}
 
                     allowDecimals={false}
 
@@ -540,7 +540,7 @@ export function CircleMessagesAnalyticsDetail({
 
                       boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)',
 
-                      fontSize: '11px',
+                      fontSize: '13px',
 
                     }}
 
@@ -570,7 +570,7 @@ export function CircleMessagesAnalyticsDetail({
 
         ) : (
 
-          <p className="text-[11px] text-slate-400 text-center leading-relaxed py-2">
+          <p className="text-[13px] text-slate-400 text-center leading-relaxed py-2">
 
             {t('analytics.chartNotSynced')}
 
@@ -582,7 +582,7 @@ export function CircleMessagesAnalyticsDetail({
 
         <div className="space-y-2 pt-2 border-t border-slate-50">
 
-          <p className="text-[10px] font-bold text-slate-400 uppercase">{t('analytics.messages.topTopics')}</p>
+          <p className="text-[12px] font-bold text-slate-400 uppercase">{t('analytics.messages.topTopics')}</p>
 
           <TopTopicsList items={topItems} t={t} />
 

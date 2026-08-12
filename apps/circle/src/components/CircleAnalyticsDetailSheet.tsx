@@ -57,7 +57,7 @@ function TrendBadge({ trend }: { trend: AnalyticsTrendDirection }) {
 function WindowHeader({ days }: { days: number }) {
   const t = useCircleT();
   return (
-    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
+    <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
       {analyticsWindowDaysLabel(t, days)}
     </p>
   );
@@ -74,7 +74,7 @@ function MetricMini({
 }) {
   return (
     <div className="space-y-0.5 min-w-0">
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">{label}</p>
+      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">{label}</p>
       <p className={cn('text-lg font-black leading-none tabular-nums', valueClass)}>{value}</p>
     </div>
   );
@@ -125,12 +125,12 @@ function AssessmentCountDetail({
             valueClass="text-slate-800 text-2xl"
           />
           <div className="space-y-0.5 min-w-0">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
               {t('analytics.trend')}
             </p>
             <div className="flex items-center gap-1.5 pt-1">
               <TrendBadge trend={detail.trend} />
-              <span className="text-[11px] font-bold text-slate-600">
+              <span className="text-[13px] font-bold text-slate-600">
                 {analyticsTrendHigherLowerStable(t, detail.trend)}
               </span>
             </div>
@@ -366,10 +366,10 @@ export function CircleAnalyticsDetailSheet({ summary, onClose }: CircleAnalytics
                 </div>
               )}
               <div className="min-w-0">
-                <h3 id="circle-analytics-detail-title" className="font-bold text-slate-800 truncate">
+                <h3 id="circle-analytics-detail-title" className="font-bold text-slate-800 text-base truncate">
                   {summary.title}
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-sm text-slate-500">
                   {analyticsLastDaysLabel(t, summary.windowDays)}
                 </p>
               </div>
@@ -394,7 +394,7 @@ export function CircleAnalyticsDetailSheet({ summary, onClose }: CircleAnalytics
               <p className="text-xs text-slate-500 leading-relaxed">{t('analytics.detailNotSynced')}</p>
             </div>
           )}
-          <p className="text-[10px] text-slate-400 text-center leading-relaxed px-2">
+          <p className="text-[12px] text-slate-400 text-center leading-relaxed px-2">
             {t('analytics.footerHint')}
           </p>
         </div>
