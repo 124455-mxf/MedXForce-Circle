@@ -154,12 +154,14 @@ export async function writeMemberContactProfile(
   const next: CircleMemberContactProfile = {
     name,
     language:
-      patch.language !== undefined ? patch.language.trim() || 'English' : existing.language,
+      patch.language !== undefined ? patch.language.trim() || 'English' : existing.language || 'English',
     relationship:
-      patch.relationship !== undefined ? patch.relationship.trim() : existing.relationship,
-    firstName,
-    lastName,
-    dateOfBirth,
+      patch.relationship !== undefined
+        ? patch.relationship.trim()
+        : existing.relationship || '',
+    firstName: firstName || '',
+    lastName: lastName || '',
+    dateOfBirth: dateOfBirth || '',
   };
 
   await setDoc(
@@ -171,14 +173,18 @@ export async function writeMemberContactProfile(
     { merge: true },
   );
   // Keep legacy member-root profile aligned for older patient readers.
-  await setDoc(
-    memberContactProfileLegacyRef(db, patientId, memberUid),
-    {
-      contactProfile: next,
-      updatedAt: Date.now(),
-    },
-    { merge: true },
-  );
+  try {
+    await setDoc(
+      memberContactProfileLegacyRef(db, patientId, memberUid),
+      {
+        contactProfile: next,
+        updatedAt: Date.now(),
+      },
+      { merge: true },
+    );
+  } catch (err) {
+    console.warn('[Circle] Legacy member contactProfile sync skipped —', err);
+  }
 
   return next;
 }
@@ -199,7 +205,7 @@ export async function updateOwnCircleContactProfile(
   const defaults: CircleMemberContactProfile = {
     name: existing.name,
     language: existing.language || 'English',
-    relationship: existing.relationship,
+    relationship: existing.relationship || '',
     firstName: existing.firstName || '',
     lastName: existing.lastName || '',
     dateOfBirth: existing.dateOfBirth || '',
@@ -267,14 +273,14 @@ export async function updateOwnCircleContactProfile(
   }
 
   // Keep invite list labels aligned with the composed display name.
-  // Non-proxy members cannot update circle_invites under current rules — never fail the save.
-  const invite = await lookupCircleInviteByPatientEmail(
-    db,
-    patientId,
-    normalizeInviteEmail(actorEmail),
-  );
-  if (invite.exists && nextProfile.name) {
-    try {
+  // Never fail the member's contact save if invite lookup/sync is denied.
+  try {
+    const invite = await lookupCircleInviteByPatientEmail(
+      db,
+      patientId,
+      normalizeInviteEmail(actorEmail),
+    );
+    if (invite.exists && nextProfile.name) {
       await setDoc(
         circleInviteRefForPatientEmail(
           db,
@@ -288,9 +294,9 @@ export async function updateOwnCircleContactProfile(
         },
         { merge: true },
       );
-    } catch (err) {
-      console.warn('[Circle] Invite displayName sync skipped —', err);
     }
+  } catch (err) {
+    console.warn('[Circle] Invite displayName sync skipped —', err);
   }
 
   return merged;
