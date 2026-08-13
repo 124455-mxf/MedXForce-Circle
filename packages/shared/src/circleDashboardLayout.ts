@@ -67,30 +67,37 @@ export const ALL_CUSTOMIZABLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
 
 /**
  * Optional tiles hidden for proxy until they opt in via Customize dashboard.
- * Sourced from Dermo Patient Test-proxy-01 saved layout (Aug 2026).
- * Visible by default: locale, last-7-day clinical tiles, remote settings, user profile.
+ * Matches Demo Patient Test-proxy-01 customize layout (Aug 2026).
+ * On by default: Circle Map, participation reminders, last-7-day clinical tiles
+ * (incl. daily check-in; Pulse off), remote settings, user profile.
  */
 export const PROXY_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
+  'patient-locale',
   'patient-insights',
-  'reminder-gallery-upload',
-  'reminder-diary-entry',
+  'check-in-wellness-ring',
   'diary',
   'circle',
   'gallery-engagement',
   'media-gallery',
-  'circle-map',
-  'check-in-wellness-ring',
 ];
 
 /**
  * Optional tiles hidden for family until they opt in via Customize dashboard.
- * Matches Dermo Patient Test-family-01 saved layout (Aug 2026).
+ * Matches Demo Patient family customize layout (Aug 2026).
+ * On by default: locale, insights, Circle Map, reminders, alerts, Check-In Pulse,
+ * diary, media gallery.
  */
 export const FAMILY_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
+  'daily-check-in',
+  'messages',
+  'communication',
+  'companion',
   'vitality',
   'assessments',
   'assessment-schedule-calendar',
+  'circle',
   'gallery-engagement',
+  'remote-settings',
   'user-profile',
 ];
 
@@ -100,10 +107,13 @@ export const FRIEND_NEVER_VISIBLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] 
 ];
 
 /**
- * Optional tiles hidden for friends until they opt in (locale + insights + gallery + reminders stay on).
- * Matches Dermo Patient Test-friend-01 saved layout (Aug 2026).
+ * Optional tiles hidden for friends until they opt in.
+ * Matches Demo Patient Test-friend-01 customize layout (Aug 2026).
+ * On by default: photo + journal reminders, Your photos, media gallery.
  */
 export const FRIEND_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
+  'patient-locale',
+  'patient-insights',
   'alert-attention',
   'daily-check-in',
   'messages',
@@ -116,16 +126,21 @@ export const FRIEND_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = 
   'circle-map',
   'check-in-wellness-ring',
   'assessment-schedule-calendar',
-  'gallery-engagement',
   'remote-settings',
   'user-profile',
 ];
 
 /**
- * Caregiver / facility_staff / professional_caregiver: show all customizable tiles by default.
- * Matches Dermo Patient Test-care-01 saved layout (empty hiddenWidgets).
+ * Caregiver / facility_staff / professional_caregiver defaults (Aug 2026 care-team customize).
+ * On by default: locale, Circle Map, reminders, alerts, Pulse, messages/comms/companion/
+ * vitality/assessments, Circle messages, media gallery, remote settings, user profile.
  */
-export const CAREGIVER_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [];
+export const CAREGIVER_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
+  'patient-insights',
+  'daily-check-in',
+  'diary',
+  'gallery-engagement',
+];
 
 export const CIRCLE_DASHBOARD_WIDGET_SECTIONS: Record<
   CircleDashboardLayoutSection,
