@@ -109,11 +109,11 @@ export const FRIEND_NEVER_VISIBLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] 
 /**
  * Optional tiles hidden for friends until they opt in.
  * Matches Demo Patient Test-friend-01 customize layout (Aug 2026).
- * On by default: photo + journal reminders, Your photos, media gallery.
+ * On by default: Get to know, Circle Map, photo + journal reminders,
+ * Your photos, media gallery.
  */
 export const FRIEND_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
   'patient-locale',
-  'patient-insights',
   'alert-attention',
   'daily-check-in',
   'messages',
@@ -123,7 +123,6 @@ export const FRIEND_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = 
   'assessments',
   'diary',
   'circle',
-  'circle-map',
   'check-in-wellness-ring',
   'assessment-schedule-calendar',
   'remote-settings',

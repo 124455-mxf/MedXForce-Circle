@@ -91,7 +91,6 @@ function DashboardSectionToggles({
 }) {
   const t = useCircleT();
   const keys = CIRCLE_DASHBOARD_WIDGET_SECTIONS[section].filter((key) => {
-    if (key === 'circle-map' && normalizeMemberRole(patient.role) === 'friend') return false;
     if (key === 'check-in-wellness-ring' && normalizeMemberRole(patient.role) === 'friend') return false;
     if (key === 'assessment-schedule-calendar') return false;
     return true;

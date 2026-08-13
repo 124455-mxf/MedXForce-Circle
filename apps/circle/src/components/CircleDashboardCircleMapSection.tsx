@@ -3,7 +3,6 @@ import type { Firestore } from 'firebase/firestore';
 import {
   type CircleManagedContact,
   type CircleMemberRole,
-  normalizeMemberRole,
 } from '@medxforce/shared';
 import { useCircleTeamCoverageFromDashboard } from '../context/CircleTeamCoverageContext';
 import { useCircleMapMemberPhotos } from '../hooks/useCircleMapMemberPhotos';
@@ -100,10 +99,10 @@ export function CircleDashboardCircleMapSection({
   wide = false,
   onManageContacts,
 }: CircleDashboardCircleMapSectionProps) {
+  void memberRole;
   const t = useCircleT();
   const [open, setOpen] = useState(false);
-  const role = normalizeMemberRole(memberRole);
-  const active = enabled && role !== 'friend';
+  const active = enabled;
 
   const { contacts, loading: contactsLoading } = useCircleTeamCoverageFromDashboard();
   const { photosByEmail, photosByContactId } = useCircleMapMemberPhotos(db, patientId, active);

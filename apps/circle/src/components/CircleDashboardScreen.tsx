@@ -800,7 +800,7 @@ export function CircleDashboardScreen({
   const showRemoteSettings = canViewRemoteSettingsTab(caps);
   const showLiveTile = memberRole !== 'friend';
   const showGetToKnow = isWidgetVisible('patient-insights');
-  const showCircleMap = memberRole !== 'friend' && isWidgetVisible('circle-map');
+  const showCircleMap = isWidgetVisible('circle-map');
   const canOpenPatientProfile = canViewPatientProfileTab(caps);
   const canManageTeam = canInviteMembers(caps);
 
