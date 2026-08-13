@@ -130,6 +130,22 @@ export const circleScreenEnglish = {
   repliesLoadFailed: 'Could not load replies.',
   repliesPermissionDenied:
     'Discussion replies need updated Firestore rules. From the patient app repo run: firebase deploy --only firestore:rules',
+  aiGuidanceTitle: 'Private AI guidance',
+  aiGuidanceSubtitle: 'Not posted to the circle thread',
+  aiGuidancePrivacy:
+    'Your question is sent to Google\'s AI service for this one-time reply. It is not posted to the circle thread and not stored by MedXForce. If you turn on "Include recent messages," those snippets are included too.',
+  aiGuidanceIncludeRecent:
+    'Include recent messages from this thread as background (off by default)',
+  aiGuidanceYourQuestion: 'Your question',
+  aiGuidancePlaceholder: 'e.g. How can I encourage my father to do his daily check-ins?',
+  aiGuidanceListening: 'Listening… speak your question, then tap Stop.',
+  aiGuidanceDictate: 'Dictate',
+  aiGuidanceDictateStop: 'Stop',
+  aiGuidanceLabel: 'Guidance',
+  aiGuidanceGet: 'Get guidance',
+  aiGuidanceAskAnother: 'Ask another',
+  aiGuidanceDone: 'Done',
+  aiGuidanceFailed: 'Could not get guidance.',
 };
 
 export const circleScreenGerman = {
@@ -235,12 +251,12 @@ export const circleScreenGerman = {
   copyVisitCapture: 'Besuchsaufzeichnung kopieren',
   messageCopied: 'Nachricht kopiert',
   copied: 'Kopiert!',
-  appointmentInviteAccept: 'Accept',
-  appointmentInviteDecline: 'Decline',
-  appointmentInviteRespondPrompt: 'Can you make this appointment?',
-  appointmentInviteYouAccepted: 'You accepted this invite.',
-  appointmentInviteYouDeclined: 'You declined this invite.',
-  appointmentInviteRespondFailed: 'Could not save your response.',
+  appointmentInviteAccept: 'Annehmen',
+  appointmentInviteDecline: 'Ablehnen',
+  appointmentInviteRespondPrompt: 'Können Sie diesen Termin wahrnehmen?',
+  appointmentInviteYouAccepted: 'Sie haben diese Einladung angenommen.',
+  appointmentInviteYouDeclined: 'Sie haben diese Einladung abgelehnt.',
+  appointmentInviteRespondFailed: 'Antwort konnte nicht gespeichert werden.',
   copySummaryTranscript: 'Zusammenfassung und Transkript kopieren',
   expandMessage: 'Nachricht erweitern',
   expandClose: 'Erweiterte Nachricht schließen',
@@ -271,6 +287,22 @@ export const circleScreenGerman = {
   repliesLoadFailed: 'Antworten konnten nicht geladen werden.',
   repliesPermissionDenied:
     'Diskussionsantworten benötigen aktualisierte Firestore-Regeln. Im Patienten-App-Repo ausführen: firebase deploy --only firestore:rules',
+  aiGuidanceTitle: 'Private KI-Unterstützung',
+  aiGuidanceSubtitle: 'Wird nicht im Circle-Thread veröffentlicht',
+  aiGuidancePrivacy:
+    'Ihre Frage wird für diese einmalige Antwort an den KI-Dienst von Google gesendet. Sie wird nicht im Circle-Thread veröffentlicht und nicht von MedXForce gespeichert. Wenn Sie „Aktuelle Nachrichten einbeziehen“ einschalten, werden diese Ausschnitte ebenfalls mitgesendet.',
+  aiGuidanceIncludeRecent:
+    'Aktuelle Nachrichten aus diesem Thread als Hintergrund einbeziehen (standardmäßig aus)',
+  aiGuidanceYourQuestion: 'Ihre Frage',
+  aiGuidancePlaceholder: 'z. B. Wie kann ich meinen Vater zu täglichen Check-ins ermutigen?',
+  aiGuidanceListening: 'Hört zu… stellen Sie Ihre Frage, dann Stopp tippen.',
+  aiGuidanceDictate: 'Diktieren',
+  aiGuidanceDictateStop: 'Stopp',
+  aiGuidanceLabel: 'Empfehlung',
+  aiGuidanceGet: 'Unterstützung holen',
+  aiGuidanceAskAnother: 'Weitere Frage',
+  aiGuidanceDone: 'Fertig',
+  aiGuidanceFailed: 'Unterstützung konnte nicht geladen werden.',
 };
 
 export const circleScreenSpanish = {
@@ -376,12 +408,12 @@ export const circleScreenSpanish = {
   copyVisitCapture: 'Copiar captura de visita',
   messageCopied: 'Mensaje copiado',
   copied: '¡Copiado!',
-  appointmentInviteAccept: 'Accept',
-  appointmentInviteDecline: 'Decline',
-  appointmentInviteRespondPrompt: 'Can you make this appointment?',
-  appointmentInviteYouAccepted: 'You accepted this invite.',
-  appointmentInviteYouDeclined: 'You declined this invite.',
-  appointmentInviteRespondFailed: 'Could not save your response.',
+  appointmentInviteAccept: 'Aceptar',
+  appointmentInviteDecline: 'Rechazar',
+  appointmentInviteRespondPrompt: '¿Puede asistir a esta cita?',
+  appointmentInviteYouAccepted: 'Aceptó esta invitación.',
+  appointmentInviteYouDeclined: 'Rechazó esta invitación.',
+  appointmentInviteRespondFailed: 'No se pudo guardar su respuesta.',
   copySummaryTranscript: 'Copiar resumen y transcripción',
   expandMessage: 'Expandir mensaje',
   expandClose: 'Cerrar mensaje expandido',
@@ -412,6 +444,22 @@ export const circleScreenSpanish = {
   repliesLoadFailed: 'No se pudieron cargar las respuestas.',
   repliesPermissionDenied:
     'Las respuestas de discusión requieren reglas de Firestore actualizadas. En el repo de la app del paciente ejecute: firebase deploy --only firestore:rules',
+  aiGuidanceTitle: 'Asistencia de IA privada',
+  aiGuidanceSubtitle: 'No se publica en el hilo del círculo',
+  aiGuidancePrivacy:
+    'Su pregunta se envía al servicio de IA de Google para esta respuesta única. No se publica en el hilo del círculo ni la almacena MedXForce. Si activa «Incluir mensajes recientes», esos extractos también se incluyen.',
+  aiGuidanceIncludeRecent:
+    'Incluir mensajes recientes de este hilo como contexto (desactivado por defecto)',
+  aiGuidanceYourQuestion: 'Su pregunta',
+  aiGuidancePlaceholder: 'p. ej. ¿Cómo puedo animar a mi padre a hacer sus check-ins diarios?',
+  aiGuidanceListening: 'Escuchando… diga su pregunta y luego toque Detener.',
+  aiGuidanceDictate: 'Dictar',
+  aiGuidanceDictateStop: 'Detener',
+  aiGuidanceLabel: 'Orientación',
+  aiGuidanceGet: 'Obtener orientación',
+  aiGuidanceAskAnother: 'Otra pregunta',
+  aiGuidanceDone: 'Listo',
+  aiGuidanceFailed: 'No se pudo obtener orientación.',
 };
 
 export const circleScreenPolish = {
@@ -517,12 +565,12 @@ export const circleScreenPolish = {
   copyVisitCapture: 'Kopiuj nagranie wizyty',
   messageCopied: 'Wiadomość skopiowana',
   copied: 'Skopiowano!',
-  appointmentInviteAccept: 'Accept',
-  appointmentInviteDecline: 'Decline',
-  appointmentInviteRespondPrompt: 'Can you make this appointment?',
-  appointmentInviteYouAccepted: 'You accepted this invite.',
-  appointmentInviteYouDeclined: 'You declined this invite.',
-  appointmentInviteRespondFailed: 'Could not save your response.',
+  appointmentInviteAccept: 'Zaakceptuj',
+  appointmentInviteDecline: 'Odrzuć',
+  appointmentInviteRespondPrompt: 'Czy możesz być na tym spotkaniu?',
+  appointmentInviteYouAccepted: 'Zaakceptowałeś(-aś) to zaproszenie.',
+  appointmentInviteYouDeclined: 'Odrzuciłeś(-aś) to zaproszenie.',
+  appointmentInviteRespondFailed: 'Nie udało się zapisać odpowiedzi.',
   copySummaryTranscript: 'Kopiuj podsumowanie i transkrypcję',
   expandMessage: 'Rozwiń wiadomość',
   expandClose: 'Zamknij rozwiniętą wiadomość',
@@ -553,4 +601,20 @@ export const circleScreenPolish = {
   repliesLoadFailed: 'Nie udało się wczytać odpowiedzi.',
   repliesPermissionDenied:
     'Odpowiedzi w dyskusji wymagają zaktualizowanych reguł Firestore. W repozytorium aplikacji pacjenta uruchom: firebase deploy --only firestore:rules',
+  aiGuidanceTitle: 'Prywatna pomoc AI',
+  aiGuidanceSubtitle: 'Nie jest publikowane w wątku Circle',
+  aiGuidancePrivacy:
+    'Twoje pytanie jest wysyłane do usługi AI Google w celu jednorazowej odpowiedzi. Nie jest publikowane w wątku Circle i nie jest przechowywane przez MedXForce. Jeśli włączysz „Dołącz ostatnie wiadomości”, te fragmenty też zostaną uwzględnione.',
+  aiGuidanceIncludeRecent:
+    'Dołącz ostatnie wiadomości z tego wątku jako kontekst (domyślnie wyłączone)',
+  aiGuidanceYourQuestion: 'Twoje pytanie',
+  aiGuidancePlaceholder: 'np. Jak zachęcić ojca do codziennych check-inów?',
+  aiGuidanceListening: 'Nasłuchiwanie… zadaj pytanie, potem dotknij Stop.',
+  aiGuidanceDictate: 'Dyktuj',
+  aiGuidanceDictateStop: 'Stop',
+  aiGuidanceLabel: 'Wskazówki',
+  aiGuidanceGet: 'Uzyskaj wskazówki',
+  aiGuidanceAskAnother: 'Kolejne pytanie',
+  aiGuidanceDone: 'Gotowe',
+  aiGuidanceFailed: 'Nie udało się uzyskać wskazówek.',
 };

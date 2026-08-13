@@ -229,7 +229,7 @@ export function CircleExpandableMessageComposer({
               'border-violet-100 text-violet-600 hover:bg-violet-50 hover:border-violet-200',
             )}
             aria-label={t('common.aria.privateAiGuidance')}
-            title="Private AI guidance"
+            title={t('common.aria.privateAiGuidance')}
           >
             <Sparkles size={iconSize} />
           </button>
