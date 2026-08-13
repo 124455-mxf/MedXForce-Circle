@@ -773,6 +773,10 @@ export function CircleDashboardScreen({
   const patientMessagingFeatureEnabled =
     remoteFeatureFlagsReady &&
     isHospitalFeatureEnabledInRemoteSettings(remoteSettings, 'hospitalFeatureMessaging');
+  const patientCommunicationFeatureEnabled =
+    remoteFeatureFlagsReady && remoteSettings?.featuresVisibility?.communication === true;
+  const patientCompanionFeatureEnabled =
+    remoteFeatureFlagsReady && remoteSettings?.featuresVisibility?.aiCompanion === true;
   const patientVitalityFeatureEnabled =
     remoteFeatureFlagsReady &&
     isHospitalFeatureEnabledInRemoteSettings(remoteSettings, 'hospitalFeatureVitality');
@@ -1189,54 +1193,58 @@ export function CircleDashboardScreen({
       });
     }
 
-    lastSevenDayWidgets.push({
-      key: 'communication',
-      title: t('dashboard.communication'),
-      icon: Keyboard,
-      ...(analyticsLoading
-        ? loadingRows(t('common.loading'))
-        : (() => {
-            const quiet = communicationStats.communication === 0;
-            return {
-              heroValue: communicationStats.communication,
-              heroMuted: quiet,
-              iconTone: 'violet',
-              row1: quiet
-                ? t('dashboard.noCommunicationWeek')
-                : dashboardPlural(t, 'communicationThisWeek', communicationStats.communication),
-              row2: formatCommunicationInputMethod(speechDetail?.lastCommunicationInputMethod),
-              activityDays: activityDaysFromTimeline(speechDetail?.timeline, (point) => {
-                return point.communication;
-              }),
-            };
-          })()),
-      onClick: () =>
-        onOpenMessagesInbox ? onOpenMessagesInbox('in_out') : onGoToTab('messages'),
-    });
+    if (patientCommunicationFeatureEnabled) {
+      lastSevenDayWidgets.push({
+        key: 'communication',
+        title: t('dashboard.communication'),
+        icon: Keyboard,
+        ...(analyticsLoading
+          ? loadingRows(t('common.loading'))
+          : (() => {
+              const quiet = communicationStats.communication === 0;
+              return {
+                heroValue: communicationStats.communication,
+                heroMuted: quiet,
+                iconTone: 'violet',
+                row1: quiet
+                  ? t('dashboard.noCommunicationWeek')
+                  : dashboardPlural(t, 'communicationThisWeek', communicationStats.communication),
+                row2: formatCommunicationInputMethod(speechDetail?.lastCommunicationInputMethod),
+                activityDays: activityDaysFromTimeline(speechDetail?.timeline, (point) => {
+                  return point.communication;
+                }),
+              };
+            })()),
+        onClick: () =>
+          onOpenMessagesInbox ? onOpenMessagesInbox('in_out') : onGoToTab('messages'),
+      });
+    }
 
-    lastSevenDayWidgets.push({
-      key: 'companion',
-      title: t('dashboard.companionTitle'),
-      icon: Bot,
-      ...(analyticsLoading
-        ? loadingRows(t('common.loading'))
-        : (() => {
-            const quiet = companionLast7 === 0;
-            return {
-              heroValue: companionLast7,
-              heroMuted: quiet,
-              iconTone: quiet ? 'sky' : 'violet',
-              row1: quiet
-                ? t('dashboard.noCompanionChats')
-                : dashboardPlural(t, 'companion', companionLast7),
-              row2: '',
-              activityDays: activityDaysFromTimeline(companionDetail?.timeline, (point) => {
-                return Math.max(0, point.conversations + point.interactions - point.detected);
-              }),
-            };
-          })()),
-      onClick: () => onOpenAnalyticsDetail('ai-conversation'),
-    });
+    if (patientCompanionFeatureEnabled) {
+      lastSevenDayWidgets.push({
+        key: 'companion',
+        title: t('dashboard.companionTitle'),
+        icon: Bot,
+        ...(analyticsLoading
+          ? loadingRows(t('common.loading'))
+          : (() => {
+              const quiet = companionLast7 === 0;
+              return {
+                heroValue: companionLast7,
+                heroMuted: quiet,
+                iconTone: quiet ? 'sky' : 'violet',
+                row1: quiet
+                  ? t('dashboard.noCompanionChats')
+                  : dashboardPlural(t, 'companion', companionLast7),
+                row2: '',
+                activityDays: activityDaysFromTimeline(companionDetail?.timeline, (point) => {
+                  return Math.max(0, point.conversations + point.interactions - point.detected);
+                }),
+              };
+            })()),
+        onClick: () => onOpenAnalyticsDetail('ai-conversation'),
+      });
+    }
 
     if (patientVitalityFeatureEnabled) {
       lastSevenDayWidgets.push({
