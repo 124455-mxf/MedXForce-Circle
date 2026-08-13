@@ -267,25 +267,30 @@ export async function updateOwnCircleContactProfile(
   }
 
   // Keep invite list labels aligned with the composed display name.
+  // Non-proxy members cannot update circle_invites under current rules — never fail the save.
   const invite = await lookupCircleInviteByPatientEmail(
     db,
     patientId,
     normalizeInviteEmail(actorEmail),
   );
   if (invite.exists && nextProfile.name) {
-    await setDoc(
-      circleInviteRefForPatientEmail(
-        db,
-        patientId,
-        normalizeInviteEmail(actorEmail),
-        invite.id,
-      ),
-      {
-        displayName: nextProfile.name,
-        updatedAt: Date.now(),
-      },
-      { merge: true },
-    );
+    try {
+      await setDoc(
+        circleInviteRefForPatientEmail(
+          db,
+          patientId,
+          normalizeInviteEmail(actorEmail),
+          invite.id,
+        ),
+        {
+          displayName: nextProfile.name,
+          updatedAt: Date.now(),
+        },
+        { merge: true },
+      );
+    } catch (err) {
+      console.warn('[Circle] Invite displayName sync skipped —', err);
+    }
   }
 
   return merged;
