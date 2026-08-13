@@ -38,7 +38,11 @@ import {
 } from '@medxforce/shared';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
-import { getCircleGalleryViewedIds } from '../lib/circleGalleryViews';
+import {
+  getCircleGalleryViewedIds,
+  CIRCLE_GALLERY_VIEWED_CHANGED,
+  isCircleGalleryMediaUnseenForMember,
+} from '../lib/circleGalleryViews';
 import {
   circleGalleryGridClass,
   isCompactCircleGalleryThumbnail,
@@ -277,7 +281,9 @@ export function PatientGalleryScreen({
   const albumCards = useMemo(() => {
     return albums.map((album) => {
       const items = circleMedia.filter((m) => mediaInAlbum(m, album, reactedMediaIds));
-      const unseen = items.filter((m) => !viewedIds.has(m.id)).length;
+      const unseen = items.filter((m) =>
+        isCircleGalleryMediaUnseenForMember(m, viewedIds, user.uid),
+      ).length;
       return {
         album,
         items,
@@ -287,7 +293,7 @@ export function PatientGalleryScreen({
         unseen,
       };
     });
-  }, [albums, circleMedia, reactedMediaIds, viewedIds]);
+  }, [albums, circleMedia, reactedMediaIds, user.uid, viewedIds]);
 
   const visibleAlbumCards = useMemo(() => {
     const canonicalReactionsId = findCanonicalReactionsAlbum(albums)?.id;
@@ -312,6 +318,12 @@ export function PatientGalleryScreen({
   const refreshViewed = useCallback(() => {
     setViewedIds(getCircleGalleryViewedIds(patient.patientId));
   }, [patient.patientId]);
+
+  useEffect(() => {
+    const onViewed = () => refreshViewed();
+    window.addEventListener(CIRCLE_GALLERY_VIEWED_CHANGED, onViewed);
+    return () => window.removeEventListener(CIRCLE_GALLERY_VIEWED_CHANGED, onViewed);
+  }, [refreshViewed]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -561,8 +573,9 @@ export function PatientGalleryScreen({
 
   const countUnseenMedia = useCallback(
     (items: GalleryAlbumMedia[]) =>
-      items.filter((item) => !viewedIds.has(item.id)).length,
-    [viewedIds],
+      items.filter((item) => isCircleGalleryMediaUnseenForMember(item, viewedIds, user.uid))
+        .length,
+    [user.uid, viewedIds],
   );
 
   const sharedBrowseTabCounts = useMemo(
@@ -661,7 +674,10 @@ export function PatientGalleryScreen({
           onClick={() => openLightbox(items, index)}
           className="aspect-square rounded-2xl overflow-hidden border border-slate-100 bg-slate-50"
         >
-          <GalleryThumb item={item} unseen={!viewedIds.has(item.id)} />
+          <GalleryThumb
+            item={item}
+            unseen={isCircleGalleryMediaUnseenForMember(item, viewedIds, user.uid)}
+          />
         </button>
       ))}
     </div>

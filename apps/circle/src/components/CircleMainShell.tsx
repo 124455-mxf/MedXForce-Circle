@@ -471,15 +471,21 @@ export function CircleMainShell({
     const messagesUnread = selectedPatient?.capabilities.messaging
       ? threadState.unreadCount
       : 0;
+    const mediaUnseen = galleryDashboard.unseenMediaCount;
+    const mediaInMore = moreNavItems.some((item) => item.id === 'media');
 
     return {
       messages: messagesUnread,
       circle: circleThreadUnread.unreadCount,
       schedule: scheduleActionBadgeCount,
+      media: mediaUnseen,
       more: 0,
+      moreDot: mediaInMore && mediaUnseen > 0,
     };
   }, [
     circleThreadUnread.unreadCount,
+    galleryDashboard.unseenMediaCount,
+    moreNavItems,
     scheduleActionBadgeCount,
     selectedPatient?.capabilities.messaging,
     threadState.unreadCount,

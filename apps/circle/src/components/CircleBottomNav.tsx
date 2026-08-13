@@ -24,7 +24,7 @@ import {
   type PatientCapabilities,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
-import { CircleNavBadge } from './CircleCountBadge';
+import { CircleNavBadge, CircleNavDot } from './CircleCountBadge';
 import { useCircleT } from '../lib/circleI18nContext';
 import type { CircleTranslator } from '../lib/circleI18nContext';
 
@@ -56,7 +56,10 @@ export interface CircleBottomNavBadges {
   messages?: number;
   circle?: number;
   schedule?: number;
+  media?: number;
   more?: number;
+  /** Red dot on More (no number) when e.g. Media under More has unseen items. */
+  moreDot?: boolean;
 }
 
 export type CircleBottomNavUrgencyKind = 'alert' | 'attention';
@@ -86,6 +89,7 @@ function badgeCountForTab(tab: CircleMainTab, badges?: CircleBottomNavBadges): n
   if (tab === 'messages') return badges.messages ?? 0;
   if (tab === 'circle') return badges.circle ?? 0;
   if (tab === 'schedule') return badges.schedule ?? 0;
+  if (tab === 'media') return badges.media ?? 0;
   return 0;
 }
 
@@ -205,7 +209,8 @@ export function CircleBottomNav({
             >
               <NavIconSlot>
                 <MoreHorizontal size={compact ? 18 : 19} strokeWidth={moreActive ? 2.25 : 1.75} />
-                <CircleNavBadge count={moreOpen ? 0 : (badges?.more ?? 0)} />
+                {!moreOpen && badges?.moreDot ? <CircleNavDot onActive={moreActive} /> : null}
+                <CircleNavBadge count={moreOpen ? 0 : (badges?.more ?? 0)} onActive={moreActive} />
               </NavIconSlot>
               <span
                 className={cn(
@@ -243,6 +248,7 @@ export function CircleBottomNav({
                 {defaultMoreItems.map((item) => {
                   const Icon = item.icon;
                   const active = item.id === activeTab;
+                  const itemBadge = badgeCountForTab(item.id, badges);
                   return (
                     <button
                       key={item.id}
@@ -257,13 +263,14 @@ export function CircleBottomNav({
                     >
                       <div
                         className={cn(
-                          'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200',
+                          'relative w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200',
                           active
                             ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
                             : 'bg-white text-slate-500 border border-slate-100',
                         )}
                       >
                         <Icon size={20} />
+                        <CircleNavBadge count={itemBadge} onActive={active} />
                       </div>
                       <div className="min-w-0">
                         <p className={cn('font-bold text-sm', active ? 'text-blue-700' : 'text-slate-800')}>

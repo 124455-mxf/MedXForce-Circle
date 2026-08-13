@@ -34,6 +34,19 @@ export function CircleNavBadge({
   );
 }
 
+/** Red attention dot (no number) — e.g. More when Media has unseen items. */
+export function CircleNavDot({ onActive = false }: { onActive?: boolean }) {
+  return (
+    <span
+      className={cn(
+        'absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 pointer-events-none ring-2',
+        onActive ? 'ring-blue-600' : 'ring-white',
+      )}
+      aria-hidden
+    />
+  );
+}
+
 /** Inline tab label badge (In/Out, Archived, etc.). */
 export function CircleTabCountBadge({ count }: { count: number }) {
   if (count <= 0) return null;
