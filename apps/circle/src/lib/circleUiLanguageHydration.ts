@@ -97,12 +97,18 @@ export async function hydrateCircleUiLanguageFromContacts(
     if (!already || profile?.languageSource !== resolved.source) {
       // Never overwrite an explicit Circle My-contact choice.
       if (profile?.languageSource !== 'circle') {
-        await saveCircleUserProfile(db, user.uid, {
-          language: resolved.language,
-          languageSource: resolved.source === 'circle' ? 'circle' : 'patient',
-          email: user.email || undefined,
-          displayName: user.displayName || undefined,
-        });
+        try {
+          await saveCircleUserProfile(db, user.uid, {
+            language: resolved.language,
+            languageSource: resolved.source === 'circle' ? 'circle' : 'patient',
+            ...(user.email?.trim() ? { email: user.email.trim() } : {}),
+            ...(user.displayName?.trim()
+              ? { displayName: user.displayName.trim() }
+              : {}),
+          });
+        } catch (err) {
+          console.warn('[Circle] Could not persist hydrated UI language —', err);
+        }
       }
     }
   }

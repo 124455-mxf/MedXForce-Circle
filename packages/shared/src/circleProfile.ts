@@ -48,6 +48,14 @@ export async function getCircleUserProfile(
   };
 }
 
+function omitUndefinedFields<T extends Record<string, unknown>>(
+  obj: T,
+): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== undefined),
+  ) as Partial<T>;
+}
+
 export async function saveCircleUserProfile(
   db: Firestore,
   uid: string,
@@ -73,7 +81,7 @@ export async function saveCircleUserProfile(
     doc(db, 'circle_profiles', uid),
     {
       uid,
-      ...rest,
+      ...omitUndefinedFields(rest as Record<string, unknown>),
       ...(startupPatientId === null
         ? { startupPatientId: deleteField() }
         : startupPatientId !== undefined
