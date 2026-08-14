@@ -18,12 +18,12 @@ import type {
 import {
   CIRCLE_ANALYTICS_CHART_HEIGHT,
   circleAnalyticsChartMargin,
+  circleAnalyticsDailyAnswerLineProps,
   circleAnalyticsPlotInsetLeft,
   circleAnalyticsPlotInsetRight,
-  circleAnalyticsSparseLineProps,
   circleAnalyticsTooltipLabelFormatter,
+  prepareDailyCheckInAnswerTrendChartData,
   prepareDailyCheckInParticipationChartData,
-  prepareSparseTimelineChartData,
 } from '../lib/circleAnalyticsChart';
 import { useCircleT } from '../lib/circleI18nContext';
 import { analyticsWindowDaysLabel } from '../lib/circleAnalyticsI18n';
@@ -120,7 +120,12 @@ function AnswerTrendLegend({
   chartData,
   t,
 }: {
-  chartData: DailyCheckInAnswerTrendPoint[];
+  chartData: Array<{
+    mood?: number | null;
+    pain?: number | null;
+    sleep?: number | null;
+    vitality?: number | null;
+  }>;
   t: ReturnType<typeof useCircleT>;
 }) {
   const items = ANSWER_TREND_KEYS.filter((item) => chartData.some((point) => point[item.key] != null));
@@ -234,7 +239,14 @@ function LatestAnswers({
   point,
   t,
 }: {
-  point: DailyCheckInAnswerTrendPoint;
+  point: {
+    date?: string;
+    label?: string;
+    mood?: number | null;
+    pain?: number | null;
+    sleep?: number | null;
+    vitality?: number | null;
+  };
   t: ReturnType<typeof useCircleT>;
 }) {
   const chips: { label: string; value: string; color: string }[] = [];
@@ -270,7 +282,9 @@ function LatestAnswers({
 
   return (
     <div className="space-y-2">
-      <p className="text-[12px] font-bold text-slate-400 uppercase">{point.label}</p>
+      <p className="text-[12px] font-bold text-slate-400 uppercase">
+        {point.label || point.date || ''}
+      </p>
       <div className="flex flex-wrap gap-1.5">
         {chips.map((chip) => (
           <span
@@ -325,17 +339,30 @@ export function CircleDailyCheckInAnalyticsDetail({
     skipRate: `${skipRate}%`,
   };
 
-  const answerChartData = prepareSparseTimelineChartData(
-    Array.isArray(answerTrend) ? answerTrend : undefined,
+  const answerChartData = useMemo(
+    () =>
+      prepareDailyCheckInAnswerTrendChartData(
+        Array.isArray(answerTrend) ? answerTrend : undefined,
+        Array.isArray(timeline) ? timeline : undefined,
+      ),
+    [answerTrend, timeline],
   );
   const participationChartData = useMemo(
     () => prepareDailyCheckInParticipationChartData(Array.isArray(timeline) ? timeline : undefined),
     [timeline],
   );
 
-  const hasAnswerChart = answerChartData.length > 0;
+  const hasAnswerChart = answerChartData.some(
+    (point) =>
+      point.pain != null || point.mood != null || point.sleep != null || point.vitality != null,
+  );
   const hasParticipationChart = participationChartData.length > 0;
-  const latestPoint = hasAnswerChart ? answerChartData[0] : undefined;
+  const latestPoint = hasAnswerChart
+    ? answerChartData.find(
+        (point) =>
+          point.pain != null || point.mood != null || point.sleep != null || point.vitality != null,
+      )
+    : undefined;
   const chartMargin = circleAnalyticsChartMargin({ right: 8 });
 
   const participationSummary = useMemo(() => {
@@ -445,7 +472,7 @@ export function CircleDailyCheckInAnalyticsDetail({
               <ResponsiveContainer width="100%" height={CIRCLE_ANALYTICS_CHART_HEIGHT} debounce={50}>
                 <LineChart data={answerChartData} margin={chartMargin}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <CircleAnalyticsChartXAxis variant="sparse" />
+                  <CircleAnalyticsChartXAxis variant="daily" />
                   <YAxis
                     yAxisId="pain"
                     domain={[0, 10]}
@@ -490,8 +517,7 @@ export function CircleDailyCheckInAnalyticsDetail({
                       name={painLabel}
                       stroke="#3b82f6"
                       strokeWidth={2}
-                      {...circleAnalyticsSparseLineProps}
-                      type="monotone"
+                      {...circleAnalyticsDailyAnswerLineProps}
                     />
                   )}
                   {answerChartData.some((p) => p.mood != null) && (
@@ -501,8 +527,7 @@ export function CircleDailyCheckInAnalyticsDetail({
                       name={moodLabelText}
                       stroke="#10b981"
                       strokeWidth={2}
-                      {...circleAnalyticsSparseLineProps}
-                      type="monotone"
+                      {...circleAnalyticsDailyAnswerLineProps}
                     />
                   )}
                   {answerChartData.some((p) => p.sleep != null) && (
@@ -512,8 +537,7 @@ export function CircleDailyCheckInAnalyticsDetail({
                       name={sleepLabelText}
                       stroke="#8b5cf6"
                       strokeWidth={2}
-                      {...circleAnalyticsSparseLineProps}
-                      type="monotone"
+                      {...circleAnalyticsDailyAnswerLineProps}
                     />
                   )}
                   {answerChartData.some((p) => p.vitality != null) && (
@@ -524,8 +548,7 @@ export function CircleDailyCheckInAnalyticsDetail({
                       stroke="#f59e0b"
                       strokeWidth={2}
                       strokeDasharray="4 3"
-                      {...circleAnalyticsSparseLineProps}
-                      type="monotone"
+                      {...circleAnalyticsDailyAnswerLineProps}
                     />
                   )}
                 </LineChart>

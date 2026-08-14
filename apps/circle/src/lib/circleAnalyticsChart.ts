@@ -133,6 +133,14 @@ export const circleAnalyticsSparseLineProps = {
   connectNulls: false,
 };
 
+/** Daily buckets with gaps: curved segments only between consecutive check-in days. */
+export const circleAnalyticsDailyAnswerLineProps = {
+  type: 'monotone' as const,
+  dot: { r: 3, strokeWidth: 2 },
+  activeDot: { r: 4 },
+  connectNulls: false,
+};
+
 export type DailyCheckInParticipationChartPoint = CircleAnalyticsChartPoint & {
   date: string;
   chartDate?: string;
@@ -140,6 +148,46 @@ export type DailyCheckInParticipationChartPoint = CircleAnalyticsChartPoint & {
   skipped: number;
   notTaken: number;
 };
+
+export type DailyCheckInAnswerTrendChartPoint = CircleAnalyticsChartPoint & {
+  date: string;
+  chartDate?: string;
+  label?: string;
+  mood: number | null;
+  pain: number | null;
+  sleep: number | null;
+  vitality: number | null;
+};
+
+function normalizeAnalyticsDateKey(date: string): string {
+  const trimmed = date.trim();
+  if (!trimmed) return '';
+  if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) return trimmed.slice(0, 10);
+  const parsed = Date.parse(trimmed);
+  if (!Number.isNaN(parsed)) {
+    const d = new Date(parsed);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  return trimmed.toLowerCase();
+}
+
+function buildLastNCalendarDayKeys(days: number): string[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const keys: string[] = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    keys.push(`${y}-${m}-${day}`);
+  }
+  return keys;
+}
 
 /** One bar per day: finished, skipped, or not taken (mutually exclusive, stacked height 1). */
 export function prepareDailyCheckInParticipationChartData(
@@ -154,6 +202,64 @@ export function prepareDailyCheckInParticipationChartData(
       finished,
       skipped,
       notTaken,
+    };
+  });
+}
+
+/**
+ * Expand sparse check-in answers onto the same 30-day daily backbone as participation,
+ * so Answer Trends shares the full window (gaps on days without a completed check-in).
+ */
+export function prepareDailyCheckInAnswerTrendChartData(
+  answerTrend:
+    | Array<{
+        date: string;
+        label?: string;
+        mood?: number;
+        pain?: number;
+        sleep?: number;
+        vitality?: number;
+      }>
+    | undefined,
+  participationTimeline?: Array<{ date: string }> | undefined,
+): DailyCheckInAnswerTrendChartPoint[] {
+  const answers = Array.isArray(answerTrend) ? answerTrend : [];
+  const byDate = new Map<
+    string,
+    {
+      date: string;
+      label?: string;
+      mood?: number;
+      pain?: number;
+      sleep?: number;
+      vitality?: number;
+    }
+  >();
+  for (const point of answers) {
+    const key = normalizeAnalyticsDateKey(point.date);
+    if (key) byDate.set(key, point);
+    if (point.label) {
+      const labelKey = normalizeAnalyticsDateKey(point.label);
+      if (labelKey) byDate.set(labelKey, point);
+    }
+  }
+
+  const backboneDates =
+    Array.isArray(participationTimeline) && participationTimeline.length > 0
+      ? participationTimeline.map((point) => point.date)
+      : buildLastNCalendarDayKeys(CIRCLE_ANALYTICS_WINDOW_DAYS);
+
+  return prepareDailyBucketChartData(
+    backboneDates.map((date) => ({ date })),
+  ).map((day) => {
+    const match = byDate.get(normalizeAnalyticsDateKey(day.date));
+    return {
+      ...day,
+      label: match?.label ?? day.date,
+      mood: match?.mood ?? null,
+      pain: match?.pain ?? null,
+      sleep: match?.sleep ?? null,
+      vitality: match?.vitality ?? null,
     };
   });
 }
