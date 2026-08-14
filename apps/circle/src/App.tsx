@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
@@ -75,6 +75,9 @@ export default function App() {
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [startupPatientId, setStartupPatientId] = useState<string | null>(null);
   const [startupPreferenceReady, setStartupPreferenceReady] = useState(false);
+  const patientRefreshInFlightRef = useRef<
+    Promise<{ list: CirclePatientSummary[]; accepted: Awaited<ReturnType<typeof acceptPendingCircleInvites>> }> | null
+  >(null);
   const { language, t, setLanguage } = useCircleI18n(firebase.db, user);
   const { textSize, setTextSize } = useCircleTextSize(firebase.db, user);
   const { toast, showToast } = useCircleToast(7000);
@@ -173,37 +176,53 @@ export default function App() {
     [patients, selectedPatientId, startupPatientId, user],
   );
 
-  const refreshPatients = async (currentUser: User) => {
-    const accepted = await acceptPendingCircleInvites(firebase.db, currentUser);
-    await repairOrphanAcceptedInvitesForUser(firebase.db, currentUser.uid);
-    await repairInactiveAcceptedMemberDocsForUser(firebase.db, currentUser.uid);
-    await reconcileAcceptedMemberRolesForUser(firebase.db, currentUser.uid);
-    await ensureMemberCapabilitiesForUser(firebase.db, currentUser.uid);
-    if (currentUser.email) {
-      await ensureManagedContactsForAcceptedMembersForUser(
-        firebase.db,
-        currentUser.uid,
-        currentUser.email,
-      );
-      await syncManagedContactNamesFromMemberProfilesForUser(
-        firebase.db,
-        currentUser.uid,
-        currentUser.email,
-      );
-    }
-    const list = await listCirclePatientsAndProvisionsForUser(firebase.db, currentUser.uid);
-    setPatients(list);
-    for (const invite of accepted) {
-      const demotionMessage = proxySlotDemotionToastMessage(invite);
-      if (demotionMessage) {
-        showToast(demotionMessage, 'info');
-        break;
+  const refreshPatients = (currentUser: User) => {
+    const existing = patientRefreshInFlightRef.current;
+    if (existing) return existing;
+
+    const refresh = (async () => {
+      const accepted = await acceptPendingCircleInvites(firebase.db, currentUser);
+      await repairOrphanAcceptedInvitesForUser(firebase.db, currentUser.uid);
+      await repairInactiveAcceptedMemberDocsForUser(firebase.db, currentUser.uid);
+      await reconcileAcceptedMemberRolesForUser(firebase.db, currentUser.uid);
+      await ensureMemberCapabilitiesForUser(firebase.db, currentUser.uid);
+      if (currentUser.email) {
+        await ensureManagedContactsForAcceptedMembersForUser(
+          firebase.db,
+          currentUser.uid,
+          currentUser.email,
+        );
+        await syncManagedContactNamesFromMemberProfilesForUser(
+          firebase.db,
+          currentUser.uid,
+          currentUser.email,
+        );
       }
-    }
-    void sendWelcomeEmailsForAcceptedInvites(currentUser, accepted, list, language).catch((err) => {
-      console.warn('[Circle] Welcome email dispatch failed:', err);
-    });
-    return { list, accepted };
+      const list = await listCirclePatientsAndProvisionsForUser(firebase.db, currentUser.uid);
+      if (firebase.auth.currentUser?.uid === currentUser.uid) {
+        setPatients(list);
+      }
+      for (const invite of accepted) {
+        const demotionMessage = proxySlotDemotionToastMessage(invite);
+        if (demotionMessage) {
+          showToast(demotionMessage, 'info');
+          break;
+        }
+      }
+      void sendWelcomeEmailsForAcceptedInvites(currentUser, accepted, list, language).catch((err) => {
+        console.warn('[Circle] Welcome email dispatch failed:', err);
+      });
+      return { list, accepted };
+    })();
+
+    patientRefreshInFlightRef.current = refresh;
+    const clear = () => {
+      if (patientRefreshInFlightRef.current === refresh) {
+        patientRefreshInFlightRef.current = null;
+      }
+    };
+    void refresh.then(clear, clear);
+    return refresh;
   };
 
   const handleRefreshPatients = async () => {
