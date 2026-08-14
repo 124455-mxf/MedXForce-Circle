@@ -7,6 +7,7 @@ import {
   canSendPatientRemoteCommands,
   canStartVisitCapture,
   canViewRemoteSettingsTab,
+  circleDisplayFirstName,
   normalizeMemberRole,
   repairInactiveAcceptedMemberDocsForUser,
   repairOrphanAcceptedInvitesForUser,
@@ -279,6 +280,9 @@ export function CircleMainShell({
 
   const { contact: ownManagedContact } = useCircleOwnManagedContact(db, user, selectedPatient);
   const memberDisplayName = ownManagedContact?.name?.trim() || caregiverDisplayName;
+  const memberFirstName =
+    ownManagedContact?.firstName?.trim() ||
+    circleDisplayFirstName(memberDisplayName);
 
   const patientPresence = usePatientOnlinePresence(db, selectedPatient?.patientId);
 
@@ -547,6 +551,7 @@ export function CircleMainShell({
           onOpenProfile={onOpenProfile}
           selectedPatient={selectedPatient}
           memberDisplayName={memberDisplayName}
+          memberFirstName={memberFirstName}
           patientOnline={patientPresence.online}
           patientLastSeen={patientPresence.lastSeen}
           onOpenPatientSwitcher={
@@ -581,6 +586,7 @@ export function CircleMainShell({
               onSetStartupPatient={onSetStartupPatient}
               onCancelPending={onCancelPending}
               memberDisplayName={memberDisplayName}
+              memberFirstName={memberFirstName}
               patientOnline={patientPresence.online}
               patientLastSeen={patientPresence.lastSeen}
               db={db}

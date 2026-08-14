@@ -77,6 +77,17 @@ export function patientNameSortParts(patient: Pick<
   };
 }
 
+/** First name for compact UI titles; falls back to the first word of displayName. */
+export function circleDisplayFirstName(
+  displayName: string,
+  firstName?: string | null,
+): string {
+  const fromField = firstName?.trim();
+  if (fromField) return fromField;
+  const parts = displayName.trim().split(/\s+/).filter(Boolean);
+  return parts[0] || displayName.trim();
+}
+
 /** Sort patients by first name, then last name (A–Z). */
 export function compareCirclePatientsByName(
   a: CirclePatientSummary,

@@ -1,6 +1,6 @@
 import type { User } from 'firebase/auth';
 import { HeartHandshake } from 'lucide-react';
-import type { CirclePatientSummary } from '@medxforce/shared';
+import { circleDisplayFirstName, type CirclePatientSummary } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 import { useCircleT } from '../lib/circleI18nContext';
 import { MedXForceBrandLogo } from './MedXForceBrandLogo';
@@ -22,6 +22,8 @@ type CircleAppHeaderProps = {
   onOpenProfile: () => void;
   selectedPatient: CirclePatientSummary;
   memberDisplayName: string;
+  /** Optional structured first name for the compact "Member for Patient" title. */
+  memberFirstName?: string;
   patientOnline?: boolean;
   patientLastSeen?: number;
   onOpenPatientSwitcher?: () => void;
@@ -114,6 +116,7 @@ export function CircleAppHeader({
   onOpenProfile,
   selectedPatient,
   memberDisplayName,
+  memberFirstName,
   patientOnline = false,
   patientLastSeen = 0,
   onOpenPatientSwitcher,
@@ -121,8 +124,8 @@ export function CircleAppHeader({
   const t = useCircleT();
   const compact = variant === 'compact';
   const headerTitle = t('common.memberForPatientTitle', {
-    member: memberDisplayName,
-    patient: selectedPatient.displayName,
+    member: circleDisplayFirstName(memberDisplayName, memberFirstName),
+    patient: circleDisplayFirstName(selectedPatient.displayName, selectedPatient.firstName),
   });
 
   return (
