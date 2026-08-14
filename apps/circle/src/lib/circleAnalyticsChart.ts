@@ -159,34 +159,26 @@ export type DailyCheckInAnswerTrendChartPoint = CircleAnalyticsChartPoint & {
   vitality: number | null;
 };
 
-function normalizeAnalyticsDateKey(date: string): string {
-  const trimmed = date.trim();
-  if (!trimmed) return '';
-  if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) return trimmed.slice(0, 10);
-  const parsed = Date.parse(trimmed);
-  if (!Number.isNaN(parsed)) {
-    const d = new Date(parsed);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+/**
+ * Days-ago for a check-in answer. `YYYY-MM-DD` is read as a local calendar day —
+ * Date.parse would treat it as UTC midnight and shift the day west of Greenwich.
+ */
+function answerTrendDaysAgo(date: string, label?: string): number | null {
+  const iso = date.trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) {
+    const local = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+    if (!Number.isNaN(local.getTime())) return calendarDaysSince(local.getTime());
   }
-  return trimmed.toLowerCase();
+  return parseTimelinePointDate(date, label);
 }
 
-function buildLastNCalendarDayKeys(days: number): string[] {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const keys: string[] = [];
-  for (let i = days - 1; i >= 0; i -= 1) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    keys.push(`${y}-${m}-${day}`);
-  }
-  return keys;
+function localCalendarDayLabel(daysAgo: number): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - daysAgo);
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
 }
 
 /** One bar per day: finished, skipped, or not taken (mutually exclusive, stacked height 1). */
@@ -224,42 +216,41 @@ export function prepareDailyCheckInAnswerTrendChartData(
   participationTimeline?: Array<{ date: string }> | undefined,
 ): DailyCheckInAnswerTrendChartPoint[] {
   const answers = Array.isArray(answerTrend) ? answerTrend : [];
-  const byDate = new Map<
-    string,
-    {
-      date: string;
-      label?: string;
-      mood?: number;
-      pain?: number;
-      sleep?: number;
-      vitality?: number;
-    }
-  >();
-  for (const point of answers) {
-    const key = normalizeAnalyticsDateKey(point.date);
-    if (key) byDate.set(key, point);
-    if (point.label) {
-      const labelKey = normalizeAnalyticsDateKey(point.label);
-      if (labelKey) byDate.set(labelKey, point);
-    }
-  }
+  if (answers.length === 0) return [];
 
+  // Index 0 is today on the left, matching the participation buckets and day markers.
   const backboneDates =
     Array.isArray(participationTimeline) && participationTimeline.length > 0
-      ? participationTimeline.map((point) => point.date)
-      : buildLastNCalendarDayKeys(CIRCLE_ANALYTICS_WINDOW_DAYS);
+      ? [...participationTimeline].reverse().map((point) => point.date)
+      : [];
+  const slotCount = Math.max(CIRCLE_ANALYTICS_WINDOW_DAYS, backboneDates.length);
 
-  return prepareDailyBucketChartData(
-    backboneDates.map((date) => ({ date })),
-  ).map((day) => {
-    const match = byDate.get(normalizeAnalyticsDateKey(day.date));
-    return {
-      ...day,
-      label: match?.label ?? day.date,
-      mood: match?.mood ?? null,
-      pain: match?.pain ?? null,
-      sleep: match?.sleep ?? null,
-      vitality: match?.vitality ?? null,
-    };
-  });
+  const slots: DailyCheckInAnswerTrendChartPoint[] = [];
+  for (let daysAgo = 0; daysAgo < slotCount; daysAgo += 1) {
+    const date = backboneDates[daysAgo] ?? localCalendarDayLabel(daysAgo);
+    slots.push({
+      daysAgo,
+      date,
+      chartDate: date,
+      label: date,
+      mood: null,
+      pain: null,
+      sleep: null,
+      vitality: null,
+    });
+  }
+
+  for (const point of answers) {
+    const daysAgo = answerTrendDaysAgo(point.date, point.label);
+    if (daysAgo == null || daysAgo < 0 || daysAgo >= slots.length) continue;
+    const slot = slots[daysAgo];
+    slot.chartDate = point.date || slot.chartDate;
+    slot.label = point.label || point.date || slot.label;
+    slot.mood = point.mood ?? null;
+    slot.pain = point.pain ?? null;
+    slot.sleep = point.sleep ?? null;
+    slot.vitality = point.vitality ?? null;
+  }
+
+  return slots;
 }
