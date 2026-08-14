@@ -1085,6 +1085,13 @@ export function CircleCircleScreen({
         ? t('circle.expandTitleCircle')
         : t('circle.expandTitleCareTeam');
 
+  const composerExpandSubtitle =
+    inboxView === 'announcements'
+      ? t('circle.expandSubtitleAnnouncement')
+      : activeThread === 'open'
+        ? t('circle.expandSubtitleCircle')
+        : t('circle.expandSubtitleCareTeam');
+
   return (
     <div className="flex flex-col flex-1 min-h-0 max-h-full overflow-hidden">
       <div className={cn(circleWorkTabPanelClass(compactChrome), 'max-h-full')}>
@@ -1383,6 +1390,7 @@ export function CircleCircleScreen({
             sendingLabel={t('circle.sending')}
             maxLength={5000}
             expandTitle={composerExpandTitle}
+            expandSubtitle={composerExpandSubtitle}
             error={sendError}
           />
         ) : null}

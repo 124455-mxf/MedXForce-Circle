@@ -198,10 +198,8 @@ export function CircleCareCalendarAttendeeFields({
             className={cn(
               'px-4 pb-4 overflow-y-auto space-y-4 transition-[max-height]',
               isSearchActive
-                ? 'max-h-[min(36rem,75dvh)]'
-                : expanded
-                  ? 'max-h-80'
-                  : 'max-h-56',
+                ? 'max-h-[min(40rem,70dvh)]'
+                : 'max-h-[min(32rem,60dvh)]',
             )}
           >
             {options.length === 0 ? (

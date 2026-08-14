@@ -1,12 +1,47 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 import { Clock } from 'lucide-react';
 import { formatCareCalendarTimeRange, type ImminentCareCalendarAppointment } from '@medxforce/shared';
+import { useCircleLiveTranslatedText } from '../hooks/useCircleLiveTranslatedText';
 
 type CircleScheduleImminentBannerProps = {
   items: ImminentCareCalendarAppointment[];
   t: (path: string, params?: Record<string, unknown>) => string;
   onSelect?: (entryId: string) => void;
 };
+
+function ImminentItemRow({
+  item,
+  t,
+  onSelect,
+}: {
+  item: ImminentCareCalendarAppointment;
+  t: (path: string, params?: Record<string, unknown>) => string;
+  onSelect?: (entryId: string) => void;
+}) {
+  const { displayText } = useCircleLiveTranslatedText(item.title);
+  const timeLabel = formatCareCalendarTimeRange(item.startTimeMinutes, item.endTimeMinutes);
+  const label = t('schedulePage.views.imminentItem', {
+    title: displayText,
+    minutes: item.minutesUntilStart,
+  });
+  const detail = timeLabel ? `${label} · ${timeLabel}` : label;
+
+  if (!onSelect) {
+    return <li className="text-sm text-amber-950">{detail}</li>;
+  }
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => onSelect(item.entryId)}
+        className="w-full text-left rounded-xl px-3 py-2 bg-white/70 border border-amber-100 hover:bg-white transition-colors text-sm text-amber-950"
+      >
+        {detail}
+      </button>
+    </li>
+  );
+}
 
 export function CircleScheduleImminentBanner({
   items,
@@ -24,37 +59,14 @@ export function CircleScheduleImminentBanner({
         </p>
       </div>
       <ul className="space-y-1.5">
-        {items.map((item) => {
-          const timeLabel = formatCareCalendarTimeRange(
-            item.startTimeMinutes,
-            item.endTimeMinutes,
-          );
-          const label = t('schedulePage.views.imminentItem', {
-            title: item.title,
-            minutes: item.minutesUntilStart,
-          });
-          const detail = timeLabel ? `${label} · ${timeLabel}` : label;
-
-          if (!onSelect) {
-            return (
-              <li key={`${item.entryId}-${item.dateKey}`} className="text-sm text-amber-950">
-                {detail}
-              </li>
-            );
-          }
-
-          return (
-            <li key={`${item.entryId}-${item.dateKey}`}>
-              <button
-                type="button"
-                onClick={() => onSelect(item.entryId)}
-                className="w-full text-left rounded-xl px-3 py-2 bg-white/70 border border-amber-100 hover:bg-white transition-colors text-sm text-amber-950"
-              >
-                {detail}
-              </button>
-            </li>
-          );
-        })}
+        {items.map((item) => (
+          <ImminentItemRow
+            key={`${item.entryId}-${item.dateKey}`}
+            item={item}
+            t={t}
+            onSelect={onSelect}
+          />
+        ))}
       </ul>
     </div>
   );

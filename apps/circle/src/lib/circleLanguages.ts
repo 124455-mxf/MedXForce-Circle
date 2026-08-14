@@ -34,3 +34,25 @@ export function identityLanguageLabel(value: RemotePrimaryLanguage): string {
     'English (EN)'
   );
 }
+
+/** BCP 47 locale for `toLocaleDateString` / `toLocaleString` from the Circle UI language. */
+export function circleUiLanguageToLocale(language: CircleUiLanguage): string {
+  switch (language) {
+    case 'German':
+      return 'de';
+    case 'Spanish':
+      return 'es';
+    case 'Polish':
+      return 'pl';
+    default:
+      return 'en';
+  }
+}
+
+export function formatCircleDate(
+  date: Date,
+  language: CircleUiLanguage,
+  options: Intl.DateTimeFormatOptions,
+): string {
+  return date.toLocaleDateString(circleUiLanguageToLocale(language), options);
+}

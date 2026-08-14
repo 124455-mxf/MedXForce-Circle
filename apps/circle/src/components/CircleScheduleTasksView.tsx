@@ -5,31 +5,74 @@ import {
   collectSchedulePostTaskRows,
   collectSchedulePreTaskRows,
   formatCareCalendarTimeRange,
+  pendingAppointmentInviteEntriesForMember,
   type AssessmentHistoryMap,
   type CareCalendarDayEvent,
   type CareCalendarEntry,
+  type CareCalendarMemberInviteContext,
   type ScheduleTaskAppointmentRow,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
+import { CircleTranslatedUserText } from './CircleTranslatedUserText';
+import { useCircleI18nContext } from '../lib/circleI18nContext';
+import { formatCircleDate, type CircleUiLanguage } from '../lib/circleLanguages';
 
 type CircleScheduleTasksViewProps = {
   careEntries: CareCalendarEntry[];
   preferences: Record<string, unknown>;
   histories: AssessmentHistoryMap;
   memberRole?: string;
+  inviteContext?: CareCalendarMemberInviteContext;
   t: (path: string, params?: Record<string, unknown>) => string;
   onOpenAppointment: (dateKey: string, event: CareCalendarDayEvent) => void;
   compact?: boolean;
 };
 
-function formatAppointmentWhen(row: ScheduleTaskAppointmentRow): string {
-  const dateLabel = new Date(`${row.dateKey}T12:00:00`).toLocaleDateString(undefined, {
+function formatAppointmentWhen(row: ScheduleTaskAppointmentRow, language: CircleUiLanguage): string {
+  const dateLabel = formatCircleDate(new Date(`${row.dateKey}T12:00:00`), language, {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
   });
   const time = formatCareCalendarTimeRange(row.event.startTimeMinutes, row.event.endTimeMinutes);
   return time ? `${dateLabel} · ${time}` : dateLabel;
+}
+
+function entryToTaskRow(entry: CareCalendarEntry): ScheduleTaskAppointmentRow {
+  return {
+    entryId: entry.id,
+    dateKey: entry.startDateKey,
+    openPreTasks: 0,
+    openPreNudges: 0,
+    openPostTasks: 0,
+    openPostNudges: 0,
+    totalOpen: 1,
+    event: {
+      entryId: entry.id,
+      kind: entry.kind,
+      title: entry.title,
+      details: entry.details,
+      startTimeMinutes: entry.startTimeMinutes,
+      endTimeMinutes: entry.endTimeMinutes,
+      address: entry.address,
+      attendees: entry.attendees,
+      attendeeResponseSummary: entry.attendeeResponseSummary,
+      inviteeContactIds: entry.inviteeContactIds,
+      inviteeMemberUids: entry.inviteeMemberUids,
+      inviteeMemberUidByContactId: entry.inviteeMemberUidByContactId,
+      visitSubtype: entry.visitSubtype,
+      supportingNotes: entry.supportingNotes,
+      appointmentTasks: entry.appointmentTasks,
+      clinicalReferenceIds: entry.clinicalReferenceIds,
+      visitBrief: entry.visitBrief,
+      visitDebrief: entry.visitDebrief,
+      doctorName: entry.doctorName,
+      recurrence: entry.recurrence,
+      source: entry.source,
+      createdByName: entry.createdByName,
+      status: 'upcoming',
+    },
+  };
 }
 
 function TaskSection({
@@ -39,6 +82,7 @@ function TaskSection({
   countLabel,
   onOpen,
   compact,
+  accent = 'violet',
 }: {
   title: string;
   emptyLabel: string;
@@ -46,7 +90,9 @@ function TaskSection({
   countLabel: (count: number) => string;
   onOpen: (row: ScheduleTaskAppointmentRow) => void;
   compact?: boolean;
+  accent?: 'violet' | 'amber';
 }) {
+  const { language } = useCircleI18nContext();
   return (
     <section className="space-y-2">
       <h4
@@ -68,15 +114,28 @@ function TaskSection({
               <button
                 type="button"
                 onClick={() => onOpen(row)}
-                className="w-full text-left rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm hover:border-violet-200 hover:bg-violet-50/40 transition-colors"
+                className={cn(
+                  'w-full text-left rounded-2xl border bg-white px-4 py-3 shadow-sm transition-colors',
+                  accent === 'amber'
+                    ? 'border-amber-100 hover:border-amber-200 hover:bg-amber-50/40'
+                    : 'border-slate-100 hover:border-violet-200 hover:bg-violet-50/40',
+                )}
               >
-                <p className={cn('font-bold text-slate-800', compact ? 'text-sm' : 'text-base')}>
-                  {row.event.title}
-                </p>
+                <CircleTranslatedUserText
+                  text={row.event.title}
+                  className={cn('font-bold text-slate-800', compact ? 'text-sm' : 'text-base')}
+                  showToggle={false}
+                />
                 <p className={cn('text-slate-500 mt-0.5', compact ? 'text-xs' : 'text-sm')}>
-                  {formatAppointmentWhen(row)}
+                  {formatAppointmentWhen(row, language)}
                 </p>
-                <p className={cn('text-violet-700 font-semibold mt-1.5', compact ? 'text-xs' : 'text-sm')}>
+                <p
+                  className={cn(
+                    'font-semibold mt-1.5',
+                    compact ? 'text-xs' : 'text-sm',
+                    accent === 'amber' ? 'text-amber-700' : 'text-violet-700',
+                  )}
+                >
                   {countLabel(row.totalOpen)}
                 </p>
               </button>
@@ -93,6 +152,7 @@ export function CircleScheduleTasksView({
   preferences,
   histories,
   memberRole,
+  inviteContext,
   t,
   onOpenAppointment,
   compact = false,
@@ -109,11 +169,14 @@ export function CircleScheduleTasksView({
     memberRole,
     limit: 3,
   });
-  const isEmpty = preRows.length === 0 && postRows.length === 0;
+  const awaitingRows = inviteContext
+    ? pendingAppointmentInviteEntriesForMember(careEntries, inviteContext).map(entryToTaskRow)
+    : [];
+  const isEmpty = preRows.length === 0 && postRows.length === 0 && awaitingRows.length === 0;
 
   if (isEmpty) {
     return (
-      <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+      <div className="flex flex-1 min-h-0 flex-col items-center justify-center py-10 px-4 text-center">
         <div className="p-3 rounded-2xl bg-violet-50 text-violet-600 mb-3">
           <ClipboardList size={compact ? 24 : 28} />
         </div>
@@ -128,7 +191,18 @@ export function CircleScheduleTasksView({
   }
 
   return (
-    <div className="space-y-6 py-1">
+    <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-6 py-1 pb-4">
+      {inviteContext ? (
+        <TaskSection
+          title={t('schedulePage.views.tasksAwaitingRsvp')}
+          emptyLabel={t('schedulePage.views.tasksAwaitingRsvpEmpty')}
+          rows={awaitingRows}
+          countLabel={() => t('schedulePage.views.tasksAwaitingRsvpHint')}
+          onOpen={(row) => onOpenAppointment(row.dateKey, row.event)}
+          compact={compact}
+          accent="amber"
+        />
+      ) : null}
       <TaskSection
         title={t('schedulePage.views.tasksPrepare')}
         emptyLabel={t('schedulePage.views.tasksPrepareEmpty')}

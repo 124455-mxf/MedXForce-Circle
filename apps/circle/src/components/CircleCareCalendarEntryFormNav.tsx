@@ -6,7 +6,12 @@ import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { RESPONSIVE_FORM_MODAL_NAV_CLASS } from '../lib/responsiveModalClasses';
 import { cn } from '../lib/utils';
 
-export type CircleCareCalendarFormSectionId = 'general' | 'schedule' | 'tasks' | 'invitees';
+export type CircleCareCalendarFormSectionId =
+  | 'general'
+  | 'schedule'
+  | 'tasks'
+  | 'invitees'
+  | 'review';
 
 export type CircleCareCalendarFormSection = {
   id: CircleCareCalendarFormSectionId;
@@ -60,7 +65,7 @@ export function CircleCareCalendarEntryFormNav({
     <div className={RESPONSIVE_FORM_MODAL_NAV_CLASS}>
       <div className="flex items-center justify-between gap-3 mb-2 sm:mb-3 md:mb-2 tablet-portrait:mb-2 landscape:mb-1.5 landscape-short:mb-1">
         <div className="space-y-0.5 sm:space-y-1 min-w-0">
-          <div className="inline-flex px-3 py-1 bg-violet-50 text-violet-700 rounded-full text-[10px] font-bold uppercase tracking-wider">
+          <div className="inline-flex px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-[10px] font-bold uppercase tracking-wider">
             {stepOfLabel}
           </div>
           <h4 className="text-base font-bold text-slate-800 truncate tablet-portrait:hidden landscape-short:hidden">
@@ -86,7 +91,7 @@ export function CircleCareCalendarEntryFormNav({
             type="button"
             onClick={isLastStep ? onFinish : onNext}
             disabled={busy}
-            className="p-2.5 rounded-2xl transition-all shadow-lg disabled:opacity-50 bg-violet-600 text-white shadow-violet-100 hover:bg-violet-700"
+            className="p-2.5 rounded-2xl transition-all shadow-lg disabled:opacity-50 bg-blue-600 text-white shadow-blue-100 hover:bg-blue-700"
             aria-label={isLastStep ? 'Save appointment' : 'Next section'}
           >
             {isLastStep ? <Check size={18} /> : <ChevronRight size={18} />}
@@ -96,7 +101,7 @@ export function CircleCareCalendarEntryFormNav({
 
       <div
         ref={sliderRef}
-        className="flex items-center gap-2 md:grid md:grid-cols-4 md:gap-1.5 md:overflow-visible overflow-x-auto -mx-4 px-4 sm:-mx-5 sm:px-5 md:-mx-6 md:px-6 landscape:flex landscape:overflow-x-auto landscape:-mx-4 landscape:px-4 py-1 no-scrollbar scroll-smooth"
+        className="flex items-center gap-2 overflow-x-auto -mx-4 px-4 sm:-mx-5 sm:px-5 md:-mx-6 md:px-6 landscape:flex landscape:overflow-x-auto landscape:-mx-4 landscape:px-4 py-1 no-scrollbar scroll-smooth"
       >
         {sections.map((section, idx) => {
           const Icon = section.icon;
@@ -114,8 +119,8 @@ export function CircleCareCalendarEntryFormNav({
                 'md:w-full md:min-w-0 md:justify-center md:px-2 md:py-2 md:gap-1.5',
                 'landscape:w-auto landscape:shrink-0',
                 isActive
-                  ? 'bg-violet-600 border-violet-600 text-white shadow-md shadow-violet-200/80 z-10'
-                  : 'bg-white border-slate-100 text-slate-500 hover:border-violet-200 hover:text-violet-700',
+                  ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200/80 z-10'
+                  : 'bg-white border-slate-100 text-slate-500 hover:border-blue-200 hover:text-blue-700',
               )}
             >
               <span

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Firestore } from 'firebase/firestore';
 import { AnimatePresence, motion } from 'motion/react';
-import { Calendar, CheckSquare, ClipboardList, Users, X } from 'lucide-react';
+import { Calendar, CheckSquare, ClipboardList, Eye, Users, X } from 'lucide-react';
 import { CircleCareCalendarAddressFields } from './CircleCareCalendarAddressFields';
 import { CircleCareCalendarAttendeeFields } from './CircleCareCalendarAttendeeFields';
 import {
@@ -39,6 +39,8 @@ import {
   type CareCalendarEntryKind,
   type CareCalendarRecurrence,
   defaultNewCircleCareCalendarAttendees,
+  formatCareCalendarTimeRange,
+  isCareCalendarInternalMeeting,
   sanitizeCareCalendarAttendees,
   defaultAppointmentTasksForSubtype,
   defaultVisitSubtypeForKind,
@@ -137,6 +139,13 @@ function CircleCareCalendarEntryModalContent({
   const [appointmentTasks, setAppointmentTasks] = useState<CareCalendarAppointmentTask[]>([]);
   const [busy, setBusy] = useState(false);
   const attendeeOptions = useCareCalendarAttendeeOptions(db, patientId);
+  const inviteeOptions = useMemo(() => {
+    const hidePatient = isCareCalendarInternalMeeting(kind);
+    return attendeeOptions.filter((option) => {
+      if (hidePatient && option.role === 'patient') return false;
+      return true;
+    });
+  }, [attendeeOptions, kind]);
   const [error, setError] = useState<string | null>(null);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
@@ -229,6 +238,12 @@ function CircleCareCalendarEntryModalContent({
       shortTitle: ct('formSections.inviteesShort'),
       icon: Users,
     });
+    sections.push({
+      id: 'review',
+      title: ct('formSections.review'),
+      shortTitle: ct('formSections.reviewShort'),
+      icon: Eye,
+    });
     return sections;
   }, [kind, t]);
 
@@ -298,6 +313,16 @@ function CircleCareCalendarEntryModalContent({
       setSupportingNotes('');
       setAppointmentTasks([]);
     }
+    if (isCareCalendarInternalMeeting(nextKind)) {
+      setAttendees((current) => current.filter((attendee) => attendee.role !== 'patient'));
+    } else if (!editingEntry) {
+      setAttendees((current) => {
+        if (current.some((attendee) => attendee.role === 'patient')) return current;
+        return defaultNewCircleCareCalendarAttendees(attendeeOptions, organizerContactId, {
+          includePatient: true,
+        });
+      });
+    }
   };
 
   const handleVisitSubtypeChange = (subtype: CareCalendarVisitSubtype | undefined) => {
@@ -311,7 +336,7 @@ function CircleCareCalendarEntryModalContent({
     if (editingEntry || !organizerContactReady) return;
 
     const patientOption = attendeeOptions.find((option) => option.role === 'patient');
-    if (!patientOption) return;
+    if (!isCareCalendarInternalMeeting(kind) && !patientOption) return;
 
     if (
       organizerContactId &&
@@ -322,9 +347,19 @@ function CircleCareCalendarEntryModalContent({
 
     setAttendees((current) => {
       if (current.length > 0) return current;
-      return defaultNewCircleCareCalendarAttendees(attendeeOptions, organizerContactId);
+      return defaultNewCircleCareCalendarAttendees(attendeeOptions, organizerContactId, {
+        includePatient: !isCareCalendarInternalMeeting(kind),
+      });
     });
-  }, [editingEntry, attendeeOptions, organizerContactId, organizerContactReady]);
+  }, [editingEntry, attendeeOptions, organizerContactId, organizerContactReady, kind]);
+
+  useEffect(() => {
+    if (!isCareCalendarInternalMeeting(kind)) return;
+    setAttendees((current) => {
+      const next = current.filter((attendee) => attendee.role !== 'patient');
+      return next.length === current.length ? current : next;
+    });
+  }, [kind]);
 
   const recurrence = useMemo((): CareCalendarRecurrence => {
     if (recurrenceMode === 'daily') {
@@ -368,7 +403,9 @@ function CircleCareCalendarEntryModalContent({
           }
         : undefined,
       attendees: (() => {
-        const cleaned = sanitizeCareCalendarAttendees(attendees);
+        const cleaned = sanitizeCareCalendarAttendees(attendees).filter((attendee) =>
+          isCareCalendarInternalMeeting(kind) ? attendee.role !== 'patient' : true,
+        );
         return cleaned.length ? cleaned : undefined;
       })(),
       visitSubtype: supportsCareCalendarAppointmentEpisode(kind) ? visitSubtype : undefined,
@@ -541,7 +578,7 @@ function CircleCareCalendarEntryModalContent({
                       className={cn(
                         'px-3 py-2.5 rounded-xl text-sm font-bold border transition-colors',
                         kind === k
-                          ? 'bg-violet-600 text-white border-violet-600'
+                          ? 'bg-blue-600 text-white border-blue-600'
                           : 'bg-slate-50 text-slate-600 border-slate-100',
                       )}
                     >
@@ -607,7 +644,7 @@ function CircleCareCalendarEntryModalContent({
                         className={cn(
                           'px-3 py-2 rounded-xl text-xs font-bold border',
                           recurrenceMode === mode
-                            ? 'bg-violet-100 text-violet-700 border-violet-200'
+                            ? 'bg-blue-100 text-blue-700 border-blue-200'
                             : 'bg-white text-slate-500 border-slate-100',
                         )}
                       >
@@ -625,7 +662,7 @@ function CircleCareCalendarEntryModalContent({
                           className={cn(
                             'w-10 h-10 rounded-xl text-xs font-bold',
                             weeklyDays.includes(day)
-                              ? 'bg-violet-600 text-white'
+                              ? 'bg-blue-600 text-white'
                               : 'bg-slate-100 text-slate-500',
                           )}
                         >
@@ -707,7 +744,7 @@ function CircleCareCalendarEntryModalContent({
 
             {section === 'invitees' && (
               <CircleCareCalendarAttendeeFields
-                options={attendeeOptions}
+                options={inviteeOptions}
                 attendees={attendees}
                 onChange={setAttendees}
                 translate={ct}
@@ -720,7 +757,84 @@ function CircleCareCalendarEntryModalContent({
                 caregiversSectionLabel={ct('fields.attendeesCaregiversSection')}
                 familySectionLabel={ct('fields.attendeesFamilySection')}
                 patientSectionLabel={ct('fields.attendeesPatientSection')}
+                defaultExpanded
               />
+            )}
+
+            {section === 'review' && (
+              <div className="space-y-4">
+                <p className="text-sm text-slate-500">{ct('formSections.reviewHint')}</p>
+                <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 space-y-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {ct('formSections.general')}
+                    </p>
+                    <p className="text-base font-bold text-slate-900 mt-1">{title.trim() || '—'}</p>
+                    <p className="text-xs font-bold uppercase tracking-wider text-blue-700 mt-1">
+                      {[
+                        ct(`kinds.${kind}`),
+                        visitSubtype ? ct(`visitSubtype.${visitSubtype}`) : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
+                    {doctorName.trim() ? (
+                      <p className="text-sm text-slate-600 mt-1">{doctorName.trim()}</p>
+                    ) : null}
+                    {details.trim() ? (
+                      <p className="text-sm text-slate-600 mt-2 whitespace-pre-wrap">{details.trim()}</p>
+                    ) : null}
+                  </div>
+                  <div className="border-t border-slate-100 pt-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {ct('formSections.schedule')}
+                    </p>
+                    <p className="text-sm text-slate-700 mt-1">
+                      {[
+                        startDateKey,
+                        formatCareCalendarTimeRange(
+                          parseCareCalendarTimeInput(startTime) ?? undefined,
+                          (() => {
+                            const startM = parseCareCalendarTimeInput(startTime);
+                            return startM != null
+                              ? careCalendarEndMinutesFromDuration(startM, durationMinutes)
+                              : undefined;
+                          })(),
+                        ),
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
+                    {hasCareCalendarAddress(address) ? (
+                      <p className="text-sm text-slate-600 mt-1">
+                        {address.label?.trim() || address.line1?.trim()}
+                      </p>
+                    ) : null}
+                  </div>
+                  {supportsCareCalendarAppointmentEpisode(kind) ? (
+                    <div className="border-t border-slate-100 pt-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        {ct('formSections.tasks')}
+                      </p>
+                      <p className="text-sm text-slate-700 mt-1">
+                        {ct('fields.tasksCount', {
+                          count: sanitizeCareCalendarAppointmentTasks(appointmentTasks).length,
+                        })}
+                      </p>
+                    </div>
+                  ) : null}
+                  <div className="border-t border-slate-100 pt-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {ct('formSections.invitees')}
+                    </p>
+                    <p className="text-sm text-slate-700 mt-1">
+                      {attendees.length
+                        ? attendees.map((attendee) => attendee.name).join(', ')
+                        : ct('fields.attendeesOptional')}
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
 
             {error && <p className="text-sm font-medium text-red-600">{error}</p>}
@@ -740,10 +854,20 @@ function CircleCareCalendarEntryModalContent({
             <button
               type="button"
               disabled={busy}
-              onClick={() => void handleSave()}
-              className="flex-1 min-w-0 px-4 py-3 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 disabled:opacity-50"
+              onClick={() => {
+                if (section === 'review') {
+                  void handleSave();
+                  return;
+                }
+                handleSectionNext();
+              }}
+              className="flex-1 min-w-0 px-4 py-3 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-50"
             >
-              {busy ? ct('saving') : ct('save')}
+              {busy
+                ? ct('saving')
+                : section === 'review'
+                  ? ct('save')
+                  : t('common.next')}
             </button>
           </div>
         </motion.div>

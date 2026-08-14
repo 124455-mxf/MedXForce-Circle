@@ -1,5 +1,5 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { MapPin } from 'lucide-react';
+import { MapPin, type LucideIcon } from 'lucide-react';
 import {
   buildAppleMapsUrl,
   buildGoogleMapsUrl,
@@ -14,6 +14,7 @@ type CircleCareCalendarMapsLinksProps = {
   ct: (key: string) => string;
   showFullAddress?: boolean;
   sectionHeader?: string;
+  sectionHeaderIcon?: LucideIcon;
 };
 
 export function CircleCareCalendarMapsLinks({
@@ -21,6 +22,7 @@ export function CircleCareCalendarMapsLinks({
   ct,
   showFullAddress = false,
   sectionHeader,
+  sectionHeaderIcon: SectionHeaderIcon,
 }: CircleCareCalendarMapsLinksProps) {
   if (!hasCareCalendarAddress(address)) return null;
 
@@ -29,16 +31,16 @@ export function CircleCareCalendarMapsLinks({
   const preferApple = prefersAppleMapsPlatform();
   const addressLines = showFullAddress ? formatCareCalendarAddressDisplayLines(address) : [];
   const linkClass =
-    'inline-flex items-center gap-1 text-[10px] font-bold text-violet-700 hover:underline';
+    'inline-flex items-center gap-1.5 text-sm font-bold text-violet-700 hover:underline';
   const secondaryClass =
-    'inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 hover:underline';
+    'inline-flex items-center gap-1.5 text-sm font-bold text-slate-600 hover:underline';
 
   const mapsLinks = (
     <div className="flex flex-wrap gap-2">
       {preferApple ? (
         <>
           <a href={appleMapsUrl} target="_blank" rel="noopener noreferrer" className={linkClass}>
-            <MapPin size={12} />
+            <MapPin size={14} />
             {ct('openMaps')}
           </a>
           <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer" className={secondaryClass}>
@@ -48,7 +50,7 @@ export function CircleCareCalendarMapsLinks({
       ) : (
         <>
           <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer" className={linkClass}>
-            <MapPin size={12} />
+            <MapPin size={14} />
             {ct('openGoogleMaps')}
           </a>
           <a href={appleMapsUrl} target="_blank" rel="noopener noreferrer" className={secondaryClass}>
@@ -65,7 +67,7 @@ export function CircleCareCalendarMapsLinks({
         {preferApple ? (
           <>
             <a href={appleMapsUrl} target="_blank" rel="noopener noreferrer" className={linkClass}>
-              <MapPin size={12} />
+              <MapPin size={14} />
               {address.label || ct('openMaps')}
             </a>
             <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer" className={secondaryClass}>
@@ -75,7 +77,7 @@ export function CircleCareCalendarMapsLinks({
         ) : (
           <>
             <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer" className={linkClass}>
-              <MapPin size={12} />
+              <MapPin size={14} />
               {address.label || ct('openGoogleMaps')}
             </a>
             <a href={appleMapsUrl} target="_blank" rel="noopener noreferrer" className={secondaryClass}>
@@ -90,7 +92,12 @@ export function CircleCareCalendarMapsLinks({
   return (
     <div className="space-y-1.5">
       {sectionHeader ? (
-        <p className="text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-2">{sectionHeader}</p>
+        <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-700">
+          {SectionHeaderIcon ? (
+            <SectionHeaderIcon size={14} className="shrink-0 text-violet-600" aria-hidden />
+          ) : null}
+          {sectionHeader}
+        </p>
       ) : null}
       {addressLines.map((line) => (
         <p key={line} className="text-sm text-slate-600">

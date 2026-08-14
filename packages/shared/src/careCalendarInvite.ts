@@ -1194,6 +1194,31 @@ function attendeeInviteResponseForMember(
   return self?.response ?? 'pending';
 }
 
+/**
+ * Current member's invite RSVP for a calendar day event, or null when they are not
+ * an invitee who needs to accept/decline.
+ */
+export function resolveSelfInviteRsvpForCareEvent(
+  event: {
+    attendees?: CareCalendarAttendee[];
+    attendeeResponseSummary?: CareCalendarEntry['attendeeResponseSummary'];
+    inviteeMemberUidByContactId?: Record<string, string>;
+    inviteeMemberUids?: string[];
+  },
+  context: CareCalendarMemberInviteContext,
+): CareCalendarAttendeeResponse | null {
+  if (!context.memberUid) return null;
+  const attendees = mergeAttendeeResponses(
+    event.attendees,
+    event.attendeeResponseSummary,
+    event.inviteeMemberUidByContactId,
+  );
+  const invitedByUid = (event.inviteeMemberUids ?? []).includes(context.memberUid);
+  const self = findCareCalendarAttendeeForMember(attendees, context);
+  if (!invitedByUid && (!self || !attendeeNeedsAppointmentInvite(self))) return null;
+  return self?.response ?? 'pending';
+}
+
 export function pendingAppointmentInviteEntriesForMember(
   entries: CareCalendarEntry[],
   context: CareCalendarMemberInviteContext,

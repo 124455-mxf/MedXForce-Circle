@@ -5,6 +5,7 @@ import { Calendar, Mic } from 'lucide-react';
 import {
   APPOINTMENT_INVITE_POST_MARKER,
   appointmentInviteAttendeesFromPost,
+  applyCareCalendarAttendeeDisplayNames,
   canOfferRecordVisitForAppointmentOnDate,
   formatCareCalendarAttendeeSummary,
   formatCareCalendarTimeRange,
@@ -18,8 +19,12 @@ import {
   type CircleMemberThreadPost,
 } from '@medxforce/shared';
 import type { CircleTranslator } from '../lib/circleI18nContext';
+import { useCircleI18nContext } from '../lib/circleI18nContext';
+import { formatCircleDate } from '../lib/circleLanguages';
+import { useCareCalendarAttendeeOptions } from '../hooks/useCareCalendarAttendeeOptions';
 import { CircleCareCalendarInviteRsvpBar } from './CircleCareCalendarInviteRsvpBar';
 import { CircleCareCalendarMapsLinks } from './CircleCareCalendarMapsLinks';
+import { CircleTranslatedUserText } from './CircleTranslatedUserText';
 import { cn } from '../lib/utils';
 
 type LoadedCareCalendarEntry = {
@@ -134,8 +139,17 @@ export function CircleAppointmentInvitePost({
   const [entry, setEntry] = useState<LoadedCareCalendarEntry | null>(null);
   const [entryLoaded, setEntryLoaded] = useState(false);
 
+  const { language } = useCircleI18nContext();
   const ct = (key: string, params?: Record<string, unknown>) =>
     t(`dashboard.careCalendar.${key}`, params);
+  const attendeeOptions = useCareCalendarAttendeeOptions(db, patientId);
+  const nameByContactId = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const option of attendeeOptions) {
+      if (option.contactId && option.name) map[option.contactId] = option.name;
+    }
+    return map;
+  }, [attendeeOptions]);
 
   const entryId = post.careCalendarEntryId || parsed?.entryId || '';
   const fallbackAttendees = useMemo(
@@ -144,12 +158,31 @@ export function CircleAppointmentInvitePost({
   );
   const rsvpAttendees = useMemo(
     () =>
-      mergeAttendeeResponses(
-        entry?.attendees ?? fallbackAttendees,
-        entry?.attendeeResponseSummary,
-        entry?.inviteeMemberUidByContactId,
-      ) ?? fallbackAttendees,
-    [entry?.attendeeResponseSummary, entry?.attendees, entry?.inviteeMemberUidByContactId, fallbackAttendees],
+      applyCareCalendarAttendeeDisplayNames(
+        mergeAttendeeResponses(
+          entry?.attendees ?? fallbackAttendees,
+          entry?.attendeeResponseSummary,
+          entry?.inviteeMemberUidByContactId,
+        ) ?? fallbackAttendees,
+        {
+          nameByContactId,
+          selfContactIds: [memberContactId, memberDocContactId, inviteContactId].filter(
+            (id): id is string => Boolean(id),
+          ),
+          selfDisplayName: memberDisplayName,
+        },
+      ),
+    [
+      entry?.attendeeResponseSummary,
+      entry?.attendees,
+      entry?.inviteeMemberUidByContactId,
+      fallbackAttendees,
+      inviteContactId,
+      memberContactId,
+      memberDisplayName,
+      memberDocContactId,
+      nameByContactId,
+    ],
   );
   const inviteeContactIds = entry?.inviteeContactIds?.length
     ? entry.inviteeContactIds
@@ -176,13 +209,14 @@ export function CircleAppointmentInvitePost({
     );
   }, [db, entryId, patientId]);
 
-  const displayTitle = entry?.title || parsed?.title || post.authorName;
+  const rawTitle = entry?.title || parsed?.title || '';
+  const displayTitle = rawTitle || post.authorName;
   const kindLabel = ct(`kinds.${entry?.kind ?? parsed?.kind ?? 'doctor'}`);
   const visitSubtype = entry?.visitSubtype ?? parsed?.visitSubtype;
 
   const scheduleLine = useMemo(() => {
     if (!entry?.startDateKey) return null;
-    const dateLabel = new Date(`${entry.startDateKey}T12:00:00`).toLocaleDateString(undefined, {
+    const dateLabel = formatCircleDate(new Date(`${entry.startDateKey}T12:00:00`), language, {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
@@ -193,7 +227,7 @@ export function CircleAppointmentInvitePost({
       entry.endTimeMinutes,
     );
     return `${dateLabel}${timeLabel ? ` · ${timeLabel}` : ''}`;
-  }, [entry]);
+  }, [entry, language]);
 
   const goingWith = rsvpAttendees?.length
     ? formatCareCalendarAttendeeSummary(rsvpAttendees, { excludePatient: true })
@@ -248,20 +282,23 @@ export function CircleAppointmentInvitePost({
             <Calendar size={14} aria-hidden />
           </span>
           <div className="min-w-0 space-y-1">
-            {fallbackLines.map((line, index) => (
-              <p
-                key={`${index}-${line}`}
-                className={cn(
-                  'text-slate-700',
-                  index === 0 ? 'font-bold text-slate-900' : 'text-sm font-medium',
-                  !disableTruncate && index > 0 ? 'line-clamp-2' : '',
-                )}
-              >
-                {index === 0 && line.startsWith(APPOINTMENT_INVITE_POST_MARKER)
+            {fallbackLines.map((line, index) => {
+              const displayLine =
+                index === 0 && line.startsWith(APPOINTMENT_INVITE_POST_MARKER)
                   ? line.slice(APPOINTMENT_INVITE_POST_MARKER.length).trim()
-                  : line}
-              </p>
-            ))}
+                  : line;
+              return (
+                <CircleTranslatedUserText
+                  key={`${index}-${line}`}
+                  text={displayLine}
+                  className={cn(
+                    'text-slate-700',
+                    index === 0 ? 'font-bold text-slate-900' : 'text-sm font-medium',
+                    !disableTruncate && index > 0 ? 'line-clamp-2' : '',
+                  )}
+                />
+              );
+            })}
           </div>
         </div>
         {entryId ? (
@@ -303,33 +340,46 @@ export function CircleAppointmentInvitePost({
               ) : null}
             </div>
             <div className="flex-1 py-3 px-3 min-w-0">
-              <p className="text-base font-bold text-slate-900">{displayTitle}</p>
+              {rawTitle ? (
+                <CircleTranslatedUserText
+                  text={rawTitle}
+                  className="text-base font-bold text-slate-900"
+                />
+              ) : (
+                <p className="text-base font-bold text-slate-900">{displayTitle}</p>
+              )}
               <p className="text-[10px] font-bold uppercase tracking-wider text-violet-700 mt-0.5">
                 {kindLabel}
-                {visitSubtype ? ` · ${visitSubtype}` : ''}
+                {visitSubtype ? ` · ${ct(`visitSubtype.${visitSubtype}`)}` : ''}
               </p>
             </div>
           </div>
         ) : (
           <div className="px-3 py-3 border-b border-violet-100">
-            <p className="text-base font-bold text-slate-900">{displayTitle}</p>
+            {rawTitle ? (
+              <CircleTranslatedUserText
+                text={rawTitle}
+                className="text-base font-bold text-slate-900"
+              />
+            ) : (
+              <p className="text-base font-bold text-slate-900">{displayTitle}</p>
+            )}
             <p className="text-[10px] font-bold uppercase tracking-wider text-violet-700 mt-0.5">
               {kindLabel}
-              {visitSubtype ? ` · ${visitSubtype}` : ''}
+              {visitSubtype ? ` · ${ct(`visitSubtype.${visitSubtype}`)}` : ''}
             </p>
           </div>
         )}
 
         <div className="px-3 py-3 space-y-2">
           {entry?.details ? (
-            <p
+            <CircleTranslatedUserText
+              text={entry.details}
               className={cn(
                 'text-sm text-slate-600 whitespace-pre-wrap',
                 disableTruncate ? '' : 'line-clamp-6',
               )}
-            >
-              {entry.details}
-            </p>
+            />
           ) : null}
           {goingWith ? (
             <p className="text-sm text-slate-600">
@@ -337,14 +387,13 @@ export function CircleAppointmentInvitePost({
             </p>
           ) : null}
           {entry?.supportingNotes ? (
-            <p
+            <CircleTranslatedUserText
+              text={entry.supportingNotes}
               className={cn(
                 'text-sm text-slate-500 whitespace-pre-wrap',
                 disableTruncate ? '' : 'line-clamp-4',
               )}
-            >
-              {entry.supportingNotes}
-            </p>
+            />
           ) : null}
           {entry?.address ? <CircleCareCalendarMapsLinks address={entry.address} ct={ct} /> : null}
         </div>

@@ -10,15 +10,12 @@ import {
 } from '@medxforce/shared';
 import { formatPatientOnlineDurationMinutes } from '../hooks/usePatientOnlinePresence';
 import type { CircleTranslator } from './circleI18nContext';
-import type { CircleUiLanguage } from './circleLanguages';
-import { identityLanguageLabel, resolveIdentityPrimaryLanguage } from './circleLanguages';
-
-const LOCALE_BY_LANGUAGE: Record<CircleUiLanguage, string> = {
-  English: 'en',
-  German: 'de',
-  Spanish: 'es',
-  Polish: 'pl',
-};
+import {
+  circleUiLanguageToLocale,
+  identityLanguageLabel,
+  resolveIdentityPrimaryLanguage,
+  type CircleUiLanguage,
+} from './circleLanguages';
 
 export function dashboardPlural(
   t: CircleTranslator,
@@ -46,7 +43,7 @@ export function formatDashboardTimestamp(
   if (!ts) return t('dashboard.notRecordedYet');
 
   const d = new Date(ts);
-  const locale = LOCALE_BY_LANGUAGE[language];
+  const locale = circleUiLanguageToLocale(language);
   const time = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
   const today = new Date();
 
@@ -288,7 +285,7 @@ function daysBetween(from: Date, to: Date): number {
 }
 
 function formatMonthDay(language: CircleUiLanguage, date: Date): string {
-  return date.toLocaleDateString(LOCALE_BY_LANGUAGE[language], {
+  return date.toLocaleDateString(circleUiLanguageToLocale(language), {
     month: 'long',
     day: 'numeric',
   });

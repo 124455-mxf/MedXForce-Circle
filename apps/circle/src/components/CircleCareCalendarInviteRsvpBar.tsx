@@ -53,6 +53,7 @@ export function CircleCareCalendarInviteRsvpBar({
   eventStatus,
   t,
   className,
+  compact = false,
 }: {
   db: Firestore;
   patientId: string;
@@ -72,6 +73,8 @@ export function CircleCareCalendarInviteRsvpBar({
   eventStatus?: 'past' | 'today' | 'upcoming';
   t: (path: string, params?: Record<string, unknown>) => string;
   className?: string;
+  /** Compact schedule cards: only show interactive prompt when response is still outstanding. */
+  compact?: boolean;
 }) {
   const inviteContext = useMemo<CareCalendarMemberInviteContext>(
     () => ({
@@ -229,27 +232,37 @@ export function CircleCareCalendarInviteRsvpBar({
   };
 
   if (response === 'accepted' || response === 'declined') {
-    return (
-      <p className={cn('text-sm font-semibold text-slate-700', className)}>
-        {response === 'accepted'
-          ? t('circle.appointmentInviteYouAccepted')
-          : t('circle.appointmentInviteYouDeclined')}
-      </p>
-    );
+    // Status is already shown on cards / Going-with badges — avoid duplicate copy.
+    return null;
   }
 
   return (
-    <div className={cn('space-y-2 rounded-xl border border-violet-100 bg-violet-50/70 p-3', className)}>
-      <p className="text-xs font-bold uppercase tracking-wide text-violet-800">
-        {t('dashboard.careCalendar.legendAppointment')}
+    <div
+      className={cn(
+        'space-y-2 rounded-xl border',
+        compact
+          ? 'border-amber-200 bg-amber-50/80 p-2.5'
+          : 'border-violet-100 bg-violet-50/70 p-3',
+        className,
+      )}
+    >
+      <p
+        className={cn(
+          'font-bold uppercase tracking-wide',
+          compact ? 'text-[10px] text-amber-900' : 'text-xs text-violet-800',
+        )}
+      >
+        {t('schedulePage.views.yourRsvpPending')}
       </p>
-      <p className="text-sm text-slate-700">{t('circle.appointmentInviteRespondPrompt')}</p>
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
           disabled={busy}
           onClick={() => void handleRespond('accepted')}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-3 py-2 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-60"
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-white disabled:opacity-60',
+            compact ? 'bg-amber-600 hover:bg-amber-700' : 'bg-violet-600 hover:bg-violet-700',
+          )}
         >
           {busy ? <Loader2 size={12} className="animate-spin" /> : null}
           {t('circle.appointmentInviteAccept')}

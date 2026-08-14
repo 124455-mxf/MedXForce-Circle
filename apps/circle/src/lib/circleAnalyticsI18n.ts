@@ -4,8 +4,8 @@ import type {
   AnalyticsTrendDirection,
   PatientAnalyticsSummary,
 } from '@medxforce/shared';
-import type { CircleUiLanguage } from './circleLanguages';
 import type { CircleTranslator } from './circleI18nContext';
+import { circleUiLanguageToLocale, type CircleUiLanguage } from './circleLanguages';
 
 const METRIC_TITLE_KEYS: Record<AnalyticsMetricId, string> = {
   'alert-attention': 'analytics.metrics.alertAttention',
@@ -57,15 +57,8 @@ const SKIP_RATE_PREFIX = /^Skip Rate:\s*(\d+)%$/i;
 const SHARED_ITEMS_PREFIX = /^(\d+)\s+shared items?$/i;
 const SHARED_ENTRIES_PREFIX = /^(\d+)\s+shared entries?$/i;
 
-function circleLanguageToLocale(language: CircleUiLanguage): string {
-  if (language === 'German') return 'de';
-  if (language === 'Spanish') return 'es';
-  if (language === 'Polish') return 'pl';
-  return 'en';
-}
-
 export function formatAnalyticsShortDate(ts: number, language: CircleUiLanguage): string {
-  return new Date(ts).toLocaleDateString(circleLanguageToLocale(language), {
+  return new Date(ts).toLocaleDateString(circleUiLanguageToLocale(language), {
     day: 'numeric',
     month: 'short',
   });

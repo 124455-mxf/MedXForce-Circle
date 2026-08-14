@@ -94,6 +94,7 @@ export type CareCalendarDayEvent = {
   attendees?: CareCalendarAttendee[];
   attendeeResponseSummary?: CareCalendarAttendeeResponseSummary;
   inviteeContactIds?: string[];
+  inviteeMemberUids?: string[];
   inviteeMemberUidByContactId?: Record<string, string>;
   visitSubtype?: CareCalendarVisitSubtype;
   supportingNotes?: string;
@@ -411,6 +412,7 @@ export function getCareCalendarByDay(
         attendees: entry.attendees,
         attendeeResponseSummary: entry.attendeeResponseSummary,
         inviteeContactIds: entry.inviteeContactIds,
+        inviteeMemberUids: entry.inviteeMemberUids,
         inviteeMemberUidByContactId: entry.inviteeMemberUidByContactId,
         visitSubtype: entry.visitSubtype,
         supportingNotes: entry.supportingNotes,
@@ -444,6 +446,11 @@ export function defaultWeeklyRecurrenceDays(dateKey: string): number[] {
 
 export const CARE_CALENDAR_TIME_STEP_MINUTES = 15;
 export const CARE_CALENDAR_MIN_DURATION_MINUTES = 15;
+/** Cap appointment duration options (still further limited by remaining time in the day). */
+export const CARE_CALENDAR_MAX_DURATION_MINUTES = 5 * 60;
+/** Use 15-minute steps up to this duration; coarser steps above it. */
+export const CARE_CALENDAR_DURATION_FINE_UNTIL_MINUTES = 2 * 60;
+export const CARE_CALENDAR_DURATION_COARSE_STEP_MINUTES = 30;
 export const CARE_CALENDAR_TIME_INPUT_STEP_SECONDS = 900;
 
 const CARE_CALENDAR_TIME_OPTIONS = Array.from(
@@ -517,14 +524,18 @@ export function defaultCareCalendarEndMinutes(startMinutes: number): number {
 
 export function buildCareCalendarDurationOptions(startMinutes?: number): number[] {
   const start = startMinutes ?? 0;
-  const maxDuration = 24 * 60 - start;
+  const maxDuration = Math.min(CARE_CALENDAR_MAX_DURATION_MINUTES, 24 * 60 - start);
   const options: number[] = [];
   for (
     let duration = CARE_CALENDAR_MIN_DURATION_MINUTES;
     duration <= maxDuration;
-    duration += CARE_CALENDAR_TIME_STEP_MINUTES
   ) {
     options.push(duration);
+    const step =
+      duration < CARE_CALENDAR_DURATION_FINE_UNTIL_MINUTES
+        ? CARE_CALENDAR_TIME_STEP_MINUTES
+        : CARE_CALENDAR_DURATION_COARSE_STEP_MINUTES;
+    duration += step;
   }
   return options.length ? options : [CARE_CALENDAR_MIN_DURATION_MINUTES];
 }
@@ -568,8 +579,16 @@ export function clampCareCalendarDurationMinutes(
   const options = buildCareCalendarDurationOptions(startMinutes);
   if (!options.length) return CARE_CALENDAR_MIN_DURATION_MINUTES;
   if (options.includes(durationMinutes)) return durationMinutes;
-  const max = options[options.length - 1];
-  return durationMinutes > max ? max : options[0];
+  let best = options[0];
+  let bestDelta = Math.abs(durationMinutes - best);
+  for (let i = 1; i < options.length; i += 1) {
+    const delta = Math.abs(durationMinutes - options[i]);
+    if (delta < bestDelta) {
+      best = options[i];
+      bestDelta = delta;
+    }
+  }
+  return best;
 }
 
 export function minCareCalendarEndTimeInput(startTimeInput: string): string | undefined {

@@ -3,8 +3,9 @@
 export const RESPONSIVE_FORM_MODAL_BACKDROP_CLASS =
   'fixed inset-0 z-[120] flex items-end sm:items-start md:items-center justify-center p-0 sm:p-3 md:p-4 tablet-portrait:py-6 lg:py-4 landscape:py-2 overflow-y-auto overscroll-contain bg-slate-900/50';
 
+/** Fixed height so multi-step appointment forms do not resize between tabs. */
 export const RESPONSIVE_FORM_MODAL_PANEL_CLASS =
-  'relative bg-white w-full max-w-full sm:max-w-xl md:max-w-[min(94vw,44rem)] tablet-portrait:max-w-[min(92vw,40rem)] lg:max-w-3xl xl:max-w-[44rem] my-auto max-h-[min(92dvh,100%)] sm:max-h-[calc(100dvh-1.5rem)] tablet-portrait:max-h-[min(86dvh,calc(100dvh-3rem))] md:max-h-[min(90dvh,calc(100dvh-2rem))] landscape:max-h-[calc(100dvh-0.75rem)] landscape-short:max-h-[calc(100dvh-0.5rem)] flex flex-col overflow-hidden rounded-t-[28px] sm:rounded-[28px] md:rounded-[32px] lg:rounded-[36px] shadow-2xl border border-slate-100';
+  'relative bg-white w-full max-w-full sm:max-w-xl md:max-w-[min(94vw,44rem)] tablet-portrait:max-w-[min(92vw,40rem)] lg:max-w-3xl xl:max-w-[44rem] my-auto h-[min(92dvh,100%)] sm:h-[calc(100dvh-1.5rem)] tablet-portrait:h-[min(86dvh,calc(100dvh-3rem))] md:h-[min(90dvh,calc(100dvh-2rem))] landscape:h-[calc(100dvh-0.75rem)] landscape-short:h-[calc(100dvh-0.5rem)] flex flex-col overflow-hidden rounded-t-[28px] sm:rounded-[28px] md:rounded-[32px] lg:rounded-[36px] shadow-2xl border border-slate-100';
 
 export const RESPONSIVE_FORM_MODAL_HEADER_CLASS =
   'shrink-0 bg-white border-b border-slate-100 px-4 py-3 sm:px-5 sm:py-4 md:px-6 md:py-4 tablet-portrait:py-3 landscape:px-4 landscape:py-2.5 landscape-short:py-2 flex items-center justify-between';

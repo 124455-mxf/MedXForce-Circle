@@ -172,12 +172,13 @@ export async function writeMemberContactProfile(
     },
     { merge: true },
   );
-  // Keep legacy member-root profile aligned for older patient readers.
+  // Keep legacy member-root profile + displayName aligned for older patient readers.
   try {
     await setDoc(
       memberContactProfileLegacyRef(db, patientId, memberUid),
       {
         contactProfile: next,
+        displayName: next.name,
         updatedAt: Date.now(),
       },
       { merge: true },
@@ -259,18 +260,7 @@ export async function updateOwnCircleContactProfile(
     console.warn('[Circle] Managed contact name sync skipped —', err);
   }
 
-  try {
-    await setDoc(
-      doc(db, 'patients', patientId, 'members', memberUid),
-      {
-        displayName: nextProfile.name,
-        updatedAt: Date.now(),
-      },
-      { merge: true },
-    );
-  } catch (err) {
-    console.warn('[Circle] Member displayName sync skipped —', err);
-  }
+  // displayName is written with contactProfile in writeMemberContactProfile.
 
   // Keep invite list labels aligned with the composed display name.
   // Never fail the member's contact save if invite lookup/sync is denied.
@@ -302,9 +292,25 @@ export async function updateOwnCircleContactProfile(
   return merged;
 }
 
+function memberCanWritePatientContactList(
+  memberData: Record<string, unknown> | undefined,
+  inviteRole: string | undefined,
+): boolean {
+  const role = String(memberData?.role || inviteRole || '');
+  if (role === 'proxy') return true;
+  const caps = memberData?.capabilities;
+  return (
+    !!caps &&
+    typeof caps === 'object' &&
+    (caps as { inviteMembers?: unknown }).inviteMembers === true
+  );
+}
+
 /**
  * Heal: copy member contactProfile (first/last name) onto the patient managed-contact
  * row when the patient list still has a stale display name (e.g. email local-part).
+ * Only proxies (or invite-capable members) may write the patient contact arrays;
+ * caregivers/family/friends only refresh their own member displayName.
  */
 export async function syncManagedContactNamesFromMemberProfilesForUser(
   db: Firestore,
@@ -333,46 +339,65 @@ export async function syncManagedContactNamesFromMemberProfilesForUser(
       const profile = await readMemberContactProfile(db, patientId, uid);
       if (!profile?.name?.trim()) continue;
 
-      const contacts = await listPatientManagedContacts(db, patientId);
-      const existing = findManagedContactByEmail(contacts, invite.invitedEmail || email);
-      if (!existing) continue;
-
-      const currentName = composeContactDisplayName(existing);
-      const sameName = currentName === profile.name;
-      const sameParts =
-        (existing.firstName || '') === profile.firstName &&
-        (existing.lastName || '') === profile.lastName;
-      if (sameName && sameParts) continue;
-
-      await upsertPatientManagedContact(
-        db,
-        patientId,
-        {
-          ...existing,
-          name: profile.name,
-          firstName: profile.firstName,
-          lastName: profile.lastName,
-          dateOfBirth: profile.dateOfBirth || existing.dateOfBirth || '',
-          language: profile.language || existing.language,
-          relationship: profile.relationship || existing.relationship,
-        },
-        {
-          syncInvite: false,
-          updateAccessIndex: false,
-        },
+      const memberRef = doc(db, 'patients', patientId, 'members', uid);
+      const memberSnap = await getDoc(memberRef);
+      const memberData = memberSnap.exists()
+        ? (memberSnap.data() as Record<string, unknown>)
+        : undefined;
+      const canWritePatientContacts = memberCanWritePatientContactList(
+        memberData,
+        invite.role,
       );
 
-      await setDoc(
-        doc(db, 'patients', patientId, 'members', uid),
-        { displayName: profile.name, updatedAt: Date.now() },
-        { merge: true },
-      );
+      if (canWritePatientContacts) {
+        const contacts = await listPatientManagedContacts(db, patientId);
+        const existing = findManagedContactByEmail(contacts, invite.invitedEmail || email);
+        if (existing) {
+          const currentName = composeContactDisplayName(existing);
+          const sameName = currentName === profile.name;
+          const sameParts =
+            (existing.firstName || '') === profile.firstName &&
+            (existing.lastName || '') === profile.lastName;
+          if (!sameName || !sameParts) {
+            await upsertPatientManagedContact(
+              db,
+              patientId,
+              {
+                ...existing,
+                name: profile.name,
+                firstName: profile.firstName,
+                lastName: profile.lastName,
+                dateOfBirth: profile.dateOfBirth || existing.dateOfBirth || '',
+                language: profile.language || existing.language,
+                relationship: profile.relationship || existing.relationship,
+              },
+              {
+                syncInvite: false,
+                updateAccessIndex: false,
+              },
+            );
+            synced += 1;
+          }
+        }
+      }
 
-      synced += 1;
+      const currentDisplayName =
+        typeof memberData?.displayName === 'string' ? memberData.displayName.trim() : '';
+      if (currentDisplayName !== profile.name) {
+        await setDoc(
+          memberRef,
+          { displayName: profile.name, updatedAt: Date.now() },
+          { merge: true },
+        );
+      }
     } catch (err) {
       if (isFirestoreQuotaError(err)) {
         console.warn('[Circle] Contact name heal skipped — Firestore daily write quota exceeded.');
         break;
+      }
+      const message = err instanceof Error ? err.message : String(err);
+      if (/missing or insufficient permissions/i.test(message) || /permission-denied/i.test(message)) {
+        continue;
       }
       console.warn('[Circle] Contact name heal skipped for patient', invite.patientId, err);
     }

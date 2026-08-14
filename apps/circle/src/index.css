@@ -238,13 +238,3 @@ body {
   animation: prep-border-pulse 1.6s ease-in-out infinite;
 }
 
-.schedule-week-scroll {
-  max-height: min(26rem, calc(100dvh - 16rem));
-}
-
-@media (min-width: 768px) and (max-width: 1366px) and (orientation: portrait) {
-  .schedule-week-scroll {
-    max-height: min(22rem, calc(100dvh - 24rem));
-    min-height: 0;
-  }
-}

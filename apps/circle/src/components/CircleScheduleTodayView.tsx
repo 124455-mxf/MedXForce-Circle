@@ -4,6 +4,7 @@ import { ChevronDown, Mic, Users } from 'lucide-react';
 import {
   careCalendarAttendeeRoleLabelKey,
   canOfferRecordVisitForAppointmentOnDate,
+  applyCareCalendarAttendeeDisplayNames,
   findImminentCareCalendarDayEvents,
   formatCareCalendarTime,
   formatCareCalendarTimeRange,
@@ -20,22 +21,29 @@ import {
   type AppointmentPrepHighlight,
   type AssessmentScheduleDayEvent,
   type CareCalendarDayEvent,
+  type CareCalendarMemberInviteContext,
 } from '@medxforce/shared';
 import type { Firestore } from 'firebase/firestore';
 import type { AnalyticsMetricId } from '@medxforce/shared';
 import { assessmentScheduleIdToAnalyticsMetric, type CircleAssessmentScheduleContext } from '../lib/circleAssessmentScheduleMetrics';
 import { CircleCareCalendarMapsLinks } from './CircleCareCalendarMapsLinks';
 import { CircleCareCalendarInviteRsvpBar } from './CircleCareCalendarInviteRsvpBar';
+import { CircleCareCalendarSelfRsvpStatusBadge } from './CircleCareCalendarSelfRsvpStatusBadge';
 import { CircleScheduleImminentBanner } from './CircleScheduleImminentBanner';
 import { CircleCareCalendarAssessmentNudgeHint } from './CircleCareCalendarAssessmentNudgesList';
 import { CircleCareCalendarPrepStatusBadge } from './CircleCareCalendarPrepStatusBadge';
 import { CircleExpandableTextPreview } from './CircleExpandableTextPreview';
+import { CircleCareCalendarKindMeta } from './CircleCareCalendarKindMeta';
+import { CircleTranslatedUserText } from './CircleTranslatedUserText';
 import {
   CircleScheduleAppointmentDetailSheet,
   type CircleScheduleAppointmentSelection,
 } from './CircleScheduleWeekView';
 import { cn } from '../lib/utils';
 import { useCircleScheduleShowAppointmentDetails } from '../hooks/useCircleScheduleShowAppointmentDetails';
+import { useCareCalendarAttendeeOptions } from '../hooks/useCareCalendarAttendeeOptions';
+import { useCircleI18nContext } from '../lib/circleI18nContext';
+import { formatCircleDate } from '../lib/circleLanguages';
 
 type CircleScheduleTodayViewProps = {
   dateKey: string;
@@ -110,8 +118,9 @@ export function CircleScheduleTodayView({
   }, [dateKey]);
   const ct = (key: string, params?: Record<string, unknown>) =>
     t(`dashboard.careCalendar.${key}`, params);
+  const { language } = useCircleI18nContext();
 
-  const dayLabel = new Date(dateKey + 'T12:00:00').toLocaleDateString(undefined, {
+  const dayLabel = formatCircleDate(new Date(dateKey + 'T12:00:00'), language, {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
@@ -352,7 +361,7 @@ export function CircleScheduleTodayView({
   );
 }
 
-function CircleScheduleDayAppointmentCard({
+export function CircleScheduleDayAppointmentCard({
   event,
   ct,
   t,
@@ -514,13 +523,34 @@ function CircleScheduleDayAppointmentCard({
                   highlightTodayTiming={showTimingHighlight}
                 />
               ) : null}
+              {!isPast && currentUserUid ? (
+                <CircleCareCalendarSelfRsvpStatusBadge
+                  event={event}
+                  inviteContext={
+                    {
+                      memberUid: currentUserUid,
+                      contactId: memberContactId,
+                      memberDocContactId,
+                      inviteContactId,
+                      displayName: memberDisplayName,
+                    } satisfies CareCalendarMemberInviteContext
+                  }
+                  t={t}
+                  size={compact ? 'sm' : 'md'}
+                />
+              ) : null}
             </div>
-            <p className="text-base font-bold text-slate-900">{event.title}</p>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-violet-700 mt-0.5">
-              {ct(`kinds.${event.kind}`)}
-              {event.visitSubtype ? ` · ${ct(`visitSubtype.${event.visitSubtype}`)}` : ''}
-              {event.source === 'circle' ? ` · ${ct('fromCircle')}` : ''}
-            </p>
+            <CircleTranslatedUserText
+              text={event.title}
+              className="text-base font-bold text-slate-900"
+              showToggle={!compact}
+            />
+            <CircleCareCalendarKindMeta
+              kind={event.kind}
+              visitSubtype={event.visitSubtype}
+              source={event.source}
+              ct={ct}
+            />
             {!compact ? (
             <div className="pt-1 space-y-0">
               {event.details ? (
@@ -550,18 +580,6 @@ function CircleScheduleDayAppointmentCard({
               />
             ) : null}
           </div>
-          {onEdit ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit();
-              }}
-              className="shrink-0 px-3 py-1.5 rounded-lg bg-white border border-violet-200 text-violet-700 text-xs font-bold"
-            >
-              {t('common.edit')}
-            </button>
-          ) : null}
         </div>
         {!compact && showRecordVisit ? (
           <div
@@ -581,29 +599,47 @@ function CircleScheduleDayAppointmentCard({
         ) : null}
         {!compact && event.attendees?.length ? (
           <div className="pt-4 mt-4 border-t border-slate-100/90">
-            <AppointmentAttendeeResponses event={event} dateKey={dateKey} ct={ct} t={t} />
+            <AppointmentAttendeeResponses
+              event={event}
+              dateKey={dateKey}
+              ct={ct}
+              t={t}
+              db={db}
+              patientId={patientId}
+              memberContactId={memberContactId}
+              memberDocContactId={memberDocContactId}
+              inviteContactId={inviteContactId}
+              memberDisplayName={memberDisplayName}
+            />
           </div>
         ) : null}
-        {!compact && db && patientId ? (
-          <CircleCareCalendarInviteRsvpBar
-            db={db}
-            patientId={patientId}
-            entryId={event.entryId}
-            attendees={event.attendees}
-            memberUid={currentUserUid}
-            memberContactId={memberContactId}
-            memberDocContactId={memberDocContactId}
-            inviteContactId={inviteContactId}
-            inviteeContactIds={event.inviteeContactIds}
-            inviteeMemberUidByContactId={event.inviteeMemberUidByContactId}
-            memberDisplayName={memberDisplayName}
-            memberRole={memberRole}
-            startDateKey={dateKey}
-            startTimeMinutes={event.startTimeMinutes}
-            endTimeMinutes={event.endTimeMinutes}
-            eventStatus={event.status}
-            t={t}
-          />
+        {db && patientId ? (
+          <div
+            className={cn(compact ? 'pt-2' : undefined)}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <CircleCareCalendarInviteRsvpBar
+              db={db}
+              patientId={patientId}
+              entryId={event.entryId}
+              attendees={event.attendees}
+              memberUid={currentUserUid}
+              memberContactId={memberContactId}
+              memberDocContactId={memberDocContactId}
+              inviteContactId={inviteContactId}
+              inviteeContactIds={event.inviteeContactIds}
+              inviteeMemberUidByContactId={event.inviteeMemberUidByContactId}
+              memberDisplayName={memberDisplayName}
+              memberRole={memberRole}
+              startDateKey={dateKey}
+              startTimeMinutes={event.startTimeMinutes}
+              endTimeMinutes={event.endTimeMinutes}
+              eventStatus={event.status}
+              t={t}
+              compact={compact}
+            />
+          </div>
         ) : null}
         {!compact && event.address ? <CircleCareCalendarMapsLinks address={event.address} ct={ct} /> : null}
       </div>
@@ -611,24 +647,51 @@ function CircleScheduleDayAppointmentCard({
   );
 }
 
-export { CircleScheduleDayAppointmentCard };
-
 function AppointmentAttendeeResponses({
   event,
   dateKey,
   ct,
   t,
+  db,
+  patientId,
+  memberContactId,
+  memberDocContactId,
+  inviteContactId,
+  memberDisplayName,
 }: {
   event: CareCalendarDayEvent;
   dateKey: string;
   ct: (key: string, params?: Record<string, unknown>) => string;
   t: CircleScheduleTodayViewProps['t'];
+  db?: Firestore;
+  patientId?: string;
+  memberContactId?: string;
+  memberDocContactId?: string;
+  inviteContactId?: string;
+  memberDisplayName?: string;
 }) {
+  const attendeeOptions = useCareCalendarAttendeeOptions(db, patientId);
+  const nameByContactId = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const option of attendeeOptions) {
+      if (option.contactId && option.name) map[option.contactId] = option.name;
+    }
+    return map;
+  }, [attendeeOptions]);
   const attendees =
-    mergeAttendeeResponses(
-      event.attendees,
-      event.attendeeResponseSummary,
-      event.inviteeMemberUidByContactId,
+    applyCareCalendarAttendeeDisplayNames(
+      mergeAttendeeResponses(
+        event.attendees,
+        event.attendeeResponseSummary,
+        event.inviteeMemberUidByContactId,
+      ) ?? event.attendees,
+      {
+        nameByContactId,
+        selfContactIds: [memberContactId, memberDocContactId, inviteContactId].filter(
+          (id): id is string => Boolean(id),
+        ),
+        selfDisplayName: memberDisplayName,
+      },
     ) ?? event.attendees;
   if (!attendees?.length) return null;
 
@@ -641,7 +704,8 @@ function AppointmentAttendeeResponses({
 
   return (
     <div className="space-y-1.5">
-      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+      <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+        <Users size={14} className="shrink-0 text-violet-600" aria-hidden />
         {ct('fields.attendeesWith')}
       </p>
       <ul className="space-y-1">

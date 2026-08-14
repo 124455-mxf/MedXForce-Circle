@@ -7,9 +7,11 @@ import {
   getAssessmentScheduleCalendar,
   getCalendarWeekDays,
   getCareCalendarByDay,
+  isCareCalendarInternalMeeting,
   isScheduleEnabled,
   parseCareCalendarDateKey,
   careCalendarDateKey,
+  normalizeMemberRole,
   type AssessmentScheduleDayEvent,
   type CareCalendarDayEvent,
   type CareCalendarEntry,
@@ -23,7 +25,6 @@ import {
   type CircleScheduleAppointmentSelection,
 } from './CircleScheduleWeekView';
 import { CircleScheduleWeekView } from './CircleScheduleWeekView';
-import { CircleScheduleSelectedDayDetailPanel } from './CircleScheduleSelectedDayDetailPanel';
 import type { AnalyticsMetricId } from '@medxforce/shared';
 import {
   assessmentScheduleIdToAnalyticsMetric,
@@ -32,6 +33,8 @@ import {
 import { cn } from '../lib/utils';
 import { circleHeaderActionButtonClass } from '../lib/circleSectionStyles';
 import { useCircleScheduleShowAppointmentDetails } from '../hooks/useCircleScheduleShowAppointmentDetails';
+import { useCircleI18nContext } from '../lib/circleI18nContext';
+import { formatCircleDate } from '../lib/circleLanguages';
 
 type CircleAssessmentScheduleCalendarProps = {
   schedule: CircleAssessmentScheduleContext;
@@ -78,6 +81,11 @@ const WEEKDAY_KEYS = [0, 1, 2, 3, 4, 5, 6] as const;
 const VIEW_MODES: ScheduleViewMode[] = ['today', 'week', 'month', 'tasks'];
 const EMPTY_ASSESSMENT_CALENDAR = new Map<string, AssessmentScheduleDayEvent[]>();
 
+function hideEmptyMonthPrompt(memberRole?: string): boolean {
+  const role = memberRole ? normalizeMemberRole(memberRole) : null;
+  return role === 'proxy' || role === 'caregiver' || role === 'professional_caregiver';
+}
+
 function buildMonthGrid(year: number, month: number): (Date | null)[] {
   const first = new Date(year, month, 1);
   const startPad = first.getDay();
@@ -96,18 +104,6 @@ function weekdayLabel(
   day: number,
 ): string {
   return t(`remoteSettings.assessmentSchedule.weekdayShort.${day}`);
-}
-
-function daySummary(events: AssessmentScheduleDayEvent[]): {
-  due: number;
-  upcoming: number;
-  completed: number;
-} {
-  return {
-    due: events.filter((e) => e.status === 'due').length,
-    upcoming: events.filter((e) => e.status === 'upcoming').length,
-    completed: events.filter((e) => e.status === 'completed').length,
-  };
 }
 
 function assessmentLabel(
@@ -145,8 +141,10 @@ export function CircleAssessmentScheduleCalendar({
   hideInlineAddButton = false,
   onRecordVisit,
 }: CircleAssessmentScheduleCalendarProps) {
+  const { language } = useCircleI18nContext();
   const ct = (key: string, params?: Record<string, unknown>) =>
     t(`dashboard.careCalendar.${key}`, params);
+  const skipEmptyMonthPrompt = hideEmptyMonthPrompt(memberRole);
 
   const today = new Date();
   const todayKey = assessmentScheduleDateKey(today);
@@ -244,14 +242,6 @@ export function CircleAssessmentScheduleCalendar({
     });
   }, [viewMode, weekAnchor, weekDayKeys, todayKey]);
 
-  const weekDetailCareEvents = useMemo(() => {
-    return [...(careByDay.get(selectedDateKey) ?? [])].sort(
-      (a, b) => (a.startTimeMinutes ?? 0) - (b.startTimeMinutes ?? 0),
-    );
-  }, [careByDay, selectedDateKey]);
-
-  const weekDetailAssessmentEvents = visibleCalendarByDay.get(selectedDateKey) ?? [];
-
   const shiftMonth = (delta: number) => {
     const next = new Date(viewYear, viewMonth + delta, 1);
     setViewYear(next.getFullYear());
@@ -270,12 +260,12 @@ export function CircleAssessmentScheduleCalendar({
     setSelectedDateKey(careCalendarDateKey(next));
   };
 
-  const monthLabel = new Date(viewYear, viewMonth, 1).toLocaleDateString(undefined, {
+  const monthLabel = formatCircleDate(new Date(viewYear, viewMonth, 1), language, {
     month: 'long',
     year: 'numeric',
   });
 
-  const dayLabel = new Date(selectedDateKey + 'T12:00:00').toLocaleDateString(undefined, {
+  const dayLabel = formatCircleDate(new Date(selectedDateKey + 'T12:00:00'), language, {
     weekday: 'short',
     month: 'long',
     day: 'numeric',
@@ -285,15 +275,23 @@ export function CircleAssessmentScheduleCalendar({
   const addDateKey = selectedDateKey;
 
   const weekDays = useMemo(() => getCalendarWeekDays(weekAnchor), [weekAnchor]);
-  const weekLabel = `${weekDays[0].toLocaleDateString(undefined, {
+  const weekLabel = `${formatCircleDate(weekDays[0], language, {
     month: 'short',
     day: 'numeric',
-  })} – ${weekDays[6].toLocaleDateString(undefined, {
+  })} – ${formatCircleDate(weekDays[6], language, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   })}`;
   const isCurrentWeek = weekDays.some((day) => assessmentScheduleDateKey(day) === todayKey);
+  const isCurrentMonth =
+    viewYear === today.getFullYear() && viewMonth === today.getMonth();
+
+  const goToCurrentMonth = () => {
+    setViewYear(today.getFullYear());
+    setViewMonth(today.getMonth());
+    setSelectedDateKey(todayKey);
+  };
 
   const viewModeSelector = enableViewModes ? (
     <div className="flex w-full rounded-2xl border border-slate-100 p-1.5 bg-slate-100 shrink-0">
@@ -309,7 +307,7 @@ export function CircleAssessmentScheduleCalendar({
               : 'text-slate-500 hover:text-slate-700',
           )}
         >
-          {t(`schedulePage.views.${mode}`)}
+          {t(`schedulePage.views.${mode === 'today' ? 'day' : mode}`)}
         </button>
       ))}
     </div>
@@ -356,6 +354,15 @@ export function CircleAssessmentScheduleCalendar({
       )}
       {viewMode === 'month' && (
         <>
+          {!isCurrentMonth ? (
+            <button
+              type="button"
+              onClick={goToCurrentMonth}
+              className={dateNavJumpClass}
+            >
+              {t('schedulePage.views.thisMonth')}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => shiftMonth(-1)}
@@ -466,7 +473,7 @@ export function CircleAssessmentScheduleCalendar({
           </div>
         </div>
 
-        {!hasAnyEvents ? (
+        {!hasAnyEvents && !skipEmptyMonthPrompt ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-2 py-4">
             <p className="text-xs text-slate-400 text-center">
               {t('dashboard.assessmentScheduleCalendar.emptyMonth')}
@@ -550,7 +557,10 @@ export function CircleAssessmentScheduleCalendar({
   return (
     <div
       className={cn(
-        'h-full min-h-0 flex flex-col overflow-hidden',
+        'h-full min-h-0 flex flex-col',
+        viewMode === 'month'
+          ? 'overflow-y-auto overscroll-contain'
+          : 'overflow-hidden',
         enableViewModes
           ? 'px-4 pb-4 space-y-4'
           : 'rounded-2xl border border-slate-100 bg-white p-5 space-y-4',
@@ -614,6 +624,17 @@ export function CircleAssessmentScheduleCalendar({
           preferences={schedule.preferences}
           histories={schedule.histories}
           memberRole={memberRole}
+          inviteContext={
+            currentUserUid
+              ? {
+                  memberUid: currentUserUid,
+                  contactId: memberContactId,
+                  memberDocContactId,
+                  inviteContactId,
+                  displayName: memberDisplayName,
+                }
+              : undefined
+          }
           t={t}
           compact={compact}
           onOpenAppointment={(dateKey, event) => {
@@ -624,63 +645,38 @@ export function CircleAssessmentScheduleCalendar({
       )}
 
       {viewMode === 'week' && (
-        <>
-          <CircleScheduleWeekView
-            weekAnchor={weekAnchor}
-            calendarByDay={visibleCalendarByDay}
-            careByDay={careByDay}
-            todayKey={todayKey}
-            selectedDayDateKey={selectedDateKey}
-            onSelectedDayChange={setSelectedDateKey}
-            preferences={schedule.preferences}
-            histories={schedule.histories}
-            t={t}
-            onEditAppointment={onEditAppointment}
-            onAppointmentTasksChange={onAppointmentTasksChange}
-            onClinicalReferenceIdsChange={onClinicalReferenceIdsChange}
-            onManageClinicalReferences={onManageClinicalReferences}
-            onVisitDebriefChange={onVisitDebriefChange}
-            currentUserUid={currentUserUid}
-            currentUserName={currentUserName}
-            patientId={patientId}
-            db={db}
-            memberContactId={memberContactId}
-            memberDocContactId={memberDocContactId}
-            inviteContactId={inviteContactId}
-            memberDisplayName={memberDisplayName}
-            memberRole={memberRole}
-            assessmentSchedule={schedule}
-            onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
-            onRecordVisit={onRecordVisit}
-          />
-          <CircleScheduleSelectedDayDetailPanel
-            selectedDateKey={selectedDateKey}
-            todayKey={todayKey}
-            careEvents={weekDetailCareEvents}
-            assessmentEvents={weekDetailAssessmentEvents}
-            t={t}
-            assessmentLabel={(event) => assessmentLabel(event, t)}
-            onOpenAppointment={(event) =>
-              setAppointmentSelection({ dateKey: selectedDateKey, event })
-            }
-            onEditAppointment={onEditAppointment}
-            onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
-            assessmentSchedule={schedule}
-            onRecordVisit={onRecordVisit}
-            db={db}
-            patientId={patientId}
-            memberContactId={memberContactId}
-            memberDocContactId={memberDocContactId}
-            inviteContactId={inviteContactId}
-            memberDisplayName={memberDisplayName}
-            memberRole={memberRole}
-            currentUserUid={currentUserUid}
-            className="shrink-0 mt-3 max-h-[min(38dvh,24rem)] overflow-y-auto overscroll-contain md:max-h-none tablet-portrait:mt-2 tablet-portrait:flex-1 tablet-portrait:min-h-0 tablet-portrait:max-h-none tablet-portrait:overflow-y-auto"
-          />
-        </>
+        <CircleScheduleWeekView
+          weekAnchor={weekAnchor}
+          calendarByDay={visibleCalendarByDay}
+          careByDay={careByDay}
+          todayKey={todayKey}
+          selectedDayDateKey={selectedDateKey}
+          onSelectedDayChange={setSelectedDateKey}
+          preferences={schedule.preferences}
+          histories={schedule.histories}
+          t={t}
+          assessmentLabel={(event) => assessmentLabel(event, t)}
+          onEditAppointment={onEditAppointment}
+          onAppointmentTasksChange={onAppointmentTasksChange}
+          onClinicalReferenceIdsChange={onClinicalReferenceIdsChange}
+          onManageClinicalReferences={onManageClinicalReferences}
+          onVisitDebriefChange={onVisitDebriefChange}
+          currentUserUid={currentUserUid}
+          currentUserName={currentUserName}
+          patientId={patientId}
+          db={db}
+          memberContactId={memberContactId}
+          memberDocContactId={memberDocContactId}
+          inviteContactId={inviteContactId}
+          memberDisplayName={memberDisplayName}
+          memberRole={memberRole}
+          assessmentSchedule={schedule}
+          onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
+          onRecordVisit={onRecordVisit}
+        />
       )}
 
-      {viewMode === 'month' && !hasAnyEvents ? (
+      {viewMode === 'month' && !hasAnyEvents && !skipEmptyMonthPrompt ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-2 py-8">
           <p className="text-sm text-slate-400 text-center">
             {t('dashboard.assessmentScheduleCalendar.emptyMonth')}
@@ -809,6 +805,7 @@ function MonthCalendarBody({
   memberRole?: string;
   currentUserUid?: string;
 }) {
+  const { language } = useCircleI18nContext();
   const ct = (key: string, params?: Record<string, unknown>) =>
     t(`dashboard.careCalendar.${key}`, params);
   const showAppointmentDetails = useCircleScheduleShowAppointmentDetails();
@@ -840,11 +837,15 @@ function MonthCalendarBody({
             const dateKey = assessmentScheduleDateKey(date);
             const events = monthCalendarByDay.get(dateKey) ?? [];
             const careEvents = monthCareByDay.get(dateKey) ?? [];
-            const summary = daySummary(events);
             const isToday = dateKey === todayKey;
             const isSelected = dateKey === selectedDateKey;
-            const hasDue = summary.due > 0;
             const hasCare = careEvents.length > 0;
+            const hasInternal = careEvents.some((event) =>
+              isCareCalendarInternalMeeting(event.kind),
+            );
+            const hasAppointment = careEvents.some(
+              (event) => !isCareCalendarInternalMeeting(event.kind),
+            );
             const hasAssessments = events.length > 0;
 
             return (
@@ -857,12 +858,23 @@ function MonthCalendarBody({
                   compact ? 'min-h-[2rem] py-0.5' : fullSize ? 'min-h-[3rem] py-1' : 'min-h-[2.75rem] py-1',
                   !hasAssessments && !hasCare
                     ? 'border-transparent text-slate-300'
-                    : hasCare
-                      ? 'border-violet-200 bg-violet-50/70 hover:bg-violet-50'
-                      : 'border-slate-100 hover:border-blue-200 hover:bg-blue-50/40',
-                  isSelected && hasCare && 'ring-1 ring-violet-300/70 border-violet-300',
-                  isSelected && !hasCare && 'border-blue-300 bg-blue-50/70 ring-1 ring-blue-200/60',
-                  isToday && !isSelected && (hasCare ? 'border-violet-300' : 'border-blue-200'),
+                    : hasInternal && !hasAppointment && !hasAssessments
+                      ? 'border-emerald-200 bg-emerald-50/70 hover:bg-emerald-50'
+                      : hasAppointment
+                        ? 'border-pink-200 bg-pink-50/70 hover:bg-pink-50'
+                        : 'border-orange-200 bg-orange-50/50 hover:bg-orange-50/80',
+                  isSelected && hasInternal && !hasAppointment && 'ring-1 ring-emerald-300/70 border-emerald-300',
+                  isSelected && hasAppointment && 'ring-1 ring-pink-300/70 border-pink-300',
+                  isSelected && !hasCare && hasAssessments && 'border-orange-300 bg-orange-50/70 ring-1 ring-orange-200/60',
+                  isToday &&
+                    !isSelected &&
+                    (hasInternal && !hasAppointment
+                      ? 'border-emerald-300'
+                      : hasAppointment
+                        ? 'border-pink-300'
+                        : hasAssessments
+                          ? 'border-orange-300'
+                          : 'border-blue-200'),
                 )}
               >
                 <span
@@ -876,24 +888,42 @@ function MonthCalendarBody({
                 </span>
                 {(hasAssessments || hasCare) && (
                   <div className="flex gap-0.5">
-                    {hasCare && <span className="w-1 h-1 rounded-full bg-violet-500" />}
-                    {summary.due > 0 && <span className="w-1 h-1 rounded-full bg-rose-500" />}
-                    {summary.upcoming > 0 && <span className="w-1 h-1 rounded-full bg-amber-400" />}
-                    {summary.completed > 0 && !hasDue && summary.upcoming === 0 && (
-                      <span className="w-1 h-1 rounded-full bg-emerald-400" />
-                    )}
+                    {hasAssessments && <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />}
+                    {hasAppointment && <span className="w-1.5 h-1.5 rounded-full bg-pink-500" />}
+                    {hasInternal && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
                   </div>
                 )}
               </button>
             );
           })}
         </div>
+        <div
+          className={cn(
+            'mt-2 flex flex-wrap gap-3 font-bold uppercase tracking-wider text-slate-500',
+            fullSize ? 'text-[10px]' : 'text-[9px]',
+          )}
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+            {ct('legendAssessment')}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-pink-500" />
+            {ct('legendAppointment')}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            {ct('kinds.wellness')}
+          </span>
+        </div>
       </div>
 
       <div
         className={cn(
-          'flex-1 min-h-0 mt-2 pt-2 border-t border-slate-100 rounded-xl bg-slate-50 space-y-1.5 overflow-y-auto overscroll-contain',
-          fullSize ? 'p-3' : 'p-2.5',
+          'mt-2 pt-2 border-t border-slate-100 rounded-xl bg-slate-50 space-y-1.5',
+          fullSize
+            ? 'p-3'
+            : 'p-2.5 flex-1 min-h-0 overflow-y-auto overscroll-contain',
         )}
       >
         <p
@@ -903,7 +933,7 @@ function MonthCalendarBody({
           )}
         >
           {t('dashboard.assessmentScheduleCalendar.dayDetail', {
-            date: new Date(selectedDateKey + 'T12:00:00').toLocaleDateString(undefined, {
+            date: formatCircleDate(new Date(selectedDateKey + 'T12:00:00'), language, {
               weekday: 'short',
               month: 'short',
               day: 'numeric',
