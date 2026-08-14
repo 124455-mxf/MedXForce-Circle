@@ -1215,8 +1215,7 @@ export function CircleDashboardScreen({
                 }),
               };
             })()),
-        onClick: () =>
-          onOpenMessagesInbox ? onOpenMessagesInbox('in_out') : onGoToTab('messages'),
+        onClick: () => onOpenAnalyticsDetail('speech-history'),
       });
     }
 
