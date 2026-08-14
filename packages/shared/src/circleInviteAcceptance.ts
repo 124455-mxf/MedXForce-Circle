@@ -3,11 +3,14 @@ import {
   deleteField,
   doc,
   getDoc,
+  getDocFromServer,
   getDocs,
+  getDocsFromServer,
   query,
   setDoc,
   where,
   writeBatch,
+  type DocumentReference,
   type Firestore,
 } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
@@ -42,6 +45,25 @@ function validInvitePatientId(invite: Partial<CircleInviteRecord>): string | nul
   const patientId =
     typeof invite.patientId === 'string' ? invite.patientId.trim() : '';
   return patientId || null;
+}
+
+/**
+ * Rules only allow the accept write while the invite is still pending on the server.
+ * A stale cached "pending" invite would bump `updatedAt` alone and be rejected, so
+ * confirm the server copy is not already linked to this member.
+ */
+async function inviteStillNeedsAccept(
+  inviteRef: DocumentReference,
+  uid: string,
+): Promise<boolean> {
+  try {
+    const snap = await getDocFromServer(inviteRef);
+    if (!snap.exists()) return false;
+    const data = snap.data() as Partial<CircleInviteRecord>;
+    return !(data.status === 'accepted' && data.acceptedByUid === uid);
+  } catch {
+    return true;
+  }
 }
 
 function contactKindForMemberRole(role: CircleMemberRole): CircleContactKind {
@@ -362,7 +384,9 @@ export async function acceptPendingCircleInvites(
     where('invitedEmail', '==', email),
     where('status', '==', 'pending'),
   );
-  const snap = await getDocs(pending);
+  // Read from the server: an invite cached as pending after it was already accepted
+  // would produce a write that Firestore rules reject.
+  const snap = await getDocsFromServer(pending).catch(() => getDocs(pending));
   if (snap.empty) return [];
 
   const accepted: AcceptedCircleInviteSummary[] = [];
@@ -471,6 +495,12 @@ export async function acceptPendingCircleInvites(
       // can make those rule reads observe incompatible before/after states.
       if (memberPayload) {
         await setDoc(memberRef, memberPayload, { merge: true });
+      }
+
+      // The member doc grants access; an invite already linked to this account needs
+      // no further write, and welcome follow-ups must not fire a second time.
+      if (!(await inviteStillNeedsAccept(inviteDoc.ref, user.uid))) {
+        continue;
       }
       await setDoc(inviteDoc.ref, inviteUpdate, { merge: true });
 
