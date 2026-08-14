@@ -43,6 +43,7 @@ import { useCircleToast } from './hooks/useCircleToast';
 import { CircleAppToast } from './components/CircleAppToast';
 import { useCircleI18n } from './hooks/useCircleI18n';
 import { CircleI18nProvider } from './lib/circleI18nContext';
+import { hydrateCircleUiLanguageFromContacts } from './lib/circleUiLanguageHydration';
 import { useCircleTextSize } from './hooks/useCircleTextSize';
 import { CircleTextSizeProvider } from './lib/circleTextSizeContext';
 import { CirclePatientSwitcher } from './components/CirclePatientSwitcher';
@@ -202,6 +203,12 @@ export default function App() {
       if (firebase.auth.currentUser?.uid === currentUser.uid) {
         setPatients(list);
       }
+      const welcomeLanguage = await hydrateCircleUiLanguageFromContacts(
+        firebase.db,
+        currentUser,
+        list.map((patient) => patient.patientId),
+        setLanguage,
+      );
       for (const invite of accepted) {
         const demotionMessage = proxySlotDemotionToastMessage(invite);
         if (demotionMessage) {
@@ -209,7 +216,13 @@ export default function App() {
           break;
         }
       }
-      void sendWelcomeEmailsForAcceptedInvites(currentUser, accepted, list, language).catch((err) => {
+      void sendWelcomeEmailsForAcceptedInvites(
+        firebase.db,
+        currentUser,
+        accepted,
+        list,
+        welcomeLanguage,
+      ).catch((err) => {
         console.warn('[Circle] Welcome email dispatch failed:', err);
       });
       return { list, accepted };

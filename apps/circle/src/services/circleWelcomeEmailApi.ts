@@ -1,5 +1,7 @@
 import type { AcceptedCircleInviteSummary, CirclePatientSummary } from '@medxforce/shared';
 import type { User } from 'firebase/auth';
+import type { Firestore } from 'firebase/firestore';
+import { resolveContactLanguageForPatient } from '../lib/circleUiLanguageHydration';
 
 function patientApiBaseUrl(): string | null {
   const explicit = (import.meta.env.VITE_MEDXFORCE_API_URL as string | undefined)?.trim();
@@ -122,10 +124,11 @@ export function proxySlotDemotionToastMessage(
 }
 
 export async function sendWelcomeEmailsForAcceptedInvites(
+  db: Firestore,
   user: User,
   accepted: AcceptedCircleInviteSummary[],
   patients: CirclePatientSummary[],
-  language?: string,
+  fallbackLanguage?: string,
 ): Promise<void> {
   const email = user.email?.trim();
   if (!email || accepted.length === 0) return;
@@ -142,6 +145,9 @@ export async function sendWelcomeEmailsForAcceptedInvites(
       const patient = patients.find((entry) => entry.patientId === invite.patientId);
       const patientName = patient?.displayName || 'your patient';
       const roleLabel = formatRoleLabel(invite.role, invite.proxyTier);
+      const contactLanguage =
+        (await resolveContactLanguageForPatient(db, invite.patientId, user.uid, email))
+        || fallbackLanguage;
       const demotionNote = invite.proxySlotDemoted
         ? `You were invited as ${formatRequestedProxyLabel(invite.requestedProxyTier)}, but that spot was already taken. You joined as ${roleLabel} instead.`
         : undefined;
@@ -154,7 +160,7 @@ export async function sendWelcomeEmailsForAcceptedInvites(
           roleLabel,
           roleKey: invite.role,
           invitedByName: patientName,
-          language,
+          language: contactLanguage,
           ...(demotionNote ? { proxySlotDemotionNote: demotionNote } : {}),
         });
 
@@ -196,7 +202,7 @@ export async function sendWelcomeEmailsForAcceptedInvites(
             requestedProxyRoleKey: 'proxy',
             demotedRoleKey: invite.demotedToRole,
             audience: 'newcomer',
-            language,
+            language: contactLanguage,
           });
           if (newcomerNotify.success) {
             localStorage.setItem(newcomerKey, '1');
@@ -227,7 +233,7 @@ export async function sendWelcomeEmailsForAcceptedInvites(
               requestedProxyRoleKey: 'proxy',
               demotedRoleKey: invite.demotedToRole,
               audience: 'slot_holder',
-              language,
+              language: contactLanguage,
             });
             if (holderNotify.success) {
               localStorage.setItem(holderKey, '1');
