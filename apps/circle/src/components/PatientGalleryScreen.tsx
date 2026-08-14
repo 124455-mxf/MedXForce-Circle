@@ -253,7 +253,7 @@ export function PatientGalleryScreen({
     session: number;
   } | null>(null);
   const [viewedIds, setViewedIds] = useState<Set<string>>(() =>
-    getCircleGalleryViewedIds(patient.patientId),
+    getCircleGalleryViewedIds(patient.patientId, user.uid),
   );
   const [reactedMediaIds, setReactedMediaIds] = useState<Set<string>>(() => new Set());
 
@@ -315,8 +315,12 @@ export function PatientGalleryScreen({
   );
 
   const refreshViewed = useCallback(() => {
-    setViewedIds(getCircleGalleryViewedIds(patient.patientId));
-  }, [patient.patientId]);
+    setViewedIds(getCircleGalleryViewedIds(patient.patientId, user.uid));
+  }, [patient.patientId, user.uid]);
+
+  useEffect(() => {
+    refreshViewed();
+  }, [refreshViewed]);
 
   useEffect(() => {
     const onViewed = () => refreshViewed();
@@ -578,6 +582,15 @@ export function PatientGalleryScreen({
       : allMedia.filter((item) => item.source !== 'patient');
     return countUnseenMedia(attentionPool);
   }, [allMedia, countUnseenMedia, showPatientTab]);
+
+  const sharedUnseenCount = useMemo(
+    () => countUnseenMedia(circleMedia),
+    [circleMedia, countUnseenMedia],
+  );
+  const patientUnseenCount = useMemo(
+    () => countUnseenMedia(patientMedia),
+    [countUnseenMedia, patientMedia],
+  );
 
   const sharedBrowseTabCounts = useMemo(
     (): Record<
@@ -1011,7 +1024,10 @@ export function PatientGalleryScreen({
                 }}
                 className={circleTabButtonClass(browseTab === 'shared')}
               >
-                {t('gallery.tabShared')}
+                <span className="inline-flex items-center justify-center gap-1.5">
+                  {t('gallery.tabShared')}
+                  <CircleFolderCountBadge unread={sharedUnseenCount} total={0} />
+                </span>
               </button>
               {showPatientTab && (
                 <button
@@ -1025,9 +1041,14 @@ export function PatientGalleryScreen({
                   }}
                   className={circleTabButtonClass(browseTab === 'patient', 'truncate')}
                 >
-                  {t('gallery.tabFromPatient', {
-                    firstName: patient.displayName.split(' ')[0],
-                  })}
+                  <span className="inline-flex min-w-0 items-center justify-center gap-1.5">
+                    <span className="truncate">
+                      {t('gallery.tabFromPatient', {
+                        firstName: patient.displayName.split(' ')[0],
+                      })}
+                    </span>
+                    <CircleFolderCountBadge unread={patientUnseenCount} total={0} />
+                  </span>
                 </button>
               )}
             </div>
@@ -1502,6 +1523,7 @@ export function PatientGalleryScreen({
           db={db}
           user={user}
           patientId={patient.patientId}
+          memberUid={user.uid}
           patientDisplayName={patient.displayName}
           items={lightbox.items}
           index={lightbox.index}

@@ -20,7 +20,6 @@ const METRIC_TITLE_KEYS: Record<AnalyticsMetricId, string> = {
   temperature: 'analytics.metrics.temperature',
   balance: 'analytics.metrics.balance',
   vision: 'analytics.metrics.vision',
-  hearing: 'analytics.metrics.hearing',
   speech: 'analytics.metrics.speech',
   neurological: 'analytics.metrics.neurological',
   physiological: 'analytics.metrics.physiological',

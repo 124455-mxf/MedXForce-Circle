@@ -223,11 +223,16 @@ export function applyCareCalendarAttendeeDisplayNames(
     (options.selfContactIds ?? []).map((id) => String(id || '').trim()).filter(Boolean),
   );
   const lookup = (contactId: string): string | undefined => {
-    if (!options.nameByContactId) return undefined;
-    if (options.nameByContactId instanceof Map) {
-      return options.nameByContactId.get(contactId)?.trim() || undefined;
+    const nameByContactId = options.nameByContactId;
+    if (!nameByContactId) return undefined;
+    // ReadonlyMap is an interface — `instanceof Map` alone does not narrow it for Record indexing.
+    if (nameByContactId instanceof Map) {
+      return nameByContactId.get(contactId)?.trim() || undefined;
     }
-    return options.nameByContactId[contactId]?.trim() || undefined;
+    if (typeof (nameByContactId as ReadonlyMap<string, string>).get === 'function') {
+      return (nameByContactId as ReadonlyMap<string, string>).get(contactId)?.trim() || undefined;
+    }
+    return (nameByContactId as Record<string, string>)[contactId]?.trim() || undefined;
   };
   return attendees.map((attendee) => {
     let name = attendee.name;

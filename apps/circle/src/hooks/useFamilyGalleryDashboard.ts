@@ -7,6 +7,7 @@ import {
   getCircleGalleryViewedIds,
   type CircleGalleryViewedChangedDetail,
 } from '../lib/circleGalleryViews';
+import { useCircleGalleryViewedSync } from './useCircleGalleryViewedSync';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PREVIEW_PHOTO_LIMIT = 24;
@@ -77,6 +78,7 @@ export function useFamilyGalleryDashboard(
 
   const canViewCircle = !!(capabilities?.viewCircleMedia || capabilities?.richMediaUpload);
   const canViewPatient = canViewPatientUploads(capabilities);
+  useCircleGalleryViewedSync(db, patientId, memberUid);
 
   useEffect(() => {
     if (!patientId) return undefined;
@@ -229,7 +231,9 @@ export function useFamilyGalleryDashboard(
     }
 
     void viewedTick;
-    const viewedIds = patientId ? getCircleGalleryViewedIds(patientId) : new Set<string>();
+    const viewedIds = patientId
+      ? getCircleGalleryViewedIds(patientId, memberUid)
+      : new Set<string>();
     let unseenMediaCount = 0;
     for (const id of attentionMediaIds) {
       if (myMediaIds.has(id)) continue;

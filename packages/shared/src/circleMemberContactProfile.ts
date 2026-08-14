@@ -332,7 +332,8 @@ export async function syncManagedContactNamesFromMemberProfilesForUser(
   let synced = 0;
   for (const inviteDoc of invitesSnap.docs) {
     const invite = inviteDoc.data() as CircleInviteRecord;
-    const patientId = invite.patientId;
+    const patientId =
+      typeof invite.patientId === 'string' ? invite.patientId.trim() : '';
     if (!patientId) continue;
 
     try {
@@ -399,7 +400,7 @@ export async function syncManagedContactNamesFromMemberProfilesForUser(
       if (/missing or insufficient permissions/i.test(message) || /permission-denied/i.test(message)) {
         continue;
       }
-      console.warn('[Circle] Contact name heal skipped for patient', invite.patientId, err);
+      console.warn('[Circle] Contact name heal skipped for patient', patientId, err);
     }
   }
 

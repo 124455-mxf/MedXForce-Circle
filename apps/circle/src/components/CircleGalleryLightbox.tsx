@@ -3,7 +3,7 @@ import type { User } from 'firebase/auth';
 import { ChevronLeft, ChevronRight, ImageIcon, Pause, Play, X } from 'lucide-react';
 import type { Firestore } from 'firebase/firestore';
 import type { GalleryAlbumMedia, GalleryTagPerson } from '@medxforce/shared';
-import { markCircleGalleryMediaViewed } from '../lib/circleGalleryViews';
+import { markCircleGalleryMediaViewed, markCircleGalleryMediaViewedMany } from '../lib/circleGalleryViews';
 import { useGalleryMediaReactions } from '../hooks/useGalleryMediaReactions';
 import { useGalleryPersonTagging } from '../hooks/useGalleryPersonTagging';
 import { CircleGalleryReactionBar } from './CircleGalleryReactionBar';
@@ -77,6 +77,7 @@ type CircleGalleryLightboxProps = {
   db: Firestore;
   user: User;
   patientId: string;
+  memberUid?: string;
   patientDisplayName: string;
   items: GalleryAlbumMedia[];
   index: number;
@@ -90,6 +91,7 @@ export function CircleGalleryLightbox({
   db,
   user,
   patientId,
+  memberUid,
   patientDisplayName,
   items,
   index,
@@ -106,10 +108,12 @@ export function CircleGalleryLightbox({
   const indexRef = useRef(index);
   const slideshowActiveRef = useRef(isSlideshowActive);
   const onIndexChangeRef = useRef(onIndexChange);
+  const itemsRef = useRef(items);
   const itemsLengthRef = useRef(items.length);
   indexRef.current = index;
   slideshowActiveRef.current = isSlideshowActive;
   onIndexChangeRef.current = onIndexChange;
+  itemsRef.current = items;
   itemsLengthRef.current = items.length;
   const [recentReactionId, setRecentReactionId] = useState<string | null>(null);
   const [showIdentify, setShowIdentify] = useState(false);
@@ -131,16 +135,32 @@ export function CircleGalleryLightbox({
     !!item && !item.isVideo && item.uploadedByUid === user.uid;
   const taggedPeople = item ? getTaggedOnMedia(item.id) : [];
 
+  const markPlaylistViewed = useCallback(() => {
+    markCircleGalleryMediaViewedMany(
+      patientId,
+      itemsRef.current.map((media) => media.id),
+      memberUid,
+    );
+  }, [memberUid, patientId]);
+
+  const closeLightbox = useCallback(() => {
+    if (autoPlaySlideshow || slideshowActiveRef.current) {
+      markPlaylistViewed();
+    }
+    onClose();
+  }, [autoPlaySlideshow, markPlaylistViewed, onClose]);
+
   useEffect(() => {
     if (autoPlaySlideshow) {
       setIsSlideshowActive(true);
+      markPlaylistViewed();
     }
-  }, [autoPlaySlideshow]);
+  }, [autoPlaySlideshow, markPlaylistViewed]);
 
   useEffect(() => {
     if (!item) return;
-    markCircleGalleryMediaViewed(patientId, item.id);
-  }, [item, patientId]);
+    markCircleGalleryMediaViewed(patientId, item.id, memberUid);
+  }, [item, memberUid, patientId]);
 
   useEffect(() => {
     setShowIdentify(false);
@@ -264,13 +284,13 @@ export function CircleGalleryLightbox({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') closeLightbox();
       if (e.key === 'ArrowLeft' && hasPrev) goPrev();
       if (e.key === 'ArrowRight' && hasNext) goNext();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [goNext, goPrev, hasNext, hasPrev, onClose]);
+  }, [closeLightbox, goNext, goPrev, hasNext, hasPrev]);
 
   const imageSrc = useGalleryFullImageSrc(item?.isVideo ? undefined : item?.url);
   const { ref: lightboxStageRef, bounds: lightboxStageBounds } = useLightboxStageBounds<HTMLDivElement>();
@@ -367,7 +387,7 @@ export function CircleGalleryLightbox({
       <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 pointer-events-none">
         <button
           type="button"
-          onClick={onClose}
+          onClick={closeLightbox}
           className="pointer-events-auto w-9 h-9 rounded-full bg-white/95 text-slate-500 border border-slate-200 shadow-md flex items-center justify-center hover:text-slate-700"
           aria-label={t('common.close')}
         >

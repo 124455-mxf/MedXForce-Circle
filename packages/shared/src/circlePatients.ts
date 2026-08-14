@@ -114,16 +114,22 @@ export async function listCirclePatientsForUser(
 
   for (const inviteDoc of invitesSnap.docs) {
     const invite = inviteDoc.data() as CircleInviteRecord;
-    const memberSnap = await getDoc(doc(db, 'patients', invite.patientId, 'members', uid));
+    const patientId =
+      typeof invite.patientId === 'string' ? invite.patientId.trim() : '';
+    if (!patientId) {
+      console.warn('[Circle] Skipping accepted invite with no patientId', inviteDoc.id);
+      continue;
+    }
+    const memberSnap = await getDoc(doc(db, 'patients', patientId, 'members', uid));
     if (!memberSnap.exists()) continue;
     const member = memberSnap.data();
 
     let patientData: Record<string, unknown> | null = null;
     try {
-      const patientSnap = await getDoc(doc(db, 'patients', invite.patientId));
+      const patientSnap = await getDoc(doc(db, 'patients', patientId));
       patientData = patientSnap.exists() ? patientSnap.data() : null;
     } catch (err) {
-      console.warn('[Circle] Skipping patient in list — insufficient permissions:', invite.patientId, err);
+      console.warn('[Circle] Skipping patient in list — insufficient permissions:', patientId, err);
       continue;
     }
     const patientName =
@@ -177,7 +183,7 @@ export async function listCirclePatientsForUser(
     const lastName = snapshot?.identity.lastName?.trim() || undefined;
 
     summaries.push({
-      patientId: invite.patientId,
+      patientId,
       displayName: patientName,
       firstName,
       lastName,
