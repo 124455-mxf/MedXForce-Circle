@@ -124,7 +124,11 @@ export function CircleCareCalendarInviteRsvpBar({
     [inviteContext, inviteeContactIds, inviteeMemberUidByContactId, mergedAttendees],
   );
 
-  const self = findCareCalendarAttendeeForMember(mergedAttendees, inviteContext);
+  const self = findCareCalendarAttendeeForMember(
+    mergedAttendees,
+    inviteContext,
+    inviteeMemberUidByContactId,
+  );
 
   useEffect(() => {
     if (!entryId) return;
@@ -155,7 +159,11 @@ export function CircleCareCalendarInviteRsvpBar({
           setLiveAttendees(merged);
         }
 
-        const liveSelf = findCareCalendarAttendeeForMember(merged, inviteContextRef.current);
+        const liveSelf = findCareCalendarAttendeeForMember(
+          merged,
+          inviteContextRef.current,
+          uidMap,
+        );
         const liveResponse = liveSelf?.response ?? 'pending';
         if (liveResponse !== responseRef.current) {
           responseRef.current = liveResponse;

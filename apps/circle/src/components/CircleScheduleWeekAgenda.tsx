@@ -173,6 +173,7 @@ export function CircleScheduleWeekAgenda({
                                   event={event}
                                   inviteContext={inviteContext}
                                   t={t}
+                                  dateKey={dateKey}
                                   size="sm"
                                 />
                               ) : null}

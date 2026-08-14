@@ -526,6 +526,7 @@ export function CircleScheduleDayAppointmentCard({
               {!isPast && currentUserUid ? (
                 <CircleCareCalendarSelfRsvpStatusBadge
                   event={event}
+                  dateKey={dateKey}
                   inviteContext={
                     {
                       memberUid: currentUserUid,

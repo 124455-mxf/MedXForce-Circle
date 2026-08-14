@@ -19,11 +19,14 @@ import {
 } from '../lib/circleSectionStyles';
 import { CircleDashboardAssessmentScheduleSection } from './CircleDashboardAssessmentScheduleSection';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
+import { formatCircleBadgeCount } from './CircleCountBadge';
 
 type CircleScheduleScreenProps = {
   user: User;
   db: Firestore;
   patient: CirclePatientSummary;
+  actionBadgeCount?: number;
+  onOpenCountChange?: (count: number) => void;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
   onRecordVisit?: (entryId: string) => void;
   onManageClinicalReferences?: () => void;
@@ -33,6 +36,8 @@ export function CircleScheduleScreen({
   user,
   db,
   patient,
+  actionBadgeCount = 0,
+  onOpenCountChange,
   onOpenAssessment,
   onRecordVisit,
   onManageClinicalReferences,
@@ -44,9 +49,18 @@ export function CircleScheduleScreen({
   const { snapshot: profileSnapshot } = useCirclePatientProfileSnapshot(db, patient.patientId);
   const { settings: remoteSettings } = useCircleRemoteSettingsFromShell();
   const [addAppointment, setAddAppointment] = useState<((dateKey?: string) => void) | null>(null);
+  const [visibleOpenCount, setVisibleOpenCount] = useState<number | null>(null);
   const registerAddAppointment = useCallback((add: ((dateKey?: string) => void) | null) => {
     setAddAppointment(() => add);
   }, []);
+  const handleOpenCountChange = useCallback(
+    (count: number) => {
+      setVisibleOpenCount(count);
+      onOpenCountChange?.(count);
+    },
+    [onOpenCountChange],
+  );
+  const headerOpenCount = visibleOpenCount ?? actionBadgeCount;
 
   // Circle Schedule is for the care team — independent of patient-tablet Schedule visibility.
   const scheduleTabEnabled = memberRole !== 'friend';
@@ -80,6 +94,15 @@ export function CircleScheduleScreen({
             iconClassName="text-blue-600"
             title={t('dashboard.assessmentScheduleCalendar.title')}
             subtitle={t('dashboard.assessmentScheduleCalendar.subtitle')}
+            titleExtra={
+              headerOpenCount > 0 ? (
+                <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold inline-flex items-center justify-center tabular-nums">
+                  {t('schedulePage.views.actionBadge', {
+                    count: formatCircleBadgeCount(headerOpenCount),
+                  })}
+                </span>
+              ) : undefined
+            }
             trailing={
               addAppointment ? (
                 <button
@@ -116,6 +139,7 @@ export function CircleScheduleScreen({
             onRecordVisit={onRecordVisit}
             onManageClinicalReferences={onManageClinicalReferences}
             onRegisterAddAppointment={registerAddAppointment}
+            onOpenCountChange={handleOpenCountChange}
           />
         </div>
       </div>

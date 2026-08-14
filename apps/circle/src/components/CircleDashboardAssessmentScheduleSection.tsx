@@ -32,6 +32,7 @@ export type CircleDashboardAssessmentScheduleSectionProps = {
   onRecordVisit?: (entryId: string) => void;
   onManageClinicalReferences?: () => void;
   onRegisterAddAppointment?: (add: ((dateKey?: string) => void) | null) => void;
+  onOpenCountChange?: (count: number) => void;
 };
 
 export function CircleDashboardAssessmentScheduleSection({
@@ -54,6 +55,7 @@ export function CircleDashboardAssessmentScheduleSection({
   onRecordVisit,
   onManageClinicalReferences,
   onRegisterAddAppointment,
+  onOpenCountChange,
 }: CircleDashboardAssessmentScheduleSectionProps) {
   const { inviteContext, memberContactId, contact: ownContact, loading: ownContactLoading, inviteContextReady } =
     useCircleMemberInviteContext(db, user, patient);
@@ -212,6 +214,7 @@ export function CircleDashboardAssessmentScheduleSection({
           enableViewModes={fullPage}
           hideInlineAddButton={fullPage}
           onRecordVisit={onRecordVisit}
+          onOpenCountChange={onOpenCountChange}
         />
       </div>
       {canManageAppointments && (

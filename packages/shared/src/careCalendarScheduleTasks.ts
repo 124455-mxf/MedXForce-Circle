@@ -13,7 +13,12 @@ import {
   countAppointmentPostFollowUpRemaining,
   countAppointmentPrepRemaining,
 } from './careCalendarAppointmentDisplay';
-import { isAppointmentInviteThreadPost } from './careCalendarInvite';
+import {
+  isAppointmentInviteThreadPost,
+  pendingAppointmentInviteEntriesForMember,
+  SCHEDULE_PENDING_RSVP_HORIZON_DAYS,
+  type CareCalendarMemberInviteContext,
+} from './careCalendarInvite';
 import {
   SCHEDULE_PREP_LIGHT_NUDGE_DAYS,
   SCHEDULE_PREP_TASK_HORIZON_DAYS,
@@ -156,6 +161,114 @@ export function collectSchedulePostTaskRows(
     )
     .sort((a, b) => b.dateKey.localeCompare(a.dateKey));
   return options.limit ? rows.slice(0, options.limit) : rows;
+}
+
+/** Max Prepare cards on the Tasks screen (badge uses the same cap). */
+export const SCHEDULE_TASKS_PREPARE_CARD_LIMIT = 5;
+/** Max Follow-up cards on the Tasks screen (badge uses the same cap). */
+export const SCHEDULE_TASKS_FOLLOWUP_CARD_LIMIT = 3;
+
+export function collectScheduleTaskBoard(
+  entries: CareCalendarEntry[],
+  options: {
+    inviteContext?: CareCalendarMemberInviteContext;
+    memberRole?: ScheduleTaskViewerRole;
+    preferences?: Record<string, unknown>;
+    histories?: AssessmentHistoryMap;
+    now?: Date;
+    preLimit?: number;
+    postLimit?: number;
+  } = {},
+): {
+  awaitingRows: ScheduleTaskAppointmentRow[];
+  preRows: ScheduleTaskAppointmentRow[];
+  postRows: ScheduleTaskAppointmentRow[];
+} {
+  const now = options.now ?? new Date();
+  const awaitingRows = options.inviteContext?.memberUid
+    ? pendingAppointmentInviteEntriesForMember(entries, options.inviteContext, {
+        now,
+        horizonDays: SCHEDULE_PENDING_RSVP_HORIZON_DAYS,
+      }).map(({ entry, dateKey }) => scheduleTaskRowFromPendingInvite(entry, dateKey))
+    : [];
+  const preRows = collectSchedulePreTaskRows(entries, {
+    preferences: options.preferences,
+    histories: options.histories,
+    memberRole: options.memberRole,
+    now,
+    limit: options.preLimit,
+  });
+  const postRows = collectSchedulePostTaskRows(entries, {
+    preferences: options.preferences,
+    histories: options.histories,
+    memberRole: options.memberRole,
+    now,
+    limit: options.postLimit,
+  });
+  return { awaitingRows, preRows, postRows };
+}
+
+function scheduleTaskRowFromPendingInvite(
+  entry: CareCalendarEntry,
+  dateKey: string,
+): ScheduleTaskAppointmentRow {
+  return {
+    entryId: entry.id,
+    dateKey,
+    openPreTasks: 0,
+    openPreNudges: 0,
+    openPostTasks: 0,
+    openPostNudges: 0,
+    totalOpen: 1,
+    event: {
+      entryId: entry.id,
+      kind: entry.kind,
+      title: entry.title,
+      details: entry.details,
+      startTimeMinutes: entry.startTimeMinutes,
+      endTimeMinutes: entry.endTimeMinutes,
+      address: entry.address,
+      attendees: entry.attendees,
+      attendeeResponseSummary: entry.attendeeResponseSummary,
+      inviteeContactIds: entry.inviteeContactIds,
+      inviteeMemberUids: entry.inviteeMemberUids,
+      inviteeMemberUidByContactId: entry.inviteeMemberUidByContactId,
+      visitSubtype: entry.visitSubtype,
+      supportingNotes: entry.supportingNotes,
+      appointmentTasks: entry.appointmentTasks,
+      clinicalReferenceIds: entry.clinicalReferenceIds,
+      visitBrief: entry.visitBrief,
+      visitDebrief: entry.visitDebrief,
+      doctorName: entry.doctorName,
+      recurrence: entry.recurrence,
+      source: entry.source,
+      createdByName: entry.createdByName,
+      status: 'upcoming',
+    },
+  };
+}
+
+/**
+ * Schedule badge / Tasks-tab counter: one point per Tasks-screen card
+ * (awaiting RSVP + prepare + follow-up appointments), not per checklist item.
+ */
+export function countScheduleTabBadge(
+  entries: CareCalendarEntry[],
+  options: {
+    inviteContext?: CareCalendarMemberInviteContext;
+    memberRole?: ScheduleTaskViewerRole;
+    viewerUid?: string;
+    preferences?: Record<string, unknown>;
+    histories?: AssessmentHistoryMap;
+    now?: Date;
+  } = {},
+): number {
+  const board = collectScheduleTaskBoard(entries, {
+    ...options,
+    preLimit: SCHEDULE_TASKS_PREPARE_CARD_LIMIT,
+    postLimit: SCHEDULE_TASKS_FOLLOWUP_CARD_LIMIT,
+  });
+  return board.awaitingRows.length + board.preRows.length + board.postRows.length;
 }
 
 export function collectUpcomingAppointmentsInHorizon(

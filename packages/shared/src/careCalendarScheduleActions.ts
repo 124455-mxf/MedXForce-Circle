@@ -18,6 +18,8 @@ import {
   attendeeNeedsAppointmentInvite,
   findCareCalendarAttendeeForMember,
   mergeAttendeeResponses,
+  pendingAppointmentInviteEntriesForMember,
+  SCHEDULE_PENDING_RSVP_HORIZON_DAYS,
   type CareCalendarMemberInviteContext,
 } from './careCalendarInvite';
 import { normalizeMemberRole } from './patientPermissions';
@@ -182,36 +184,21 @@ function inviteResponseForMember(
     entry.attendeeResponseSummary,
     entry.inviteeMemberUidByContactId,
   );
-  const self = findCareCalendarAttendeeForMember(attendees, context);
+  const self = findCareCalendarAttendeeForMember(
+    attendees,
+    context,
+    entry.inviteeMemberUidByContactId,
+  );
   return self?.response ?? 'pending';
 }
 
 export function countPendingAppointmentInvitesForMember(
   entries: CareCalendarEntry[],
   context: CareCalendarMemberInviteContext,
-  horizonDays = SCHEDULE_PREP_TASK_HORIZON_DAYS,
+  horizonDays = SCHEDULE_PENDING_RSVP_HORIZON_DAYS,
   now = new Date(),
 ): number {
-  if (!context.memberUid) return 0;
-
-  let count = 0;
-  for (const entry of entries) {
-    if (entry.cancelledAt) continue;
-    if (!entryOccurrencesInHorizon(entry, horizonDays, now).length) continue;
-
-    const attendees = mergeAttendeeResponses(
-      entry.attendees,
-      entry.attendeeResponseSummary,
-      entry.inviteeMemberUidByContactId,
-    );
-    const invitedByUid = (entry.inviteeMemberUids ?? []).includes(context.memberUid);
-    const self = findCareCalendarAttendeeForMember(attendees, context);
-    if (!invitedByUid && (!self || !attendeeNeedsAppointmentInvite(self))) continue;
-
-    const response = inviteResponseForMember(entry, context);
-    if (response !== 'accepted' && response !== 'declined') count++;
-  }
-  return count;
+  return pendingAppointmentInviteEntriesForMember(entries, context, { now, horizonDays }).length;
 }
 
 /** Accepted invite appointments still on today's schedule (not yet ended). */
@@ -246,8 +233,14 @@ export function countAcceptedAppointmentsTodayForMember(
       entry.attendeeResponseSummary,
       entry.inviteeMemberUidByContactId,
     );
-    const invitedByUid = (entry.inviteeMemberUids ?? []).includes(context.memberUid);
-    const self = findCareCalendarAttendeeForMember(attendees, context);
+    const invitedByUid =
+      (entry.inviteeMemberUids ?? []).includes(context.memberUid) ||
+      Object.values(entry.inviteeMemberUidByContactId ?? {}).includes(context.memberUid);
+    const self = findCareCalendarAttendeeForMember(
+      attendees,
+      context,
+      entry.inviteeMemberUidByContactId,
+    );
     if (!invitedByUid && (!self || !attendeeNeedsAppointmentInvite(self))) continue;
 
     if (inviteResponseForMember(entry, context) !== 'accepted') continue;
@@ -356,42 +349,6 @@ export function countPatientAppointmentsUpcomingWithinDays(
     maxDateKey: careCalendarDateKey(end),
     now,
   });
-}
-
-export function countScheduleTabBadge(
-  entries: CareCalendarEntry[],
-  options: {
-    inviteContext?: CareCalendarMemberInviteContext;
-    memberRole?: ScheduleTaskViewerRole;
-    viewerUid?: string;
-    horizonDays?: number;
-    now?: Date;
-  },
-): number {
-  const horizonDays = options.horizonDays ?? SCHEDULE_PREP_TASK_HORIZON_DAYS;
-  const now = options.now ?? new Date();
-  const taskAssignees = taskAssigneesForScheduleViewer(
-    options.memberRole === 'patient' ? 'patient' : options.memberRole ?? 'friend',
-  );
-
-  const pending =
-    options.inviteContext && options.inviteContext.memberUid
-      ? countPendingAppointmentInvitesForMember(
-          entries,
-          options.inviteContext,
-          horizonDays,
-          now,
-        )
-      : 0;
-
-  const prepTasks = countOpenPreTasksForMemberInHorizon(entries, {
-    taskAssignees,
-    viewerUid: options.viewerUid,
-    horizonDays,
-    now,
-  });
-
-  return pending + prepTasks;
 }
 
 export type ImminentCareCalendarAppointment = {

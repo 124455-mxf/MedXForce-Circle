@@ -2,10 +2,10 @@
 
 import { ClipboardList } from 'lucide-react';
 import {
-  collectSchedulePostTaskRows,
-  collectSchedulePreTaskRows,
+  collectScheduleTaskBoard,
+  SCHEDULE_TASKS_FOLLOWUP_CARD_LIMIT,
+  SCHEDULE_TASKS_PREPARE_CARD_LIMIT,
   formatCareCalendarTimeRange,
-  pendingAppointmentInviteEntriesForMember,
   type AssessmentHistoryMap,
   type CareCalendarDayEvent,
   type CareCalendarEntry,
@@ -36,43 +36,6 @@ function formatAppointmentWhen(row: ScheduleTaskAppointmentRow, language: Circle
   });
   const time = formatCareCalendarTimeRange(row.event.startTimeMinutes, row.event.endTimeMinutes);
   return time ? `${dateLabel} · ${time}` : dateLabel;
-}
-
-function entryToTaskRow(entry: CareCalendarEntry): ScheduleTaskAppointmentRow {
-  return {
-    entryId: entry.id,
-    dateKey: entry.startDateKey,
-    openPreTasks: 0,
-    openPreNudges: 0,
-    openPostTasks: 0,
-    openPostNudges: 0,
-    totalOpen: 1,
-    event: {
-      entryId: entry.id,
-      kind: entry.kind,
-      title: entry.title,
-      details: entry.details,
-      startTimeMinutes: entry.startTimeMinutes,
-      endTimeMinutes: entry.endTimeMinutes,
-      address: entry.address,
-      attendees: entry.attendees,
-      attendeeResponseSummary: entry.attendeeResponseSummary,
-      inviteeContactIds: entry.inviteeContactIds,
-      inviteeMemberUids: entry.inviteeMemberUids,
-      inviteeMemberUidByContactId: entry.inviteeMemberUidByContactId,
-      visitSubtype: entry.visitSubtype,
-      supportingNotes: entry.supportingNotes,
-      appointmentTasks: entry.appointmentTasks,
-      clinicalReferenceIds: entry.clinicalReferenceIds,
-      visitBrief: entry.visitBrief,
-      visitDebrief: entry.visitDebrief,
-      doctorName: entry.doctorName,
-      recurrence: entry.recurrence,
-      source: entry.source,
-      createdByName: entry.createdByName,
-      status: 'upcoming',
-    },
-  };
 }
 
 function TaskSection({
@@ -157,21 +120,14 @@ export function CircleScheduleTasksView({
   onOpenAppointment,
   compact = false,
 }: CircleScheduleTasksViewProps) {
-  const preRows = collectSchedulePreTaskRows(careEntries, {
+  const { awaitingRows, preRows, postRows } = collectScheduleTaskBoard(careEntries, {
     preferences,
     histories,
     memberRole,
-    limit: 5,
+    inviteContext,
+    preLimit: SCHEDULE_TASKS_PREPARE_CARD_LIMIT,
+    postLimit: SCHEDULE_TASKS_FOLLOWUP_CARD_LIMIT,
   });
-  const postRows = collectSchedulePostTaskRows(careEntries, {
-    preferences,
-    histories,
-    memberRole,
-    limit: 3,
-  });
-  const awaitingRows = inviteContext
-    ? pendingAppointmentInviteEntriesForMember(careEntries, inviteContext).map(entryToTaskRow)
-    : [];
   const isEmpty = preRows.length === 0 && postRows.length === 0 && awaitingRows.length === 0;
 
   if (isEmpty) {

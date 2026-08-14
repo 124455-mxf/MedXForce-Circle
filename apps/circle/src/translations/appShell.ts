@@ -178,6 +178,7 @@ export const appShellEnglish = {
       yourRsvpPending: 'Accept / Decline',
       yourRsvpAccepted: 'Accepted',
       yourRsvpDeclined: 'You declined',
+      actionBadge: '{{count}} open',
     },
   },
   medxforceLab: {
@@ -1373,6 +1374,7 @@ export const appShellGerman = {
       yourRsvpPending: 'Annehmen / Absagen',
       yourRsvpAccepted: 'Angenommen',
       yourRsvpDeclined: 'Du hast abgesagt',
+      actionBadge: '{{count}} offen',
     },
   },
   drawer: {
@@ -2552,6 +2554,7 @@ export const appShellSpanish = {
       yourRsvpPending: 'Aceptar / Rechazar',
       yourRsvpAccepted: 'Aceptado',
       yourRsvpDeclined: 'Usted rechazó',
+      actionBadge: '{{count}} pendientes',
     },
   },
   drawer: {
@@ -3731,6 +3734,7 @@ export const appShellPolish = {
       yourRsvpPending: 'Zaakceptuj / Odrzuć',
       yourRsvpAccepted: 'Zaakceptowano',
       yourRsvpDeclined: 'Odrzuciłeś',
+      actionBadge: '{{count}} otwartych',
     },
   },
   drawer: {

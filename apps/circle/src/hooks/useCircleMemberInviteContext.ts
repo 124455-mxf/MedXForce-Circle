@@ -42,10 +42,13 @@ export function useCircleMemberInviteContext(
     });
   }, [db, patient?.patientId, user.uid]);
 
+  const memberContactId =
+    contact?.id ?? memberDocContactId ?? inviteContactId ?? undefined;
+
   const inviteContext = useMemo<CareCalendarMemberInviteContext>(
     () => ({
       memberUid: user.uid,
-      contactId: contact?.id,
+      contactId: memberContactId,
       memberDocContactId,
       inviteContactId,
       displayName:
@@ -57,15 +60,13 @@ export function useCircleMemberInviteContext(
     [
       contact,
       inviteContactId,
+      memberContactId,
       memberDocContactId,
       user.displayName,
       user.email,
       user.uid,
     ],
   );
-
-  const memberContactId =
-    contact?.id ?? memberDocContactId ?? inviteContactId ?? undefined;
 
   const inviteContextReady = !loading && inviteContactIdReady;
 

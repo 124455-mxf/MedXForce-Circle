@@ -445,12 +445,22 @@ export function CircleMainShell({
     selectedPatient,
   );
 
+  const [scheduleScreenOpenCount, setScheduleScreenOpenCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    setScheduleScreenOpenCount(null);
+  }, [selectedPatient?.patientId]);
+
   const scheduleActionBadgeCount = useScheduleActionBadgeCount(
     db,
     selectedPatient?.patientId,
     user,
     selectedPatient,
   );
+  const scheduleNavBadge =
+    activeTab === 'schedule' && scheduleScreenOpenCount != null
+      ? scheduleScreenOpenCount
+      : scheduleActionBadgeCount;
 
   const galleryDashboard = useFamilyGalleryDashboard(
     db,
@@ -477,7 +487,7 @@ export function CircleMainShell({
     return {
       messages: messagesUnread,
       circle: circleThreadUnread.unreadCount,
-      schedule: scheduleActionBadgeCount,
+      schedule: scheduleNavBadge,
       media: mediaUnseen,
       more: 0,
       moreDot: mediaInMore && mediaUnseen > 0,
@@ -486,7 +496,7 @@ export function CircleMainShell({
     circleThreadUnread.unreadCount,
     galleryDashboard.unseenMediaCount,
     moreNavItems,
-    scheduleActionBadgeCount,
+    scheduleNavBadge,
     selectedPatient?.capabilities.messaging,
     threadState.unreadCount,
   ]);
@@ -668,6 +678,8 @@ export function CircleMainShell({
                 user={user}
                 db={db}
                 patient={selectedPatient}
+                actionBadgeCount={scheduleActionBadgeCount}
+                onOpenCountChange={setScheduleScreenOpenCount}
                 onOpenAssessment={handleOpenAnalyticsDetail}
                 onRecordVisit={
                   showVisitCapture

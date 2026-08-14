@@ -12,12 +12,14 @@ import {
   parseCareCalendarDateKey,
   careCalendarDateKey,
   normalizeMemberRole,
+  countScheduleTabBadge,
   type AssessmentScheduleDayEvent,
   type CareCalendarDayEvent,
   type CareCalendarEntry,
   type CareCalendarAppointmentTask,
   type CareCalendarVisitDebrief,
 } from '@medxforce/shared';
+import { formatCircleBadgeCount } from './CircleCountBadge';
 import { CircleScheduleTodayView, CircleScheduleDayAppointmentCard } from './CircleScheduleTodayView';
 import { CircleScheduleTasksView } from './CircleScheduleTasksView';
 import {
@@ -73,6 +75,8 @@ type CircleAssessmentScheduleCalendarProps = {
   enableViewModes?: boolean;
   hideInlineAddButton?: boolean;
   onRecordVisit?: (entryId: string) => void;
+  /** Called with the Tasks-screen card count so header / nav can stay in sync. */
+  onOpenCountChange?: (count: number) => void;
 };
 
 type ScheduleViewMode = 'today' | 'week' | 'month' | 'tasks';
@@ -140,6 +144,7 @@ export function CircleAssessmentScheduleCalendar({
   enableViewModes = false,
   hideInlineAddButton = false,
   onRecordVisit,
+  onOpenCountChange,
 }: CircleAssessmentScheduleCalendarProps) {
   const { language } = useCircleI18nContext();
   const ct = (key: string, params?: Record<string, unknown>) =>
@@ -293,6 +298,47 @@ export function CircleAssessmentScheduleCalendar({
     setSelectedDateKey(todayKey);
   };
 
+  const inviteContextForBadge = useMemo(
+    () =>
+      currentUserUid
+        ? {
+            memberUid: currentUserUid,
+            contactId: memberContactId,
+            memberDocContactId,
+            inviteContactId,
+            displayName: memberDisplayName,
+          }
+        : undefined,
+    [
+      currentUserUid,
+      inviteContactId,
+      memberContactId,
+      memberDisplayName,
+      memberDocContactId,
+    ],
+  );
+
+  const tasksBadgeCount = useMemo(() => {
+    return countScheduleTabBadge(careEntries, {
+      inviteContext: inviteContextForBadge,
+      memberRole: memberRole ?? 'friend',
+      viewerUid: currentUserUid,
+      preferences: schedule.preferences,
+      histories: schedule.histories,
+    });
+  }, [
+    careEntries,
+    currentUserUid,
+    inviteContextForBadge,
+    memberRole,
+    schedule.histories,
+    schedule.preferences,
+  ]);
+
+  useEffect(() => {
+    onOpenCountChange?.(tasksBadgeCount);
+  }, [onOpenCountChange, tasksBadgeCount]);
+
   const viewModeSelector = enableViewModes ? (
     <div className="flex w-full rounded-2xl border border-slate-100 p-1.5 bg-slate-100 shrink-0">
       {VIEW_MODES.map((mode) => (
@@ -301,13 +347,18 @@ export function CircleAssessmentScheduleCalendar({
           type="button"
           onClick={() => setViewMode(mode)}
           className={cn(
-            'flex-1 min-w-0 px-3 py-2.5 rounded-xl text-sm font-bold leading-none whitespace-nowrap text-center transition-colors',
+            'relative flex flex-1 min-w-0 items-center justify-center gap-1 px-3 py-2.5 rounded-xl text-sm font-bold leading-none whitespace-nowrap text-center transition-colors',
             viewMode === mode
               ? 'bg-white text-blue-600 shadow-sm'
               : 'text-slate-500 hover:text-slate-700',
           )}
         >
-          {t(`schedulePage.views.${mode === 'today' ? 'day' : mode}`)}
+          <span>{t(`schedulePage.views.${mode === 'today' ? 'day' : mode}`)}</span>
+          {mode === 'tasks' && tasksBadgeCount > 0 ? (
+            <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold inline-flex items-center justify-center tabular-nums">
+              {formatCircleBadgeCount(tasksBadgeCount)}
+            </span>
+          ) : null}
         </button>
       ))}
     </div>

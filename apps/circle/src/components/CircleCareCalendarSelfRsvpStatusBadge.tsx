@@ -1,6 +1,7 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 import { useMemo } from 'react';
 import {
+  isCareCalendarAppointmentPast,
   resolveSelfInviteRsvpForCareEvent,
   type CareCalendarAttendeeResponse,
   type CareCalendarDayEvent,
@@ -13,6 +14,8 @@ type CircleCareCalendarSelfRsvpStatusBadgeProps = {
   inviteContext: CareCalendarMemberInviteContext;
   t: (path: string, params?: Record<string, unknown>) => string;
   className?: string;
+  /** Occurrence date for past filtering (week/day cards). */
+  dateKey?: string;
   /** Compact week/day chips use shorter labels. */
   size?: 'sm' | 'md';
 };
@@ -31,6 +34,7 @@ export function CircleCareCalendarSelfRsvpStatusBadge({
   inviteContext,
   t,
   className,
+  dateKey,
   size = 'md',
 }: CircleCareCalendarSelfRsvpStatusBadgeProps) {
   const response = useMemo(
@@ -38,6 +42,18 @@ export function CircleCareCalendarSelfRsvpStatusBadge({
     [event, inviteContext],
   );
   if (!response) return null;
+
+  const isPast =
+    event.status === 'past' ||
+    (dateKey
+      ? isCareCalendarAppointmentPast(
+          dateKey,
+          event.startTimeMinutes,
+          event.endTimeMinutes,
+        )
+      : false);
+  // Outstanding accept/decline is irrelevant once the appointment has ended.
+  if (isPast && response === 'pending') return null;
 
   return (
     <span

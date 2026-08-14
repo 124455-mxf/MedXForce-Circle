@@ -21,7 +21,7 @@ import type {
   CareCalendarEntry,
   CareCalendarEntryKind,
 } from './careCalendar';
-import { formatCareCalendarTimeRange, isCareCalendarAppointmentPast } from './careCalendar';
+import { formatCareCalendarTimeRange, isCareCalendarAppointmentPast, careCalendarDateKey, parseCareCalendarDateKey, expandCareEntryDateKeys } from './careCalendar';
 import {
   canParticipateInCircleOpenThread,
   canViewCircleAppointmentInvites,
@@ -36,6 +36,9 @@ export type {
 } from './careCalendar';
 
 export const APPOINTMENT_INVITE_POST_MARKER = 'Appointment invite —';
+
+/** Pending accept/decline invites surface in Tasks for this many days ahead. */
+export const SCHEDULE_PENDING_RSVP_HORIZON_DAYS = 90;
 
 export type ParsedAppointmentInvitePost = {
   entryId: string;
@@ -1148,20 +1151,44 @@ export function isSyntheticAppointmentInvitePostId(id: string): boolean {
   return id.startsWith(SYNTHETIC_APPOINTMENT_INVITE_POST_ID_PREFIX);
 }
 
+function attendeeMatchingContextContactIds(
+  context: CareCalendarMemberInviteContext,
+): string[] {
+  const effective = memberEffectiveInviteContactId(context);
+  const rest = memberInviteContactIds(context).filter((id) => id !== effective);
+  return effective ? [effective, ...rest] : rest;
+}
+
+function attendeeForMappedMemberUid(
+  attendees: CareCalendarAttendee[],
+  memberUid: string,
+  inviteeMemberUidByContactId?: Record<string, string>,
+): CareCalendarAttendee | undefined {
+  if (!inviteeMemberUidByContactId) return undefined;
+  for (const [contactId, uid] of Object.entries(inviteeMemberUidByContactId)) {
+    if (uid !== memberUid) continue;
+    const match = attendees.find((attendee) => attendee.contactId === contactId);
+    if (match) return match;
+  }
+  return undefined;
+}
+
 export function findCareCalendarAttendeeForMember(
   attendees: CareCalendarAttendee[] | undefined,
   context: CareCalendarMemberInviteContext,
+  inviteeMemberUidByContactId?: Record<string, string>,
 ): CareCalendarAttendee | undefined {
   if (!attendees?.length) return undefined;
-  const contactIds = [
-    context.contactId,
-    context.memberDocContactId,
-    context.inviteContactId,
-  ].filter((id): id is string => Boolean(id));
-  for (const id of contactIds) {
+  for (const id of attendeeMatchingContextContactIds(context)) {
     const match = attendees.find((attendee) => attendee.contactId === id);
     if (match) return match;
   }
+  const byUid = attendeeForMappedMemberUid(
+    attendees,
+    context.memberUid,
+    inviteeMemberUidByContactId,
+  );
+  if (byUid) return byUid;
   const normalizedName = context.displayName
     ? normalizeContactLabel(context.displayName)
     : '';
@@ -1190,7 +1217,11 @@ function attendeeInviteResponseForMember(
     entry.attendeeResponseSummary,
     entry.inviteeMemberUidByContactId,
   );
-  const self = findCareCalendarAttendeeForMember(attendees, context);
+  const self = findCareCalendarAttendeeForMember(
+    attendees,
+    context,
+    entry.inviteeMemberUidByContactId,
+  );
   return self?.response ?? 'pending';
 }
 
@@ -1213,8 +1244,14 @@ export function resolveSelfInviteRsvpForCareEvent(
     event.attendeeResponseSummary,
     event.inviteeMemberUidByContactId,
   );
-  const invitedByUid = (event.inviteeMemberUids ?? []).includes(context.memberUid);
-  const self = findCareCalendarAttendeeForMember(attendees, context);
+  const invitedByUid =
+    (event.inviteeMemberUids ?? []).includes(context.memberUid) ||
+    Object.values(event.inviteeMemberUidByContactId ?? {}).includes(context.memberUid);
+  const self = findCareCalendarAttendeeForMember(
+    attendees,
+    context,
+    event.inviteeMemberUidByContactId,
+  );
   if (!invitedByUid && (!self || !attendeeNeedsAppointmentInvite(self))) return null;
   return self?.response ?? 'pending';
 }
@@ -1222,30 +1259,51 @@ export function resolveSelfInviteRsvpForCareEvent(
 export function pendingAppointmentInviteEntriesForMember(
   entries: CareCalendarEntry[],
   context: CareCalendarMemberInviteContext,
-): CareCalendarEntry[] {
+  options?: { now?: Date; horizonDays?: number },
+): Array<{ entry: CareCalendarEntry; dateKey: string }> {
   if (!context.memberUid) return [];
-  return entries.filter((entry) => {
-    if (entry.cancelledAt) return false;
-    if (
-      isCareCalendarAppointmentPast(
-        entry.startDateKey,
-        entry.startTimeMinutes,
-        entry.endTimeMinutes,
-      )
-    ) {
-      return false;
-    }
+  const now = options?.now ?? new Date();
+  const horizonDays = Math.max(0, options?.horizonDays ?? SCHEDULE_PENDING_RSVP_HORIZON_DAYS);
+  const todayKey = careCalendarDateKey(now);
+  const rangeStart = parseCareCalendarDateKey(todayKey);
+  const rangeEnd = new Date(rangeStart);
+  rangeEnd.setDate(rangeEnd.getDate() + horizonDays);
+
+  const rows: Array<{ entry: CareCalendarEntry; dateKey: string }> = [];
+  for (const entry of entries) {
+    if (entry.cancelledAt) continue;
+
+    const upcomingDateKeys = expandCareEntryDateKeys(entry, rangeStart, rangeEnd).filter(
+      (key) =>
+        !isCareCalendarAppointmentPast(
+          key,
+          entry.startTimeMinutes,
+          entry.endTimeMinutes,
+          now,
+        ),
+    );
+    if (!upcomingDateKeys.length) continue;
+
     const attendees = mergeAttendeeResponses(
       entry.attendees,
       entry.attendeeResponseSummary,
       entry.inviteeMemberUidByContactId,
     );
-    const invitedByUid = (entry.inviteeMemberUids ?? []).includes(context.memberUid);
-    const self = findCareCalendarAttendeeForMember(attendees, context);
-    if (!invitedByUid && (!self || !attendeeNeedsAppointmentInvite(self))) return false;
+    const invitedByUid =
+      (entry.inviteeMemberUids ?? []).includes(context.memberUid) ||
+      Object.values(entry.inviteeMemberUidByContactId ?? {}).includes(context.memberUid);
+    const self = findCareCalendarAttendeeForMember(
+      attendees,
+      context,
+      entry.inviteeMemberUidByContactId,
+    );
+    if (!invitedByUid && (!self || !attendeeNeedsAppointmentInvite(self))) continue;
     const response = attendeeInviteResponseForMember(entry, context);
-    return response !== 'accepted' && response !== 'declined';
-  });
+    if (response === 'accepted' || response === 'declined') continue;
+
+    rows.push({ entry, dateKey: upcomingDateKeys[0]! });
+  }
+  return rows;
 }
 
 function hasVisibleInvitePostForEntry(
@@ -1309,8 +1367,8 @@ export function mergeAppointmentInvitePostsWithCareCalendar(
   if (memberRole && !canViewCircleAppointmentInvites(memberRole)) return posts;
   const pending = pendingAppointmentInviteEntriesForMember(entries, context);
   const synthetic = pending
-    .filter((entry) => !hasVisibleInvitePostForEntry(posts, entry.id, context))
-    .map((entry) => buildSyntheticAppointmentInvitePost(entry, patientId, context.memberUid));
+    .filter(({ entry }) => !hasVisibleInvitePostForEntry(posts, entry.id, context))
+    .map(({ entry }) => buildSyntheticAppointmentInvitePost(entry, patientId, context.memberUid));
   if (!synthetic.length) return posts;
   return [...posts, ...synthetic];
 }
