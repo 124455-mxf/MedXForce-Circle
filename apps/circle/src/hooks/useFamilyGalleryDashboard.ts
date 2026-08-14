@@ -23,7 +23,7 @@ export type FamilyGalleryPreviewPhoto = {
 export type FamilyGalleryDashboardStats = {
   previewPhotos: FamilyGalleryPreviewPhoto[];
   photoCount: number;
-  /** Circle-shared media (non-patient) the member has not opened yet. */
+  /** Media the member can see and has not opened yet (excludes own uploads; includes patient). */
   unseenMediaCount: number;
   /** Reactions on any gallery photo (all uploaders). */
   totalReactions: number;
@@ -65,7 +65,7 @@ export function useFamilyGalleryDashboard(
 ): FamilyGalleryDashboardStats {
   const [previewPhotos, setPreviewPhotos] = useState<FamilyGalleryPreviewPhoto[]>([]);
   const [photoCount, setPhotoCount] = useState(0);
-  const [circleMediaIds, setCircleMediaIds] = useState<string[]>([]);
+  const [attentionMediaIds, setAttentionMediaIds] = useState<string[]>([]);
   const [myMediaIds, setMyMediaIds] = useState<Set<string>>(new Set());
   const [latestMyUploadAt, setLatestMyUploadAt] = useState<number | null>(null);
   const [reactions, setReactions] = useState<
@@ -93,7 +93,7 @@ export function useFamilyGalleryDashboard(
     if (!patientId || !memberUid || (!canViewCircle && !canViewPatient)) {
       setPreviewPhotos([]);
       setPhotoCount(0);
-      setCircleMediaIds([]);
+      setAttentionMediaIds([]);
       setMyMediaIds(new Set());
       setLatestMyUploadAt(null);
       setLoadingMedia(false);
@@ -108,7 +108,7 @@ export function useFamilyGalleryDashboard(
       (snapshot) => {
         const photos: FamilyGalleryPreviewPhoto[] = [];
         const myIds = new Set<string>();
-        const circleIds: string[] = [];
+        const attentionIds: string[] = [];
         let photosTotal = 0;
         let latestMyUploadAt: number | null = null;
 
@@ -121,9 +121,7 @@ export function useFamilyGalleryDashboard(
           const isVideo = !!data.isVideo;
           if (!isVideo) photosTotal += 1;
 
-          if (source !== 'patient') {
-            circleIds.push(snap.id);
-          }
+          attentionIds.push(snap.id);
 
           if (String(data.uploadedByUid || '') === memberUid) {
             myIds.add(snap.id);
@@ -153,7 +151,7 @@ export function useFamilyGalleryDashboard(
         photos.sort((a, b) => b.timestamp - a.timestamp);
         setPreviewPhotos(photos.slice(0, PREVIEW_PHOTO_LIMIT));
         setPhotoCount(photosTotal);
-        setCircleMediaIds(circleIds);
+        setAttentionMediaIds(attentionIds);
         setMyMediaIds(myIds);
         setLatestMyUploadAt(latestMyUploadAt);
         setLoadingMedia(false);
@@ -161,7 +159,7 @@ export function useFamilyGalleryDashboard(
       () => {
         setPreviewPhotos([]);
         setPhotoCount(0);
-        setCircleMediaIds([]);
+        setAttentionMediaIds([]);
         setMyMediaIds(new Set());
         setLatestMyUploadAt(null);
         setLoadingMedia(false);
@@ -233,7 +231,7 @@ export function useFamilyGalleryDashboard(
     void viewedTick;
     const viewedIds = patientId ? getCircleGalleryViewedIds(patientId) : new Set<string>();
     let unseenMediaCount = 0;
-    for (const id of circleMediaIds) {
+    for (const id of attentionMediaIds) {
       if (myMediaIds.has(id)) continue;
       if (!viewedIds.has(id)) unseenMediaCount += 1;
     }
@@ -254,7 +252,7 @@ export function useFamilyGalleryDashboard(
       loading: loadingMedia || loadingReactions,
     };
   }, [
-    circleMediaIds,
+    attentionMediaIds,
     loadingMedia,
     loadingReactions,
     memberUid,

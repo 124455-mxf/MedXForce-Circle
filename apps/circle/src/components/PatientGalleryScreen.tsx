@@ -3,7 +3,6 @@ import type { User } from 'firebase/auth';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import {
   ChevronLeft,
-  FolderPlus,
   Image as ImageIcon,
   Pencil,
   Play,
@@ -566,17 +565,19 @@ export function PatientGalleryScreen({
     setShowGrid(false);
   };
 
-  const myAlbumItems = useMemo(
-    () => myAlbumCards.flatMap(({ items }) => items),
-    [myAlbumCards],
-  );
-
   const countUnseenMedia = useCallback(
     (items: GalleryAlbumMedia[]) =>
       items.filter((item) => isCircleGalleryMediaUnseenForMember(item, viewedIds, user.uid))
         .length,
     [user.uid, viewedIds],
   );
+
+  const headerUnseenCount = useMemo(() => {
+    const attentionPool = showPatientTab
+      ? allMedia
+      : allMedia.filter((item) => item.source !== 'patient');
+    return countUnseenMedia(attentionPool);
+  }, [allMedia, countUnseenMedia, showPatientTab]);
 
   const sharedBrowseTabCounts = useMemo(
     (): Record<
@@ -585,32 +586,34 @@ export function PatientGalleryScreen({
     > => ({
       photos: {
         total: circlePhotos.length,
-        unread: countUnseenMedia(circlePhotos),
+        unread: 0,
       },
       videos: {
         total: circleVideos.length,
-        unread: countUnseenMedia(circleVideos),
+        unread: 0,
       },
+      // Album chips show album counts (gray). Unseen media stays on each album’s “N NEW” badge.
       album: {
         total: visibleAlbumCards.length,
-        unread: countUnseenMedia(circleMedia),
+        unread: 0,
       },
       'my-albums': {
-        total: myAlbumItems.length,
-        unread: countUnseenMedia(myAlbumItems),
+        total: myAlbumCards.length,
+        unread: 0,
       },
+      // Newest = attention: others’ media not yet opened in the lightbox (red).
       newest: {
-        total: circleMedia.length,
+        total: 0,
         unread: countUnseenMedia(circleMedia),
       },
     }),
     [
       visibleAlbumCards.length,
+      myAlbumCards.length,
       circleMedia,
       circlePhotos,
       circleVideos,
       countUnseenMedia,
-      myAlbumItems,
     ],
   );
 
@@ -910,6 +913,15 @@ export function PatientGalleryScreen({
                 iconClassName="text-blue-600"
                 title={t('gallery.title')}
                 subtitle={t('gallery.subtitle')}
+                titleExtra={
+                  headerUnseenCount > 0 ? (
+                    <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold inline-flex items-center justify-center tabular-nums">
+                      {t('gallery.actionBadge', {
+                        count: formatCircleBadgeCount(headerUnseenCount),
+                      })}
+                    </span>
+                  ) : undefined
+                }
                 trailing={
                   canUpload ? (
                     <button
@@ -949,10 +961,11 @@ export function PatientGalleryScreen({
                   <button
                     type="button"
                     onClick={() => setShowCreateAlbum((v) => !v)}
-                    className="shrink-0 flex items-center gap-1 text-sm font-semibold text-blue-600 px-2 py-1"
+                    className={circleHeaderActionButtonClass}
+                    aria-label={t('gallery.newAlbum')}
+                    title={t('gallery.newAlbum')}
                   >
-                    <FolderPlus size={16} />
-                    {t('gallery.newAlbum')}
+                    <Plus size={18} className="[@media(max-height:740px)]:size-4" />
                   </button>
                 )}
               </>
