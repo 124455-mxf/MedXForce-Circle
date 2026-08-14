@@ -70,14 +70,18 @@ export function CircleAiGuidanceModal({
 
   const handleCopyGuidance = useCallback(async () => {
     if (!answer?.trim()) return;
+    const q = question.trim();
+    const text = q
+      ? `${t('circle.aiGuidanceYourQuestion')}:\n${q}\n\n${t('circle.aiGuidanceLabel')}:\n${answer.trim()}`
+      : answer.trim();
     try {
-      await navigator.clipboard.writeText(answer.trim());
+      await navigator.clipboard.writeText(text);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
       /* clipboard unavailable */
     }
-  }, [answer]);
+  }, [answer, question, t]);
 
   const handleAsk = async () => {
     const q = question.trim();
