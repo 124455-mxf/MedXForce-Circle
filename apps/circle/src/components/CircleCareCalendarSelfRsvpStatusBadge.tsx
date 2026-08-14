@@ -44,7 +44,7 @@ export function CircleCareCalendarSelfRsvpStatusBadge({
       className={cn(
         'inline-flex items-center rounded-full font-bold uppercase tracking-wide',
         size === 'sm' ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-0.5 text-[10px]',
-        response === 'pending' && 'bg-amber-500 text-white',
+        response === 'pending' && 'bg-blue-600 text-white',
         response === 'accepted' && 'bg-emerald-600 text-white',
         response === 'declined' && 'bg-slate-500 text-white',
         className,

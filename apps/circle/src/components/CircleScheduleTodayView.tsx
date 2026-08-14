@@ -163,7 +163,7 @@ export function CircleScheduleTodayView({
 
   return (
     <div className="space-y-5 flex-1 min-h-0 overflow-y-auto overscroll-contain">
-      <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-violet-50 border border-blue-100 px-5 py-4">
+      <div className="rounded-2xl border border-slate-100 bg-slate-100 px-5 py-4">
         <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">
           {isActualToday ? t('schedulePage.views.today') : t('schedulePage.views.day')}
         </p>

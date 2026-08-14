@@ -241,15 +241,15 @@ export function CircleCareCalendarInviteRsvpBar({
       className={cn(
         'space-y-2 rounded-xl border',
         compact
-          ? 'border-amber-200 bg-amber-50/80 p-2.5'
-          : 'border-violet-100 bg-violet-50/70 p-3',
+          ? 'border-blue-200 bg-blue-50/80 p-2.5'
+          : 'border-blue-100 bg-blue-50/70 p-3',
         className,
       )}
     >
       <p
         className={cn(
           'font-bold uppercase tracking-wide',
-          compact ? 'text-[10px] text-amber-900' : 'text-xs text-violet-800',
+          compact ? 'text-[10px] text-blue-900' : 'text-xs text-blue-800',
         )}
       >
         {t('schedulePage.views.yourRsvpPending')}
@@ -259,10 +259,7 @@ export function CircleCareCalendarInviteRsvpBar({
           type="button"
           disabled={busy}
           onClick={() => void handleRespond('accepted')}
-          className={cn(
-            'inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-white disabled:opacity-60',
-            compact ? 'bg-amber-600 hover:bg-amber-700' : 'bg-violet-600 hover:bg-violet-700',
-          )}
+          className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-60"
         >
           {busy ? <Loader2 size={12} className="animate-spin" /> : null}
           {t('circle.appointmentInviteAccept')}

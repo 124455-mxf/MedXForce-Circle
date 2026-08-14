@@ -197,6 +197,9 @@ export function CircleScheduleWeekAgenda({
                     const itemKey = `assess:${dateKey}:${event.id}`;
                     const expanded = expandedAssessmentKey === itemKey;
                     const metricId = assessmentScheduleIdToAnalyticsMetric(event.id);
+                    const isCompleted = event.status === 'completed';
+                    const canOpen = !!metricId && !!onOpenAssessment && !isCompleted;
+                    const canExpand = !canOpen && !isCompleted;
                     return (
                       <li
                         key={itemKey}
@@ -205,15 +208,16 @@ export function CircleScheduleWeekAgenda({
                         <button
                           type="button"
                           onClick={() => {
-                            if (metricId && onOpenAssessment && event.status !== 'completed') {
-                              onOpenAssessment(metricId);
+                            if (canOpen) {
+                              onOpenAssessment?.(metricId!);
                               return;
                             }
+                            if (!canExpand) return;
                             setExpandedAssessmentKey((current) =>
                               current === itemKey ? null : itemKey,
                             );
                           }}
-                          aria-expanded={expanded}
+                          aria-expanded={canExpand ? expanded : undefined}
                           className="flex w-full items-start gap-3 px-3 py-3 text-left"
                         >
                           <span className="shrink-0 w-16 pt-0.5 text-[10px] font-bold text-slate-500 leading-tight">
@@ -228,13 +232,13 @@ export function CircleScheduleWeekAgenda({
                                 'mt-0.5 block text-[10px] font-bold uppercase tracking-wider',
                                 event.status === 'due' && 'text-rose-600',
                                 event.status === 'upcoming' && 'text-amber-600',
-                                event.status === 'completed' && 'text-emerald-600',
+                                isCompleted && 'text-emerald-600',
                               )}
                             >
                               {t(`dashboard.assessmentScheduleCalendar.status.${event.status}`)}
                             </span>
                           </span>
-                          {!metricId || event.status === 'completed' ? (
+                          {canExpand ? (
                             <ChevronDown
                               size={18}
                               className={cn(
@@ -244,7 +248,7 @@ export function CircleScheduleWeekAgenda({
                             />
                           ) : null}
                         </button>
-                        {expanded ? (
+                        {expanded && canExpand ? (
                           <div className="border-t border-slate-100 px-3 py-3">
                             <p className="text-sm text-slate-500">
                               {t(`dashboard.assessmentScheduleCalendar.status.${event.status}`)}

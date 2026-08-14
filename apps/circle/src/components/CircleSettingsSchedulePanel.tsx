@@ -40,7 +40,7 @@ export function CircleSettingsSchedulePanel() {
             }
             className={cn(
               'w-14 h-8 rounded-full transition-all duration-300 relative shrink-0 mt-0.5',
-              showAppointmentDetails ? 'bg-violet-600' : 'bg-slate-300',
+              showAppointmentDetails ? 'bg-blue-600' : 'bg-slate-300',
             )}
           >
             <span
