@@ -451,6 +451,21 @@ function inviteAccessUnchanged(
   );
 }
 
+function contactProfileFieldsUnchanged(
+  previous: CircleManagedContact,
+  next: CircleManagedContact,
+): boolean {
+  return (
+    composeContactDisplayName(previous) === composeContactDisplayName(next) &&
+    (previous.language?.trim() || 'English') === (next.language?.trim() || 'English') &&
+    previous.relationship.trim() === next.relationship.trim() &&
+    (previous.firstName || '').trim() === (next.firstName || '').trim() &&
+    (previous.lastName || '').trim() === (next.lastName || '').trim() &&
+    normalizeContactDateOfBirth(previous.dateOfBirth) ===
+      normalizeContactDateOfBirth(next.dateOfBirth)
+  );
+}
+
 async function syncMemberContactProfileFromManagedContact(
   db: Firestore,
   patientId: string,
@@ -531,11 +546,21 @@ async function syncInviteForCircleRoleContact(
     proxyTier,
   );
 
+  const displayName = composeContactDisplayName(contact);
+  const existingDisplayName =
+    typeof existingData?.displayName === 'string' ? existingData.displayName : '';
+  const existingContactId =
+    typeof existingData?.contactId === 'string' ? existingData.contactId : '';
+  const inviteMetadataUnchanged =
+    accessUnchanged &&
+    displayName === existingDisplayName &&
+    contact.id === existingContactId;
+
   const invitePatch: Record<string, unknown> = {
-    displayName: composeContactDisplayName(contact) || undefined,
     contactId: contact.id,
     updatedAt: Date.now(),
   };
+  if (displayName) invitePatch.displayName = displayName;
   if (!accessUnchanged) {
     invitePatch.role = role;
     invitePatch.capabilities = capabilities;
@@ -543,6 +568,7 @@ async function syncInviteForCircleRoleContact(
   }
 
   if (existingStatus === 'accepted') {
+    if (inviteMetadataUnchanged) return;
     await setDoc(inviteRef, invitePatch, { merge: true });
 
     if (!accessUnchanged) {
@@ -578,6 +604,8 @@ async function syncInviteForCircleRoleContact(
     );
     return;
   }
+
+  if (existingStatus === 'pending' && inviteMetadataUnchanged) return;
 
   await setDoc(inviteRef, { status: 'pending', ...invitePatch }, { merge: true });
 }
@@ -781,7 +809,11 @@ export async function upsertPatientManagedContact(
   try {
     if (syncInvite && normalizedEmail && input.kind !== 'contact') {
       await syncInviteForCircleRoleContact(db, patientId, next);
-      await syncMemberContactProfileFromManagedContact(db, patientId, next);
+      // Prefs/contact is self-owned. Skip when a proxy only changed notify flags —
+      // that write is what produced "Contact saved, but Circle access sync failed".
+      if (!existingManaged || !contactProfileFieldsUnchanged(existingManaged, next)) {
+        await syncMemberContactProfileFromManagedContact(db, patientId, next);
+      }
     } else if (syncInvite && normalizedEmail && input.kind === 'contact') {
       await revokeCircleInviteByEmail(db, patientId, normalizedEmail);
     }

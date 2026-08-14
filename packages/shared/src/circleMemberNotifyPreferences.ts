@@ -88,8 +88,27 @@ export async function writeMemberNotifyPreferences(
     },
     { merge: true },
   );
+  // Patient overlay + proxy editor read notify flags from the member root.
+  await setDoc(
+    memberNotifyPreferencesLegacyRef(db, patientId, memberUid),
+    {
+      notifyPreferences: next,
+      updatedAt: Date.now(),
+    },
+    { merge: true },
+  );
 
   return next;
+}
+
+/** Proxy user-management: push contact notify flags onto an accepted member. */
+export async function pushMemberNotifyPreferencesFromManagedContact(
+  db: Firestore,
+  patientId: string,
+  memberUid: string,
+  prefs: CircleMemberNotifyPreferences,
+): Promise<void> {
+  await writeMemberNotifyPreferences(db, patientId, memberUid, prefs, prefs);
 }
 
 export async function updateOwnCircleNotifyPreferences(

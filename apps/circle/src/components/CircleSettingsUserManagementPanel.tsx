@@ -28,6 +28,7 @@ import {
   revokeCircleInviteByEmail,
   revokeProvisionDraftInviteByEmail,
   saveCircleUserProfile,
+  pushMemberNotifyPreferencesFromManagedContact,
   upsertPatientManagedContact,
   upsertProvisionManagedContact,
   deleteProvisionManagedContact,
@@ -964,6 +965,9 @@ export function CircleSettingsUserManagementPanel({
 
     await demoteConflictingProxyBeforeSave(upsert, db, patient.patientId, contacts, currentDraft);
 
+    const nextAlert = currentDraft.alert && !!normalizedEmail;
+    const nextAttention = currentDraft.attention && !!normalizedEmail;
+    const nextLanguage = currentDraft.language || 'English';
     const saved = await upsert(
       db,
       patient.patientId,
@@ -977,11 +981,11 @@ export function CircleSettingsUserManagementPanel({
         mobile: normalizedMobile,
         relationship: clampRelationship(currentDraft.kind, currentDraft.relationship),
         kind: currentDraft.kind,
-        language: currentDraft.language || 'English',
+        language: nextLanguage,
         message: nextMessage,
         sms: nextSms,
-        alert: currentDraft.alert && !!normalizedEmail,
-        attention: currentDraft.attention && !!normalizedEmail,
+        alert: nextAlert,
+        attention: nextAttention,
         ...(roleFields.circleRole ? { circleRole: roleFields.circleRole } : {}),
         ...(roleFields.proxyTier ? { proxyTier: roleFields.proxyTier } : {}),
         ...(existing?.contactAddedEmailSentAt
@@ -992,11 +996,42 @@ export function CircleSettingsUserManagementPanel({
     );
 
     if (!isPendingProvision && invite?.status === 'accepted' && invite.acceptedByUid) {
-      await saveCircleUserProfile(db, invite.acceptedByUid, {
-        language: currentDraft.language || 'English',
-        languageSource: 'circle',
-        managedPatientId: patient.patientId,
-      });
+      const displayed = existing
+        ? contactForEditorDisplay(
+            existing,
+            members,
+            memberNotifyByEmail,
+            memberContactProfileByEmail,
+          )
+        : undefined;
+      if (
+        displayed &&
+        (displayed.alert !== nextAlert ||
+          displayed.attention !== nextAttention ||
+          displayed.message !== nextMessage)
+      ) {
+        try {
+          await pushMemberNotifyPreferencesFromManagedContact(
+            db,
+            patient.patientId,
+            invite.acceptedByUid,
+            {
+              alert: nextAlert,
+              attention: nextAttention,
+              message: nextMessage,
+            },
+          );
+        } catch (err) {
+          console.warn('[CircleSettingsUserManagementPanel] member notify sync', err);
+        }
+      }
+      if (displayed && nextLanguage !== (displayed.language || 'English')) {
+        await saveCircleUserProfile(db, invite.acceptedByUid, {
+          language: nextLanguage,
+          languageSource: 'patient',
+          managedPatientId: patient.patientId,
+        });
+      }
     }
 
     closeEditor();
