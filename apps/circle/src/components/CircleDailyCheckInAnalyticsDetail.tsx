@@ -491,6 +491,7 @@ export function CircleDailyCheckInAnalyticsDetail({
                       stroke="#3b82f6"
                       strokeWidth={2}
                       {...circleAnalyticsSparseLineProps}
+                      type="monotone"
                     />
                   )}
                   {answerChartData.some((p) => p.mood != null) && (
@@ -501,6 +502,7 @@ export function CircleDailyCheckInAnalyticsDetail({
                       stroke="#10b981"
                       strokeWidth={2}
                       {...circleAnalyticsSparseLineProps}
+                      type="monotone"
                     />
                   )}
                   {answerChartData.some((p) => p.sleep != null) && (
@@ -511,6 +513,7 @@ export function CircleDailyCheckInAnalyticsDetail({
                       stroke="#8b5cf6"
                       strokeWidth={2}
                       {...circleAnalyticsSparseLineProps}
+                      type="monotone"
                     />
                   )}
                   {answerChartData.some((p) => p.vitality != null) && (
@@ -522,6 +525,7 @@ export function CircleDailyCheckInAnalyticsDetail({
                       strokeWidth={2}
                       strokeDasharray="4 3"
                       {...circleAnalyticsSparseLineProps}
+                      type="monotone"
                     />
                   )}
                 </LineChart>
