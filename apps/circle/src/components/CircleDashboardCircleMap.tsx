@@ -242,7 +242,7 @@ export function DashboardCircleMapModal({
                     onClose();
                     onManageContacts();
                   }}
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-violet-600 text-white font-bold hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
                 >
                   <Users size={16} />
                   {t('dashboard.circleMap.manageContacts')}
