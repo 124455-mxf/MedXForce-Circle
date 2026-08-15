@@ -103,7 +103,9 @@ import {
   circleUrgencyStatusBadgeClass,
 } from '../lib/circleUrgencyStyles';
 import { useCircleMemberOnboarding } from '../hooks/useCircleMemberOnboarding';
+import { useCircleInitiateMessagesNotice } from '../hooks/useCircleInitiateMessagesNotice';
 import { CircleOnboardingWelcomeCard } from './CircleOnboardingWelcomeCard';
+import { CircleInitiateMessagesWelcomeCard } from './CircleInitiateMessagesWelcomeCard';
 import { useCircleMemberInviteContext } from '../hooks/useCircleMemberInviteContext';
 import { useCareCalendarEntries, buildCareCalendarEntriesSubscription } from '../hooks/useCareCalendarEntries';
 import { useCareTransitionReadiness } from '../hooks/useCareTransitionReadiness';
@@ -287,6 +289,18 @@ export function CircleCircleScreen({
     dismissWelcome,
     dismissing: onboardingDismissing,
   } = useCircleMemberOnboarding(db, patient.patientId, user.uid, onboardingEnabled);
+  const {
+    showNotice: showInitiateNotice,
+    dismissNotice: dismissInitiateNotice,
+    dismissing: initiateDismissing,
+  } = useCircleInitiateMessagesNotice(
+    db,
+    patient.patientId,
+    user.uid,
+    patient.role,
+    remoteSettings,
+    onboardingEnabled,
+  );
 
   const [activeThread, setActiveThread] = useState<CircleMemberThreadKind>('open');
   const [inboxView, setInboxView] = useState<CirclePostInboxView>('discussion');
@@ -410,6 +424,8 @@ export function CircleCircleScreen({
 
   const showCircleOnboarding =
     showOnboardingWelcome && activeThread === 'open' && inboxView === 'discussion';
+  const showCircleInitiateNotice =
+    showInitiateNotice && activeThread === 'open' && inboxView === 'discussion';
 
   const inboxViews = useMemo(() => {
     const views = circlePostInboxViewsForThread(activeThread, memberRole);
@@ -1322,6 +1338,16 @@ export function CircleCircleScreen({
                 variant="circle"
                 onDismiss={() => void dismissWelcome()}
                 dismissing={onboardingDismissing}
+              />
+            </div>
+          ) : null}
+
+          {showCircleInitiateNotice ? (
+            <div className="mb-3">
+              <CircleInitiateMessagesWelcomeCard
+                patient={patient}
+                onDismiss={() => void dismissInitiateNotice()}
+                dismissing={initiateDismissing}
               />
             </div>
           ) : null}

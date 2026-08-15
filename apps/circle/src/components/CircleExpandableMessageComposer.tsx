@@ -41,6 +41,11 @@ type CircleExpandableMessageComposerProps = {
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
   error?: string | null;
+  showSubject?: boolean;
+  subject?: string;
+  onSubjectChange?: (value: string) => void;
+  subjectPlaceholder?: string;
+  subjectMaxLength?: number;
 };
 
 const inlineTextareaClass =
@@ -79,12 +84,18 @@ export function CircleExpandableMessageComposer({
   expanded: expandedProp,
   onExpandedChange,
   error = null,
+  showSubject = false,
+  subject = '',
+  onSubjectChange,
+  subjectPlaceholder,
+  subjectMaxLength = 256,
 }: CircleExpandableMessageComposerProps) {
   const t = useCircleT();
   const [uncontrolledExpanded, setUncontrolledExpanded] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const inlineRef = useRef<HTMLTextAreaElement>(null);
   const expandedRef = useRef<HTMLTextAreaElement>(null);
+  const subjectRef = useRef<HTMLInputElement>(null);
   const previousValueRef = useRef(value);
   const { isRecording, micError, setMicError, toggleRecording, stopRecording } = useDictation();
   const showAiGuidance = Boolean(aiGuidance) && isCircleAiAssistAvailable();
@@ -113,6 +124,7 @@ export function CircleExpandableMessageComposer({
   const collapseExpanded = useCallback(() => {
     expandedRef.current?.blur();
     inlineRef.current?.blur();
+    subjectRef.current?.blur();
     setExpanded(false);
   }, [setExpanded]);
 
@@ -121,13 +133,17 @@ export function CircleExpandableMessageComposer({
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const focusTimer = window.setTimeout(() => {
-      expandedRef.current?.focus({ preventScroll: true });
+      if (showSubject) {
+        subjectRef.current?.focus({ preventScroll: true });
+      } else {
+        expandedRef.current?.focus({ preventScroll: true });
+      }
     }, 0);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.clearTimeout(focusTimer);
     };
-  }, [expanded]);
+  }, [expanded, showSubject]);
 
   useEffect(() => {
     const hadContent = previousValueRef.current.trim().length > 0;
@@ -332,6 +348,25 @@ export function CircleExpandableMessageComposer({
             </div>
 
             <div className="flex-1 min-h-0 p-5 flex flex-col gap-3 overflow-hidden">
+              {showSubject ? (
+                <div className="shrink-0 flex flex-col gap-1.5">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                    {t('circle.composerSubject')}
+                  </span>
+                  <input
+                    ref={subjectRef}
+                    type="text"
+                    value={subject}
+                    onChange={(e) =>
+                      onSubjectChange?.(applyMaxLength(e.target.value, subjectMaxLength))
+                    }
+                    placeholder={subjectPlaceholder}
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-500/15"
+                    disabled={inputDisabled}
+                    maxLength={subjectMaxLength}
+                  />
+                </div>
+              ) : null}
               <div className="flex items-center justify-between gap-2 shrink-0">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">
                   {t('circle.composerYourMessage')}

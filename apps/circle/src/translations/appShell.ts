@@ -359,6 +359,14 @@ export const appShellEnglish = {
     tipRole: 'Your role is {{role}} — permissions match what you were invited to do.',
     learnMore: 'Watch onboarding & read docs',
     dismissWelcome: 'Dismiss welcome',
+    initiateEyebrow: 'New',
+    initiateHeadline: 'You can send messages to {{patient}}',
+    initiateBody:
+      'Your circle can now start a conversation with {{patient}} from Messages. This is optional and stays off in Intensive Care.',
+    initiateTipApp: 'Only Circle app members can start a message — email-only Contacts still reply to threads the patient starts.',
+    initiateTipGates: 'Proxy or patient controls who can send: by group (proxy, caregivers, family, friends) or by person.',
+    initiateTipFlood: 'Open Messages and tap New message. You can have one unanswered conversation at a time.',
+    dismissInitiateNotice: 'Dismiss message',
   },
   dashboard: {
     recordVisit: 'Record visit',
@@ -1546,6 +1554,17 @@ export const appShellGerman = {
     tipRole: 'Ihre Rolle: {{role}} — Berechtigungen entsprechen Ihrer Einladung.',
     learnMore: 'Onboarding ansehen & Dokumentation',
     dismissWelcome: 'Willkommen schließen',
+    initiateEyebrow: 'Neu',
+    initiateHeadline: 'Sie können {{patient}} Nachrichten senden',
+    initiateBody:
+      'Ihr Circle kann jetzt unter Nachrichten ein Gespräch mit {{patient}} beginnen. Optional und in der Intensivpflege aus.',
+    initiateTipApp:
+      'Nur Circle-App-Mitglieder können eine Nachricht beginnen — nur-E-Mail-Kontakte antworten weiterhin auf Gespräche, die der Patient startet.',
+    initiateTipGates:
+      'Proxy oder Patient steuert, wer senden darf: nach Gruppe (Proxy, Betreuende, Familie, Freunde) oder nach Person.',
+    initiateTipFlood:
+      'Öffnen Sie Nachrichten und tippen Sie auf Neue Nachricht. Sie können jeweils ein unbeantwortetes Gespräch haben.',
+    dismissInitiateNotice: 'Hinweis schließen',
   },
   dashboard: {
     recordVisit: 'Besuch aufzeichnen',
@@ -2726,6 +2745,17 @@ export const appShellSpanish = {
     tipRole: 'Su rol es {{role}} — los permisos coinciden con su invitación.',
     learnMore: 'Ver onboarding y documentación',
     dismissWelcome: 'Cerrar bienvenida',
+    initiateEyebrow: 'Nuevo',
+    initiateHeadline: 'Puede enviar mensajes a {{patient}}',
+    initiateBody:
+      'Su círculo ya puede iniciar una conversación con {{patient}} desde Mensajes. Es opcional y permanece desactivado en cuidados intensivos.',
+    initiateTipApp:
+      'Solo los miembros de la app Circle pueden iniciar un mensaje; los contactos solo por correo siguen respondiendo a hilos que inicia el paciente.',
+    initiateTipGates:
+      'El proxy o el paciente controla quién puede enviar: por grupo (proxy, cuidadores, familia, amigos) o por persona.',
+    initiateTipFlood:
+      'Abra Mensajes y pulse Nuevo mensaje. Puede tener una conversación sin respuesta a la vez.',
+    dismissInitiateNotice: 'Cerrar aviso',
   },
   dashboard: {
     recordVisit: 'Registrar visita',
@@ -3906,6 +3936,17 @@ export const appShellPolish = {
     tipRole: 'Twoja rola: {{role}} — uprawnienia odpowiadają zaproszeniu.',
     learnMore: 'Obejrzyj onboarding i dokumentację',
     dismissWelcome: 'Zamknij powitanie',
+    initiateEyebrow: 'Nowe',
+    initiateHeadline: 'Możesz wysyłać wiadomości do {{patient}}',
+    initiateBody:
+      'Twój krąg może teraz rozpocząć rozmowę z {{patient}} w Wiadomościach. To opcja i pozostaje wyłączone w intensywnej opiece.',
+    initiateTipApp:
+      'Tylko członkowie aplikacji Circle mogą rozpocząć wiadomość — kontakty tylko e-mailowe nadal odpowiadają na wątki rozpoczęte przez pacjenta.',
+    initiateTipGates:
+      'Pełnomocnik lub pacjent decyduje, kto może wysyłać: według grupy (pełnomocnik, opiekunowie, rodzina, przyjaciele) lub według osoby.',
+    initiateTipFlood:
+      'Otwórz Wiadomości i stuknij Nowa wiadomość. Możesz mieć jedną nieodpowiedzianą rozmowę naraz.',
+    dismissInitiateNotice: 'Zamknij komunikat',
   },
   dashboard: {
     recordVisit: 'Nagraj wizytę',

@@ -74,6 +74,20 @@ const remoteSettingsEnglish = {
     messaging: 'Messaging',
     location: 'Location',
   },
+  circleInitiate: {
+    title: 'Circle can message the patient',
+    description:
+      'Let selected Circle app members start a new message. Email-only Contacts cannot start a conversation. Off by default; locked off in Intensive Care.',
+    icu: 'Locked off in Intensive Care so the tablet is not flooded. Switch to Hospital or Daily Life to turn this on.',
+    groups: 'Who can start a message',
+    groupsDesc: 'Only Circle app users in these groups. Proxy stays on whenever this is enabled.',
+    people: 'Also allow these people',
+    peopleDesc: 'Optional extras. People in a selected group are already included and cannot be turned off here.',
+    groupProxy: 'Proxy',
+    groupCaregiver: 'Caregivers',
+    groupFamily: 'Family',
+    groupFriends: 'Friends',
+  },
   modes: {
     intensiveCare: 'ICU',
     intensiveCareDesc: 'Critical care — communication-first, minimal distractions, caregiver-controlled.',
@@ -345,6 +359,20 @@ const remoteSettingsGerman = {
     communication: 'Kommunikation',
     messaging: 'Nachrichten',
     location: 'Standort',
+  },
+  circleInitiate: {
+    title: 'Circle darf dem Patienten schreiben',
+    description:
+      'Ausgewählte Circle-App-Mitglieder dürfen eine neue Nachricht beginnen. Nur-E-Mail-Kontakte können kein Gespräch beginnen. Standardmäßig aus; in der Intensivpflege gesperrt.',
+    icu: 'In der Intensivpflege gesperrt, damit das Tablet nicht überflutet wird. Wechseln Sie zu Krankenhaus oder Alltag, um dies einzuschalten.',
+    groups: 'Wer eine Nachricht beginnen darf',
+    groupsDesc: 'Nur Circle-App-Nutzer in diesen Gruppen. Proxy bleibt eingeschaltet, solange dies aktiv ist.',
+    people: 'Diese Personen zusätzlich erlauben',
+    peopleDesc: 'Optionale Ergänzung. Personen in einer gewählten Gruppe sind bereits enthalten und hier nicht abwählbar.',
+    groupProxy: 'Proxy',
+    groupCaregiver: 'Betreuende',
+    groupFamily: 'Familie',
+    groupFriends: 'Freundinnen und Freunde',
   },
   modes: {
     intensiveCare: 'Intensivstation (ICU)',
@@ -619,6 +647,20 @@ const remoteSettingsSpanish = {
     messaging: 'Mensajería',
     location: 'Ubicación',
   },
+  circleInitiate: {
+    title: 'Circle puede escribir al paciente',
+    description:
+      'Los miembros de la app Circle seleccionados pueden iniciar un mensaje nuevo. Los contactos solo por correo no pueden empezar una conversación. Desactivado por defecto; bloqueado en cuidados intensivos.',
+    icu: 'Bloqueado en cuidados intensivos para no saturar la tableta. Cambia a Hospital o Vida diaria para activarlo.',
+    groups: 'Quién puede iniciar un mensaje',
+    groupsDesc: 'Solo usuarios de la app Circle en estos grupos. Proxy permanece activado mientras esto esté encendido.',
+    people: 'Permitir también a estas personas',
+    peopleDesc: 'Extras opcionales. Quienes están en un grupo seleccionado ya están incluidos y no se pueden desmarcar aquí.',
+    groupProxy: 'Proxy',
+    groupCaregiver: 'Cuidadores',
+    groupFamily: 'Familia',
+    groupFriends: 'Amigos',
+  },
   modes: {
     intensiveCare: 'UCI',
     intensiveCareDesc: 'Cuidados críticos — comunicación primero, mínimas distracciones, control del cuidador.',
@@ -890,6 +932,20 @@ const remoteSettingsPolish = {
     communication: 'Komunikacja',
     messaging: 'Wiadomości',
     location: 'Lokalizacja',
+  },
+  circleInitiate: {
+    title: 'Circle może pisać do pacjenta',
+    description:
+      'Wybrani członkowie aplikacji Circle mogą rozpocząć nową wiadomość. Kontakty tylko e-mailowe nie mogą zacząć rozmowy. Domyślnie wyłączone; zablokowane w intensywnej opiece.',
+    icu: 'Zablokowane w intensywnej opiece, żeby nie zalać tabletu. Przełącz na Szpital lub Życie codzienne, aby to włączyć.',
+    groups: 'Kto może rozpocząć wiadomość',
+    groupsDesc: 'Tylko użytkownicy aplikacji Circle w tych grupach. Pełnomocnik pozostaje włączony, gdy ta opcja jest aktywna.',
+    people: 'Dodatkowo pozwól tym osobom',
+    peopleDesc: 'Opcjonalni dodatkowi. Osoby z wybranej grupy są już uwzględnione i nie da się ich tu odznaczyć.',
+    groupProxy: 'Pełnomocnik',
+    groupCaregiver: 'Opiekunowie',
+    groupFamily: 'Rodzina',
+    groupFriends: 'Przyjaciele',
   },
   modes: {
     intensiveCare: 'OIOM',

@@ -15,6 +15,11 @@ import {
   type DailyCheckInQuestion,
 } from './dailyCheckIn';
 import { stripUndefinedDeep } from './firestoreSanitize';
+import {
+  extractCircleInitiateMessagesForRemote,
+  parseCircleInitiateMessagesConfig,
+  type CircleInitiateMessageGroup,
+} from './circleInitiateMessages';
 
 /** Single live doc: patients/{patientId}/remote_settings/live */
 export const REMOTE_SETTINGS_DOC_ID = 'live';
@@ -195,6 +200,11 @@ export type RemoteSettingsPayload = {
   aiConversation?: boolean;
   allowSendMessages?: boolean;
   autoSendMessage?: boolean;
+  /** Circle members may start a new message to the patient (off in ICU). */
+  allowCircleInitiateMessages?: boolean;
+  circleInitiateMessageGroups?: CircleInitiateMessageGroup[];
+  circleInitiateMessageMemberUids?: string[];
+  circleInitiateMessagesEnabledAt?: number;
   showUserInSidebar?: boolean;
   showQuickSettings?: boolean;
   showSettingsInSidebar?: boolean;
@@ -819,6 +829,7 @@ export function parsePatientRemoteSettings(
     aiConversation: asBool(data.aiConversation),
     allowSendMessages: asBool(data.allowSendMessages),
     autoSendMessage: asBool(data.autoSendMessage),
+    ...parseCircleInitiateMessagesConfig(data),
     showUserInSidebar: asBool(data.showUserInSidebar),
     showQuickSettings: asBool(data.showQuickSettings),
     showSettingsInSidebar: asBool(data.showSettingsInSidebar),
@@ -903,6 +914,7 @@ export function extractRemoteSettingsFromPreferences(
     aiConversation: !!preferences.aiConversation,
     allowSendMessages: preferences.allowSendMessages !== false,
     autoSendMessage: !!preferences.autoSendMessage,
+    ...extractCircleInitiateMessagesForRemote(preferences, preferences.appMode as string | undefined),
     showUserInSidebar: !!preferences.showUserInSidebar,
     showQuickSettings: preferences.showQuickSettings !== false,
     showSettingsInSidebar: preferences.showSettingsInSidebar !== false,
@@ -1111,6 +1123,7 @@ const REMOTE_PROXY_PRESET_BY_MODE: Record<
     | 'useAiAssistant'
     | 'aiConversation'
     | 'allowSendMessages'
+    | 'allowCircleInitiateMessages'
   >
 > = {
   intensive_care: {
@@ -1121,6 +1134,7 @@ const REMOTE_PROXY_PRESET_BY_MODE: Record<
     useAiAssistant: true,
     aiConversation: false,
     allowSendMessages: true,
+    allowCircleInitiateMessages: false,
   },
   hospital: {
     showAlertButton: true,

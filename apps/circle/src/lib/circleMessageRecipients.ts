@@ -8,9 +8,18 @@ export type CircleMessageRecipient = {
 };
 
 export function resolveCircleMessageRecipients(
-  message: Pick<CircleThreadMessage, 'recipientEmails' | 'circleMemberUids'>,
+  message: Pick<CircleThreadMessage, 'recipientEmails' | 'circleMemberUids' | 'initiatedBy'>,
   names: CircleMemberDisplayNameMaps,
+  options?: { patientRecipient?: CircleMessageRecipient | null },
 ): CircleMessageRecipient[] {
+  if (message.initiatedBy === 'circle') {
+    const patientRecipient = options?.patientRecipient;
+    const name = patientRecipient?.name.trim() || '';
+    if (name) {
+      return [{ key: patientRecipient?.key || 'patient', name }];
+    }
+  }
+
   const seen = new Set<string>();
   const recipients: CircleMessageRecipient[] = [];
 

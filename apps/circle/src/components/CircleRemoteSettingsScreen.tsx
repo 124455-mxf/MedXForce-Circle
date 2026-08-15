@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Loader2, LayoutDashboard, Shield, SlidersHorizontal, FileText } from 'lucide-react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import {
   REMOTE_APP_MODES,
   REMOTE_DASHBOARD_PRESETS,
@@ -42,6 +43,17 @@ import {
   type RemoteIntensiveCareOptionalFeatures,
   type RemotePrimaryLanguage,
   recordCareDiaryMilestones,
+  CIRCLE_INITIATE_MESSAGE_GROUPS,
+  isCircleInitiateGroupLocked,
+  isCircleInitiatePersonCoveredByGroups,
+  isCircleInitiateMessagesLockedOff,
+  normalizeInviteEmail,
+  parseCircleInitiateMessagesConfig,
+  sanitizeCircleInitiateMessageGroups,
+  uniqueCircleInitiateAllowlistPeople,
+  withCircleInitiateMessagesTurnedOn,
+  type CircleInitiateAllowlistPerson,
+  type CircleInitiateMessageGroup,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 import {
@@ -78,6 +90,199 @@ import { CircleDailyCheckInQuestionsPanel } from './CircleDailyCheckInQuestionsP
 import { CircleApplicationOverviewModal } from './CircleApplicationOverviewModal';
 import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfileSnapshot';
 import { useCircleApplicationOverview } from '../hooks/useCircleApplicationOverview';
+import { useCirclePatientMemberDisplayNames } from '../hooks/useCirclePatientMemberDisplayNames';
+
+function CircleInitiateMessagesRemoteBlock({
+  settings,
+  patch,
+  db,
+  patientId,
+  t,
+}: {
+  settings: PatientRemoteSettingsDoc;
+  patch: (next: PatientRemoteSettingsDoc) => void;
+  db: Firestore;
+  patientId: string;
+  t: ReturnType<typeof useCircleT>;
+}) {
+  const names = useCirclePatientMemberDisplayNames(db, patientId);
+  const [memberRows, setMemberRows] = useState<CircleInitiateAllowlistPerson[]>([]);
+  const icuLocked = isCircleInitiateMessagesLockedOff(settings.appMode);
+  const config = parseCircleInitiateMessagesConfig(settings);
+  const people = useMemo(
+    () =>
+      uniqueCircleInitiateAllowlistPeople(
+        memberRows.map((row) => ({
+          ...row,
+          name: names.byUid[row.uid] || row.name,
+        })),
+      ),
+    [memberRows, names.byUid],
+  );
+  const groupLabel: Record<CircleInitiateMessageGroup, string> = {
+    proxy: t('remoteSettings.circleInitiate.groupProxy'),
+    caregiver: t('remoteSettings.circleInitiate.groupCaregiver'),
+    family: t('remoteSettings.circleInitiate.groupFamily'),
+    friends: t('remoteSettings.circleInitiate.groupFriends'),
+  };
+
+  useEffect(() => {
+    if (!patientId) {
+      setMemberRows([]);
+      return undefined;
+    }
+    return onSnapshot(
+      collection(db, 'patients', patientId, 'members'),
+      (snap) => {
+        const next: CircleInitiateAllowlistPerson[] = [];
+        snap.forEach((memberDoc) => {
+          const data = memberDoc.data() as Record<string, unknown>;
+          next.push({
+            uid: memberDoc.id,
+            name: typeof data.displayName === 'string' ? data.displayName : '',
+            email: normalizeInviteEmail(String(data.invitedEmail ?? '')),
+            status: typeof data.status === 'string' ? data.status : 'active',
+            role: typeof data.role === 'string' ? data.role : '',
+          });
+        });
+        setMemberRows(next);
+      },
+      () => setMemberRows([]),
+    );
+  }, [db, patientId]);
+
+  return (
+    <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+      <ToggleRow
+        label={t('remoteSettings.circleInitiate.title')}
+        description={
+          icuLocked
+            ? t('remoteSettings.circleInitiate.icu')
+            : t('remoteSettings.circleInitiate.description')
+        }
+        enabled={config.allowCircleInitiateMessages && !icuLocked}
+        disabled={icuLocked}
+        onToggle={() => {
+          if (icuLocked) return;
+          if (config.allowCircleInitiateMessages) {
+            patch({ ...settings, allowCircleInitiateMessages: false });
+            return;
+          }
+          patch({
+            ...settings,
+            ...withCircleInitiateMessagesTurnedOn(config),
+          });
+        }}
+      />
+      {config.allowCircleInitiateMessages && !icuLocked ? (
+        <div className="space-y-3 pl-1">
+          <div>
+            <p className="text-xs font-semibold text-slate-700">
+              {t('remoteSettings.circleInitiate.groups')}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {t('remoteSettings.circleInitiate.groupsDesc')}
+            </p>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {CIRCLE_INITIATE_MESSAGE_GROUPS.map((group) => {
+                const locked = isCircleInitiateGroupLocked(
+                  group,
+                  config.allowCircleInitiateMessages,
+                );
+                const active =
+                  locked || config.circleInitiateMessageGroups.includes(group);
+                return (
+                  <button
+                    key={group}
+                    type="button"
+                    disabled={locked}
+                    onClick={() => {
+                      if (locked) return;
+                      const nextGroups = sanitizeCircleInitiateMessageGroups(
+                        active
+                          ? config.circleInitiateMessageGroups.filter((item) => item !== group)
+                          : [...config.circleInitiateMessageGroups, group],
+                        { requireProxy: true },
+                      );
+                      const coveredUids = new Set(
+                        people
+                          .filter((person) =>
+                            isCircleInitiatePersonCoveredByGroups(person.role, nextGroups),
+                          )
+                          .map((person) => person.uid),
+                      );
+                      patch({
+                        ...settings,
+                        circleInitiateMessageGroups: nextGroups,
+                        circleInitiateMessageMemberUids:
+                          config.circleInitiateMessageMemberUids.filter(
+                            (uid) => !coveredUids.has(uid),
+                          ),
+                      });
+                    }}
+                    className={cn(
+                      'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border',
+                      active
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-slate-500 border-slate-200',
+                      locked && 'cursor-not-allowed',
+                    )}
+                  >
+                    {groupLabel[group]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {people.length > 0 ? (
+            <div>
+              <p className="text-xs font-semibold text-slate-700">
+                {t('remoteSettings.circleInitiate.people')}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                {t('remoteSettings.circleInitiate.peopleDesc')}
+              </p>
+              <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                {people.map((person) => {
+                  const covered = isCircleInitiatePersonCoveredByGroups(
+                    person.role,
+                    config.circleInitiateMessageGroups,
+                  );
+                  const checked =
+                    covered || config.circleInitiateMessageMemberUids.includes(person.uid);
+                  return (
+                    <label
+                      key={person.uid}
+                      className={cn(
+                        'flex items-center gap-2 px-2 py-1.5 rounded-xl bg-white border border-slate-100',
+                        covered && 'opacity-70 cursor-not-allowed',
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={covered}
+                        onChange={() => {
+                          if (covered) return;
+                          const nextUids = checked
+                            ? config.circleInitiateMessageMemberUids.filter((id) => id !== person.uid)
+                            : [...config.circleInitiateMessageMemberUids, person.uid];
+                          patch({ ...settings, circleInitiateMessageMemberUids: nextUids });
+                        }}
+                        className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 disabled:opacity-100"
+                      />
+                      <span className="text-xs text-slate-700">{person.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function ToggleRow({
   label,
@@ -667,6 +872,15 @@ export function CircleRemoteSettingsScreen({
                     patch={patch}
                     t={t}
                   />
+                  {section.id === 'messaging' ? (
+                    <CircleInitiateMessagesRemoteBlock
+                      settings={settings}
+                      patch={patch}
+                      db={db}
+                      patientId={patient.patientId}
+                      t={t}
+                    />
+                  ) : null}
                 </div>
               </CircleCollapsibleSection>
             ))}

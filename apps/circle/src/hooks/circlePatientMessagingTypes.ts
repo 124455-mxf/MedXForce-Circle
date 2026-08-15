@@ -18,6 +18,7 @@ export type CircleThreadMessage = {
   createdAt: number;
   updatedAt: number;
   summaryEntries?: IcuSummaryEntry[];
+  initiatedBy?: 'circle' | 'patient';
 };
 
 export type CircleThreadReply = {

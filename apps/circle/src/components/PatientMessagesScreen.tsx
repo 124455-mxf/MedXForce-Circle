@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import type { User } from 'firebase/auth';
-import { Archive, ChevronLeft, ChevronDown, ChevronUp, ClipboardList, Mail, Maximize2, MessageSquare, Mic, Save, Trash2, User as UserIcon, Users, AlertCircle, Bell } from 'lucide-react';
+import { Archive, ChevronLeft, ChevronDown, ChevronUp, ClipboardList, Mail, Maximize2, MessageSquare, Mic, Plus, Save, Trash2, User as UserIcon, Users, AlertCircle, Bell } from 'lucide-react';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import {
   canCircleMemberReplyToPatientMessage,
   canShowIcuCommunicationLogInbox,
   canViewDeletedPatientMessages,
+  canCircleMemberInitiateMessage,
+  parseCircleInitiateMessagesConfig,
+  circleDisplayFirstName,
   circlePatientMessageBucket,
   circleRepliesAfterInboxHide,
   hideCircleMessageForUser,
@@ -67,6 +70,7 @@ import {
   circleInboxTabStripClass,
   circleInboxTextTabExtraClass,
   CIRCLE_INBOX_TAB_ICON_SIZE,
+  circleHeaderActionButtonClass,
   circleTabButtonClass,
   circleWorkTabHeaderClass,
   circleWorkTabPanelClass,
@@ -396,6 +400,11 @@ export function PatientMessagesScreen({
     user.email,
     user.uid,
   ]);
+  const patientFirstName = circleDisplayFirstName(patient.displayName, patient.firstName);
+  const patientRecipient = useMemo(
+    () => ({ key: patient.patientId, name: patientFirstName }),
+    [patient.patientId, patientFirstName],
+  );
 
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
@@ -411,6 +420,10 @@ export function PatientMessagesScreen({
   const [inboxView, setInboxView] = useState<CircleMessagesInboxView>('in_out');
   const [olderInboxExpanded, setOlderInboxExpanded] = useState(false);
   const [readTick, setReadTick] = useState(0);
+  const [composeToPatientOpen, setComposeToPatientOpen] = useState(false);
+  const [composeToPatientText, setComposeToPatientText] = useState('');
+  const [composeToPatientSubject, setComposeToPatientSubject] = useState('');
+  const [composeToPatientError, setComposeToPatientError] = useState<string | null>(null);
   const compactChrome = useCircleCompactChrome();
 
   const memberAudience = useMemo(
@@ -628,9 +641,11 @@ export function PatientMessagesScreen({
   const selectedRecipients = useMemo(
     () =>
       selectedMessage
-        ? resolveCircleMessageRecipients(selectedMessage, memberDisplayNames)
+        ? resolveCircleMessageRecipients(selectedMessage, memberDisplayNames, {
+            patientRecipient,
+          })
         : [],
-    [memberDisplayNames, selectedMessage],
+    [memberDisplayNames, patientRecipient, selectedMessage],
   );
   const selectedIsMultiRecipient = selectedRecipients.length > 1;
 
@@ -748,6 +763,7 @@ export function PatientMessagesScreen({
 
   useEffect(() => {
     setReplyComposerOpen(false);
+    setComposeToPatientOpen(false);
   }, [selectedMessageId]);
 
   const handleSendReply = useCallback(async () => {
@@ -822,6 +838,125 @@ export function PatientMessagesScreen({
     selectedMessage,
     selectedMessageId,
     senderName,
+    user.uid,
+  ]);
+
+  const canInitiate = useMemo(() => {
+    const config = parseCircleInitiateMessagesConfig(remoteSettings);
+    return canCircleMemberInitiateMessage(config, remoteSettings?.appMode, {
+      uid: user.uid,
+      role: patient.role,
+    });
+  }, [patient.role, remoteSettings, user.uid]);
+
+  const unansweredCircleInitiatedId = useMemo(() => {
+    const waiting = messages.find((msg) => {
+      if (msg.senderUid !== user.uid) return false;
+      if (circlePatientMessageBucket(msg.status) !== 'in_out') return false;
+      const replies = repliesByMessageId[msg.id] || [];
+      return !replies.some((reply) => reply.isPatient);
+    });
+    return waiting?.id ?? null;
+  }, [messages, repliesByMessageId, user.uid]);
+
+  const handleOpenComposeToPatient = useCallback(() => {
+    if (!canInitiate) return;
+    if (unansweredCircleInitiatedId) {
+      setSelectedMessageId(unansweredCircleInitiatedId);
+      setComposeToPatientOpen(false);
+      return;
+    }
+    setComposeToPatientError(null);
+    setComposeToPatientOpen(true);
+  }, [canInitiate, unansweredCircleInitiatedId]);
+
+  const handleSendNewToPatient = useCallback(async () => {
+    if (!canInitiate) return;
+    const text = composeToPatientText.trim();
+    if (!text) return;
+    if (unansweredCircleInitiatedId) {
+      setSelectedMessageId(unansweredCircleInitiatedId);
+      setComposeToPatientOpen(false);
+      return;
+    }
+
+    setComposeToPatientError(null);
+    setSending(true);
+    try {
+      const now = Date.now();
+      const messageId = `cmsg_${now}_${Math.random().toString(36).slice(2, 8)}`;
+      const subject = composeToPatientSubject.trim().slice(0, 256);
+      let translations: { language: string; text: string; subject?: string; isAuto: boolean }[] = [];
+      try {
+        const translated = (await translatePatientMessageForViewer(text, patientLanguage)).trim();
+        const translatedSubject = subject
+          ? (await translatePatientMessageForViewer(subject, patientLanguage)).trim()
+          : '';
+        if (
+          (translated && translated !== text) ||
+          (translatedSubject && translatedSubject !== subject)
+        ) {
+          translations = [
+            {
+              language: patientLanguage,
+              text: translated && translated !== text ? translated : text,
+              ...(translatedSubject && translatedSubject !== subject
+                ? { subject: translatedSubject }
+                : {}),
+              isAuto: true,
+            },
+          ];
+        }
+      } catch (err) {
+        console.warn('[PatientMessagesScreen] New message patient-language translate skipped —', err);
+      }
+
+      await setDoc(doc(db, 'patients', patient.patientId, 'messages', messageId), {
+        id: messageId,
+        subject,
+        text,
+        senderUid: user.uid,
+        senderName,
+        status: 'sent',
+        type: 'message',
+        recipientEmails: [],
+        recipientContactIds: [],
+        circleMemberUids: [user.uid],
+        translations,
+        hasNewReply: true,
+        createdAt: now,
+        updatedAt: now,
+        initiatedBy: 'circle',
+      });
+
+      setComposeToPatientText('');
+      setComposeToPatientSubject('');
+      setComposeToPatientError(null);
+      setComposeToPatientOpen(false);
+      setSelectedMessageId(null);
+      markThreadRead(patient.patientId, messageId, now);
+    } catch (err) {
+      console.warn('[PatientMessagesScreen] Circle-initiated send failed —', err);
+      const code = (err as { code?: string })?.code;
+      const message = err instanceof Error ? err.message : '';
+      setComposeToPatientError(
+        code === 'permission-denied' || /insufficient permissions/i.test(message)
+          ? t('messages.sendFailedPermissions')
+          : t('messages.sendFailed'),
+      );
+    } finally {
+      setSending(false);
+    }
+  }, [
+    canInitiate,
+    composeToPatientSubject,
+    composeToPatientText,
+    db,
+    patient.patientId,
+    patientLanguage,
+    senderName,
+    t,
+    unansweredCircleInitiatedId,
     user.uid,
   ]);
 
@@ -958,7 +1093,7 @@ export function PatientMessagesScreen({
     );
   }
 
-  if (messages.length === 0) {
+  if (messages.length === 0 && !canInitiate) {
     return (
       <div className={circleSectionEmptyCardClass}>
         <CircleWorkTabSectionIntro
@@ -1015,11 +1150,13 @@ export function PatientMessagesScreen({
         });
     const recipients = summaryRow || alertKind
       ? []
-      : resolveCircleMessageRecipients(msg, memberDisplayNames);
+      : resolveCircleMessageRecipients(msg, memberDisplayNames, { patientRecipient });
     const recipientPreview =
       recipients.length > 1
         ? formatCircleRecipientPreviewNames(recipients.map((recipient) => recipient.name))
-        : '';
+        : recipients.length === 1 && msg.initiatedBy === 'circle'
+          ? recipients[0].name
+          : '';
 
     return (
       <li key={msg.id} className={summaryRow ? 'list-none' : undefined}>
@@ -1172,6 +1309,18 @@ export function PatientMessagesScreen({
                 <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold inline-flex items-center justify-center tabular-nums">
                   {t('common.unread', { count: formatCircleBadgeCount(unreadCount) })}
                 </span>
+              ) : undefined
+            }
+            trailing={
+              canInitiate && inboxView === 'in_out' ? (
+                <button
+                  type="button"
+                  onClick={handleOpenComposeToPatient}
+                  className={circleHeaderActionButtonClass}
+                  aria-label={t('messages.composeToPatient')}
+                >
+                  <Plus size={18} />
+                </button>
               ) : undefined
             }
           />
@@ -1448,6 +1597,33 @@ export function PatientMessagesScreen({
           )}
         </div>
       </div>
+      {canInitiate ? (
+        <CircleExpandableMessageComposer
+          presentation="overlay"
+          expanded={composeToPatientOpen}
+          onExpandedChange={setComposeToPatientOpen}
+          value={composeToPatientText}
+          onChange={setComposeToPatientText}
+          placeholder={t('messages.composePlaceholder', { patient: patient.displayName })}
+          disabled={sending}
+          sending={sending}
+          onClear={() => {
+            setComposeToPatientText('');
+            setComposeToPatientSubject('');
+            setComposeToPatientError(null);
+          }}
+          onSend={handleSendNewToPatient}
+          clearLabel={t('messages.clear')}
+          sendLabel={t('messages.sendToPatient')}
+          sendingLabel={t('messages.sending')}
+          expandTitle={t('messages.expandComposeTitle', { patient: patient.displayName })}
+          showSubject
+          subject={composeToPatientSubject}
+          onSubjectChange={setComposeToPatientSubject}
+          subjectPlaceholder={t('messages.composeSubjectPlaceholder')}
+          error={composeToPatientError}
+        />
+      ) : null}
       {messageModals}
       </>
     );
