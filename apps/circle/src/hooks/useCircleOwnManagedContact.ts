@@ -29,9 +29,18 @@ function managedContactEqual(
   return (
     a.id === b.id &&
     a.name === b.name &&
+    (a.firstName || '') === (b.firstName || '') &&
+    (a.lastName || '') === (b.lastName || '') &&
+    (a.dateOfBirth || '') === (b.dateOfBirth || '') &&
     a.email === b.email &&
+    a.mobile === b.mobile &&
     a.language === b.language &&
-    a.relationship === b.relationship
+    a.relationship === b.relationship &&
+    a.kind === b.kind &&
+    a.alert === b.alert &&
+    a.attention === b.attention &&
+    a.message === b.message &&
+    a.sms === b.sms
   );
 }
 
