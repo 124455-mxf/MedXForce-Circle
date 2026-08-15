@@ -23,6 +23,11 @@ import { CircleStoredTranslationMessage } from './CircleStoredTranslationMessage
 import { CircleMessageExpandOverlay } from './CircleMessageExpandOverlay';
 import { CirclePatientLanguagePill } from './CirclePatientLanguagePill';
 import { useCirclePatientMemberDisplayNames } from '../hooks/useCirclePatientMemberDisplayNames';
+import {
+  formatCircleRecipientPreviewNames,
+  resolveCircleMessageRecipients,
+  type CircleMessageRecipient,
+} from '../lib/circleMessageRecipients';
 import { useCircleRemoteSettingsFromShell } from '../context/CircleSelectedPatientContext';
 import { normalizeCircleUiLanguage } from '../lib/circleLanguages';
 import { translatePatientMessageForViewer } from '../lib/circlePatientMessageTranslate';
@@ -114,6 +119,34 @@ import {
 
 const REPLY_COLLAPSE_THRESHOLD = 4;
 const REPLY_TAIL_VISIBLE = 2;
+
+function CircleMessageRecipientPills({
+  recipients,
+  toLabel,
+}: {
+  recipients: CircleMessageRecipient[];
+  toLabel: string;
+}) {
+  if (recipients.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5 items-center">
+      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mr-0.5">
+        {toLabel}
+      </span>
+      {recipients.map((recipient) => (
+        <span
+          key={recipient.key}
+          className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-50 border border-slate-100 rounded-full"
+        >
+          <span className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+            <UserIcon size={10} className="text-blue-600" />
+          </span>
+          <span className="text-xs font-medium text-slate-600">{recipient.name}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
 
 function IcuUtteranceCard({
   entry,
@@ -366,6 +399,7 @@ export function PatientMessagesScreen({
 
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [replyComposerOpen, setReplyComposerOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [expandedMiddle, setExpandedMiddle] = useState(false);
   const [replySort, setReplySort] = useState<CircleReplySortOrder>(() =>
@@ -591,6 +625,14 @@ export function PatientMessagesScreen({
     () => messages.find((m) => m.id === selectedMessageId) ?? null,
     [messages, selectedMessageId],
   );
+  const selectedRecipients = useMemo(
+    () =>
+      selectedMessage
+        ? resolveCircleMessageRecipients(selectedMessage, memberDisplayNames)
+        : [],
+    [memberDisplayNames, selectedMessage],
+  );
+  const selectedIsMultiRecipient = selectedRecipients.length > 1;
 
   useEffect(() => {
     if (!selectedMessageId || !selectedMessage) return;
@@ -688,6 +730,7 @@ export function PatientMessagesScreen({
   const handleDiscardDraft = useCallback(() => {
     setShowDiscardModal(false);
     setReplyText('');
+    setReplyComposerOpen(false);
     const proceed = pendingNavigateRef.current;
     pendingNavigateRef.current = null;
     proceed?.();
@@ -696,11 +739,16 @@ export function PatientMessagesScreen({
   const handleContinueEditing = useCallback(() => {
     setShowDiscardModal(false);
     pendingNavigateRef.current = null;
+    setReplyComposerOpen(true);
   }, []);
 
   useEffect(() => {
     setExpandedMiddle(false);
   }, [replySort]);
+
+  useEffect(() => {
+    setReplyComposerOpen(false);
+  }, [selectedMessageId]);
 
   const handleSendReply = useCallback(async () => {
     if (!selectedMessageId || !selectedMessage) return;
@@ -965,6 +1013,13 @@ export function PatientMessagesScreen({
           resurrected,
           latestVisiblePatientReply,
         });
+    const recipients = summaryRow || alertKind
+      ? []
+      : resolveCircleMessageRecipients(msg, memberDisplayNames);
+    const recipientPreview =
+      recipients.length > 1
+        ? formatCircleRecipientPreviewNames(recipients.map((recipient) => recipient.name))
+        : '';
 
     return (
       <li key={msg.id} className={summaryRow ? 'list-none' : undefined}>
@@ -1067,6 +1122,12 @@ export function PatientMessagesScreen({
               <p className={cn('text-base font-bold truncate leading-snug', summaryRow ? 'text-indigo-950' : 'text-slate-800')}>
                 {title}
               </p>
+              {recipientPreview ? (
+                <p className="text-[11px] text-slate-500 mt-0.5 truncate flex items-center gap-1">
+                  <Users size={12} className="shrink-0 text-slate-400" aria-hidden />
+                  <span>{t('messages.toRecipients', { names: recipientPreview })}</span>
+                </p>
+              ) : null}
               {snippet ? (
                 <p className={cn('text-sm mt-0.5 line-clamp-2 leading-relaxed', summaryRow ? 'text-indigo-700/80' : 'text-slate-500')}>
                   {snippet}
@@ -1486,7 +1547,7 @@ export function PatientMessagesScreen({
             : 'bg-white/90 border-slate-100',
         )}
       >
-        <div className="flex items-start gap-2 px-4 pt-4">
+        <div className="flex items-start gap-2 px-4 pt-4 pb-3">
           <button
             type="button"
             onClick={leaveThread}
@@ -1531,10 +1592,21 @@ export function PatientMessagesScreen({
           </button>
           ) : null}
         </div>
+      </div>
+
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+        {!selectedAlertKind && !isIcuDailySummary(selectedMessage) && selectedRecipients.length > 0 ? (
+          <div className="px-4 pt-3">
+            <CircleMessageRecipientPills
+              recipients={selectedRecipients}
+              toLabel={t('messages.to')}
+            />
+          </div>
+        ) : null}
         {selectedStatusHint ? (
           <div
             className={cn(
-              'mx-4 mb-3 px-3 py-2 rounded-xl text-xs leading-relaxed',
+              'mx-4 mt-3 px-3 py-2 rounded-xl text-xs leading-relaxed',
               selectedMessage.status === 'deleted'
                 ? 'bg-red-50 text-red-800 border border-red-100'
                 : 'bg-amber-50 text-amber-900 border border-amber-100',
@@ -1544,10 +1616,10 @@ export function PatientMessagesScreen({
           </div>
         ) : null}
         {showSelectedInitialMessage && selectedInitialMessageUnread ? (
-          <div className="px-4 pt-1">{renderNewDivider('new-initial')}</div>
+          <div className="px-4 pt-3">{renderNewDivider('new-initial')}</div>
         ) : null}
         {showSelectedInitialMessage ? (
-          <div className="px-4 pb-4 pt-1 pl-14">
+          <div className="px-4 pb-2 pt-3 pl-14">
             {selectedAlertKind ? (
               <CircleMessageBodyPreview
                 text={messagesThreadBodyText(selectedMessage, language)}
@@ -1564,13 +1636,12 @@ export function PatientMessagesScreen({
             )}
           </div>
         ) : selectedThreadResurrected ? (
-          <p className="px-4 pb-4 pt-1 pl-14 text-[11px] text-slate-400 leading-relaxed">
+          <p className="px-4 pb-2 pt-3 pl-14 text-[11px] text-slate-400 leading-relaxed">
             {t('messages.hiddenFromInbox')}
           </p>
         ) : null}
-      </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pt-4 pb-6 space-y-4">
+        <div className="px-4 pt-4 pb-6 space-y-4">
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         {totalReplies > 0 && (
@@ -1617,11 +1688,24 @@ export function PatientMessagesScreen({
             )}
           </div>
         )}
+        </div>
       </div>
 
       {canReplyToThread ? (
       <div className="shrink-0 p-3 sm:p-4 border-t border-slate-200 bg-white shadow-[0_-4px_12px_rgba(15,23,42,0.06)]">
+        <button
+          type="button"
+          onClick={() => setReplyComposerOpen(true)}
+          disabled={sending}
+          className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+        >
+          {selectedIsMultiRecipient ? <Users size={18} /> : <UserIcon size={18} />}
+          {selectedIsMultiRecipient ? t('messages.replyToAll') : t('messages.reply')}
+        </button>
         <CircleExpandableMessageComposer
+          presentation="overlay"
+          expanded={replyComposerOpen}
+          onExpandedChange={setReplyComposerOpen}
           value={replyText}
           onChange={setReplyText}
           placeholder={t('messages.replyPlaceholder')}
@@ -1630,7 +1714,9 @@ export function PatientMessagesScreen({
           onClear={() => setReplyText('')}
           onSend={handleSendReply}
           clearLabel={t('messages.clear')}
-          sendLabel={t('messages.sendReply')}
+          sendLabel={
+            selectedIsMultiRecipient ? t('messages.sendReplyToAll') : t('messages.sendReply')
+          }
           sendingLabel={t('messages.sending')}
           expandTitle={t('messages.expandReplyTitle')}
         />
@@ -1663,6 +1749,12 @@ export function PatientMessagesScreen({
       t={t}
     >
       <div className="space-y-4">
+        {!selectedAlertKind && !isIcuDailySummary(selectedMessage) && selectedRecipients.length > 0 ? (
+          <CircleMessageRecipientPills
+            recipients={selectedRecipients}
+            toLabel={t('messages.to')}
+          />
+        ) : null}
         {showSelectedInitialMessage && !selectedAlertKind ? (
           <CircleStoredTranslationMessage
             text={selectedMessage.text}

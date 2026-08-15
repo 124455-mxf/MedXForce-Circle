@@ -49,6 +49,9 @@ export function useCirclePatientMemberDisplayNames(
 
       const byUid: Record<string, string> = {};
       const byEmail: Record<string, string> = {};
+      for (const [email, name] of nameByEmail) {
+        if (email && name) byEmail[email] = name;
+      }
 
       if (snap) {
         snap.forEach((memberDoc) => {
