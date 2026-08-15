@@ -304,7 +304,11 @@ export function PatientGalleryScreen({
   }, [albumCards, albums]);
 
   const myAlbumCards = useMemo(
-    () => albumCards.filter(({ album }) => album.createdByUid === user.uid),
+    () =>
+      albumCards.filter(
+        ({ album }) =>
+          album.createdByUid === user.uid && !album.isDefault && !album.isReactions,
+      ),
     [albumCards, user.uid],
   );
 
