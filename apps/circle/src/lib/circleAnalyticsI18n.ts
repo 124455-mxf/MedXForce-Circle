@@ -50,6 +50,19 @@ const SUMMARY_TEXT_KEYS: Record<string, string> = {
   'No shared diary entries yet': 'analytics.summaryNoDiaryEntries',
 };
 
+const ENGAGEMENT_METRIC_IDS = new Set<AnalyticsMetricId>([
+  'alert-attention',
+  'speech-history',
+  'ai-conversation',
+  'daily-check-in',
+]);
+
+const ENGAGEMENT_EMPTY_SUMMARY_TEXTS = new Set([
+  'No data yet',
+  'No assessments yet',
+  'No check-ins yet',
+]);
+
 const LATEST_PREFIX = /^Latest:\s*(.+)$/i;
 const LAST_ON_PREFIX = /^Last on\s+(.+)$/i;
 const SKIP_RATE_PREFIX = /^Skip Rate:\s*(\d+)%$/i;
@@ -181,6 +194,13 @@ export function analyticsSummaryFooterText(
 ): string {
   if (!summary.isReleased || summary.status === 'coming_soon') {
     return t('analytics.summaryToBeReleased');
+  }
+
+  if (
+    ENGAGEMENT_METRIC_IDS.has(summary.metricId) &&
+    ENGAGEMENT_EMPTY_SUMMARY_TEXTS.has(summary.summaryText.trim())
+  ) {
+    return t('analytics.summaryNoDataYet');
   }
 
   const mapped = SUMMARY_TEXT_KEYS[summary.summaryText.trim()];
