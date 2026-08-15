@@ -231,7 +231,6 @@ export function PatientGalleryScreen({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [newAlbumTitle, setNewAlbumTitle] = useState('');
   const [showCreateAlbum, setShowCreateAlbum] = useState(false);
   const [uploadCaption, setUploadCaption] = useState('');
@@ -397,7 +396,6 @@ export function PatientGalleryScreen({
     setManageEntryPoint('upload-flow');
     setShowDeleteAlbumConfirm(false);
     setMediaPendingDelete(null);
-    setMessage(null);
     void loadAll();
   }, [loadAll]);
 
@@ -721,7 +719,6 @@ export function PatientGalleryScreen({
       if (created) {
         openManageAlbum(created, 'upload-flow');
       }
-      setMessage(t('gallery.toastAlbumCreated'));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('gallery.errorCreateAlbum'));
     } finally {
@@ -734,7 +731,6 @@ export function PatientGalleryScreen({
     const fileList = Array.from(files);
     setBusy(true);
     setError(null);
-    setMessage(null);
     setUploadProgress({ index: 1, total: fileList.length, phase: 'preparing' });
     try {
       const result = await uploadCircleGalleryMediaToAlbum({
@@ -759,13 +755,6 @@ export function PatientGalleryScreen({
         const first = result.failed[0]?.message;
         setError(first || t('gallery.errorUploadFailed'));
       } else if (failed > 0) {
-        setMessage(
-          t('gallery.toastItemsUploadedPartial', {
-            uploaded,
-            total: result.attempted,
-            failed,
-          }),
-        );
         setError(
           t('gallery.errorUploadPartial', {
             failed,
@@ -773,10 +762,6 @@ export function PatientGalleryScreen({
             detail: result.failed[0]?.message || '',
           }),
         );
-      } else if (uploaded === 1) {
-        setMessage(t('gallery.toastPhotoUploaded'));
-      } else {
-        setMessage(t('gallery.toastItemsUploaded', { count: uploaded }));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('gallery.errorUploadFailed'));
@@ -798,7 +783,6 @@ export function PatientGalleryScreen({
       setEditingMedia(null);
       await loadAll();
       if (selectedAlbum) await loadAlbumDetail(selectedAlbum);
-      setMessage(t('gallery.toastDescriptionSaved'));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('gallery.errorSaveDescription'));
     } finally {
@@ -814,7 +798,6 @@ export function PatientGalleryScreen({
       setMediaPendingDelete(null);
       await loadAll();
       if (selectedAlbum) await loadAlbumDetail(selectedAlbum);
-      setMessage(t('gallery.toastDeleted'));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('gallery.errorDelete'));
     } finally {
@@ -847,7 +830,6 @@ export function PatientGalleryScreen({
         setManageScreen('albums');
         await loadAll();
       }
-      setMessage(t('gallery.toastAlbumDeleted'));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('gallery.errorDeleteAlbum'));
     } finally {
@@ -867,7 +849,6 @@ export function PatientGalleryScreen({
       });
       await loadAll();
       await loadAlbumDetail(selectedAlbum);
-      setMessage(t('gallery.toastAddedToAlbum'));
       setShowAddExisting(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('gallery.errorAddToAlbum'));
@@ -885,7 +866,6 @@ export function PatientGalleryScreen({
     setManageScreen('album');
     setMainMode('manage');
     setRenamingAlbum(false);
-    setMessage(null);
     void loadAlbumDetail(album);
   };
 
@@ -910,7 +890,6 @@ export function PatientGalleryScreen({
       setSelectedAlbum({ ...selectedAlbum, title });
       setRenamingAlbum(false);
       await loadAll();
-      setMessage(t('gallery.toastAlbumRenamed'));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('gallery.errorRenameAlbum'));
     } finally {
@@ -946,7 +925,6 @@ export function PatientGalleryScreen({
                       onClick={() => {
                         setMainMode('manage');
                         setManageScreen('albums');
-                        setMessage(null);
                       }}
                       className={circleHeaderActionButtonClass}
                       aria-label={t('gallery.uploadAriaLabel')}
@@ -1014,7 +992,6 @@ export function PatientGalleryScreen({
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
-          {message && <p className="text-sm text-emerald-700">{message}</p>}
 
           {mainMode === 'browse' && (
             <div className={circleTabListClass} role="tablist" aria-label={t('gallery.gallerySectionsAria')}>
