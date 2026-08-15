@@ -769,73 +769,76 @@ export function CircleRemoteSettingsScreen({
             ) : null}
           </section>
 
-          <section className="space-y-2 pt-3">
-            <div className="flex items-center justify-between gap-2 px-0.5">
-              <SectionLabel>{t('remoteSettings.dashboardView')}</SectionLabel>
-              {patientSetDashboardLayout && storedDashboardPreset ? (
-                <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
-                  {t('remoteSettings.dashboardSetOnTablet')}
-                </span>
-              ) : null}
-            </div>
-            {!dashboardTabEnabled ? (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <LayoutDashboard size={16} className="text-slate-500" />
-                  <p className="text-sm font-bold text-slate-800">
-                    {t('remoteSettings.dashboardPresets.none')}
-                  </p>
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded-full">
-                    {t('remoteSettings.current')}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  {t('remoteSettings.dashboardPresets.noneDesc')}
-                </p>
-              </div>
-            ) : null}
-            <div className="space-y-2">
-              {REMOTE_DASHBOARD_PRESETS.map((preset) => {
-                const active = storedDashboardPreset === preset.key;
-                return (
-                  <button
-                    key={preset.key}
-                    type="button"
-                    onClick={() => {
-                      patch(setRemoteDashboardPreset(settings, preset.key as RemoteDashboardPreset));
-                    }}
-                    className={cn(
-                      'w-full text-left p-4 rounded-2xl border transition-colors',
-                      active
-                        ? 'border-violet-300 bg-violet-50/70'
-                        : 'border-slate-100 bg-white hover:border-slate-200',
-                      !dashboardTabEnabled && 'opacity-60',
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <LayoutDashboard
-                        size={16}
-                        className={active ? 'text-violet-600' : 'text-slate-400'}
-                      />
-                      <p className="text-sm font-normal text-slate-800">
-                        {remoteSettingsDashboardPresetLabel(t, preset.key)}
-                      </p>
-                      {active && (
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full">
-                          {t('remoteSettings.current')}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                      {remoteSettingsDashboardPresetDescription(t, preset.key)}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
           <div className="space-y-3">
+            <CircleCollapsibleSection
+              title={t('remoteSettings.dashboardView')}
+              trailing={
+                patientSetDashboardLayout && storedDashboardPreset ? (
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
+                    {t('remoteSettings.dashboardSetOnTablet')}
+                  </span>
+                ) : null
+              }
+            >
+              <div className="p-4 space-y-2">
+                {!dashboardTabEnabled ? (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <LayoutDashboard size={16} className="text-slate-500" />
+                      <p className="text-sm font-bold text-slate-800">
+                        {t('remoteSettings.dashboardPresets.none')}
+                      </p>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded-full">
+                        {t('remoteSettings.current')}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      {t('remoteSettings.dashboardPresets.noneDesc')}
+                    </p>
+                  </div>
+                ) : null}
+                <div className="space-y-2">
+                  {REMOTE_DASHBOARD_PRESETS.map((preset) => {
+                    const active = storedDashboardPreset === preset.key;
+                    return (
+                      <button
+                        key={preset.key}
+                        type="button"
+                        onClick={() => {
+                          patch(setRemoteDashboardPreset(settings, preset.key as RemoteDashboardPreset));
+                        }}
+                        className={cn(
+                          'w-full text-left p-4 rounded-2xl border transition-colors',
+                          active
+                            ? 'border-violet-300 bg-violet-50/70'
+                            : 'border-slate-100 bg-white hover:border-slate-200',
+                          !dashboardTabEnabled && 'opacity-60',
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <LayoutDashboard
+                            size={16}
+                            className={active ? 'text-violet-600' : 'text-slate-400'}
+                          />
+                          <p className="text-sm font-normal text-slate-800">
+                            {remoteSettingsDashboardPresetLabel(t, preset.key)}
+                          </p>
+                          {active && (
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full">
+                              {t('remoteSettings.current')}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                          {remoteSettingsDashboardPresetDescription(t, preset.key)}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </CircleCollapsibleSection>
+
             <CircleCollapsibleSection title={t('remoteSettings.sections.language')}>
               <div className="p-4 space-y-2">
                 <label className="text-xs font-bold text-slate-500 ml-0.5">

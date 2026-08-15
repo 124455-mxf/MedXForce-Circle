@@ -7,6 +7,7 @@ type CircleCollapsibleSectionProps = {
   children: ReactNode;
   className?: string;
   defaultOpen?: boolean;
+  trailing?: ReactNode;
 };
 
 export function CircleCollapsibleSection({
@@ -14,6 +15,7 @@ export function CircleCollapsibleSection({
   children,
   className,
   defaultOpen = false,
+  trailing,
 }: CircleCollapsibleSectionProps) {
   return (
     <details
@@ -24,7 +26,10 @@ export function CircleCollapsibleSection({
       )}
     >
       <summary className="flex items-center justify-between gap-3 px-4 py-3.5 cursor-pointer list-none select-none">
-        <span className="font-bold text-slate-800">{title}</span>
+        <span className="flex items-center gap-2 min-w-0">
+          <span className="font-bold text-slate-800">{title}</span>
+          {trailing}
+        </span>
         <ChevronDown
           size={18}
           className="text-slate-400 shrink-0 transition-transform group-open:rotate-180"

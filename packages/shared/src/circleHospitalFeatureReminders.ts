@@ -99,6 +99,7 @@ export function isCareActionStyleReminderKind(kind: CircleParticipationReminderK
   return (
     kind === 'teamCoverage' ||
     kind === 'profileIncomplete' ||
+    kind === 'circleInitiateMessages' ||
     isHospitalFeatureReminderKind(kind)
   );
 }

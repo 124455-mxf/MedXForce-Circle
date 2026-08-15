@@ -950,6 +950,10 @@ export const appShellEnglish = {
       hospitalFeatureTurnOnVitality: 'Turn on Vitality',
       hospitalFeatureTurnOnAssessments: 'Turn on Assessments',
       hospitalFeatureUpdating: 'Updating…',
+      circleInitiateHeadline: 'Let Circle send a message?',
+      circleInitiateBody:
+        'Messaging is on. Allow selected Circle members to start a new conversation with the patient.',
+      circleInitiateTurnOn: 'Turn on Circle messages',
       previewHospitalFeatureMessagingHeadline: 'Messaging may help now',
       previewHospitalFeatureMessagingBody:
         'Sample progression nudge — use Turn on Messaging to enable it from Home.',
@@ -2141,6 +2145,10 @@ export const appShellGerman = {
       hospitalFeatureTurnOnVitality: 'Vitalität einschalten',
       hospitalFeatureTurnOnAssessments: 'Beurteilungen einschalten',
       hospitalFeatureUpdating: 'Wird aktualisiert…',
+      circleInitiateHeadline: 'Circle darf eine Nachricht senden?',
+      circleInitiateBody:
+        'Nachrichten sind eingeschaltet. Erlauben Sie ausgewählten Circle-Mitgliedern, ein neues Gespräch mit dem Patienten zu beginnen.',
+      circleInitiateTurnOn: 'Circle-Nachrichten einschalten',
       previewHospitalFeatureMessagingHeadline: 'Nachrichten könnten jetzt helfen',
       previewHospitalFeatureMessagingBody:
         'Beispiel-Fortschritts-Erinnerung — nutzen Sie „Nachrichten einschalten“ auf der Startseite.',
@@ -3332,6 +3340,10 @@ export const appShellSpanish = {
       hospitalFeatureTurnOnVitality: 'Activar Vitalidad',
       hospitalFeatureTurnOnAssessments: 'Activar Evaluaciones',
       hospitalFeatureUpdating: 'Actualizando…',
+      circleInitiateHeadline: '¿Permitir que el Circle envíe un mensaje?',
+      circleInitiateBody:
+        'Los mensajes están activados. Permita que miembros seleccionados del Circle inicien una conversación con el paciente.',
+      circleInitiateTurnOn: 'Activar mensajes del Circle',
       previewHospitalFeatureMessagingHeadline: 'Los mensajes pueden ayudar ahora',
       previewHospitalFeatureMessagingBody:
         'Recordatorio de progreso de ejemplo — usa Activar Mensajes desde Inicio.',
@@ -4523,6 +4535,10 @@ export const appShellPolish = {
       hospitalFeatureTurnOnVitality: 'Włącz Vitality',
       hospitalFeatureTurnOnAssessments: 'Włącz Oceny',
       hospitalFeatureUpdating: 'Aktualizowanie…',
+      circleInitiateHeadline: 'Pozwolić Circle wysłać wiadomość?',
+      circleInitiateBody:
+        'Wiadomości są włączone. Pozwól wybranym członkom Circle rozpocząć nową rozmowę z pacjentem.',
+      circleInitiateTurnOn: 'Włącz wiadomości Circle',
       previewHospitalFeatureMessagingHeadline: 'Wiadomości mogą teraz pomóc',
       previewHospitalFeatureMessagingBody:
         'Przykładowe przypomnienie postępu — użyj Włącz Wiadomości na stronie głównej.',

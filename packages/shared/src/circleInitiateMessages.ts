@@ -1,6 +1,10 @@
 import { doc, getDoc, setDoc, type Firestore } from 'firebase/firestore';
 import { normalizeMemberRole } from './patientPermissions';
 import { circleProfileOnboardingRef } from './circleMemberOnboarding';
+import {
+  isParticipationReminderSnoozed,
+  type CircleParticipationReminderSnoozes,
+} from './circleParticipationReminders';
 
 /** Groups that may start a new patient message. Email-only Contacts are never included. */
 export const CIRCLE_INITIATE_MESSAGE_GROUPS = ['proxy', 'caregiver', 'family', 'friends'] as const;
@@ -154,6 +158,29 @@ export function effectiveCircleInitiateMessagesEnabled(
   appMode: string | undefined,
 ): boolean {
   return allow === true && !isCircleInitiateMessagesLockedOff(appMode);
+}
+
+/**
+ * Proxy Home nudge: messaging is on, Circle-started messages are still off,
+ * and the patient is not in Intensive Care.
+ */
+export function shouldShowCircleInitiateMessagesReminder(input: {
+  enabled: boolean;
+  canManageRemoteSettings: boolean;
+  appMode: string | null | undefined;
+  messagingEnabled: boolean;
+  allowCircleInitiateMessages: boolean;
+  snoozes: CircleParticipationReminderSnoozes;
+  snoozeLoading?: boolean;
+  now?: number;
+}): boolean {
+  if (!input.enabled || !input.canManageRemoteSettings) return false;
+  if (input.snoozeLoading) return false;
+  if (isCircleInitiateMessagesLockedOff(input.appMode ?? undefined)) return false;
+  if (!input.messagingEnabled) return false;
+  if (input.allowCircleInitiateMessages) return false;
+  const now = input.now ?? Date.now();
+  return !isParticipationReminderSnoozed('circleInitiateMessages', input.snoozes, now);
 }
 
 export function canCircleMemberInitiateMessage(

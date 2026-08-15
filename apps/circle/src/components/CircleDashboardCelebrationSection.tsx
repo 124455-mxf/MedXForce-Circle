@@ -35,17 +35,21 @@ import {
   listHospitalFeatureRemindersToShow,
   listIcuProgressionRemindersToShow,
   listStalePendingInvites,
+  parseCircleInitiateMessagesConfig,
+  getRemoteSettingValue,
   setRemoteAppMode,
   setRemoteDailyCheckIn,
   setRemoteIntensiveCareExperience,
   setRemoteSettingValue,
   shouldShowAssessmentAfterFirstCommReminder,
+  shouldShowCircleInitiateMessagesReminder,
   shouldShowDiaryEntryReminder,
   shouldShowGalleryUploadReminder,
   shouldShowIcuDailyCheckInReminder,
   shouldShowPendingInviteReminder,
   shouldShowProfileIncompleteReminder,
   shouldShowTeamCoverageReminder,
+  withCircleInitiateMessagesTurnedOn,
   type CircleParticipationReminderKind,
   type CirclePatientProfileSnapshot,
   type CirclePatientSummary,
@@ -141,7 +145,8 @@ function isCareStyleDismissKind(kind: CircleParticipationReminderKind): boolean 
     kind === 'profileIncomplete' ||
     kind === 'icuDailyCheckIn' ||
     isHospitalFeatureReminderKind(kind) ||
-    isIcuProgressionReminderKind(kind)
+    isIcuProgressionReminderKind(kind) ||
+    kind === 'circleInitiateMessages'
   );
 }
 
@@ -343,7 +348,7 @@ export function CircleDashboardCelebrationSection({
   } = useCircleTeamCoverageFromDashboard();
   const canManageTeam = patient.capabilities.inviteMembers === true;
   const [enablingKind, setEnablingKind] = useState<
-    HospitalFeatureReminderKind | IcuProgressionReminderKind | 'icuDailyCheckIn' | null
+    HospitalFeatureReminderKind | IcuProgressionReminderKind | 'icuDailyCheckIn' | 'circleInitiateMessages' | null
   >(null);
 
   const friendlyName = patientFriendlyDisplayName(snapshot, patient.displayName);
@@ -433,6 +438,22 @@ export function CircleDashboardCelebrationSection({
     snoozes,
   });
 
+  const circleInitiateConfig = useMemo(
+    () => parseCircleInitiateMessagesConfig(remoteSettings),
+    [remoteSettings],
+  );
+  const showCircleInitiateReminder = shouldShowCircleInitiateMessagesReminder({
+    enabled: careRemindersEnabled && remoteSettingsReady,
+    canManageRemoteSettings: canOpenRemoteSettings,
+    appMode: remoteSettings?.appMode,
+    messagingEnabled: remoteSettings
+      ? getRemoteSettingValue(remoteSettings, 'featuresVisibility.messaging') === true
+      : false,
+    allowCircleInitiateMessages: circleInitiateConfig.allowCircleInitiateMessages,
+    snoozes,
+    snoozeLoading,
+  });
+
   const hospitalFeatureKinds = listHospitalFeatureRemindersToShow({
     enabled: careRemindersEnabled,
     settings: remoteSettings,
@@ -469,6 +490,23 @@ export function CircleDashboardCelebrationSection({
         patientId: patient.patientId,
       });
       void dismissReminder(kind).catch((err) => {
+        console.warn('[Circle] Reminder dismiss after enable failed:', err);
+      });
+    } finally {
+      window.setTimeout(() => setEnablingKind(null), 600);
+    }
+  };
+
+  const enableCircleInitiateMessages = () => {
+    if (!remoteSettings || !canOpenRemoteSettings || enablingKind) return;
+    setEnablingKind('circleInitiateMessages');
+    try {
+      onPersistRemoteSettings({
+        ...remoteSettings,
+        ...withCircleInitiateMessagesTurnedOn(circleInitiateConfig),
+        patientId: patient.patientId,
+      });
+      void dismissReminder('circleInitiateMessages').catch((err) => {
         console.warn('[Circle] Reminder dismiss after enable failed:', err);
       });
     } finally {
@@ -552,7 +590,7 @@ export function CircleDashboardCelebrationSection({
       headline: birthday.headline,
       body: birthday.body,
       dismissKind: 'birthday',
-      // Circle members cannot initiate patient messages — open Diary to record a birthday moment.
+      // Circle members may wish the patient a birthday in Messages when initiate is on.
       onOpen: () => onGoToTab('diary'),
     });
   } else if (previewBirthday) {
@@ -800,6 +838,21 @@ export function CircleDashboardCelebrationSection({
         actionDisabled: true,
       });
     }
+  }
+
+  if (showCircleInitiateReminder) {
+    tiles.push({
+      key: 'circle-initiate-messages',
+      tone: 'care',
+      icon: MessageSquare,
+      headline: t('dashboard.reminders.circleInitiateHeadline'),
+      body: t('dashboard.reminders.circleInitiateBody'),
+      dismissKind: 'circleInitiateMessages',
+      actionLabel: t('dashboard.reminders.circleInitiateTurnOn'),
+      onAction: () => enableCircleInitiateMessages(),
+      actionUpdating: enablingKind === 'circleInitiateMessages',
+      actionDisabled: !canOpenRemoteSettings || !remoteSettings,
+    });
   }
 
   if (icuProgressionKinds.length > 0) {
