@@ -638,17 +638,15 @@ export function CircleCircleScreen({
       setReplyDraft('');
       setReplySendError(null);
       setSelectedPostId(postId);
-      if (inboxView !== 'hidden') {
-        markCirclePostThreadReadThroughActivity(
-          patient.patientId,
-          user.uid,
-          activeThread,
-          postId,
-          getCirclePostLatestActivityAt(post),
-        );
-      }
+      markCirclePostThreadReadThroughActivity(
+        patient.patientId,
+        user.uid,
+        activeThread,
+        postId,
+        getCirclePostLatestActivityAt(post),
+      );
     },
-    [activeThread, allPosts, inboxView, patient.patientId, user.uid],
+    [activeThread, allPosts, patient.patientId, user.uid],
   );
 
   const leavePost = useCallback(() => {

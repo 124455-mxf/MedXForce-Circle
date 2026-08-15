@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import type { User } from 'firebase/auth';
-import { ChevronLeft, ChevronDown, ChevronUp, ClipboardList, Mail, Maximize2, MessageSquare, Mic, Save, Trash2, User as UserIcon, Users, AlertCircle, Bell } from 'lucide-react';
+import { Archive, ChevronLeft, ChevronDown, ChevronUp, ClipboardList, Mail, Maximize2, MessageSquare, Mic, Save, Trash2, User as UserIcon, Users, AlertCircle, Bell } from 'lucide-react';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import {
@@ -1274,7 +1274,7 @@ export function PatientMessagesScreen({
               )}
             >
               <span className="relative inline-flex items-center justify-center pr-1 pt-0.5">
-                <Trash2
+                <Archive
                   size={CIRCLE_INBOX_TAB_ICON_SIZE}
                   className={inboxView === 'archived' ? 'text-blue-600' : 'text-slate-500'}
                   aria-hidden
@@ -1287,15 +1287,20 @@ export function PatientMessagesScreen({
               type="button"
               role="tab"
               aria-selected={inboxView === 'deleted'}
+              aria-label={t('messages.tabDeleted')}
               onClick={() => setInboxView('deleted')}
               className={circleTabButtonClass(
                 inboxView === 'deleted',
-                circleInboxTextTabExtraClass,
+                circleInboxIconTabExtraClass,
               )}
             >
-              <span className="inline-flex items-center justify-center gap-1.5">
-                {t('messages.tabDeleted')}
-                <CircleFolderCountBadge {...inboxTabCounts.deleted} />
+              <span className="relative inline-flex items-center justify-center pr-1 pt-0.5">
+                <Trash2
+                  size={CIRCLE_INBOX_TAB_ICON_SIZE}
+                  className={inboxView === 'deleted' ? 'text-red-600' : 'text-slate-500'}
+                  aria-hidden
+                />
+                <CircleFolderCountBadge {...inboxTabCounts.deleted} placement="overlay" />
               </span>
             </button>
             ) : null}
