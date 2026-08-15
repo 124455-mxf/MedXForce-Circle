@@ -53,14 +53,50 @@ export async function readMemberNotifyPreferences(
   patientId: string,
   memberUid: string,
 ): Promise<CircleMemberNotifyPreferences | null> {
-  const snap = await getDoc(memberNotifyPreferencesRef(db, patientId, memberUid));
-  if (snap.exists()) {
-    return parseMemberNotifyPreferences(snap.data() as Record<string, unknown>);
+  try {
+    const snap = await getDoc(memberNotifyPreferencesRef(db, patientId, memberUid));
+    if (snap.exists()) {
+      return parseMemberNotifyPreferences(snap.data() as Record<string, unknown>);
+    }
+  } catch {
+    // Proxy cannot read another member's prefs/notifications; fall back to member root.
   }
   // Legacy: preference lived on the member root doc.
   const legacy = await getDoc(memberNotifyPreferencesLegacyRef(db, patientId, memberUid));
   if (!legacy.exists()) return null;
   return parseMemberNotifyPreferences(legacy.data() as Record<string, unknown>);
+}
+
+function notifyPreferencesWritePayload(prefs: CircleMemberNotifyPreferences) {
+  const next: CircleMemberNotifyPreferences = {
+    alert: prefs.alert === true,
+    attention: prefs.attention === true,
+    message: prefs.message === true,
+  };
+  return {
+    next,
+    payload: {
+      notifyPreferences: next,
+      updatedAt: Date.now(),
+    },
+  };
+}
+
+async function persistMemberNotifyPreferencesDocs(
+  db: Firestore,
+  patientId: string,
+  memberUid: string,
+  prefs: CircleMemberNotifyPreferences,
+): Promise<CircleMemberNotifyPreferences> {
+  const { next, payload } = notifyPreferencesWritePayload(prefs);
+  // Member root first — proxy editor and patient overlay read this path.
+  await setDoc(memberNotifyPreferencesLegacyRef(db, patientId, memberUid), payload, {
+    merge: true,
+  });
+  await setDoc(memberNotifyPreferencesRef(db, patientId, memberUid), payload, {
+    merge: true,
+  });
+  return next;
 }
 
 /** Circle members store notify prefs on members/{uid}/prefs/notifications. */
@@ -80,25 +116,7 @@ export async function writeMemberNotifyPreferences(
     message: patch.message !== undefined ? patch.message : existing.message,
   };
 
-  await setDoc(
-    memberNotifyPreferencesRef(db, patientId, memberUid),
-    {
-      notifyPreferences: next,
-      updatedAt: Date.now(),
-    },
-    { merge: true },
-  );
-  // Patient overlay + proxy editor read notify flags from the member root.
-  await setDoc(
-    memberNotifyPreferencesLegacyRef(db, patientId, memberUid),
-    {
-      notifyPreferences: next,
-      updatedAt: Date.now(),
-    },
-    { merge: true },
-  );
-
-  return next;
+  return persistMemberNotifyPreferencesDocs(db, patientId, memberUid, next);
 }
 
 /** Proxy user-management: push contact notify flags onto an accepted member. */
@@ -108,7 +126,8 @@ export async function pushMemberNotifyPreferencesFromManagedContact(
   memberUid: string,
   prefs: CircleMemberNotifyPreferences,
 ): Promise<void> {
-  await writeMemberNotifyPreferences(db, patientId, memberUid, prefs, prefs);
+  // Do not read prefs/notifications first — that doc is self-read and denied for proxy.
+  await persistMemberNotifyPreferencesDocs(db, patientId, memberUid, prefs);
 }
 
 export async function updateOwnCircleNotifyPreferences(
