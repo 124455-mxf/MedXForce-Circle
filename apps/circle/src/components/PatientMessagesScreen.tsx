@@ -1535,6 +1535,20 @@ export function PatientMessagesScreen({
   const selectedAlertKind = circleMessageAlertAttentionKind(selectedMessage);
   const canReplyToThread =
     canCircleMemberReplyToPatientMessage(selectedMessage.status) && !selectedAlertKind;
+  const replyActionButton = canReplyToThread ? (
+    <button
+      type="button"
+      onClick={() => {
+        setThreadExpandedOpen(false);
+        setReplyComposerOpen(true);
+      }}
+      disabled={sending}
+      className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+    >
+      {selectedIsMultiRecipient ? <Users size={18} /> : <UserIcon size={18} />}
+      {selectedIsMultiRecipient ? t('messages.replyToAll') : t('messages.reply')}
+    </button>
+  ) : null;
 
   return (
     <>
@@ -1693,15 +1707,7 @@ export function PatientMessagesScreen({
 
       {canReplyToThread ? (
       <div className="shrink-0 p-3 sm:p-4 border-t border-slate-200 bg-white shadow-[0_-4px_12px_rgba(15,23,42,0.06)]">
-        <button
-          type="button"
-          onClick={() => setReplyComposerOpen(true)}
-          disabled={sending}
-          className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
-        >
-          {selectedIsMultiRecipient ? <Users size={18} /> : <UserIcon size={18} />}
-          {selectedIsMultiRecipient ? t('messages.replyToAll') : t('messages.reply')}
-        </button>
+        {replyActionButton}
         <CircleExpandableMessageComposer
           presentation="overlay"
           expanded={replyComposerOpen}
@@ -1746,6 +1752,7 @@ export function PatientMessagesScreen({
         selectedMessage.updatedAt || selectedMessage.createdAt,
       )}
       onClose={() => setThreadExpandedOpen(false)}
+      footer={replyActionButton}
       t={t}
     >
       <div className="space-y-4">

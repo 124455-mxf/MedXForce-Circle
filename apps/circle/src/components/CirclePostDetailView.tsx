@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Firestore } from 'firebase/firestore';
-import { Check, ChevronLeft, Copy, Loader2, Maximize2, Trash2 } from 'lucide-react';
+import { Check, ChevronLeft, Copy, Loader2, Maximize2, MessageSquare, Trash2 } from 'lucide-react';
 import {
   isDropInThreadPost,
   isVisitCaptureThreadPost,
@@ -21,7 +21,7 @@ import { CircleMemberReplyCard } from './CircleMemberReplyCard';
 import { CircleMessageExpandOverlay } from './CircleMessageExpandOverlay';
 import { CirclePatientLanguagePill } from './CirclePatientLanguagePill';
 import { CirclePostBodyRenderer } from './CirclePostBodyRenderer';
-import { circleSectionComposerClass, circleSectionPanelClass } from '../lib/circleSectionStyles';
+import { circleSectionPanelClass } from '../lib/circleSectionStyles';
 
 function circleReplyCountLabel(t: CircleTranslator, count: number): string {
   return t(count === 1 ? 'circle.reply_one' : 'circle.reply_other', { count });
@@ -103,6 +103,7 @@ export function CirclePostDetailView({
 }) {
   const [copied, setCopied] = useState(false);
   const [expandedOpen, setExpandedOpen] = useState(false);
+  const [replyComposerOpen, setReplyComposerOpen] = useState(false);
   const isVisitCapture = isVisitCaptureThreadPost(post);
   const isDropIn = isDropInThreadPost(post);
   const showPatientLanguagePill = isDropIn || isVisitCapture;
@@ -118,6 +119,27 @@ export function CirclePostDetailView({
       /* clipboard unavailable */
     }
   }, [post]);
+
+  useEffect(() => {
+    setReplyComposerOpen(false);
+    setExpandedOpen(false);
+  }, [post.id]);
+
+  const canOpenReplyComposer = Boolean(canReply && onSendReply && onReplyDraftChange);
+  const replyActionButton = canOpenReplyComposer ? (
+    <button
+      type="button"
+      onClick={() => {
+        setExpandedOpen(false);
+        setReplyComposerOpen(true);
+      }}
+      disabled={replySending}
+      className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+    >
+      <MessageSquare size={18} />
+      {t('circle.reply')}
+    </button>
+  ) : null;
 
   return (
     <>
@@ -269,12 +291,16 @@ export function CirclePostDetailView({
           ) : null}
         </div>
 
-        {canReply && onSendReply && onReplyDraftChange ? (
-          <div className={circleSectionComposerClass}>
+        {canOpenReplyComposer ? (
+          <div className="shrink-0 p-3 sm:p-4 border-t border-slate-200 bg-white shadow-[0_-4px_12px_rgba(15,23,42,0.06)]">
             {replySendError ? (
               <p className="text-xs text-red-600 mb-2 px-1">{replySendError}</p>
             ) : null}
+            {replyActionButton}
             <CircleExpandableMessageComposer
+              presentation="overlay"
+              expanded={replyComposerOpen}
+              onExpandedChange={setReplyComposerOpen}
               value={replyDraft}
               onChange={onReplyDraftChange}
               placeholder={t('circle.replyPlaceholder')}
@@ -287,6 +313,7 @@ export function CirclePostDetailView({
               sendingLabel={t('circle.sending')}
               maxLength={5000}
               expandTitle={t('circle.expandReplyTitle')}
+              error={replySendError}
             />
           </div>
         ) : null}
@@ -301,23 +328,54 @@ export function CirclePostDetailView({
             : `${translateCircleMemberRole(t, post.authorRole)} · ${formatCirclePostTime(t, post.createdAt)}`
         }
         onClose={() => setExpandedOpen(false)}
+        footer={replyActionButton}
         t={t}
       >
-        <CirclePostBodyRenderer
-          post={post}
-          isOwn={isOwn}
-          viewerLanguage={viewerLanguage}
-          t={t}
-          disableTruncate
-          db={db}
-          patientId={patientId}
-          memberUid={currentUserUid}
-          memberContactId={memberContactId}
-          memberDocContactId={memberDocContactId}
-          inviteContactId={inviteContactId}
-          memberDisplayName={memberDisplayName}
-          memberRole={memberRole}
-        />
+        <div className="space-y-4">
+          <CirclePostBodyRenderer
+            post={post}
+            isOwn={isOwn}
+            viewerLanguage={viewerLanguage}
+            t={t}
+            disableTruncate
+            db={db}
+            patientId={patientId}
+            memberUid={currentUserUid}
+            memberContactId={memberContactId}
+            memberDocContactId={memberDocContactId}
+            inviteContactId={inviteContactId}
+            memberDisplayName={memberDisplayName}
+            memberRole={memberRole}
+          />
+          {replies.length > 0 ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="h-px flex-1 bg-slate-100" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2">
+                  {circleReplyCountLabel(t, replies.length)}
+                </span>
+                <div className="h-px flex-1 bg-slate-100" />
+              </div>
+              {replies.map((reply) => {
+                const replyIsOwn = reply.authorUid === currentUserUid;
+                const replyUnread =
+                  !replyIsOwn &&
+                  reply.createdAt > threadLastReadAt &&
+                  reply.createdAt > post.createdAt;
+                return (
+                  <CircleMemberReplyCard
+                    key={reply.id}
+                    reply={reply}
+                    isOwn={replyIsOwn}
+                    highlightAsUnread={replyUnread}
+                    viewerLanguage={viewerLanguage}
+                    t={t}
+                  />
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
       </CircleMessageExpandOverlay>
     </>
   );
