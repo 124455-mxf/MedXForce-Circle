@@ -27,6 +27,18 @@ type CircleMapVisualProps = {
 const CX = 200;
 const CY = 200;
 
+/** Contacts/outer ring today — thinnest orbit stroke. */
+const RING_STROKE_MIN = 1.5;
+/** Innermost visible orbit; tapers down to RING_STROKE_MIN. */
+const RING_STROKE_MAX = 6;
+const RING_STROKE_GRAY = '#cbd5e1';
+
+function orbitRingStrokeWidth(visibleIndex: number, visibleCount: number): number {
+  if (visibleCount <= 1) return RING_STROKE_MIN;
+  const t = visibleIndex / (visibleCount - 1);
+  return RING_STROKE_MAX - t * (RING_STROKE_MAX - RING_STROKE_MIN);
+}
+
 /** Radians per second — one full orbit takes about a minute. */
 const ORBIT_SPEED = (Math.PI * 2) / 60;
 
@@ -93,6 +105,15 @@ export function CircleMapVisual({
     return sortedRings.map((ring, index) => ring.radius ?? 58 + index * 36);
   }, [compact, emphasized, mode, sortedRings]);
 
+  const visibleOrbitCount = useMemo(
+    () =>
+      ringRadii.filter((_, index) => {
+        const ring = sortedRings[index];
+        return !(mode === 'roles' && ring?.key === 'proxy');
+      }).length,
+    [mode, ringRadii, sortedRings],
+  );
+
   /** Roles view: at most two proxies beside the patient (no proxy orbit ring). */
   const flankProxyNodes = useMemo(() => {
     if (mode !== 'roles') return [];
@@ -115,8 +136,8 @@ export function CircleMapVisual({
       if (isFlankProxy) {
         displayAngle =
           flankProxyNodes.length === 1 ? 0 : flankProxyIndex === 0 ? Math.PI : 0;
-        // Modal: sit closer beside the larger patient avatar; tile: a bit farther out.
-        displayRadius = compact ? 72 : 58;
+        // Modal: sit close beside the patient; tile: slightly farther, still inside the first orbit.
+        displayRadius = compact ? 60 : 50;
       } else {
         displayRadius =
           compact && emphasized && ringPos >= 0
@@ -202,6 +223,10 @@ export function CircleMapVisual({
           }
           const rotateDuration =
             compact && emphasized ? 48 + index * 12 : 120 + index * 20;
+          const visibleIndex = ringRadii.slice(0, index).filter((_, innerIndex) => {
+            const innerRing = sortedRings[innerIndex];
+            return !(mode === 'roles' && innerRing?.key === 'proxy');
+          }).length;
           return (
             <motion.circle
               key={`ring-${ring?.key ?? radius}-${mode}`}
@@ -209,9 +234,9 @@ export function CircleMapVisual({
               cy={CY}
               r={radius}
               fill="none"
-              stroke={ring?.color ?? '#e2e8f0'}
-              strokeOpacity={emphasized ? 0.55 : 0.4}
-              strokeWidth={ring?.dashed ? 1.5 : emphasized ? 2.5 : 2}
+              stroke={RING_STROKE_GRAY}
+              strokeOpacity={emphasized ? 0.7 : 0.5}
+              strokeWidth={orbitRingStrokeWidth(visibleIndex, visibleOrbitCount)}
               strokeDasharray={ring?.dashed ? '6 8' : undefined}
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{

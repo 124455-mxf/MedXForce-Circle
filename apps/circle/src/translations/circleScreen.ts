@@ -79,6 +79,7 @@ export const circleScreenEnglish = {
   composerYourMessage: 'Your message',
   clear: 'Clear',
   sendToEveryone: 'Send to everyone',
+  sendToCareTeam: 'Send to care team',
   sending: 'Sending…',
   hideTitle: 'Remove from your view?',
   hideDescription:
@@ -242,6 +243,7 @@ export const circleScreenGerman = {
   composerYourMessage: 'Ihre Nachricht',
   clear: 'Löschen',
   sendToEveryone: 'An alle senden',
+  sendToCareTeam: 'An das Pflegeteam senden',
   sending: 'Senden…',
   hideTitle: 'Aus Ihrer Ansicht entfernen?',
   hideDescription:
@@ -405,6 +407,7 @@ export const circleScreenSpanish = {
   composerYourMessage: 'Su mensaje',
   clear: 'Borrar',
   sendToEveryone: 'Enviar a todos',
+  sendToCareTeam: 'Enviar al equipo de cuidado',
   sending: 'Enviando…',
   hideTitle: '¿Quitar de su vista?',
   hideDescription:
@@ -568,6 +571,7 @@ export const circleScreenPolish = {
   composerYourMessage: 'Twoja wiadomość',
   clear: 'Wyczyść',
   sendToEveryone: 'Wyślij do wszystkich',
+  sendToCareTeam: 'Wyślij do zespołu opieki',
   sending: 'Wysyłanie…',
   hideTitle: 'Usunąć z Twojego widoku?',
   hideDescription:

@@ -7,15 +7,13 @@ import type {
   DailyCheckInMetricAverages,
 } from '../lib/circleCheckInWellnessMetrics';
 import { useCheckInWellnessDayPlayback } from '../hooks/useCheckInWellnessDayPlayback';
-import {
-  CheckInWellnessRingVisual,
-  CheckInWellnessWeekControls,
-} from './CheckInWellnessRingVisual';
+import { CheckInWellnessWeekControls } from './CheckInWellnessRingVisual';
+import { CheckInWellnessBarsVisual } from './CheckInWellnessBarsVisual';
 
 type CircleDashboardCheckInWellnessTileProps = {
   averages: DailyCheckInMetricAverages;
   frames?: CheckInWellnessRingFrame[];
-  /** Full-row layout: title + day picker left, larger ring right. */
+  /** Full-row layout: title + day picker left, bars right. */
   wide?: boolean;
   onOpenModal?: () => void;
   onOpenDetails?: () => void;
@@ -26,7 +24,7 @@ type CircleDashboardCheckInWellnessTileProps = {
 };
 
 export function CircleDashboardCheckInWellnessTile({
-  averages,
+  averages: _averages,
   frames = [],
   wide = false,
   onOpenModal,
@@ -135,8 +133,7 @@ export function CircleDashboardCheckInWellnessTile({
         {!wide ? (
           <>
             <div className="relative z-20 flex-1 min-h-0 -mx-2 pointer-events-auto">
-              <CheckInWellnessRingVisual
-                averages={averages}
+              <CheckInWellnessBarsVisual
                 frames={frames}
                 compact
                 selectedIndex={selectedIndex}
@@ -152,8 +149,7 @@ export function CircleDashboardCheckInWellnessTile({
 
       {wide ? (
         <div className="relative z-20 flex-1 min-h-0 min-w-0 -my-2 -mr-2 sm:-my-2.5 sm:-mr-2.5 pointer-events-auto">
-          <CheckInWellnessRingVisual
-            averages={averages}
+          <CheckInWellnessBarsVisual
             frames={frames}
             compact
             hideWeekControls

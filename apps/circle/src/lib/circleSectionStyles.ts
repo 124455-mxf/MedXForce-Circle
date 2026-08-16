@@ -29,7 +29,7 @@ export const circleSectionSubtitleClass = cn(
 export const circleSectionContextHintClass = cn('text-xs text-slate-500 leading-relaxed');
 
 export const circleSectionBodyClass =
-  'flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-contain';
+  'flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-contain [overflow-anchor:none]';
 
 export const circleSectionBodyPaddingClass = cn(
   'p-4 space-y-3',

@@ -186,6 +186,8 @@ interface CircleDashboardScreenProps {
   /** Open Messages on a specific inbox folder (e.g. ICU communication log). */
   onOpenMessagesInbox?: (view: 'communication_log' | 'in_out') => void;
   onOpenAnalyticsDetail: (metricId: AnalyticsMetricId) => void;
+  /** Open Media gallery on the Reactions album. */
+  onOpenGalleryReactions?: () => void;
   onOpenVisitCapture?: () => void;
   onRequestDropIn?: () => void;
   onResumeDropIn?: () => void;
@@ -276,8 +278,8 @@ function WeekActivityDots({
               title={`${day.dateKey}: ${day.value}`}
               className={cn(
                 'flex-1 rounded-sm transition-[height] min-h-[3px]',
-                day.isActive ? 'bg-blue-500' : 'bg-slate-200',
-                day.isToday && 'ring-2 ring-blue-200 ring-offset-1',
+                day.isActive ? 'bg-slate-400/60' : 'bg-slate-200',
+                day.isToday && 'ring-2 ring-slate-300 ring-offset-1',
               )}
               style={{ height: `${heightPct}%` }}
             />
@@ -362,7 +364,7 @@ function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
           <div className="flex items-center justify-between gap-3 min-w-0">
             <p
               className={cn(
-                'font-bold tracking-tight text-xl leading-tight min-w-0',
+                'font-bold tracking-tight text-lg leading-tight min-w-0',
                 spec.heroMuted ? 'text-slate-400' : 'text-slate-900',
               )}
             >
@@ -380,7 +382,7 @@ function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
             className={cn(
               'font-bold tracking-tight',
               spec.heroVariant === 'label'
-                ? 'text-xl leading-tight line-clamp-2'
+                ? 'text-lg leading-tight line-clamp-2'
                 : 'leading-none text-3xl sm:text-[2rem]',
               spec.heroMuted ? 'text-slate-400' : 'text-slate-900',
             )}
@@ -759,7 +761,6 @@ export function CircleDashboardScreen({
   db,
   patient,
   unreadCount,
-  messageCount,
   circleUnreadCount,
   circleAnnouncementsUnreadCount,
   circleAnnouncementsOpenUnreadCount,
@@ -779,6 +780,7 @@ export function CircleDashboardScreen({
   onOpenCircleFolder,
   onOpenMessagesInbox,
   onOpenAnalyticsDetail,
+  onOpenGalleryReactions,
   onOpenVisitCapture,
   onRequestDropIn,
   onResumeDropIn,
@@ -1107,7 +1109,6 @@ export function CircleDashboardScreen({
                 alertStats.attentions > 0
                   ? dashboardPlural(t, 'attentionsThisWeek', alertStats.attentions)
                   : t('dashboard.noAttentionsThisWeek'),
-              row3: lastLine(alertAttentionSummary?.latestAt),
               recencyTint,
               activityDays: activityDaysFromTimeline(alertDetail?.timeline, (point) => {
                 return point.alert + point.attention;
@@ -1141,7 +1142,6 @@ export function CircleDashboardScreen({
                     ? t('dashboard.checkInsQuietWeek')
                     : dashboardPlural(t, 'checkInsThisWeek', checkInStats.completed),
                   row2: dashboardPlural(t, 'skipped', checkInStats.skipped),
-                  row3: lastLine(dailyCheckInLatestAt),
                   recencyTint,
                   activityDays: activityDaysFromTimeline(dailyDetail.timeline, (point) => {
                     return point.completed;
@@ -1155,7 +1155,6 @@ export function CircleDashboardScreen({
                   iconTone: iconToneFromRecency(recencyTint),
                   row1: t('dashboard.checkInsQuietWeek'),
                   row2: t('dashboard.skipRate', { rate: dailyDetail.skipRate }),
-                  row3: lastLine(dailyCheckInLatestAt),
                   recencyTint,
                   activityDays: activityDaysFromTimeline(dailyDetail.timeline, (point) => {
                     return point.completed;
@@ -1169,7 +1168,6 @@ export function CircleDashboardScreen({
                 row1: dailyCheckIn
                   ? analyticsSummaryFooterText(t, dailyCheckIn, language)
                   : t('dashboard.noCheckInsYet'),
-                row2: lastLine(dailyCheckIn?.latestAt),
                 recencyTint,
               };
             })()),
@@ -1193,13 +1191,9 @@ export function CircleDashboardScreen({
                 row1: quiet
                   ? t('dashboard.noNewMessagesWeek')
                   : dashboardPlural(t, 'messagesThisWeek', communicationStats.messaging),
-                row2:
-                  caps.messaging && messageCount > 0
-                    ? dashboardPlural(t, 'thread', messageCount)
-                    : '',
-                row3: caps.messaging
+                row2: caps.messaging
                   ? t('common.unread', { count: formatCircleBadgeCount(unreadCount) })
-                  : undefined,
+                  : '',
                 activityDays: activityDaysFromTimeline(speechDetail?.timeline, (point) => {
                   return point.messaging;
                 }),
@@ -1225,9 +1219,6 @@ export function CircleDashboardScreen({
                 row1: quiet
                   ? t('dashboard.noCommunicationWeek')
                   : dashboardPlural(t, 'communicationThisWeek', communicationStats.communication),
-                row2: lastLine(
-                  speechDetail?.lastCommunicationAt ?? speechSummary?.latestAt,
-                ),
                 activityDays: activityDaysFromTimeline(speechDetail?.timeline, (point) => {
                   return point.communication;
                 }),
@@ -1253,7 +1244,6 @@ export function CircleDashboardScreen({
                 row1: quiet
                   ? t('dashboard.noCompanionChats')
                   : dashboardPlural(t, 'companion', companionLast7),
-                row2: lastLine(companionDetail?.lastCompanionAt ?? companionSummary?.latestAt),
                 activityDays: activityDaysFromTimeline(companionDetail?.timeline, (point) => {
                   return Math.max(0, point.conversations + point.interactions - point.detected);
                 }),
@@ -1272,7 +1262,6 @@ export function CircleDashboardScreen({
           ? loadingRows(t('common.loading'))
           : (() => {
               const quiet = vitalityGamesLast7 === 0;
-              const lastGameAt = vitalitySummary?.latestAt ?? null;
               return {
                 heroValue: vitalityGamesLast7,
                 heroMuted: quiet,
@@ -1280,9 +1269,6 @@ export function CircleDashboardScreen({
                 row1: quiet
                   ? t('dashboard.noMindGamesWeek')
                   : dashboardPlural(t, 'gamesPlayed', vitalityGamesLast7),
-                row2: lastGameAt
-                  ? lastLine(lastGameAt)
-                  : t('dashboard.lastLine', { when: t('dashboard.na') }),
                 activityDays: activityDaysFromTimeline(vitalityDetail?.timeline, (point) => {
                   return point.games;
                 }),
@@ -1486,7 +1472,7 @@ export function CircleDashboardScreen({
                 row1: t('dashboard.noPhotosYet'),
                 row2: t('dashboard.uploadMemory'),
               }),
-        onClick: () => onGoToTab('media'),
+        onClick: () => (onOpenGalleryReactions ? onOpenGalleryReactions() : onGoToTab('media')),
       }
     : null;
 

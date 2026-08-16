@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
@@ -138,8 +138,20 @@ export function CircleMainShell({
   const [dropInSentThisOpen, setDropInSentThisOpen] = useState(false);
   const replyDraftGuardRef = useRef<UnsavedReplyDraftGuard | null>(null);
   const analyticsOriginTabRef = useRef<CircleMainTab | null>(null);
+  const mainRef = useRef<HTMLElement>(null);
 
   const compactChrome = activeTab !== 'dashboard';
+
+  useLayoutEffect(() => {
+    const el = mainRef.current;
+    if (el) el.scrollTop = 0;
+    window.scrollTo(0, 0);
+    const frame = requestAnimationFrame(() => {
+      if (el) el.scrollTop = 0;
+      window.scrollTo(0, 0);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeTab]);
 
   const guardedNavigate = useCallback(
     (proceed: () => void) => {
@@ -222,6 +234,11 @@ export function CircleMainShell({
   const handleGalleryIntentConsumed = useCallback(() => {
     setGalleryIntent(null);
   }, []);
+
+  const handleOpenGalleryReactions = useCallback(() => {
+    setGalleryIntent({ type: 'open-album', albumKind: 'reactions' });
+    guardedNavigate(() => setActiveTab('media'));
+  }, [guardedNavigate]);
 
   const selectedPatient = useMemo((): CirclePatientSummary | null => {
     if (patients.length === 0) return null;
@@ -612,6 +629,7 @@ export function CircleMainShell({
         )}
 
         <main
+          ref={mainRef}
           className={cn(
             'flex-1 min-h-0',
             activeTab === 'messages' ||
@@ -658,6 +676,7 @@ export function CircleMainShell({
               onOpenCircleFolder={handleOpenCircleFolder}
               onOpenMessagesInbox={handleOpenMessagesInbox}
               onOpenAnalyticsDetail={handleOpenAnalyticsDetail}
+              onOpenGalleryReactions={handleOpenGalleryReactions}
               onOpenVisitCapture={
                 showVisitCapture ? () => handleOpenVisitCapture() : undefined
               }

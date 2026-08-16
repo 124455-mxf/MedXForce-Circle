@@ -1090,7 +1090,11 @@ export function CircleCircleScreen({
         : t('circle.composerPlaceholderCareTeam');
 
   const composerSendLabel =
-    inboxView === 'announcements' ? t('circle.sendAnnouncement') : t('circle.sendToEveryone');
+    inboxView === 'announcements'
+      ? t('circle.sendAnnouncement')
+      : activeThread === 'open'
+        ? t('circle.sendToEveryone')
+        : t('circle.sendToCareTeam');
 
   const composerExpandTitle =
     inboxView === 'announcements'

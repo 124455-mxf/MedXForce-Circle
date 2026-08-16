@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import {
@@ -255,6 +255,7 @@ export function PatientGalleryScreen({
     getCircleGalleryViewedIds(patient.patientId, user.uid),
   );
   const [reactedMediaIds, setReactedMediaIds] = useState<Set<string>>(() => new Set());
+  const galleryBodyRef = useRef<HTMLDivElement>(null);
 
   const role = patient.role as CircleMemberRole;
   const senderName = user.displayName || user.email || t('gallery.familyMemberFallback');
@@ -295,11 +296,17 @@ export function PatientGalleryScreen({
 
   const visibleAlbumCards = useMemo(() => {
     const canonicalReactionsId = findCanonicalReactionsAlbum(albums)?.id;
-    return albumCards.filter(({ album, count }) => {
-      if (album.isReactions) return count > 0 && album.id === canonicalReactionsId;
-      if (canonicalReactionsId && isReactionsTitleAlbum(album.title)) return false;
-      return true;
-    });
+    return albumCards
+      .filter(({ album, count }) => {
+        if (album.isReactions) return count > 0 && album.id === canonicalReactionsId;
+        if (canonicalReactionsId && isReactionsTitleAlbum(album.title)) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        if (a.album.isReactions && !b.album.isReactions) return -1;
+        if (!a.album.isReactions && b.album.isReactions) return 1;
+        return 0;
+      });
   }, [albumCards, albums]);
 
   const myAlbumCards = useMemo(
@@ -386,6 +393,15 @@ export function PatientGalleryScreen({
     }
     onGalleryIntentConsumed?.();
   }, [albums, galleryIntent, loading, onGalleryIntentConsumed]);
+
+  useLayoutEffect(() => {
+    const el = galleryBodyRef.current;
+    if (el) el.scrollTop = 0;
+    const frame = requestAnimationFrame(() => {
+      if (el) el.scrollTop = 0;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [browseTab, gridScope, mainMode, showGrid]);
 
   const exitManageToBrowse = useCallback(() => {
     setMainMode('browse');
@@ -1040,7 +1056,7 @@ export function PatientGalleryScreen({
           )}
         </div>
 
-        <div className={cn(circleSectionBodyClass, 'p-4')}>
+        <div ref={galleryBodyRef} className={cn(circleSectionBodyClass, 'p-4')}>
         {loading && mainMode === 'browse' && !showGrid && (
           <p className="text-sm text-slate-500">{t('gallery.loadingGallery')}</p>
         )}
