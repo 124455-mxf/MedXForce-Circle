@@ -336,8 +336,23 @@ export function DashboardCircleMapTile({
             <p className={cn('font-bold text-slate-800 text-sm sm:text-base leading-snug', titleClassName)}>
               {t('dashboard.circleMap.tileTitle')}
             </p>
+            {wide ? null : (
+              <p className={cn('text-xs text-slate-500', bodyClassName)}>
+                {t('dashboard.circleMap.membersCount', { count: model.nodes.length })}
+              </p>
+            )}
           </div>
         </div>
+        {wide ? (
+          <div className="relative flex-1 flex flex-col justify-center min-h-0 py-1">
+            <p className="font-bold tracking-tight leading-none text-3xl sm:text-[2rem] text-slate-900">
+              {model.nodes.length}
+            </p>
+            <p className="mt-1.5 text-[13px] text-slate-600 leading-snug">
+              {t('dashboard.circleMap.membersCount', { count: model.nodes.length })}
+            </p>
+          </div>
+        ) : null}
         {wide ? (
           <p
             className={cn(

@@ -155,6 +155,7 @@ export type AnalyticsMetricDetail =
       trend?: AnalyticsTrendDirection;
       topTopics?: TopCountItem[];
       timeline?: CompanionTimelinePoint[];
+      lastCompanionAt?: number | null;
     }
   | {
       kind: 'messages';
@@ -165,6 +166,7 @@ export type AnalyticsMetricDetail =
       messagingBreakdown?: MessagesMessagingBreakdown;
       timeline?: MessagesTimelinePoint[];
       lastCommunicationInputMethod?: 'keyboard' | 'touch' | null;
+      lastCommunicationAt?: number | null;
     }
   | {
       kind: 'daily_check_in';
@@ -366,6 +368,10 @@ function parseCompanionTimeline(raw: unknown): CompanionTimelinePoint[] | undefi
 }
 
 function parseCompanionDetail(raw: Record<string, unknown>): AnalyticsMetricDetail {
+  const lastCompanionAt =
+    typeof raw.lastCompanionAt === 'number' && Number.isFinite(raw.lastCompanionAt)
+      ? raw.lastCompanionAt
+      : null;
   return {
     kind: 'companion',
     total: asFiniteNumber(raw.total),
@@ -381,6 +387,7 @@ function parseCompanionDetail(raw: Record<string, unknown>): AnalyticsMetricDeta
     trend: parseTrend(raw.trend),
     topTopics: parseTopItems(raw.topTopics),
     timeline: parseCompanionTimeline(raw.timeline),
+    lastCompanionAt,
   };
 }
 
@@ -772,6 +779,10 @@ function parseMessagesDetail(raw: Record<string, unknown>): AnalyticsMetricDetai
   const method = raw.lastCommunicationInputMethod;
   const lastCommunicationInputMethod =
     method === 'keyboard' || method === 'touch' ? method : null;
+  const lastCommunicationAt =
+    typeof raw.lastCommunicationAt === 'number' && Number.isFinite(raw.lastCommunicationAt)
+      ? raw.lastCommunicationAt
+      : null;
   return {
     kind: 'messages',
     communication: asFiniteNumber(raw.communication),
@@ -781,6 +792,7 @@ function parseMessagesDetail(raw: Record<string, unknown>): AnalyticsMetricDetai
     messagingBreakdown: parseMessagingBreakdown(raw.messagingBreakdown),
     timeline: parseMessagesTimeline(raw.timeline),
     lastCommunicationInputMethod,
+    lastCommunicationAt,
   };
 }
 

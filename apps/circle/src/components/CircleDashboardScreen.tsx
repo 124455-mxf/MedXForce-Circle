@@ -119,11 +119,9 @@ import {
   isCommunicationLogSummaryUnread,
 } from '../lib/circleMessageRead';
 import {
-  assistiveDevicesLabelT,
   circlePatientFirstName,
   patientFriendlyDisplayName,
   dashboardPlural,
-  formatDashboardPatientDashboardViewLineT,
   formatLiveTileApplicationModeLineT,
   formatLiveTileLanguageLineT,
   formatLiveTilePhaseLineT,
@@ -1062,14 +1060,6 @@ export function CircleDashboardScreen({
   const lastLine = (ts: number | null | undefined) =>
     formatDashboardLastLine(t, language, ts);
 
-  const formatCommunicationInputMethod = (
-    method: 'keyboard' | 'touch' | null | undefined,
-  ): string => {
-    if (method === 'keyboard') return t('dashboard.lastKeyboard');
-    if (method === 'touch') return t('dashboard.lastTouch');
-    return lastLine(null);
-  };
-
   if (showEngagementStats) {
     lastSevenDayWidgets.push({
       key: 'alert-attention',
@@ -1209,7 +1199,9 @@ export function CircleDashboardScreen({
                 row1: quiet
                   ? t('dashboard.noCommunicationWeek')
                   : dashboardPlural(t, 'communicationThisWeek', communicationStats.communication),
-                row2: formatCommunicationInputMethod(speechDetail?.lastCommunicationInputMethod),
+                row2: lastLine(
+                  speechDetail?.lastCommunicationAt ?? speechSummary?.latestAt,
+                ),
                 activityDays: activityDaysFromTimeline(speechDetail?.timeline, (point) => {
                   return point.communication;
                 }),
@@ -1235,7 +1227,7 @@ export function CircleDashboardScreen({
                 row1: quiet
                   ? t('dashboard.noCompanionChats')
                   : dashboardPlural(t, 'companion', companionLast7),
-                row2: '',
+                row2: lastLine(companionDetail?.lastCompanionAt ?? companionSummary?.latestAt),
                 activityDays: activityDaysFromTimeline(companionDetail?.timeline, (point) => {
                   return Math.max(0, point.conversations + point.interactions - point.detected);
                 }),
@@ -1513,33 +1505,33 @@ export function CircleDashboardScreen({
     : null;
 
   if (showRemoteSettings) {
-    const checkInOn = remoteSettings?.dailyCheckIn?.enabled === true;
-    const checkInLabel = checkInOn
-      ? t('dashboard.dailyCheckInOn')
-      : t('dashboard.dailyCheckInOff');
     const appMode = remoteSettings?.appMode as RemoteAppMode | undefined;
     const remoteCustomized =
       !!remoteSettings && !remoteSettingsLoading && isRemoteSettingsCustomized(remoteSettings);
+    const modeLabel = appMode
+      ? t(`dashboard.appModes.${appMode}`)
+      : t('dashboard.appModes.custom');
 
     patientAppWidgets.push({
       key: 'remote-settings',
       title: t('dashboard.remoteSettings'),
       icon: SlidersHorizontal,
+      heroValue: remoteSettingsLoading ? '…' : modeLabel,
+      heroMuted: remoteSettingsLoading || !appMode,
       row1: remoteSettingsLoading ? (
         t('dashboard.modeLoading')
       ) : appMode ? (
-        <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-          <span className="text-slate-500">{t('dashboard.modePrefix')}</span>
+        <span className="flex flex-wrap items-center gap-2">
           <span
             className={cn(
-              'px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide whitespace-nowrap',
+              'px-2 py-1 rounded-md text-xs sm:text-sm font-bold uppercase tracking-wide whitespace-nowrap',
               remoteAppModeCurrentBadgeClass(appMode),
             )}
           >
             {t(`dashboard.appModes.${appMode}`)}
           </span>
           {remoteCustomized ? (
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide whitespace-nowrap text-amber-800 bg-amber-50 border border-amber-100">
+            <span className="px-2 py-1 rounded-md text-xs sm:text-sm font-bold uppercase tracking-wide whitespace-nowrap text-amber-800 bg-amber-50 border border-amber-100">
               {t('dashboard.modeCustomBadge')}
             </span>
           ) : null}
@@ -1547,8 +1539,6 @@ export function CircleDashboardScreen({
       ) : (
         t('dashboard.modeCustom')
       ),
-      row2: formatDashboardPatientDashboardViewLineT(t, remoteSettings, remoteSettingsLoading),
-      row3: remoteSettingsLoading ? '' : checkInLabel,
       accentClass:
         !remoteSettingsLoading && appMode
           ? remoteAppModeCardClass(appMode, true)
@@ -1562,6 +1552,9 @@ export function CircleDashboardScreen({
   const coreComplete =
     profileSnapshot != null && isCoreCircleProfileComplete(profileSnapshot);
 
+  const dataComplete =
+    profileSnapshot != null && isCircleProfileDataComplete(profileSnapshot);
+
   patientAppWidgets.push({
     key: 'user-profile',
     title: t('dashboard.userProfile'),
@@ -1569,21 +1562,17 @@ export function CircleDashboardScreen({
     ...(profileLoading
       ? loadingRows(t('common.loading'))
       : {
-          row1: profileCompletenessLabelT(
-            t,
-            profileSnapshot,
-            false,
-            profileSnapshot ? isCircleProfileDataComplete(profileSnapshot) : false,
-          ),
-          row2: !coreComplete && missingCoreLabel
+          heroValue: profileCompletenessLabelT(t, profileSnapshot, false, dataComplete),
+          heroMuted: !dataComplete,
+          row1: !coreComplete && missingCoreLabel
             ? t('dashboard.coreProfileMissing', { fields: missingCoreLabel })
             : (
-                <span className="inline-flex items-center gap-1.5 min-w-0">
+                <span className="inline-flex items-center gap-2 min-w-0">
                   <span className="shrink-0 text-slate-500">{t('dashboard.phasePrefix')}</span>
                   {profileSnapshot?.clinical.treatmentPhase ? (
                     <span
                       className={cn(
-                        'shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide',
+                        'shrink-0 px-2 py-1 rounded-md text-xs sm:text-sm font-bold uppercase tracking-wide',
                         treatmentPhaseBadgeClass(profileSnapshot.clinical.treatmentPhase),
                       )}
                     >
@@ -1594,9 +1583,6 @@ export function CircleDashboardScreen({
                   )}
                 </span>
               ),
-          row3: t('dashboard.device', {
-            device: assistiveDevicesLabelT(t, profileSnapshot?.lifestyle.assistiveDevices),
-          }),
           accentClass: profileSnapshot?.clinical.treatmentPhase
             ? treatmentPhaseCardClass(profileSnapshot.clinical.treatmentPhase, true)
             : undefined,
