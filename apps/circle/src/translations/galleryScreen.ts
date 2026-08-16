@@ -2,7 +2,7 @@
 
 export const galleryScreenEnglish = {
   title: 'Media gallery',
-  subtitle: 'Photos and videos shared with your loved one.',
+  subtitle: 'Shared photos and videos',
   uploadAriaLabel: 'Upload photos or videos',
   uploadTitle: 'Upload',
   yourAlbums: 'Your albums',
@@ -93,7 +93,7 @@ export const galleryScreenEnglish = {
 
 export const galleryScreenGerman = {
   title: 'Medien-Galerie',
-  subtitle: 'Fotos und Videos, die Sie mit Ihrem Angehörigen teilen.',
+  subtitle: 'Geteilte Fotos und Videos',
   uploadAriaLabel: 'Fotos oder Videos hochladen',
   uploadTitle: 'Hochladen',
   yourAlbums: 'Ihre Alben',
@@ -186,7 +186,7 @@ export const galleryScreenGerman = {
 
 export const galleryScreenSpanish = {
   title: 'Galería de medios',
-  subtitle: 'Fotos y videos compartidos con su ser querido.',
+  subtitle: 'Fotos y videos compartidos',
   uploadAriaLabel: 'Subir fotos o videos',
   uploadTitle: 'Subir',
   yourAlbums: 'Sus álbumes',
@@ -279,7 +279,7 @@ export const galleryScreenSpanish = {
 
 export const galleryScreenPolish = {
   title: 'Galeria multimediów',
-  subtitle: 'Zdjęcia i filmy udostępniane bliskiej osobie.',
+  subtitle: 'Udostępnione zdjęcia i filmy',
   uploadAriaLabel: 'Prześlij zdjęcia lub filmy',
   uploadTitle: 'Prześlij',
   yourAlbums: 'Twoje albumy',
