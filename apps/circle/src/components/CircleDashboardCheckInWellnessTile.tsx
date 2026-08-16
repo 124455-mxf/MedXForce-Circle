@@ -99,28 +99,26 @@ export function CircleDashboardCheckInWellnessTile({
         className={cn(
           'relative z-10 flex min-w-0',
           wide
-            ? 'w-[42%] sm:w-[40%] flex-col justify-between shrink-0 gap-3'
+            ? 'w-[42%] sm:w-[40%] h-full flex-col shrink-0'
             : 'flex-col h-full pointer-events-none',
         )}
       >
-        <div className={cn('flex min-w-0', wide ? 'flex-col gap-3' : 'items-center gap-3 mb-2')}>
+        <div className={cn('flex items-center gap-2.5 min-w-0', !wide && 'mb-2')}>
           <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors shrink-0">
             <Activity size={20} />
           </div>
-          <div className="min-w-0">
-            <p
-              className={cn(
-                'font-bold text-slate-800 text-sm sm:text-base leading-snug',
-                titleClassName,
-              )}
-            >
-              {t('dashboard.checkInWellnessRing.title')}
-            </p>
-          </div>
+          <p
+            className={cn(
+              'font-bold text-slate-800 text-sm leading-tight line-clamp-2 min-w-0',
+              titleClassName,
+            )}
+          >
+            {t('dashboard.checkInWellnessRing.title')}
+          </p>
         </div>
 
         {wide && frames.length > 0 ? (
-          <div className="relative z-20 pointer-events-auto">
+          <div className="relative z-20 flex-1 min-h-0 flex flex-col justify-center pointer-events-auto">
             <CheckInWellnessWeekControls
               frames={frames}
               selectedIndex={selectedIndex}
@@ -132,7 +130,7 @@ export function CircleDashboardCheckInWellnessTile({
           </div>
         ) : null}
 
-        {wide ? <div className="mt-auto">{cta}</div> : null}
+        {wide ? <div className="shrink-0">{cta}</div> : null}
 
         {!wide ? (
           <>

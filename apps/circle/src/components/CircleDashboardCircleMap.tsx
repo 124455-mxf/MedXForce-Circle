@@ -328,12 +328,12 @@ export function DashboardCircleMapTile({
             : 'items-center gap-3 mb-2',
         )}
       >
-        <div className={cn('flex min-w-0', wide ? 'flex-col gap-3' : 'items-center gap-3')}>
+        <div className={cn('flex items-center gap-2.5 min-w-0')}>
           <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center group-hover:bg-violet-600 group-hover:text-white transition-colors shrink-0">
             <Sparkles size={20} />
           </div>
           <div className="min-w-0">
-            <p className={cn('font-bold text-slate-800 text-sm sm:text-base leading-snug', titleClassName)}>
+            <p className={cn('font-bold text-slate-800 text-sm leading-tight line-clamp-2 min-w-0', titleClassName)}>
               {t('dashboard.circleMap.tileTitle')}
             </p>
             {wide ? null : (

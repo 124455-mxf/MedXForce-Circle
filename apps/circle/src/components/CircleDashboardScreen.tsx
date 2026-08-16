@@ -31,7 +31,6 @@ import {
   canViewPatientProfileTab,
   canViewRemoteSettingsTab,
   canSendPatientRemoteCommands,
-  diaryMoodLabel,
   isHospitalFeatureEnabledInRemoteSettings,
   isPatientInsightsPreviewRemindersEnabled,
   isRemoteSettingsCustomized,
@@ -86,10 +85,7 @@ import {
   canSeePatientOfflineAlert,
   getPatientOfflineAlertDays,
 } from '../lib/patientPresenceAlert';
-import {
-  diaryEntryPreviewLine,
-  useDiaryDashboardPreview,
-} from '../hooks/useDiaryDashboardPreview';
+import { useDiaryDashboardPreview } from '../hooks/useDiaryDashboardPreview';
 import { useMemberDiaryActivity } from '../hooks/useMemberDiaryActivity';
 import { usePatientFirstEngagementAt } from '../hooks/usePatientFirstEngagementAt';
 import type { CirclePatientRemoteCommandAwaiting } from '../hooks/useCirclePatientRemoteCommand';
@@ -222,7 +218,9 @@ type DashboardWidgetSpec = {
   /** Optional mode-colored card chrome (e.g. ICU / Hospital / Daily Life). */
   accentClass?: string;
   /** Large primary number/status for Last 7 days readability. */
-  heroValue?: string | number;
+  heroValue?: ReactNode;
+  /** Word heroes (mode / completeness) stay readable at Large text size. */
+  heroVariant?: 'metric' | 'label';
   heroMuted?: boolean;
   iconTone?: DashboardWidgetIconTone;
   activityDays?: DashboardActivityDay[];
@@ -236,6 +234,17 @@ const WIDGET_ICON_TONE_CLASSES: Record<DashboardWidgetIconTone, string> = {
   sky: 'bg-sky-100 text-sky-700',
   violet: 'bg-violet-100 text-violet-700',
 };
+
+function galleryPhotoReactionHero(photos: number, reactions: number): ReactNode {
+  return (
+    <span className="inline-flex items-baseline gap-0.5 min-w-0">
+      <span>{photos}</span>
+      <span className="text-[1.35rem] sm:text-xl font-semibold tracking-tight text-slate-500 leading-none">
+        /{reactions}
+      </span>
+    </span>
+  );
+}
 
 function iconToneFromRecency(
   tint: AlertAttentionRecencyUrgency | undefined,
@@ -349,10 +358,30 @@ function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
       </div>
 
       {hasHero ? (
+        spec.span === 'full' && spec.heroVariant === 'label' ? (
+          <div className="flex items-center justify-between gap-3 min-w-0">
+            <p
+              className={cn(
+                'font-bold tracking-tight text-xl leading-tight min-w-0',
+                spec.heroMuted ? 'text-slate-400' : 'text-slate-900',
+              )}
+            >
+              {spec.heroValue}
+            </p>
+            <div className="shrink-0 max-w-[55%] text-right">
+              {rows.map((row, index) => (
+                <DashboardWidgetRow key={index} row={row} index={index} heroLayout />
+              ))}
+            </div>
+          </div>
+        ) : (
         <>
           <p
             className={cn(
-              'font-bold tracking-tight leading-none text-3xl sm:text-[2rem]',
+              'font-bold tracking-tight',
+              spec.heroVariant === 'label'
+                ? 'text-xl leading-tight line-clamp-2'
+                : 'leading-none text-3xl sm:text-[2rem]',
               spec.heroMuted ? 'text-slate-400' : 'text-slate-900',
             )}
           >
@@ -369,6 +398,7 @@ function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
             <div className="flex-1" />
           )}
         </>
+        )
       ) : (
         <div className="text-sm text-slate-600 mt-0.5 leading-snug flex-1 flex flex-col justify-end gap-0.5 min-w-0">
           {rows.map((row, index) => (
@@ -996,10 +1026,6 @@ export function CircleDashboardScreen({
   const vitalityDetail =
     vitalitySummary?.detail?.kind === 'vitality_game' ? vitalitySummary.detail : null;
 
-  const soulSummary = byMetricId.get('soul-vitality');
-  const soulDetail =
-    soulSummary?.detail?.kind === 'soul_gallery' ? soulSummary.detail : null;
-
   const alertStats = sumAlertAttentionLast7(alertDetail?.timeline);
   const communicationStats = sumMessagesLast7(speechDetail?.timeline);
   const companionLast7 = sumCompanionLast7ExcludingDetected(companionDetail?.timeline);
@@ -1245,11 +1271,8 @@ export function CircleDashboardScreen({
         ...(analyticsLoading
           ? loadingRows(t('common.loading'))
           : (() => {
-              const pictureCount =
-                soulDetail?.totalPhotoCount ?? soulDetail?.photoCount ?? 0;
-              const unseenCount =
-                soulDetail?.unseenMediaCount ?? soulDetail?.unseenPhotoCount ?? 0;
               const quiet = vitalityGamesLast7 === 0;
+              const lastGameAt = vitalitySummary?.latestAt ?? null;
               return {
                 heroValue: vitalityGamesLast7,
                 heroMuted: quiet,
@@ -1257,11 +1280,9 @@ export function CircleDashboardScreen({
                 row1: quiet
                   ? t('dashboard.noMindGamesWeek')
                   : dashboardPlural(t, 'gamesPlayed', vitalityGamesLast7),
-                row2:
-                  pictureCount > 0
-                    ? dashboardPlural(t, 'picture', pictureCount)
-                    : t('dashboard.noPicturesYet'),
-                row3: dashboardPlural(t, 'unseen', unseenCount),
+                row2: lastGameAt
+                  ? lastLine(lastGameAt)
+                  : t('dashboard.lastLine', { when: t('dashboard.na') }),
                 activityDays: activityDaysFromTimeline(vitalityDetail?.timeline, (point) => {
                   return point.games;
                 }),
@@ -1316,12 +1337,6 @@ export function CircleDashboardScreen({
           : (() => {
               const latest = diaryPreview.latest;
               const latestAt = latest?.experienceAt ?? diaryDetail?.latestAt ?? null;
-              const mood = latest?.mood ? diaryMoodLabel(latest.mood) : undefined;
-              const authorLine = latest
-                ? latest.authorUid === user.uid
-                  ? t('dashboard.yourLatestEntry')
-                  : t('dashboard.fromSender', { name: latest.authorName })
-                : undefined;
               const weekCount = diaryPreview.entriesLast7;
               const hero = weekCount > 0 ? weekCount : diaryPreview.sharedCount;
               const recencyTint = getDiaryRecencyUrgency(latestAt);
@@ -1334,12 +1349,7 @@ export function CircleDashboardScreen({
                   weekCount > 0
                     ? dashboardPlural(t, 'entriesThisWeek', weekCount)
                     : dashboardPlural(t, 'entry', diaryPreview.sharedCount),
-                row2: latest ? diaryEntryPreviewLine(latest) : t('dashboard.tapToReadJournal'),
-                row3: latest?.isMilestone
-                  ? `${t('dashboard.milestone')} · ${lastLine(latestAt)}`
-                  : mood
-                    ? `${mood} · ${authorLine ?? lastLine(latestAt)}`
-                    : authorLine ?? lastLine(latestAt),
+                row2: lastLine(latestAt),
                 recencyTint,
               };
             })()),
@@ -1444,9 +1454,6 @@ export function CircleDashboardScreen({
     });
   }
 
-  const unseenGalleryCount =
-    soulDetail?.unseenMediaCount ?? soulDetail?.unseenPhotoCount ?? 0;
-
   const familyGalleryWidget: DashboardWidgetSpec | null =
     canSeeGallery && isWidgetVisible('media-gallery')
     ? {
@@ -1455,51 +1462,30 @@ export function CircleDashboardScreen({
         icon: Heart,
         ...(galleryDashboard.loading
           ? loadingRows(t('common.loading'))
-          : galleryDashboard.reactionsLast7 > 0
+          : galleryDashboard.photoCount > 0
             ? {
-                heroValue: galleryDashboard.reactionsLast7,
+                heroValue: galleryPhotoReactionHero(
+                  galleryDashboard.photoCount,
+                  galleryDashboard.reactionsLast7,
+                ),
                 heroMuted: false,
                 iconTone: 'rose' as const,
-                row1: dashboardPlural(t, 'reactionsThisWeek', galleryDashboard.reactionsLast7),
-                row2: dashboardPlural(t, 'photosInGallery', galleryDashboard.photoCount),
-                row3:
-                  unseenGalleryCount > 0
-                    ? dashboardPlural(t, 'unseenByPatient', unseenGalleryCount)
-                    : galleryDashboard.totalReactions > galleryDashboard.reactionsLast7
-                      ? dashboardPlural(t, 'totalReactions', galleryDashboard.totalReactions)
-                      : undefined,
-                recencyTint: 'green' as const,
+                row1: (
+                  <span className="text-[13px] font-medium text-slate-600">
+                    {dashboardPlural(t, 'photos', galleryDashboard.photoCount)}
+                  </span>
+                ),
+                row2: dashboardPlural(t, 'reactionsThisWeek', galleryDashboard.reactionsLast7),
+                recencyTint:
+                  galleryDashboard.reactionsLast7 > 0 ? ('green' as const) : undefined,
               }
-            : galleryDashboard.totalReactions > 0
-              ? {
-                  heroValue: galleryDashboard.totalReactions,
-                  heroMuted: false,
-                  iconTone: 'rose' as const,
-                  row1: dashboardPlural(t, 'reactionsOnFamilyPhotos', galleryDashboard.totalReactions),
-                  row2: dashboardPlural(t, 'sharedPhotos', galleryDashboard.photoCount),
-                  row3:
-                    unseenGalleryCount > 0
-                      ? dashboardPlural(t, 'unseenByPatient', unseenGalleryCount)
-                      : undefined,
-                }
-              : galleryDashboard.photoCount > 0
-                ? {
-                    heroValue: galleryDashboard.photoCount,
-                    heroMuted: false,
-                    iconTone: 'rose' as const,
-                    row1: dashboardPlural(t, 'sharedPhotos', galleryDashboard.photoCount),
-                    row2:
-                      unseenGalleryCount > 0
-                        ? dashboardPlural(t, 'unseenByPatient', unseenGalleryCount)
-                        : t('dashboard.beFirstToReact'),
-                  }
-                : {
-                    heroValue: 0,
-                    heroMuted: true,
-                    iconTone: 'rose' as const,
-                    row1: t('dashboard.noPhotosYet'),
-                    row2: t('dashboard.uploadMemory'),
-                  }),
+            : {
+                heroValue: 0,
+                heroMuted: true,
+                iconTone: 'rose' as const,
+                row1: t('dashboard.noPhotosYet'),
+                row2: t('dashboard.uploadMemory'),
+              }),
         onClick: () => onGoToTab('media'),
       }
     : null;
@@ -1516,12 +1502,14 @@ export function CircleDashboardScreen({
       key: 'remote-settings',
       title: t('dashboard.remoteSettings'),
       icon: SlidersHorizontal,
+      span: 'full',
       heroValue: remoteSettingsLoading ? '…' : modeLabel,
+      heroVariant: 'label',
       heroMuted: remoteSettingsLoading || !appMode,
       row1: remoteSettingsLoading ? (
         t('dashboard.modeLoading')
       ) : appMode ? (
-        <span className="flex flex-wrap items-center gap-2">
+        <span className="flex flex-nowrap items-center justify-end gap-2">
           <span
             className={cn(
               'px-2 py-1 rounded-md text-xs sm:text-sm font-bold uppercase tracking-wide whitespace-nowrap',
@@ -1559,10 +1547,12 @@ export function CircleDashboardScreen({
     key: 'user-profile',
     title: t('dashboard.userProfile'),
     icon: UserRound,
+    span: 'full',
     ...(profileLoading
       ? loadingRows(t('common.loading'))
       : {
           heroValue: profileCompletenessLabelT(t, profileSnapshot, false, dataComplete),
+          heroVariant: 'label',
           heroMuted: !dataComplete,
           row1: !coreComplete && missingCoreLabel
             ? t('dashboard.coreProfileMissing', { fields: missingCoreLabel })
@@ -1845,8 +1835,7 @@ export function CircleDashboardScreen({
                 <div
                   key={widget.key}
                   className={cn(
-                    DASHBOARD_WIDGET_CELL_CLASS,
-                    widget.span === 'full' && 'col-span-2',
+                    widget.span === 'full' ? 'col-span-2' : DASHBOARD_WIDGET_CELL_CLASS,
                   )}
                 >
                   <DashboardWidget spec={widget} />

@@ -162,4 +162,4 @@ export const dashboardSectionTitleClass =
 
 /** Home dashboard tile titles (Remote settings, Check-ins, …). */
 export const dashboardTileTitleClass =
-  'font-bold text-slate-800 text-sm sm:text-[0.95rem] leading-snug min-w-0';
+  'font-bold text-slate-800 text-sm leading-tight line-clamp-2 min-w-0';

@@ -125,7 +125,7 @@ type WeekControlsProps = {
   selectedIndex: number;
   onSelect: (index: number) => void;
   compact?: boolean;
-  /** Stack under a left column — left-aligned, no absolute positioning. */
+  /** Stack under a left column — day bar above the selected-day pill, no absolute positioning. */
   aside?: boolean;
   t: (key: string, params?: Record<string, unknown>) => string;
 };
@@ -145,56 +145,53 @@ export function CheckInWellnessWeekControls({
     ? formatCheckInDayOffsetLabel(activeFrame.dayOffset, t)
     : t('dashboard.checkInWellnessRing.dayToday');
 
-  return (
+  const selectedDayPill =
+    hasAnyCheckIn && activeFrame ? (
+      <motion.div
+        key={activeFrame.date}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.45, ease: 'easeInOut' }}
+        className={cn(
+          'inline-flex items-center gap-2 rounded-full bg-slate-500 text-white shadow-sm',
+          aside
+            ? 'self-center mt-2 px-2.5 py-1 text-[10px]'
+            : cn('mb-3.5', compact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'),
+        )}
+      >
+        <span className="font-black tabular-nums">{dayLabel}</span>
+        {activeFrame.dayOffset === 0 ? null : hasDayData ? (
+          <span className="font-semibold tracking-wide text-white/85 text-[9px]">
+            {t('dashboard.checkInWellnessRing.dayUnit')}
+          </span>
+        ) : (
+          <span className="font-semibold uppercase tracking-wide text-white/70 text-[9px]">
+            {t('dashboard.checkInWellnessRing.noCheckInShort')}
+          </span>
+        )}
+      </motion.div>
+    ) : (
+      <p
+        className={cn(
+          'font-medium',
+          aside
+            ? 'self-center mt-2 text-center text-[10px] text-slate-400'
+            : cn('mb-3.5 text-center', compact ? 'text-[8px] text-slate-400' : 'text-[10px] text-slate-400'),
+        )}
+      >
+        {t('dashboard.checkInWellnessRing.selectWeekHint')}
+      </p>
+    );
+
+  const dayBar = (
     <div
       className={cn(
-        'flex flex-col',
-        aside ? 'items-stretch w-full min-w-0' : 'items-center',
-        !aside && (compact ? 'absolute left-0 right-0 bottom-0' : 'absolute left-0 right-0 bottom-1'),
+        'flex w-full',
+        aside ? 'gap-0.5' : cn('max-w-[17rem] mx-auto', compact ? 'gap-0.5' : 'gap-1'),
       )}
+      role="tablist"
+      aria-label={t('dashboard.checkInWellnessRing.weekPicker')}
     >
-      {hasAnyCheckIn && activeFrame ? (
-        <motion.div
-          key={activeFrame.date}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.45, ease: 'easeInOut' }}
-          className={cn(
-            'inline-flex items-center gap-2 rounded-full bg-slate-500 text-white shadow-sm mb-3.5',
-            aside ? 'self-start px-2.5 py-1 text-[10px]' : compact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-xs',
-          )}
-        >
-          <span className="font-black tabular-nums">{dayLabel}</span>
-          {activeFrame.dayOffset === 0 ? null : hasDayData ? (
-            <span className="font-semibold tracking-wide text-white/85 text-[9px]">
-              {t('dashboard.checkInWellnessRing.dayUnit')}
-            </span>
-          ) : (
-            <span className="font-semibold uppercase tracking-wide text-white/70 text-[9px]">
-              {t('dashboard.checkInWellnessRing.noCheckInShort')}
-            </span>
-          )}
-        </motion.div>
-      ) : (
-        <p
-          className={cn(
-            'font-medium mb-3.5',
-            aside ? 'text-left text-[10px] text-slate-400' : 'text-center',
-            !aside && (compact ? 'text-[8px] text-slate-400' : 'text-[10px] text-slate-400'),
-          )}
-        >
-          {t('dashboard.checkInWellnessRing.selectWeekHint')}
-        </p>
-      )}
-
-      <div
-        className={cn(
-          'flex w-full',
-          aside ? 'gap-0.5' : cn('max-w-[17rem] mx-auto', compact ? 'gap-0.5' : 'gap-1'),
-        )}
-        role="tablist"
-        aria-label={t('dashboard.checkInWellnessRing.weekPicker')}
-      >
         {frames.map((frame, index) => {
           const isSelected = index === selectedIndex;
           const dayLabelItem = formatCheckInDayOffsetLabel(frame.dayOffset, t);
@@ -263,7 +260,28 @@ export function CheckInWellnessWeekControls({
             </button>
           );
         })}
-      </div>
+    </div>
+  );
+
+  return (
+    <div
+      className={cn(
+        'flex flex-col',
+        aside ? 'items-stretch w-full min-w-0' : 'items-center',
+        !aside && (compact ? 'absolute left-0 right-0 bottom-0' : 'absolute left-0 right-0 bottom-1'),
+      )}
+    >
+      {aside ? (
+        <>
+          {dayBar}
+          {selectedDayPill}
+        </>
+      ) : (
+        <>
+          {selectedDayPill}
+          {dayBar}
+        </>
+      )}
     </div>
   );
 }
