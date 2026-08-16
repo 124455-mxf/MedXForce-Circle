@@ -11,7 +11,7 @@ export const messagesScreenEnglish = {
   subtitleDeleted: 'Deleted on the patient tablet — read only, no replies.',
   subtitleAlert: 'Unread alerts also appear in In/Out until you acknowledge them.',
   subtitleAttention: 'Unread attention requests also appear in In/Out until you acknowledge them.',
-  subtitleInOut: 'Tap a conversation to read and reply. Tap Alert or Attention to acknowledge.',
+  subtitleInOut: 'Tap a conversation to read and reply.',
   tabBucketsAria: 'Message buckets',
   tabCommunicationLog: 'Communication log',
   tabAlerts: 'Alerts',
@@ -133,8 +133,7 @@ export const messagesScreenGerman = {
     'Ungelesene Alarme erscheinen auch unter Ein/Aus, bis Sie sie bestätigen.',
   subtitleAttention:
     'Ungelesene Aufmerksamkeitsanfragen erscheinen auch unter Ein/Aus, bis Sie sie bestätigen.',
-  subtitleInOut:
-    'Tippen Sie auf eine Unterhaltung zum Lesen und Antworten. Tippen Sie auf Alarm oder Aufmerksamkeit zum Bestätigen.',
+  subtitleInOut: 'Tippen Sie auf eine Unterhaltung zum Lesen und Antworten.',
   tabBucketsAria: 'Nachrichtenordner',
   tabCommunicationLog: 'Kommunikationsprotokoll',
   tabAlerts: 'Alarme',
@@ -260,8 +259,7 @@ export const messagesScreenSpanish = {
     'Las alertas no leídas también aparecen en Entrada/Salida hasta que las confirme.',
   subtitleAttention:
     'Las solicitudes de atención no leídas también aparecen en Entrada/Salida hasta que las confirme.',
-  subtitleInOut:
-    'Toque una conversación para leer y responder. Toque Alerta o Atención para confirmar.',
+  subtitleInOut: 'Toque una conversación para leer y responder.',
   tabBucketsAria: 'Carpetas de mensajes',
   tabCommunicationLog: 'Registro de comunicación',
   tabAlerts: 'Alertas',
@@ -387,8 +385,7 @@ export const messagesScreenPolish = {
     'Nieprzeczytane alarmy pojawiają się też w Przych./Wych., dopóki ich nie potwierdzisz.',
   subtitleAttention:
     'Nieprzeczytane prośby o uwagę pojawiają się też w Przych./Wych., dopóki ich nie potwierdzisz.',
-  subtitleInOut:
-    'Dotknij rozmowy, aby czytać i odpowiadać. Dotknij Alarm lub Uwaga, aby potwierdzić.',
+  subtitleInOut: 'Dotknij rozmowy, aby czytać i odpowiadać.',
   tabBucketsAria: 'Foldery wiadomości',
   tabCommunicationLog: 'Dziennik komunikacji',
   tabAlerts: 'Alarmy',

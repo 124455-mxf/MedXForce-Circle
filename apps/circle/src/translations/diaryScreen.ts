@@ -2,7 +2,7 @@
 
 export const diaryScreenEnglish = {
   title: 'Diary',
-  subtitle: 'Record visits, mood, and moments. Shared entries build your circle\'s story.',
+  subtitle: 'Record visits, mood, and moments.',
   newEntryAria: 'New diary entry',
   newEntryTitle: 'New entry',
   viewsAria: 'Diary views',
@@ -76,8 +76,7 @@ export const diaryScreenEnglish = {
 
 export const diaryScreenGerman = {
   title: 'Tagebuch',
-  subtitle:
-    'Besuche, Stimmung und Momente festhalten. Geteilte Einträge bilden die Geschichte Ihres Circles.',
+  subtitle: 'Besuche, Stimmung und Momente festhalten.',
   newEntryAria: 'Neuer Tagebucheintrag',
   newEntryTitle: 'Neuer Eintrag',
   viewsAria: 'Tagebuchansichten',
@@ -155,8 +154,7 @@ export const diaryScreenGerman = {
 
 export const diaryScreenSpanish = {
   title: 'Diario',
-  subtitle:
-    'Registre visitas, estado de ánimo y momentos. Las entradas compartidas construyen la historia de su círculo.',
+  subtitle: 'Registre visitas, estado de ánimo y momentos.',
   newEntryAria: 'Nueva entrada de diario',
   newEntryTitle: 'Nueva entrada',
   viewsAria: 'Vistas del diario',
@@ -234,8 +232,7 @@ export const diaryScreenSpanish = {
 
 export const diaryScreenPolish = {
   title: 'Dziennik',
-  subtitle:
-    'Zapisuj wizyty, nastrój i chwile. Udostępnione wpisy budują historię Twojego kręgu.',
+  subtitle: 'Zapisuj wizyty, nastrój i chwile.',
   newEntryAria: 'Nowy wpis dziennika',
   newEntryTitle: 'Nowy wpis',
   viewsAria: 'Widoki dziennika',

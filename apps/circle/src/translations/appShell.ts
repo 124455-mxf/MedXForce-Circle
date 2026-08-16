@@ -467,7 +467,7 @@ export const appShellEnglish = {
     },
     assessmentScheduleCalendar: {
       title: 'Schedule',
-      subtitle: 'Assessment due dates and planned care appointments',
+      subtitle: 'Assessment due dates and appointments',
       prevMonth: 'Previous month',
       nextMonth: 'Next month',
       emptyMonth: 'Nothing scheduled this month.',
@@ -1663,7 +1663,7 @@ export const appShellGerman = {
     },
     assessmentScheduleCalendar: {
       title: 'Zeitplan',
-      subtitle: 'Assessment-Termine und geplante Betreuungstermine',
+      subtitle: 'Fällige Assessments und Termine',
       prevMonth: 'Vorheriger Monat',
       nextMonth: 'Nächster Monat',
       emptyMonth: 'Nichts in diesem Monat geplant.',
@@ -2861,7 +2861,7 @@ export const appShellSpanish = {
     },
     assessmentScheduleCalendar: {
       title: 'Calendario',
-      subtitle: 'Evaluaciones y citas de cuidado planificadas',
+      subtitle: 'Evaluaciones y citas',
       prevMonth: 'Mes anterior',
       nextMonth: 'Mes siguiente',
       emptyMonth: 'Nada programado este mes.',
@@ -4059,7 +4059,7 @@ export const appShellPolish = {
     },
     assessmentScheduleCalendar: {
       title: 'Harmonogram',
-      subtitle: 'Terminy ocen i zaplanowane wizyty opieki',
+      subtitle: 'Terminy ocen i wizyty',
       prevMonth: 'Poprzedni miesiąc',
       nextMonth: 'Następny miesiąc',
       emptyMonth: 'Nic nie zaplanowano w tym miesiącu.',

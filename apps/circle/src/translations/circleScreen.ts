@@ -30,7 +30,7 @@ export const circleScreenEnglish = {
   composeAnnouncementAria: 'Compose a new announcement',
   composeAnnouncementTitle: 'New announcement',
   inboxTabBucketsAria: 'Circle post folders',
-  inboxSubtitleDiscussion: 'Tap a post to read and reply. Type below to post to everyone.',
+  inboxSubtitleDiscussion: 'Tap a post to read and reply.',
   inboxSubtitleAnnouncement:
     'One-way updates from proxies and caregivers. To comment, start a discussion.',
   inboxSubtitleCareTransition:
@@ -185,8 +185,7 @@ export const circleScreenGerman = {
   composeAnnouncementAria: 'Neue Ankündigung verfassen',
   composeAnnouncementTitle: 'Neue Ankündigung',
   inboxTabBucketsAria: 'Circle-Beitragsordner',
-  inboxSubtitleDiscussion:
-    'Tippen Sie auf einen Beitrag zum Lesen. Unten tippen, um an alle zu posten.',
+  inboxSubtitleDiscussion: 'Tippen Sie auf einen Beitrag zum Lesen.',
   inboxSubtitleAnnouncement:
     'Einweg-Updates von Vertretern und Betreuenden. Zum Kommentieren eine Diskussion starten.',
   inboxSubtitleCareTransition:
@@ -349,8 +348,7 @@ export const circleScreenSpanish = {
   composeAnnouncementAria: 'Redactar un nuevo anuncio',
   composeAnnouncementTitle: 'Nuevo anuncio',
   inboxTabBucketsAria: 'Carpetas de publicaciones Circle',
-  inboxSubtitleDiscussion:
-    'Toque una publicación para leer. Escriba abajo para publicar a todos.',
+  inboxSubtitleDiscussion: 'Toque una publicación para leer.',
   inboxSubtitleAnnouncement:
     'Actualizaciones unidireccionales de representantes y cuidadores. Para comentar, inicie una discusión.',
   inboxSubtitleCareTransition:
@@ -513,8 +511,7 @@ export const circleScreenPolish = {
   composeAnnouncementAria: 'Napisz nowe ogłoszenie',
   composeAnnouncementTitle: 'Nowe ogłoszenie',
   inboxTabBucketsAria: 'Foldery postów Circle',
-  inboxSubtitleDiscussion:
-    'Dotknij posta, aby przeczytać. Wpisz poniżej, aby opublikować dla wszystkich.',
+  inboxSubtitleDiscussion: 'Dotknij posta, aby przeczytać.',
   inboxSubtitleAnnouncement:
     'Jednokierunkowe aktualizacje od pełnomocników i opiekunów. Aby skomentować, rozpocznij dyskusję.',
   inboxSubtitleCareTransition:

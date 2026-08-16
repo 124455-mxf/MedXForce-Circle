@@ -2,7 +2,7 @@
 
 export const analyticsScreenEnglish = {
   title: 'Analytics',
-  subtitle: 'Trends for {{name}} — summaries update when the patient app syncs.',
+  subtitle: 'Trends for {{name}}',
   summaryToBeReleased: 'To be released',
   summaryNoDataYet: 'No data yet',
   summaryNoAssessmentsYet: 'No assessments yet',
@@ -208,7 +208,7 @@ export const analyticsScreenEnglish = {
 
 export const analyticsScreenGerman = {
   title: 'Analysen',
-  subtitle: 'Trends für {{name}} — Zusammenfassungen aktualisieren sich, wenn die Patienten-App synchronisiert.',
+  subtitle: 'Trends für {{name}}',
   summaryToBeReleased: 'Demnächst verfügbar',
   summaryNoDataYet: 'Noch keine Daten',
   summaryNoAssessmentsYet: 'Noch keine Assessments',
@@ -414,7 +414,7 @@ export const analyticsScreenGerman = {
 
 export const analyticsScreenSpanish = {
   title: 'Analíticas',
-  subtitle: 'Tendencias de {{name}} — los resúmenes se actualizan cuando la app del paciente sincroniza.',
+  subtitle: 'Tendencias de {{name}}',
   summaryToBeReleased: 'Próximamente',
   summaryNoDataYet: 'Sin datos aún',
   summaryNoAssessmentsYet: 'Sin evaluaciones aún',
@@ -616,7 +616,7 @@ export const analyticsScreenSpanish = {
 
 export const analyticsScreenPolish = {
   title: 'Analityka',
-  subtitle: 'Trendy dla {{name}} — podsumowania aktualizują się po synchronizacji aplikacji pacjenta.',
+  subtitle: 'Trendy dla {{name}}',
   summaryToBeReleased: 'Wkrótce dostępne',
   summaryNoDataYet: 'Brak danych',
   summaryNoAssessmentsYet: 'Brak ocen',

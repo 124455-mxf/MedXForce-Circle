@@ -22,6 +22,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import {
+  circleDisplayFirstName,
   ANALYTICS_METRIC_DEFINITIONS,
   ANALYTICS_SECTIONS,
   buildPlaceholderAnalyticsSummary,
@@ -261,7 +262,9 @@ export function CircleAnalyticsScreen({
             icon={BarChart3}
             iconClassName="text-blue-600"
             title={t('analytics.title')}
-            subtitle={t('analytics.subtitle', { name: patient.displayName })}
+            subtitle={t('analytics.subtitle', {
+              name: circleDisplayFirstName(patient.displayName, patient.firstName),
+            })}
           />
         </div>
 
