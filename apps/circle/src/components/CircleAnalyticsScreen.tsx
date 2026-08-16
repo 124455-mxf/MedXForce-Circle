@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Activity,
   BarChart3,
@@ -204,10 +204,12 @@ export function CircleAnalyticsScreen({
   patient,
   initialMetricId = null,
   onInitialMetricConsumed,
+  onCloseToOrigin,
 }: {
   patient: CirclePatientSummary;
   initialMetricId?: AnalyticsMetricId | null;
   onInitialMetricConsumed?: () => void;
+  onCloseToOrigin?: () => void;
 }) {
   const [detailSummary, setDetailSummary] = useState<PatientAnalyticsSummary | null>(null);
   const [remoteSettingsLoading, setRemoteSettingsLoading] = useState(true);
@@ -219,6 +221,7 @@ export function CircleAnalyticsScreen({
     firebase.db,
     patient,
   );
+  const closeReturnsToOriginRef = useRef(false);
 
   useEffect(() => {
     setRemoteSettingsLoading(true);
@@ -244,6 +247,7 @@ export function CircleAnalyticsScreen({
     const summary = resolveAnalyticsSummary(initialMetricId, byMetricId, patient);
     if (summary?.isReleased && summary.status !== 'coming_soon') {
       setDetailSummary(localizeAnalyticsSummary(t, summary, language));
+      closeReturnsToOriginRef.current = true;
     }
     onInitialMetricConsumed?.();
   }, [initialMetricId, loading, byMetricId, patient, onInitialMetricConsumed, t, language]);
@@ -346,7 +350,13 @@ export function CircleAnalyticsScreen({
     </div>
     <CircleAnalyticsDetailSheet
       summary={detailSummary}
-      onClose={() => setDetailSummary(null)}
+      onClose={() => {
+        setDetailSummary(null);
+        if (closeReturnsToOriginRef.current) {
+          closeReturnsToOriginRef.current = false;
+          onCloseToOrigin?.();
+        }
+      }}
     />
     </>
   );

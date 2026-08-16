@@ -137,6 +137,7 @@ export function CircleMainShell({
   const [dropInConfirmOpen, setDropInConfirmOpen] = useState(false);
   const [dropInSentThisOpen, setDropInSentThisOpen] = useState(false);
   const replyDraftGuardRef = useRef<UnsavedReplyDraftGuard | null>(null);
+  const analyticsOriginTabRef = useRef<CircleMainTab | null>(null);
 
   const compactChrome = activeTab !== 'dashboard';
 
@@ -160,6 +161,7 @@ export function CircleMainShell({
         }
         return;
       }
+      analyticsOriginTabRef.current = null;
       guardedNavigate(() => setActiveTab(tab));
     },
     [activeTab, guardedNavigate],
@@ -173,15 +175,24 @@ export function CircleMainShell({
 
   const handleOpenAnalyticsDetail = useCallback(
     (metricId: AnalyticsMetricId) => {
+      analyticsOriginTabRef.current = activeTab;
       setInitialAnalyticsMetricId(metricId);
       guardedNavigate(() => setActiveTab('analytics'));
     },
-    [guardedNavigate],
+    [activeTab, guardedNavigate],
   );
 
   const handleAnalyticsInitialMetricConsumed = useCallback(() => {
     setInitialAnalyticsMetricId(null);
   }, []);
+
+  const handleAnalyticsDetailClosedToOrigin = useCallback(() => {
+    const origin = analyticsOriginTabRef.current;
+    analyticsOriginTabRef.current = null;
+    if (origin && origin !== 'analytics') {
+      guardedNavigate(() => setActiveTab(origin));
+    }
+  }, [guardedNavigate]);
 
   const handleOpenAdminAccess = useCallback(() => {
     setInitialAdminUsersTab('access');
@@ -767,6 +778,7 @@ export function CircleMainShell({
                 patient={selectedPatient}
                 initialMetricId={initialAnalyticsMetricId}
                 onInitialMetricConsumed={handleAnalyticsInitialMetricConsumed}
+                onCloseToOrigin={handleAnalyticsDetailClosedToOrigin}
               />
               </Suspense>
             </div>
