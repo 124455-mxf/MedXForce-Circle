@@ -153,7 +153,7 @@ export function CheckInWellnessWeekControls({
         animate={{ opacity: 1 }}
         transition={{ duration: 0.45, ease: 'easeInOut' }}
         className={cn(
-          'inline-flex items-center gap-2 rounded-full bg-slate-500 text-white shadow-sm',
+          'inline-flex items-center gap-2 rounded-full bg-white text-slate-900 border border-slate-300',
           aside
             ? 'self-center mt-2 px-2.5 py-1 text-[10px]'
             : cn('mb-3.5', compact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-xs'),
@@ -161,11 +161,11 @@ export function CheckInWellnessWeekControls({
       >
         <span className="font-black tabular-nums">{dayLabel}</span>
         {activeFrame.dayOffset === 0 ? null : hasDayData ? (
-          <span className="font-semibold tracking-wide text-white/85 text-[9px]">
+          <span className="font-semibold tracking-wide text-slate-700 text-[9px]">
             {t('dashboard.checkInWellnessRing.dayUnit')}
           </span>
         ) : (
-          <span className="font-semibold uppercase tracking-wide text-white/70 text-[9px]">
+          <span className="font-semibold uppercase tracking-wide text-slate-500 text-[9px]">
             {t('dashboard.checkInWellnessRing.noCheckInShort')}
           </span>
         )}
@@ -195,7 +195,6 @@ export function CheckInWellnessWeekControls({
         {frames.map((frame, index) => {
           const isSelected = index === selectedIndex;
           const dayLabelItem = formatCheckInDayOffsetLabel(frame.dayOffset, t);
-          const isToday = frame.dayOffset === 0;
 
           return (
             <button
@@ -209,54 +208,28 @@ export function CheckInWellnessWeekControls({
                 onSelect(index);
               }}
               className={cn(
-                'relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg',
-                isToday ? 'flex-[1.35]' : 'flex-1',
-                compact || aside ? 'min-h-[2.25rem] py-1 px-0' : 'min-h-[2.5rem] py-1 px-0.5',
+                'relative flex min-w-0 flex-1 flex-col items-center justify-end rounded-lg px-0',
+                compact || aside ? 'min-h-[2.25rem] py-1' : 'min-h-[2.5rem] py-1',
                 !isSelected && 'hover:bg-slate-50',
               )}
             >
               <span
-                aria-hidden
                 className={cn(
-                  'pointer-events-none absolute inset-0 rounded-lg bg-blue-50 ring-1 ring-inset ring-blue-500 transition-opacity duration-500 ease-in-out',
-                  isSelected ? 'opacity-100' : 'opacity-0',
-                )}
-              />
-              <span
-                className={cn(
-                  'relative rounded-full border-2 transition-[background-color,border-color] duration-500 ease-in-out',
-                  compact || aside ? 'w-2 h-2' : 'w-2.5 h-2.5',
-                  frame.hasCheckIn
-                    ? isSelected
-                      ? 'bg-blue-600 border-blue-600'
-                      : 'bg-slate-400 border-slate-400'
-                    : isSelected
-                      ? 'bg-white border-blue-400'
+                  'relative w-3 rounded-sm border-2 transition-[height,background-color,border-color] duration-500 ease-in-out',
+                  isSelected
+                    ? compact || aside
+                      ? 'h-5'
+                      : 'h-6'
+                    : compact || aside
+                      ? 'h-2.5'
+                      : 'h-3',
+                  isSelected
+                    ? 'bg-sky-300 border-sky-300'
+                    : frame.hasCheckIn
+                      ? 'bg-slate-400 border-slate-400'
                       : 'bg-white border-slate-200',
                 )}
               />
-              <span
-                className={cn(
-                  'relative w-full text-center font-bold leading-none transition-colors duration-500 ease-in-out',
-                  isToday
-                    ? aside
-                      ? 'text-[8px] tracking-tight'
-                      : compact
-                        ? 'text-[6.5px] tracking-tight'
-                        : 'text-[7.5px] tracking-tight'
-                    : cn(
-                        'tabular-nums',
-                        aside ? 'text-[9px]' : compact ? 'text-[7px]' : 'text-[8px]',
-                      ),
-                  isSelected
-                    ? 'text-blue-700'
-                    : frame.hasCheckIn
-                      ? 'text-slate-500'
-                      : 'text-slate-300',
-                )}
-              >
-                {dayLabelItem}
-              </span>
             </button>
           );
         })}
@@ -337,6 +310,7 @@ export function CheckInWellnessRingVisual({
 
   return (
     <div
+      ref={playback.playbackRootRef}
       className={cn(
         'relative',
         showControlsBelow && (compact ? 'pb-9' : 'pb-11'),

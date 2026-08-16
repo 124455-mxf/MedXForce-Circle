@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Bell,
   Bot,
@@ -257,18 +257,50 @@ function iconToneFromRecency(
   return 'blue';
 }
 
+function closestScrollParent(el: HTMLElement | null): HTMLElement | null {
+  let node = el?.parentElement ?? null;
+  while (node) {
+    const { overflowY } = window.getComputedStyle(node);
+    if (overflowY === 'auto' || overflowY === 'scroll') return node;
+    node = node.parentElement;
+  }
+  return null;
+}
+
 function WeekActivityDots({
   days,
 }: {
   days: DashboardActivityDay[];
 }) {
   const t = useCircleT();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [grown, setGrown] = useState(false);
   const maxValue = Math.max(1, ...days.map((day) => day.value));
 
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setGrown(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setGrown(true);
+      },
+      {
+        root: closestScrollParent(el),
+        threshold: 0.2,
+        rootMargin: '40px 0px',
+      },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="mt-auto pt-2.5" aria-label={t('dashboard.weekActivityAria')}>
+    <div ref={rootRef} className="mt-auto pt-2.5" aria-label={t('dashboard.weekActivityAria')}>
       <div className="flex items-end gap-1 h-7">
-        {days.map((day) => {
+        {days.map((day, index) => {
           // Empty days stay a short stub; active days scale by count vs week max.
           const heightPct =
             day.value <= 0 ? 22 : Math.max(36, Math.round((day.value / maxValue) * 100));
@@ -277,11 +309,19 @@ function WeekActivityDots({
               key={day.dateKey}
               title={`${day.dateKey}: ${day.value}`}
               className={cn(
-                'flex-1 rounded-sm transition-[height] min-h-[3px]',
-                day.isActive ? 'bg-slate-400/60' : 'bg-slate-200',
-                day.isToday && 'ring-2 ring-slate-300 ring-offset-1',
+                'flex-1 rounded-sm min-h-0 transition-[height] duration-700 ease-out',
+                day.isToday
+                  ? 'bg-sky-300'
+                  : day.isActive
+                    ? 'bg-slate-300'
+                    : 'bg-slate-500/70',
               )}
-              style={{ height: `${heightPct}%` }}
+              style={{
+                height: grown ? `${heightPct}%` : '0%',
+                transitionDelay: grown
+                  ? `${250 + (days.length - 1 - index) * 55}ms`
+                  : '0ms',
+              }}
             />
           );
         })}

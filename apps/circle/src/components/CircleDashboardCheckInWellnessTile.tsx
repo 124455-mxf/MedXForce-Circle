@@ -41,7 +41,7 @@ export function CircleDashboardCheckInWellnessTile({
         .join('|'),
     [frames],
   );
-  const { selectedIndex, setSelectedIndex } = useCheckInWellnessDayPlayback(
+  const { selectedIndex, setSelectedIndex, playbackRootRef } = useCheckInWellnessDayPlayback(
     frames.length,
     weekFrameKey,
     frames.length > 0,
@@ -76,6 +76,7 @@ export function CircleDashboardCheckInWellnessTile({
 
   return (
     <div
+      ref={playbackRootRef}
       className={cn(
         'relative p-4 sm:p-5 w-full h-full flex bg-white rounded-[28px] border border-emerald-100 shadow-sm hover:shadow-lg hover:border-emerald-200 transition-all group overflow-hidden',
         wide ? 'flex-row items-stretch gap-3 sm:gap-5' : 'flex-col',
