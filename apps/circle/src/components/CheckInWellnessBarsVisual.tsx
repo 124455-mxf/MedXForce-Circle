@@ -74,7 +74,7 @@ function MetricBar({
           {valueLabel}
         </span>
       </div>
-      <div className="h-2.5 rounded-full bg-slate-200/90 overflow-hidden">
+      <div className="h-2.5 rounded-full bg-white border border-slate-300 overflow-hidden box-border">
         <div
           className={cn(
             'h-full rounded-full transition-[width] duration-500 ease-out',

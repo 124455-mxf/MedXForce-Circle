@@ -6,6 +6,9 @@ export const PARTICIPATION_REMINDER_WINDOW_MS = 28 * 24 * 60 * 60 * 1000;
 /** Care-team and profile reminders resurface sooner — proxy action is time-sensitive. */
 export const CARE_ACTION_REMINDER_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
 
+/** Follow-up care nudges (e.g. missed scheduled assessments) stay hidden a bit longer. */
+export const CARE_FOLLOWUP_REMINDER_SNOOZE_MS = 14 * 24 * 60 * 60 * 1000;
+
 /** Celebration tiles (birthday / onset): patient-aligned window (~7 days before through a few days after). */
 export const CELEBRATION_REMINDER_SNOOZE_MS = 11 * 24 * 60 * 60 * 1000;
 
@@ -13,6 +16,7 @@ export type CircleParticipationReminderKind =
   | 'galleryUpload'
   | 'diaryEntry'
   | 'assessmentAfterFirstComm'
+  | 'scheduledAssessmentMissed'
   | 'profileIncomplete'
   | 'teamCoverage'
   | 'pendingInvites'
@@ -30,6 +34,9 @@ export type CircleParticipationReminderKind =
   | 'circleInitiateMessages';
 
 export function reminderSnoozeDurationMs(kind: CircleParticipationReminderKind): number {
+  if (kind === 'scheduledAssessmentMissed') {
+    return CARE_FOLLOWUP_REMINDER_SNOOZE_MS;
+  }
   if (
     kind === 'teamCoverage' ||
     kind === 'pendingInvites' ||
@@ -77,6 +84,9 @@ export function parseMemberReminderSnoozes(
   }
   if (typeof map.assessmentAfterFirstComm === 'number' && map.assessmentAfterFirstComm > 0) {
     next.assessmentAfterFirstComm = map.assessmentAfterFirstComm;
+  }
+  if (typeof map.scheduledAssessmentMissed === 'number' && map.scheduledAssessmentMissed > 0) {
+    next.scheduledAssessmentMissed = map.scheduledAssessmentMissed;
   }
   if (typeof map.profileIncomplete === 'number' && map.profileIncomplete > 0) {
     next.profileIncomplete = map.profileIncomplete;

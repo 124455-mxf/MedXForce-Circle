@@ -5,8 +5,12 @@ import {
   isRecurrenceActiveOnDate,
   isSameCalendarDay,
   type AssessmentRecurrence,
+  type AssessmentScheduleId,
+  type AssessmentScheduleRule,
+  type PatientAnalyticsSummary,
 } from '@medxforce/shared';
 import { CIRCLE_ANALYTICS_WINDOW_DAYS, timelinePointToTimestamp } from './circleAnalyticsChart';
+import { analyticsMetricIdToAssessmentScheduleId } from './circleAssessmentScheduleMetrics';
 
 export type AnalyticsAdherenceTimelinePoint = {
   date: string;
@@ -140,5 +144,61 @@ export function buildAssessmentScheduleAdherence(params: {
     graceDays,
     takenTimeline,
     missedTimeline,
+  };
+}
+
+export const SCHEDULED_ASSESSMENT_MISS_WINDOW_DAYS = 7;
+
+export type ScheduledAssessmentMissSummary = {
+  taken: number;
+  missed: number;
+  pastScheduled: number;
+  missRate: number;
+};
+
+export function completionsByScheduleIdFromAnalytics(
+  byMetricId: Map<string, PatientAnalyticsSummary>,
+): Partial<Record<AssessmentScheduleId, number[]>> {
+  const out: Partial<Record<AssessmentScheduleId, number[]>> = {};
+  for (const [metricId, summary] of byMetricId) {
+    const scheduleId = analyticsMetricIdToAssessmentScheduleId(metricId);
+    if (!scheduleId) continue;
+    const detail = summary.detail;
+    const timeline =
+      detail && 'timeline' in detail
+        ? (detail.timeline as AnalyticsAdherenceTimelinePoint[] | undefined)
+        : undefined;
+    out[scheduleId] = completionTimestampsFromAnalyticsTimeline(timeline, summary.latestAt);
+  }
+  return out;
+}
+
+/** Totals taken vs missed slots across enabled scheduled assessments (due today excluded). */
+export function summarizeScheduledAssessmentAdherence(params: {
+  rules: Partial<Record<AssessmentScheduleId, AssessmentScheduleRule>>;
+  completionsByScheduleId: Partial<Record<AssessmentScheduleId, number[]>>;
+  now?: Date;
+  windowDays?: number;
+}): ScheduledAssessmentMissSummary {
+  let taken = 0;
+  let missed = 0;
+  for (const rule of Object.values(params.rules)) {
+    if (!rule?.enabled) continue;
+    const completions = params.completionsByScheduleId[rule.assessmentId] ?? [];
+    const adherence = buildAssessmentScheduleAdherence({
+      recurrence: rule.recurrence,
+      completions,
+      now: params.now,
+      windowDays: params.windowDays ?? SCHEDULED_ASSESSMENT_MISS_WINDOW_DAYS,
+    });
+    taken += adherence.taken;
+    missed += adherence.missed;
+  }
+  const pastScheduled = taken + missed;
+  return {
+    taken,
+    missed,
+    pastScheduled,
+    missRate: pastScheduled > 0 ? missed / pastScheduled : 0,
   };
 }

@@ -936,6 +936,13 @@ export const appShellEnglish = {
       previewCareAssessmentHeadline: 'Time for a baseline assessment?',
       previewCareAssessmentBody:
         'Sample care-team nudge — tap to open Assessments analytics.',
+      scheduledAssessmentMissedHeadline: 'Assessments are being missed',
+      scheduledAssessmentMissedBody:
+        'Talk with {{name}} about why these scheduled assessments matter. More than half were missed in the last 7 days.',
+      previewScheduledAssessmentMissedHeadline: 'Assessments are being missed',
+      previewScheduledAssessmentMissedBody:
+        'Sample care-team nudge — talk with {{name}} about scheduled assessments. Tap to open Analytics.',
+      dismissCareReminder14Days: 'Dismiss for 14 days',
       hospitalFeatureMessagingHeadline: 'Messaging may help now',
       hospitalFeatureMessagingBody:
         'The patient is engaging — turn on Messaging so Circle can leave notes asynchronously.',
@@ -2134,6 +2141,13 @@ export const appShellGerman = {
       previewCareAssessmentHeadline: 'Zeit für eine Basis-Beurteilung?',
       previewCareAssessmentBody:
         'Beispiel-Betreuungs-Erinnerung — tippen für Beurteilungs-Analysen.',
+      scheduledAssessmentMissedHeadline: 'Beurteilungen werden verpasst',
+      scheduledAssessmentMissedBody:
+        'Sprechen Sie mit {{name}} über den Nutzen der geplanten Beurteilungen. In den letzten 7 Tagen wurde mehr als die Hälfte verpasst.',
+      previewScheduledAssessmentMissedHeadline: 'Beurteilungen werden verpasst',
+      previewScheduledAssessmentMissedBody:
+        'Beispiel-Betreuungs-Erinnerung — sprechen Sie mit {{name}} über geplante Beurteilungen. Tippen für Analysen.',
+      dismissCareReminder14Days: '14 Tage ausblenden',
       hospitalFeatureMessagingHeadline: 'Nachrichten könnten jetzt helfen',
       hospitalFeatureMessagingBody:
         'Der Patient ist aktiv — schalten Sie Nachrichten ein, damit der Circle asynchron Notizen hinterlassen kann.',
@@ -3332,6 +3346,13 @@ export const appShellSpanish = {
       previewCareAssessmentHeadline: '¿Hora de una evaluación inicial?',
       previewCareAssessmentBody:
         'Recordatorio de ejemplo del equipo — toca para analíticas de evaluaciones.',
+      scheduledAssessmentMissedHeadline: 'Se están omitiendo evaluaciones',
+      scheduledAssessmentMissedBody:
+        'Hable con {{name}} sobre por qué importan estas evaluaciones programadas. Más de la mitad se omitieron en los últimos 7 días.',
+      previewScheduledAssessmentMissedHeadline: 'Se están omitiendo evaluaciones',
+      previewScheduledAssessmentMissedBody:
+        'Recordatorio de ejemplo del equipo — hable con {{name}} sobre las evaluaciones programadas. Toca para Analíticas.',
+      dismissCareReminder14Days: 'Ocultar 14 días',
       hospitalFeatureMessagingHeadline: 'Los mensajes pueden ayudar ahora',
       hospitalFeatureMessagingBody:
         'El paciente está participando — activa Mensajes para que el Circle deje notas de forma asíncrona.',
@@ -4530,6 +4551,13 @@ export const appShellPolish = {
       previewCareAssessmentHeadline: 'Czas na ocenę wyjściową?',
       previewCareAssessmentBody:
         'Przykładowe przypomnienie opieki — dotknij analityki ocen.',
+      scheduledAssessmentMissedHeadline: 'Oceny są pomijane',
+      scheduledAssessmentMissedBody:
+        'Porozmawiaj z {{name}} o tym, dlaczego te zaplanowane oceny są ważne. W ciągu ostatnich 7 dni pominięto więcej niż połowę.',
+      previewScheduledAssessmentMissedHeadline: 'Oceny są pomijane',
+      previewScheduledAssessmentMissedBody:
+        'Przykładowe przypomnienie opieki — porozmawiaj z {{name}} o zaplanowanych ocenach. Dotknij Analityki.',
+      dismissCareReminder14Days: 'Ukryj na 14 dni',
       hospitalFeatureMessagingHeadline: 'Wiadomości mogą teraz pomóc',
       hospitalFeatureMessagingBody:
         'Pacjent jest aktywny — włącz Wiadomości, aby Circle mógł zostawiać notatki asynchronicznie.',

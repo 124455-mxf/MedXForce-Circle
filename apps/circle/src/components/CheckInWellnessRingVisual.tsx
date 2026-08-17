@@ -225,9 +225,7 @@ export function CheckInWellnessWeekControls({
                       : 'h-3',
                   isSelected
                     ? 'bg-sky-300 border-sky-300'
-                    : frame.hasCheckIn
-                      ? 'bg-slate-400 border-slate-400'
-                      : 'bg-white border-slate-200',
+                    : 'bg-white border-slate-300',
                 )}
               />
             </button>

@@ -45,35 +45,6 @@ function isIdentityComplete(snapshot: CirclePatientProfileSnapshot): boolean {
   return isCoreCircleProfileComplete(snapshot);
 }
 
-function hasNeutralProfileExtras(snapshot: CirclePatientProfileSnapshot): boolean {
-  return (
-    hasText(snapshot.clinical.dateOfOnset) ||
-    hasText(snapshot.clinical.treatmentPhase) ||
-    hasText(snapshot.clinical.primaryDiagnosis) ||
-    (snapshot.lifestyle.assistiveDevices ?? []).some((device) => hasText(device))
-  );
-}
-
-function hasGreenProfileExtras(snapshot: CirclePatientProfileSnapshot): boolean {
-  const { engagement, lifestyle } = snapshot;
-  const hasHobbies =
-    engagement.activeHobbies.length > 0 || engagement.passiveHobbies.length > 0;
-  const hasOccupation = hasText(lifestyle.occupation);
-  const hasTopicTriggers = engagement.topicTriggers.length > 0;
-  return hasHobbies || hasOccupation || hasTopicTriggers;
-}
-
-/** Tint for User Profile card from core, clinical, and engagement completeness. */
-export function getUserProfileRecencyUrgency(
-  snapshot: CirclePatientProfileSnapshot | null,
-): AlertAttentionRecencyUrgency {
-  if (!snapshot) return 'neutral';
-  if (!isCoreCircleProfileComplete(snapshot)) return 'red';
-  if (hasGreenProfileExtras(snapshot)) return 'green';
-  if (hasNeutralProfileExtras(snapshot)) return 'neutral';
-  return 'orange';
-}
-
 function isClinicalComplete(snapshot: CirclePatientProfileSnapshot): boolean {
   return (
     hasText(snapshot.clinical.primaryDiagnosis) && hasText(snapshot.clinical.treatmentPhase)
@@ -112,6 +83,15 @@ export function isCircleProfileDataComplete(snapshot: CirclePatientProfileSnapsh
     isLifestyleComplete(snapshot) &&
     isEngagementComplete(snapshot)
   );
+}
+
+/** Tint for User Profile card: muted green when complete, amber/red when incomplete. */
+export function getUserProfileRecencyUrgency(
+  snapshot: CirclePatientProfileSnapshot | null,
+): AlertAttentionRecencyUrgency {
+  if (!snapshot || !isCoreCircleProfileComplete(snapshot)) return 'red';
+  if (isCircleProfileDataComplete(snapshot)) return 'green';
+  return 'orange';
 }
 
 export function getCircleProfileCompletenessLabel(

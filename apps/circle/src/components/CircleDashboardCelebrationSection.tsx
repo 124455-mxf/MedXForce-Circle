@@ -31,6 +31,8 @@ import {
   isHospitalFeatureReminderKind,
   isIcuProgressionReminderKind,
   isParticipationReminderSnoozed,
+  isScheduleEnabled,
+  resolveEffectiveAssessmentScheduleRules,
   isPatientInsightsPreviewRemindersEnabled,
   listHospitalFeatureRemindersToShow,
   listIcuProgressionRemindersToShow,
@@ -48,6 +50,7 @@ import {
   shouldShowIcuDailyCheckInReminder,
   shouldShowPendingInviteReminder,
   shouldShowProfileIncompleteReminder,
+  shouldShowScheduledAssessmentMissedReminder,
   shouldShowTeamCoverageReminder,
   withCircleInitiateMessagesTurnedOn,
   type CircleParticipationReminderKind,
@@ -76,6 +79,8 @@ import {
   localizePreviewPendingInviteReminder,
   localizePreviewTeamCoverageReminder,
   localizeCareAssessmentReminder,
+  localizeScheduledAssessmentMissedReminder,
+  localizePreviewScheduledAssessmentMissedReminder,
   localizeCareProfileReminder,
   localizeHospitalFeatureReminder,
   localizePreviewHospitalFeatureReminder,
@@ -90,6 +95,12 @@ import { cn } from '../lib/utils';
 import type { CircleMainTab } from './CircleBottomNav';
 import { useCircleParticipationReminderSnoozes } from '../hooks/useCircleParticipationReminderSnoozes';
 import { useCircleTeamCoverageFromDashboard } from '../context/CircleTeamCoverageContext';
+import {
+  completionsByScheduleIdFromAnalytics,
+  SCHEDULED_ASSESSMENT_MISS_WINDOW_DAYS,
+  summarizeScheduledAssessmentAdherence,
+} from '../lib/circleAssessmentAdherence';
+import { buildCircleAssessmentSchedulePreferences } from '../lib/circleAssessmentScheduleMetrics';
 
 type CelebrationTileTone = 'birthday' | 'milestone' | 'participation' | 'care';
 
@@ -144,10 +155,20 @@ function isCareStyleDismissKind(kind: CircleParticipationReminderKind): boolean 
     kind === 'pendingInvites' ||
     kind === 'profileIncomplete' ||
     kind === 'icuDailyCheckIn' ||
+    kind === 'scheduledAssessmentMissed' ||
     isHospitalFeatureReminderKind(kind) ||
     isIcuProgressionReminderKind(kind) ||
     kind === 'circleInitiateMessages'
   );
+}
+
+function dismissReminderAriaKey(kind: CircleParticipationReminderKind): string {
+  if (kind === 'scheduledAssessmentMissed') return 'dashboard.reminders.dismissCareReminder14Days';
+  if (isCareStyleDismissKind(kind)) return 'dashboard.reminders.dismissCareReminder';
+  if (kind === 'birthday' || kind === 'onsetMilestone') {
+    return 'dashboard.reminders.dismissCelebrationReminder';
+  }
+  return 'dashboard.reminders.dismissReminder';
 }
 
 function CelebrationCard({
@@ -214,13 +235,7 @@ function CelebrationCard({
       {dismissKind && onDismiss && !isPreview ? (
         <button
           type="button"
-          aria-label={t(
-            isCareStyleDismissKind(dismissKind)
-              ? 'dashboard.reminders.dismissCareReminder'
-              : dismissKind === 'birthday' || dismissKind === 'onsetMilestone'
-                ? 'dashboard.reminders.dismissCelebrationReminder'
-                : 'dashboard.reminders.dismissReminder',
-          )}
+          aria-label={t(dismissReminderAriaKey(dismissKind))}
           onClick={(event) => {
             event.stopPropagation();
             onDismiss(dismissKind);
@@ -404,6 +419,43 @@ export function CircleDashboardCelebrationSection({
       hasAssessmentInInitialWindow,
       snoozedUntil: snoozes.assessmentAfterFirstComm,
     });
+  const schedulePreferences = useMemo(
+    () =>
+      buildCircleAssessmentSchedulePreferences({
+        treatmentPhase: snapshot?.clinical?.treatmentPhase,
+        appMode: remoteSettings?.appMode,
+        scheduleEnabled: remoteSettings?.featuresVisibility?.schedule !== false,
+      }),
+    [remoteSettings?.appMode, remoteSettings?.featuresVisibility?.schedule, snapshot?.clinical?.treatmentPhase],
+  );
+  const scheduledAssessmentMissSummary = useMemo(() => {
+    if (!careRemindersEnabled || analyticsLoading || !remoteSettingsReady) {
+      return { taken: 0, missed: 0, pastScheduled: 0, missRate: 0 };
+    }
+    const rules = resolveEffectiveAssessmentScheduleRules({
+      preferences: schedulePreferences,
+      remoteAssessmentSchedule: remoteSettings?.assessmentSchedule,
+    });
+    return summarizeScheduledAssessmentAdherence({
+      rules,
+      completionsByScheduleId: completionsByScheduleIdFromAnalytics(analyticsByMetricId),
+      windowDays: SCHEDULED_ASSESSMENT_MISS_WINDOW_DAYS,
+    });
+  }, [
+    analyticsByMetricId,
+    analyticsLoading,
+    careRemindersEnabled,
+    remoteSettings?.assessmentSchedule,
+    remoteSettingsReady,
+    schedulePreferences,
+  ]);
+  const showScheduledAssessmentMissedReminder = shouldShowScheduledAssessmentMissedReminder({
+    enabled: careRemindersEnabled && !analyticsLoading && !snoozeLoading && remoteSettingsReady,
+    scheduleEnabled: isScheduleEnabled(schedulePreferences),
+    pastScheduled: scheduledAssessmentMissSummary.pastScheduled,
+    missed: scheduledAssessmentMissSummary.missed,
+    snoozedUntil: snoozes.scheduledAssessmentMissed,
+  });
   const showProfileReminder =
     careRemindersEnabled &&
     !snoozeLoading &&
@@ -700,6 +752,30 @@ export function CircleDashboardCelebrationSection({
       key: 'preview-assessment-after-first-comm',
       tone: 'care',
       icon: ClipboardList,
+      headline: preview.headline,
+      body: preview.body,
+      isPreview: true,
+      onOpen: () => onGoToTab('analytics'),
+    });
+  }
+
+  if (showScheduledAssessmentMissedReminder) {
+    const copy = localizeScheduledAssessmentMissedReminder(t, friendlyName);
+    tiles.push({
+      key: 'scheduled-assessment-missed',
+      tone: 'care',
+      icon: ClipboardCheck,
+      headline: copy.headline,
+      body: copy.body,
+      dismissKind: 'scheduledAssessmentMissed',
+      onOpen: () => onGoToTab('analytics'),
+    });
+  } else if (previewReminders && careRemindersEnabled) {
+    const preview = localizePreviewScheduledAssessmentMissedReminder(t, friendlyName);
+    tiles.push({
+      key: 'preview-scheduled-assessment-missed',
+      tone: 'care',
+      icon: ClipboardCheck,
       headline: preview.headline,
       body: preview.body,
       isPreview: true,

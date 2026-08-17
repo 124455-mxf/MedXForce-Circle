@@ -521,6 +521,26 @@ export function localizeCareAssessmentReminder(t: CircleTranslator): LocalizedRe
   };
 }
 
+export function localizeScheduledAssessmentMissedReminder(
+  t: CircleTranslator,
+  name: string,
+): LocalizedReminderCopy {
+  return {
+    headline: t('dashboard.reminders.scheduledAssessmentMissedHeadline'),
+    body: t('dashboard.reminders.scheduledAssessmentMissedBody', { name }),
+  };
+}
+
+export function localizePreviewScheduledAssessmentMissedReminder(
+  t: CircleTranslator,
+  name: string,
+): LocalizedReminderCopy {
+  return {
+    headline: t('dashboard.reminders.previewScheduledAssessmentMissedHeadline'),
+    body: t('dashboard.reminders.previewScheduledAssessmentMissedBody', { name }),
+  };
+}
+
 export function localizeHospitalFeatureReminder(
   t: CircleTranslator,
   kind:

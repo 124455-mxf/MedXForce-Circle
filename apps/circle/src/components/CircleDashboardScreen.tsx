@@ -130,10 +130,8 @@ import {
   treatmentPhaseLabelT,
 } from '../lib/dashboardI18n';
 import {
-  remoteAppModeCardClass,
   remoteAppModeCurrentBadgeClass,
   treatmentPhaseBadgeClass,
-  treatmentPhaseCardClass,
 } from '../lib/appModeUi';
 import {
   DASHBOARD_RECENCY_TINT_CLASSES,
@@ -312,11 +310,11 @@ function WeekActivityDots({
               key={day.dateKey}
               title={`${day.dateKey}: ${day.value}`}
               className={cn(
-                'flex-1 rounded-sm min-h-0 transition-[height] duration-700 ease-out',
+                'flex-1 rounded-sm min-h-0 box-border transition-[height] duration-700 ease-out',
                 day.isToday
                   ? 'bg-sky-300'
                   : day.isActive
-                    ? 'bg-slate-300'
+                    ? 'bg-white border border-slate-300'
                     : 'bg-slate-500/70',
               )}
               style={{
@@ -1556,10 +1554,7 @@ export function CircleDashboardScreen({
       ) : (
         t('dashboard.modeCustom')
       ),
-      accentClass:
-        !remoteSettingsLoading && appMode
-          ? remoteAppModeCardClass(appMode, true)
-          : undefined,
+      iconTone: 'blue',
       onClick: () => onGoToTab('remote-settings'),
     });
   }
@@ -1602,12 +1597,7 @@ export function CircleDashboardScreen({
                   )}
                 </span>
               ),
-          accentClass: profileSnapshot?.clinical.treatmentPhase
-            ? treatmentPhaseCardClass(profileSnapshot.clinical.treatmentPhase, true)
-            : undefined,
-          recencyTint: profileSnapshot?.clinical.treatmentPhase
-            ? undefined
-            : getUserProfileRecencyUrgency(profileSnapshot),
+          recencyTint: getUserProfileRecencyUrgency(profileSnapshot),
         }),
     onClick: canOpenPatientProfile
       ? () => onGoToTab('patient-profile')
