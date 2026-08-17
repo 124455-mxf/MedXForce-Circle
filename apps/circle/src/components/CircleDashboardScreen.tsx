@@ -189,6 +189,8 @@ interface CircleDashboardScreenProps {
   ) => void;
   /** Open Media gallery on the Reactions album. */
   onOpenGalleryReactions?: () => void;
+  /** Open Media gallery on the Shared → My albums filter. */
+  onOpenGalleryMyAlbums?: () => void;
   onOpenVisitCapture?: () => void;
   onRequestDropIn?: () => void;
   onResumeDropIn?: () => void;
@@ -822,6 +824,7 @@ export function CircleDashboardScreen({
   onOpenMessagesInbox,
   onOpenAnalyticsDetail,
   onOpenGalleryReactions,
+  onOpenGalleryMyAlbums,
   onOpenVisitCapture,
   onRequestDropIn,
   onResumeDropIn,
@@ -1477,7 +1480,7 @@ export function CircleDashboardScreen({
                   row1: dashboardPlural(t, 'sharedPhotos', galleryDashboard.myUploadCount),
                   row2: t('dashboard.noReactionsYetTap'),
                 }),
-      onClick: () => onGoToTab('media'),
+      onClick: () => (onOpenGalleryMyAlbums ? onOpenGalleryMyAlbums() : onGoToTab('media')),
     });
   }
 

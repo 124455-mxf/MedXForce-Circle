@@ -58,6 +58,7 @@ import type { UnsavedReplyDraftGuard } from '../lib/unsavedReplyDraft';
 import { CircleDiscardDraftModal } from './CircleDiscardDraftModal';
 import { CircleExpandableMessageComposer } from './CircleExpandableMessageComposer';
 import { CircleMessageDeleteConfirmModal } from './CircleMessageDeleteConfirmModal';
+import { CircleUnansweredMessageModal } from './CircleUnansweredMessageModal';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 import { CircleFolderCountBadge, formatCircleBadgeCount } from './CircleCountBadge';
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
@@ -424,6 +425,7 @@ export function PatientMessagesScreen({
   const [composeToPatientText, setComposeToPatientText] = useState('');
   const [composeToPatientSubject, setComposeToPatientSubject] = useState('');
   const [composeToPatientError, setComposeToPatientError] = useState<string | null>(null);
+  const [showUnansweredModal, setShowUnansweredModal] = useState(false);
   const compactChrome = useCircleCompactChrome();
 
   const memberAudience = useMemo(
@@ -859,24 +861,34 @@ export function PatientMessagesScreen({
     return waiting?.id ?? null;
   }, [messages, repliesByMessageId, user.uid]);
 
+  const openUnansweredWaitingModal = useCallback(() => {
+    setComposeToPatientOpen(false);
+    setShowUnansweredModal(true);
+  }, []);
+
   const handleOpenComposeToPatient = useCallback(() => {
     if (!canInitiate) return;
     if (unansweredCircleInitiatedId) {
-      setSelectedMessageId(unansweredCircleInitiatedId);
-      setComposeToPatientOpen(false);
+      openUnansweredWaitingModal();
       return;
     }
     setComposeToPatientError(null);
     setComposeToPatientOpen(true);
-  }, [canInitiate, unansweredCircleInitiatedId]);
+  }, [canInitiate, openUnansweredWaitingModal, unansweredCircleInitiatedId]);
+
+  const handleReplyToUnanswered = useCallback(() => {
+    if (unansweredCircleInitiatedId) {
+      setSelectedMessageId(unansweredCircleInitiatedId);
+    }
+    setShowUnansweredModal(false);
+  }, [unansweredCircleInitiatedId]);
 
   const handleSendNewToPatient = useCallback(async () => {
     if (!canInitiate) return;
     const text = composeToPatientText.trim();
     if (!text) return;
     if (unansweredCircleInitiatedId) {
-      setSelectedMessageId(unansweredCircleInitiatedId);
-      setComposeToPatientOpen(false);
+      openUnansweredWaitingModal();
       return;
     }
 
@@ -952,6 +964,7 @@ export function PatientMessagesScreen({
     composeToPatientSubject,
     composeToPatientText,
     db,
+    openUnansweredWaitingModal,
     patient.patientId,
     patientLanguage,
     senderName,
@@ -1081,6 +1094,12 @@ export function PatientMessagesScreen({
         }}
         onConfirm={() => void confirmRemoveFromInbox()}
         isDeleting={isDeleting}
+      />
+      <CircleUnansweredMessageModal
+        open={showUnansweredModal}
+        patientFirstName={patientFirstName}
+        onReply={handleReplyToUnanswered}
+        onClose={() => setShowUnansweredModal(false)}
       />
     </>
   );
@@ -1601,7 +1620,13 @@ export function PatientMessagesScreen({
         <CircleExpandableMessageComposer
           presentation="overlay"
           expanded={composeToPatientOpen}
-          onExpandedChange={setComposeToPatientOpen}
+          onExpandedChange={(open) => {
+            if (open && unansweredCircleInitiatedId) {
+              openUnansweredWaitingModal();
+              return;
+            }
+            setComposeToPatientOpen(open);
+          }}
           value={composeToPatientText}
           onChange={setComposeToPatientText}
           placeholder={t('messages.composePlaceholder', { patient: patient.displayName })}

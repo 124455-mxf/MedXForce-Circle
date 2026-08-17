@@ -107,6 +107,9 @@ export const messagesScreenEnglish = {
   sendFailedPermissions:
     'Could not send. Firestore rules need to be published from the patient app repo: firebase deploy --only firestore:rules',
   unansweredWaiting: 'Reply here first — you already have a message waiting for a response.',
+  unansweredWaitingTitle: 'Waiting for a reply',
+  unansweredWaitingBody:
+    '{{name}} has not answered your last message yet. You can only reply until they respond.',
   showMoreInbox: 'Show {{remaining}} more',
   sectionRecent: 'Last 7 days',
   inboxOlderUnread: '{{count}} unread',
@@ -234,6 +237,9 @@ export const messagesScreenGerman = {
   sendFailedPermissions:
     'Senden nicht möglich. Firestore-Regeln müssen aus dem Patienten-App-Repo veröffentlicht werden: firebase deploy --only firestore:rules',
   unansweredWaiting: 'Antworten Sie zuerst hier — Sie haben bereits eine Nachricht ohne Antwort.',
+  unansweredWaitingTitle: 'Warten auf eine Antwort',
+  unansweredWaitingBody:
+    '{{name}} hat Ihre letzte Nachricht noch nicht beantwortet. Bis dahin können Sie nur auf diese Nachricht antworten.',
   showMoreInbox: '{{remaining}} weitere anzeigen',
   sectionRecent: 'Letzte 7 Tage',
   inboxOlderUnread: '{{count}} ungelesen',
@@ -360,6 +366,9 @@ export const messagesScreenSpanish = {
   sendFailedPermissions:
     'No se pudo enviar. Hay que publicar las reglas de Firestore desde el repositorio de la app del paciente: firebase deploy --only firestore:rules',
   unansweredWaiting: 'Responda aquí primero: ya tiene un mensaje esperando respuesta.',
+  unansweredWaitingTitle: 'Esperando una respuesta',
+  unansweredWaitingBody:
+    '{{name}} aún no ha respondido a su último mensaje. Hasta entonces solo puede responder a esa conversación.',
   showMoreInbox: 'Mostrar {{remaining}} más',
   sectionRecent: 'Últimos 7 días',
   inboxOlderUnread: '{{count}} sin leer',
@@ -485,6 +494,9 @@ export const messagesScreenPolish = {
   sendFailedPermissions:
     'Nie udało się wysłać. Trzeba opublikować reguły Firestore z repozytorium aplikacji pacjenta: firebase deploy --only firestore:rules',
   unansweredWaiting: 'Najpierw odpowiedz tutaj — masz już wiadomość bez odpowiedzi.',
+  unansweredWaitingTitle: 'Oczekiwanie na odpowiedź',
+  unansweredWaitingBody:
+    'Brak odpowiedzi od {{name}} na Twoją ostatnią wiadomość. Do tego czasu możesz tylko odpisać.',
   showMoreInbox: 'Pokaż jeszcze {{remaining}}',
   sectionRecent: 'Ostatnie 7 dni',
   inboxOlderUnread: '{{count}} nieprzeczytanych',

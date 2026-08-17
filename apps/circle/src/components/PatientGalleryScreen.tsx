@@ -217,7 +217,9 @@ export function PatientGalleryScreen({
 
   const [mainMode, setMainMode] = useState<MainMode>('browse');
   const [browseTab, setBrowseTab] = useState<BrowseTab>('shared');
-  const [sharedBrowseMode, setSharedBrowseMode] = useState<SharedBrowseMode>('album');
+  const [sharedBrowseMode, setSharedBrowseMode] = useState<SharedBrowseMode>(() =>
+    galleryIntent?.type === 'open-my-albums' && canUpload ? 'my-albums' : 'album',
+  );
   const [gridScope, setGridScope] = useState<string>('all');
   const [showGrid, setShowGrid] = useState(false);
 
@@ -380,7 +382,21 @@ export function PatientGalleryScreen({
   }, [db, patient.patientId]);
 
   useEffect(() => {
-    if (!galleryIntent || loading) return;
+    if (!galleryIntent) return;
+
+    if (galleryIntent.type === 'open-my-albums') {
+      setMainMode('browse');
+      setBrowseTab('shared');
+      setShowGrid(false);
+      setGridScope('all');
+      if (canUpload) {
+        setSharedBrowseMode('my-albums');
+      }
+      onGalleryIntentConsumed?.();
+      return;
+    }
+
+    if (loading) return;
     if (galleryIntent.type !== 'open-album' || galleryIntent.albumKind !== 'reactions') return;
 
     const reactionsAlbum = albums.find((album) => album.isReactions);
@@ -392,7 +408,7 @@ export function PatientGalleryScreen({
       setShowGrid(true);
     }
     onGalleryIntentConsumed?.();
-  }, [albums, galleryIntent, loading, onGalleryIntentConsumed]);
+  }, [albums, canUpload, galleryIntent, loading, onGalleryIntentConsumed]);
 
   useLayoutEffect(() => {
     const el = galleryBodyRef.current;

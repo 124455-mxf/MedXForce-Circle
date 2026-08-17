@@ -247,6 +247,11 @@ export function CircleMainShell({
     guardedNavigate(() => setActiveTab('media'));
   }, [guardedNavigate]);
 
+  const handleOpenGalleryMyAlbums = useCallback(() => {
+    setGalleryIntent({ type: 'open-my-albums' });
+    guardedNavigate(() => setActiveTab('media'));
+  }, [guardedNavigate]);
+
   const selectedPatient = useMemo((): CirclePatientSummary | null => {
     if (patients.length === 0) return null;
     if (selectedPatientId) {
@@ -684,6 +689,7 @@ export function CircleMainShell({
               onOpenMessagesInbox={handleOpenMessagesInbox}
               onOpenAnalyticsDetail={handleOpenAnalyticsDetail}
               onOpenGalleryReactions={handleOpenGalleryReactions}
+              onOpenGalleryMyAlbums={handleOpenGalleryMyAlbums}
               onOpenVisitCapture={
                 showVisitCapture ? () => handleOpenVisitCapture() : undefined
               }

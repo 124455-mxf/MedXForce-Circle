@@ -1670,7 +1670,7 @@ export const appShellGerman = {
     },
     assessmentScheduleCalendar: {
       title: 'Zeitplan',
-      subtitle: 'Fällige Assessments und Termine',
+      subtitle: 'Fällige Beurteilungen und Termine',
       prevMonth: 'Vorheriger Monat',
       nextMonth: 'Nächster Monat',
       emptyMonth: 'Nichts in diesem Monat geplant.',
@@ -1930,7 +1930,7 @@ export const appShellGerman = {
     attentionPatientOfflineDays_one: '{{count}} Tag nicht in der App',
     attentionPatientOfflineDays_other: '{{count}} Tage nicht in der App',
     attentionPatientOfflineLastSeen: 'Zuletzt gesehen: {{when}}',
-    attentionMessagesWaiting: 'Threads warten',
+    attentionMessagesWaiting: 'Unterhaltungen warten',
     attentionMessagesClear: 'Alles gelesen',
     attentionInCircle: 'im Kreis',
     attentionAnnouncementsClear: 'Keine neuen Ankündigungen',
@@ -3348,10 +3348,10 @@ export const appShellSpanish = {
         'Recordatorio de ejemplo del equipo — toca para analíticas de evaluaciones.',
       scheduledAssessmentMissedHeadline: 'Se están omitiendo evaluaciones',
       scheduledAssessmentMissedBody:
-        'Hable con {{name}} sobre por qué importan estas evaluaciones programadas. Más de la mitad se omitieron en los últimos 7 días.',
+        'Habla con {{name}} sobre por qué importan estas evaluaciones programadas. Más de la mitad se omitieron en los últimos 7 días.',
       previewScheduledAssessmentMissedHeadline: 'Se están omitiendo evaluaciones',
       previewScheduledAssessmentMissedBody:
-        'Recordatorio de ejemplo del equipo — hable con {{name}} sobre las evaluaciones programadas. Toca para Analíticas.',
+        'Recordatorio de ejemplo del equipo — habla con {{name}} sobre las evaluaciones programadas. Toca para Analíticas.',
       dismissCareReminder14Days: 'Ocultar 14 días',
       hospitalFeatureMessagingHeadline: 'Los mensajes pueden ayudar ahora',
       hospitalFeatureMessagingBody:
@@ -4564,15 +4564,15 @@ export const appShellPolish = {
       hospitalFeatureDashboardHeadline: 'Gotowi na Panel?',
       hospitalFeatureDashboardBody:
         'Wraz z większym zaangażowaniem Panel pacjenta może pokazywać check-iny i aktywność.',
-      hospitalFeatureVitalityHeadline: 'Vitality może być kolejnym krokiem',
+      hospitalFeatureVitalityHeadline: 'Witalność może być kolejnym krokiem',
       hospitalFeatureVitalityBody:
-        'Energia może wracać — włącz Vitality dla galerii i muzyki, gdy to odpowiednie.',
+        'Energia może wracać — włącz Witalność dla galerii i muzyki, gdy to odpowiednie.',
       hospitalFeatureAssessmentsHeadline: 'Rozważ Oceny',
       hospitalFeatureAssessmentsBody:
         'Jeśli pacjent jest wystarczająco stabilny na zaplanowane check-iny, włącz Oceny.',
       hospitalFeatureTurnOnMessaging: 'Włącz Wiadomości',
       hospitalFeatureTurnOnDashboard: 'Włącz Panel',
-      hospitalFeatureTurnOnVitality: 'Włącz Vitality',
+      hospitalFeatureTurnOnVitality: 'Włącz Witalność',
       hospitalFeatureTurnOnAssessments: 'Włącz Oceny',
       hospitalFeatureUpdating: 'Aktualizowanie…',
       circleInitiateHeadline: 'Pozwolić Circle wysłać wiadomość?',
@@ -4585,9 +4585,9 @@ export const appShellPolish = {
       previewHospitalFeatureDashboardHeadline: 'Gotowi na Panel?',
       previewHospitalFeatureDashboardBody:
         'Przykładowe przypomnienie postępu — użyj Włącz Panel na stronie głównej.',
-      previewHospitalFeatureVitalityHeadline: 'Vitality może być kolejnym krokiem',
+      previewHospitalFeatureVitalityHeadline: 'Witalność może być kolejnym krokiem',
       previewHospitalFeatureVitalityBody:
-        'Przykładowe przypomnienie postępu — użyj Włącz Vitality na stronie głównej.',
+        'Przykładowe przypomnienie postępu — użyj Włącz Witalność na stronie głównej.',
       previewHospitalFeatureAssessmentsHeadline: 'Rozważ Oceny',
       previewHospitalFeatureAssessmentsBody:
         'Przykładowe przypomnienie postępu — użyj Włącz Oceny na stronie głównej.',
@@ -4601,10 +4601,10 @@ export const appShellPolish = {
       modeStepUpTurnOnHospital: 'Przełącz na Szpital',
       icuSoulMusicHeadline: 'Dodać Muzykę Soul?',
       icuSoulMusicBody:
-        'Włącz Vitality z Apple Music w opiece intensywnej. Launcher muzyki pojawia się przy połączonym Apple Music.',
+        'Włącz Witalność z Apple Music w opiece intensywnej. Launcher muzyki pojawia się przy połączonym Apple Music.',
       icuSoulMediaLibraryHeadline: 'Dodać Bibliotekę mediów Soul?',
       icuSoulMediaLibraryBody:
-        'Włącz Vitality z Biblioteką mediów w opiece intensywnej. Launcher pojawia się, gdy są udostępnione media.',
+        'Włącz Witalność z Biblioteką mediów w opiece intensywnej. Launcher pojawia się, gdy są udostępnione media.',
       icuSoulTurnOnMusic: 'Włącz Muzykę Soul',
       icuSoulTurnOnMediaLibrary: 'Włącz Bibliotekę mediów',
       previewModeStepUpStandardHeadline: 'Gotowi na OIOM Standard?',
