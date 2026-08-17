@@ -3,6 +3,7 @@ import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
 import type { AnalyticsMetricId, CircleMemberThreadKind, CirclePatientSummary } from '@medxforce/shared';
+import type { CircleMessagesAnalyticsFocus } from './CircleMessagesAnalyticsDetail';
 import {
   canSendPatientRemoteCommands,
   canStartVisitCapture,
@@ -119,6 +120,8 @@ export function CircleMainShell({
   const [activeTab, setActiveTab] = useState<CircleMainTab>('dashboard');
   const [initialAnalyticsMetricId, setInitialAnalyticsMetricId] =
     useState<AnalyticsMetricId | null>(null);
+  const [initialMessagesFocus, setInitialMessagesFocus] =
+    useState<CircleMessagesAnalyticsFocus | null>(null);
   const [initialAdminUsersTab, setInitialAdminUsersTab] = useState<'people' | 'access' | null>(
     null,
   );
@@ -186,9 +189,12 @@ export function CircleMainShell({
   }, [guardedNavigate]);
 
   const handleOpenAnalyticsDetail = useCallback(
-    (metricId: AnalyticsMetricId) => {
+    (metricId: AnalyticsMetricId, messagesFocus?: CircleMessagesAnalyticsFocus) => {
       analyticsOriginTabRef.current = activeTab;
       setInitialAnalyticsMetricId(metricId);
+      setInitialMessagesFocus(
+        metricId === 'speech-history' ? (messagesFocus ?? 'messaging') : null,
+      );
       guardedNavigate(() => setActiveTab('analytics'));
     },
     [activeTab, guardedNavigate],
@@ -196,6 +202,7 @@ export function CircleMainShell({
 
   const handleAnalyticsInitialMetricConsumed = useCallback(() => {
     setInitialAnalyticsMetricId(null);
+    setInitialMessagesFocus(null);
   }, []);
 
   const handleAnalyticsDetailClosedToOrigin = useCallback(() => {
@@ -796,6 +803,7 @@ export function CircleMainShell({
                 <CircleAnalyticsScreen
                 patient={selectedPatient}
                 initialMetricId={initialAnalyticsMetricId}
+                initialMessagesFocus={initialMessagesFocus}
                 onInitialMetricConsumed={handleAnalyticsInitialMetricConsumed}
                 onCloseToOrigin={handleAnalyticsDetailClosedToOrigin}
               />

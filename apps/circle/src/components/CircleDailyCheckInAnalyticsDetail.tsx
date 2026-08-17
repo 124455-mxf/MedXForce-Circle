@@ -1,15 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   Bar,
   BarChart,
   CartesianGrid,
-  Line,
-  LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   YAxis,
 } from 'recharts';
-import { BarChart3, ChartLine, Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import { BarChart3, ChartLine, HeartPulse, Minus, Moon, Smile, TrendingDown, TrendingUp } from 'lucide-react';
 import type {
   AnalyticsTrendDirection,
   DailyCheckInAnswerTrendPoint,
@@ -18,9 +17,6 @@ import type {
 import {
   CIRCLE_ANALYTICS_CHART_HEIGHT,
   circleAnalyticsChartMargin,
-  circleAnalyticsDailyAnswerLineProps,
-  circleAnalyticsPlotInsetLeft,
-  circleAnalyticsPlotInsetRight,
   circleAnalyticsTooltipLabelFormatter,
   prepareDailyCheckInAnswerTrendChartData,
   prepareDailyCheckInParticipationChartData,
@@ -28,7 +24,6 @@ import {
 import { useCircleT } from '../lib/circleI18nContext';
 import { analyticsWindowDaysLabel } from '../lib/circleAnalyticsI18n';
 import { cn } from '../lib/utils';
-import { CircleAnalyticsChartDayMarkers } from './CircleAnalyticsChartDayMarkers';
 import { CircleAnalyticsChartXAxis } from './CircleAnalyticsChartXAxis';
 
 type CircleDailyCheckInAnalyticsDetailProps = {
@@ -50,18 +45,16 @@ const STAT_CARD_KEYS = [
   { key: 'skipRate' as const, labelKey: 'analytics.dailyCheckIn.skipRate', color: 'text-amber-600', bg: 'bg-amber-50' },
 ];
 
-const ANSWER_TREND_KEYS = [
-  { key: 'pain' as const, labelKey: 'analytics.dailyCheckIn.pain', color: '#3b82f6' },
-  { key: 'mood' as const, labelKey: 'analytics.dailyCheckIn.mood', color: '#10b981' },
-  { key: 'sleep' as const, labelKey: 'analytics.dailyCheckIn.sleep', color: '#8b5cf6' },
-  { key: 'vitality' as const, labelKey: 'analytics.dailyCheckIn.vitality', color: '#f59e0b', dashed: true },
-] as const;
-
 const PARTICIPATION_COLORS = {
   finished: '#10b981',
   skipped: '#f59e0b',
   notTaken: '#cbd5e1',
 } as const;
+
+const MINI_CHART_HEIGHT = 112;
+const PAIN_COLOR = '#3b82f6';
+const MOOD_COLOR = '#10b981';
+const SLEEP_COLOR = '#8b5cf6';
 
 function engagementTrendCopy(
   trend: AnalyticsTrendDirection,
@@ -112,53 +105,6 @@ function EngagementTrendRow({
         </span>
       </div>
       <p className="text-[11px] text-slate-400 leading-snug">{copy.hint}</p>
-    </div>
-  );
-}
-
-function AnswerTrendLegend({
-  chartData,
-  t,
-}: {
-  chartData: Array<{
-    mood?: number | null;
-    pain?: number | null;
-    sleep?: number | null;
-    vitality?: number | null;
-  }>;
-  t: ReturnType<typeof useCircleT>;
-}) {
-  const items = ANSWER_TREND_KEYS.filter((item) => chartData.some((point) => point[item.key] != null));
-  if (items.length === 0) return null;
-
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-1">
-      {items.map((item) => (
-        <span
-          key={item.key}
-          className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase"
-        >
-          {'dashed' in item && item.dashed ? (
-            <svg width="12" height="3" aria-hidden className="shrink-0">
-              <line
-                x1="0"
-                y1="1.5"
-                x2="12"
-                y2="1.5"
-                stroke={item.color}
-                strokeWidth="2"
-                strokeDasharray="3 2"
-              />
-            </svg>
-          ) : (
-            <span
-              className="inline-block w-2.5 h-0.5 rounded-full shrink-0"
-              style={{ backgroundColor: item.color }}
-            />
-          )}
-          {t(item.labelKey)}
-        </span>
-      ))}
     </div>
   );
 }
@@ -229,76 +175,153 @@ function sleepLabel(value: number, t: ReturnType<typeof useCircleT>): string {
   return String(value);
 }
 
-function vitalityLabel(value: number, t: ReturnType<typeof useCircleT>): string {
-  if (value === 3) return t('analytics.dailyCheckIn.vitalityYes');
-  if (value === 1) return t('analytics.dailyCheckIn.vitalityNo');
-  return String(value);
+type CheckInMiniPoint = {
+  date: string;
+  chartDate?: string;
+  label?: string;
+  value: number | undefined;
+};
+
+function toPainSeries(
+  data: Array<{ date: string; chartDate?: string; label?: string; pain: number | null }>,
+): CheckInMiniPoint[] {
+  return data.map((point) => ({
+    date: point.date,
+    chartDate: point.chartDate,
+    label: point.label,
+    value: point.pain ?? undefined,
+  }));
 }
 
-function LatestAnswers({
-  point,
+function toBaselineSeries(
+  data: Array<{ date: string; chartDate?: string; label?: string; value: number | null }>,
+): CheckInMiniPoint[] {
+  return data.map((point) => ({
+    date: point.date,
+    chartDate: point.chartDate,
+    label: point.label,
+    value: point.value == null ? undefined : point.value - 2,
+  }));
+}
+
+function CheckInMiniChart({
+  data,
+  color,
+  name,
+  scale,
   t,
 }: {
-  point: {
-    date?: string;
-    label?: string;
-    mood?: number | null;
-    pain?: number | null;
-    sleep?: number | null;
-    vitality?: number | null;
-  };
+  data: CheckInMiniPoint[];
+  color: string;
+  name: string;
+  scale: 'pain' | 'mood' | 'sleep';
   t: ReturnType<typeof useCircleT>;
 }) {
-  const chips: { label: string; value: string; color: string }[] = [];
-  if (point.mood != null) {
-    chips.push({
-      label: t('analytics.dailyCheckIn.mood'),
-      value: moodLabel(point.mood, t),
-      color: 'text-emerald-700 bg-emerald-50',
-    });
-  }
-  if (point.pain != null) {
-    chips.push({
-      label: t('analytics.dailyCheckIn.pain'),
-      value: String(point.pain),
-      color: 'text-blue-700 bg-blue-50',
-    });
-  }
-  if (point.sleep != null) {
-    chips.push({
-      label: t('analytics.dailyCheckIn.sleep'),
-      value: sleepLabel(point.sleep, t),
-      color: 'text-violet-700 bg-violet-50',
-    });
-  }
-  if (point.vitality != null) {
-    chips.push({
-      label: t('analytics.dailyCheckIn.vitality'),
-      value: vitalityLabel(point.vitality, t),
-      color: 'text-amber-700 bg-amber-50',
-    });
-  }
-  if (chips.length === 0) return null;
-
+  const chartMargin = circleAnalyticsChartMargin();
+  const isPain = scale === 'pain';
   return (
-    <div className="space-y-2">
-      <p className="text-[12px] font-bold text-slate-400 uppercase">
-        {point.label || point.date || ''}
-      </p>
-      <div className="flex flex-wrap gap-1.5">
-        {chips.map((chip) => (
-          <span
-            key={chip.label}
-            className={cn(
-              'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[12px] font-bold',
-              chip.color,
-            )}
-          >
-            <span className="text-slate-400 uppercase">{chip.label}</span>
-            {chip.value}
+    <div className="w-full min-w-0 overflow-visible pt-1">
+      <ResponsiveContainer width="100%" height={MINI_CHART_HEIGHT} debounce={50}>
+        <BarChart data={data} margin={chartMargin}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+          <CircleAnalyticsChartXAxis variant="daily" />
+          {isPain ? (
+            <YAxis
+              domain={[0, 10]}
+              ticks={[0, 2, 4, 6, 8, 10]}
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 11, fill: '#94a3b8' }}
+              width={28}
+              allowDecimals={false}
+            />
+          ) : (
+            <YAxis
+              domain={[-1.25, 1.25]}
+              ticks={[-1, 0, 1]}
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 11, fill: '#94a3b8' }}
+              width={44}
+              tickFormatter={(value: number) => {
+                if (value === 1) {
+                  return scale === 'sleep'
+                    ? t('analytics.dailyCheckIn.sleepWell')
+                    : t('analytics.dailyCheckIn.moodGood');
+                }
+                if (value === 0) {
+                  return scale === 'sleep'
+                    ? t('analytics.dailyCheckIn.sleepOk')
+                    : t('analytics.dailyCheckIn.moodOk');
+                }
+                if (value === -1) {
+                  return scale === 'sleep'
+                    ? t('analytics.dailyCheckIn.sleepPoorly')
+                    : t('analytics.dailyCheckIn.moodBad');
+                }
+                return '';
+              }}
+            />
+          )}
+          {!isPain && <ReferenceLine y={0} stroke="#cbd5e1" strokeDasharray="4 4" />}
+          <Tooltip
+            labelFormatter={circleAnalyticsTooltipLabelFormatter}
+            formatter={(value) => {
+              const numeric = typeof value === 'number' ? value : undefined;
+              if (isPain) {
+                return [numeric == null ? '' : String(numeric), name];
+              }
+              const original = numeric == null ? undefined : numeric + 2;
+              return [formatTooltipValue(scale, original, t) ?? '', name];
+            }}
+            contentStyle={{
+              borderRadius: '12px',
+              border: 'none',
+              boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)',
+              fontSize: '13px',
+            }}
+          />
+          <Bar dataKey="value" name={name} fill={color} radius={[3, 3, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function CheckInAnswerCard({
+  title,
+  valueLabel,
+  hint,
+  iconWrapClass,
+  cardClass,
+  titleClass,
+  valueClass,
+  icon: Icon,
+  chart,
+}: {
+  title: string;
+  valueLabel: string;
+  hint: string;
+  iconWrapClass: string;
+  cardClass: string;
+  titleClass: string;
+  valueClass: string;
+  icon: typeof HeartPulse;
+  chart: ReactNode;
+}) {
+  return (
+    <div className={cn('rounded-xl border p-3 space-y-1.5', cardClass)}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={cn('w-8 h-8 rounded-lg bg-white flex items-center justify-center shrink-0', iconWrapClass)}>
+            <Icon size={14} />
           </span>
-        ))}
+          <p className={cn('text-[11px] font-bold uppercase tracking-tight', titleClass)}>{title}</p>
+        </div>
+        <p className={cn('text-xl font-black leading-none tabular-nums', valueClass)}>{valueLabel}</p>
       </div>
+      <p className="text-[12px] text-slate-500 leading-snug">{hint}</p>
+      {chart}
     </div>
   );
 }
@@ -330,7 +353,6 @@ export function CircleDailyCheckInAnalyticsDetail({
   const painLabel = t('analytics.dailyCheckIn.pain');
   const moodLabelText = t('analytics.dailyCheckIn.mood');
   const sleepLabelText = t('analytics.dailyCheckIn.sleep');
-  const vitalityLabelText = t('analytics.dailyCheckIn.vitality');
 
   const values = {
     completed,
@@ -353,14 +375,12 @@ export function CircleDailyCheckInAnalyticsDetail({
   );
 
   const hasAnswerChart = answerChartData.some(
-    (point) =>
-      point.pain != null || point.mood != null || point.sleep != null || point.vitality != null,
+    (point) => point.pain != null || point.mood != null || point.sleep != null,
   );
   const hasParticipationChart = participationChartData.length > 0;
   const latestPoint = hasAnswerChart
     ? answerChartData.find(
-        (point) =>
-          point.pain != null || point.mood != null || point.sleep != null || point.vitality != null,
+        (point) => point.pain != null || point.mood != null || point.sleep != null,
       )
     : undefined;
   const chartMargin = circleAnalyticsChartMargin({ right: 8 });
@@ -399,8 +419,6 @@ export function CircleDailyCheckInAnalyticsDetail({
         </div>
 
         <EngagementTrendRow trend={trend} t={t} />
-
-        {chartView === 'answers' && latestPoint ? <LatestAnswers point={latestPoint} t={t} /> : null}
 
         {chartView === 'participation' && hasParticipationChart ? (
           <div className="grid grid-cols-3 gap-2">
@@ -468,96 +486,78 @@ export function CircleDailyCheckInAnalyticsDetail({
 
         {chartView === 'answers' ? (
           hasAnswerChart ? (
-            <div className="w-full min-w-0 overflow-visible">
-              <ResponsiveContainer width="100%" height={CIRCLE_ANALYTICS_CHART_HEIGHT} debounce={50}>
-                <LineChart data={answerChartData} margin={chartMargin}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <CircleAnalyticsChartXAxis variant="daily" />
-                  <YAxis
-                    yAxisId="pain"
-                    domain={[0, 10]}
-                    ticks={[0, 3, 6, 9, 10]}
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 13, fill: '#94a3b8' }}
-                    width={32}
+            <div className="space-y-2">
+              <CheckInAnswerCard
+                icon={HeartPulse}
+                title={painLabel}
+                valueLabel={latestPoint?.pain != null ? String(latestPoint.pain) : '—'}
+                hint={t('analytics.dailyCheckIn.painScaleHint')}
+                iconWrapClass="text-blue-600"
+                cardClass="border-blue-200 bg-blue-50/50"
+                titleClass="text-blue-700"
+                valueClass="text-blue-700"
+                chart={
+                  <CheckInMiniChart
+                    data={toPainSeries(answerChartData)}
+                    color={PAIN_COLOR}
+                    name={painLabel}
+                    scale="pain"
+                    t={t}
                   />
-                  <YAxis
-                    yAxisId="ordinal"
-                    orientation="right"
-                    domain={[1, 3]}
-                    ticks={[1, 2, 3]}
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 13, fill: '#94a3b8' }}
-                    width={28}
-                  />
-                  <Tooltip
-                    labelFormatter={circleAnalyticsTooltipLabelFormatter}
-                    formatter={(value, name) => {
-                      const key = String(name).toLowerCase();
-                      const formatted = formatTooltipValue(
-                        key,
-                        typeof value === 'number' ? value : undefined,
-                        t,
-                      );
-                      return formatted ?? value;
-                    }}
-                    contentStyle={{
-                      borderRadius: '12px',
-                      border: 'none',
-                      boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)',
-                      fontSize: '13px',
-                    }}
-                  />
-                  {answerChartData.some((p) => p.pain != null) && (
-                    <Line
-                      yAxisId="pain"
-                      dataKey="pain"
-                      name={painLabel}
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      {...circleAnalyticsDailyAnswerLineProps}
-                    />
-                  )}
-                  {answerChartData.some((p) => p.mood != null) && (
-                    <Line
-                      yAxisId="ordinal"
-                      dataKey="mood"
-                      name={moodLabelText}
-                      stroke="#10b981"
-                      strokeWidth={2}
-                      {...circleAnalyticsDailyAnswerLineProps}
-                    />
-                  )}
-                  {answerChartData.some((p) => p.sleep != null) && (
-                    <Line
-                      yAxisId="ordinal"
-                      dataKey="sleep"
-                      name={sleepLabelText}
-                      stroke="#8b5cf6"
-                      strokeWidth={2}
-                      {...circleAnalyticsDailyAnswerLineProps}
-                    />
-                  )}
-                  {answerChartData.some((p) => p.vitality != null) && (
-                    <Line
-                      yAxisId="ordinal"
-                      dataKey="vitality"
-                      name={vitalityLabelText}
-                      stroke="#f59e0b"
-                      strokeWidth={2}
-                      strokeDasharray="4 3"
-                      {...circleAnalyticsDailyAnswerLineProps}
-                    />
-                  )}
-                </LineChart>
-              </ResponsiveContainer>
-              <CircleAnalyticsChartDayMarkers
-                plotInsetLeft={circleAnalyticsPlotInsetLeft(chartMargin)}
-                plotInsetRight={circleAnalyticsPlotInsetRight(chartMargin, 28)}
+                }
               />
-              <AnswerTrendLegend chartData={answerChartData} t={t} />
+              <CheckInAnswerCard
+                icon={Smile}
+                title={moodLabelText}
+                valueLabel={latestPoint?.mood != null ? moodLabel(latestPoint.mood, t) : '—'}
+                hint={t('analytics.dailyCheckIn.moodBaselineHint')}
+                iconWrapClass="text-emerald-600"
+                cardClass="border-emerald-200 bg-emerald-50/50"
+                titleClass="text-emerald-800"
+                valueClass="text-emerald-700"
+                chart={
+                  <CheckInMiniChart
+                    data={toBaselineSeries(
+                      answerChartData.map((point) => ({
+                        date: point.date,
+                        chartDate: point.chartDate,
+                        label: point.label,
+                        value: point.mood,
+                      })),
+                    )}
+                    color={MOOD_COLOR}
+                    name={moodLabelText}
+                    scale="mood"
+                    t={t}
+                  />
+                }
+              />
+              <CheckInAnswerCard
+                icon={Moon}
+                title={sleepLabelText}
+                valueLabel={latestPoint?.sleep != null ? sleepLabel(latestPoint.sleep, t) : '—'}
+                hint={t('analytics.dailyCheckIn.sleepBaselineHint')}
+                iconWrapClass="text-violet-600"
+                cardClass="border-violet-200 bg-violet-50/50"
+                titleClass="text-violet-800"
+                valueClass="text-violet-700"
+                chart={
+                  <CheckInMiniChart
+                    data={toBaselineSeries(
+                      answerChartData.map((point) => ({
+                        date: point.date,
+                        chartDate: point.chartDate,
+                        label: point.label,
+                        value: point.sleep,
+                      })),
+                    )}
+                    color={SLEEP_COLOR}
+                    name={sleepLabelText}
+                    scale="sleep"
+                    t={t}
+                  />
+                }
+              />
             </div>
           ) : (
             <p className="text-[13px] text-slate-400 text-center leading-relaxed py-2">
@@ -611,10 +611,6 @@ export function CircleDailyCheckInAnalyticsDetail({
                 />
               </BarChart>
             </ResponsiveContainer>
-            <CircleAnalyticsChartDayMarkers
-              plotInsetLeft={circleAnalyticsPlotInsetLeft(chartMargin)}
-              plotInsetRight={circleAnalyticsPlotInsetRight(chartMargin)}
-            />
             <ParticipationLegend t={t} />
           </div>
         ) : (

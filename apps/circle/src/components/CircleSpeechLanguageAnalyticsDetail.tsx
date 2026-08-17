@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Battery, Flame, Moon, Smile, Zap, Minus, TrendingDown, TrendingUp } from 'lucide-react';
-import type { AnalyticsTrendDirection, PsychologicalScoreTrend, PsychologicalTimelinePoint } from '@medxforce/shared';
+import { AudioLines, BookOpen, MessageCircle, Mic, Repeat, Smile, Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import type { AnalyticsTrendDirection, SpeechLanguageScoreTrend, SpeechLanguageTimelinePoint } from '@medxforce/shared';
 import { useCircleT } from '../lib/circleI18nContext';
 import { analyticsTrendImprovingDeclining, analyticsWindowDaysLabel } from '../lib/circleAnalyticsI18n';
 import { cn } from '../lib/utils';
@@ -11,15 +11,17 @@ import {
   type CircleAnalyticsChartType,
 } from './CircleAnalyticsSeriesCard';
 
-type CirclePsychologicalAnalyticsDetailProps = {
+type CircleSpeechLanguageAnalyticsDetailProps = {
   count?: number;
+  average?: number;
   trend?: AnalyticsTrendDirection;
-  mood?: PsychologicalScoreTrend;
-  anxiety?: PsychologicalScoreTrend;
-  sleep?: PsychologicalScoreTrend;
-  stress?: PsychologicalScoreTrend;
-  energy?: PsychologicalScoreTrend;
-  timeline?: PsychologicalTimelinePoint[];
+  overall?: SpeechLanguageScoreTrend;
+  spontaneousSpeech?: SpeechLanguageScoreTrend;
+  naming?: SpeechLanguageScoreTrend;
+  repetition?: SpeechLanguageScoreTrend;
+  readingWriting?: SpeechLanguageScoreTrend;
+  oralMotor?: SpeechLanguageScoreTrend;
+  timeline?: SpeechLanguageTimelinePoint[];
 };
 
 const SCORE_DOMAIN: [number, number] = [0, 10];
@@ -47,31 +49,27 @@ function TrendSummary({
   );
 }
 
-function scoreValue(data: PsychologicalScoreTrend | undefined): string {
+function scoreValue(data: SpeechLanguageScoreTrend | undefined): string {
   if (!data) return '—';
   return `${data.current}/10`;
 }
 
-export function CirclePsychologicalAnalyticsDetail({
+export function CircleSpeechLanguageAnalyticsDetail({
   trend = 'stable',
-  mood,
-  anxiety,
-  sleep,
-  stress,
-  energy,
+  overall,
+  spontaneousSpeech,
+  naming,
+  repetition,
+  readingWriting,
+  oralMotor,
   timeline,
-}: CirclePsychologicalAnalyticsDetailProps) {
+}: CircleSpeechLanguageAnalyticsDetailProps) {
   const t = useCircleT();
   const [chartType, setChartType] = useState<CircleAnalyticsChartType>('bar');
-  const moodLabel = t('analytics.psychological.mood');
-  const anxietyLabel = t('analytics.psychological.anxiety');
-  const sleepLabel = t('analytics.psychological.sleep');
-  const stressLabel = t('analytics.psychological.stress');
-  const energyLabel = t('analytics.psychological.energy');
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-      <div className="px-3 py-2 border-b border-slate-100 bg-pink-50/50">
+      <div className="px-3 py-2 border-b border-slate-100 bg-teal-50/50">
         <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
           {analyticsWindowDaysLabel(t, 30)}
         </p>
@@ -92,85 +90,102 @@ export function CirclePsychologicalAnalyticsDetail({
         </div>
 
         <CircleAnalyticsSeriesCard
-          icon={Smile}
-          title={moodLabel}
-          value={scoreValue(mood)}
-          hint={t('analytics.psychological.moodHint')}
-          color="#db2777"
-          iconWrapClass="text-pink-600"
-          cardClass="border-pink-200 bg-pink-50/50"
-          titleClass="text-pink-700"
-          valueClass="text-pink-700"
+          icon={MessageCircle}
+          title={t('analytics.speechLanguage.overall')}
+          value={scoreValue(overall)}
+          hint={t('analytics.speechLanguage.overallHint')}
+          color="#0f766e"
+          iconWrapClass="text-teal-700"
+          cardClass="border-teal-200 bg-teal-50/50"
+          titleClass="text-teal-800"
+          valueClass="text-teal-800"
           chartType={chartType}
-          chartData={seriesFromKeyedTimeline(timeline, 'mood')}
+          chartData={seriesFromKeyedTimeline(timeline, 'overall')}
           variant="sparse"
           yDomain={SCORE_DOMAIN}
           yTicks={SCORE_TICKS}
           allowDecimals
         />
         <CircleAnalyticsSeriesCard
-          icon={Zap}
-          title={anxietyLabel}
-          value={scoreValue(anxiety)}
-          hint={t('analytics.psychological.anxietyHint')}
-          color="#dc2626"
-          iconWrapClass="text-red-600"
-          cardClass="border-red-200 bg-red-50/50"
-          titleClass="text-red-700"
-          valueClass="text-red-700"
-          chartType={chartType}
-          chartData={seriesFromKeyedTimeline(timeline, 'anxiety')}
-          variant="sparse"
-          yDomain={SCORE_DOMAIN}
-          yTicks={SCORE_TICKS}
-          allowDecimals
-        />
-        <CircleAnalyticsSeriesCard
-          icon={Moon}
-          title={sleepLabel}
-          value={scoreValue(sleep)}
-          hint={t('analytics.psychological.sleepHint')}
+          icon={Mic}
+          title={t('analytics.speechLanguage.spontaneousSpeech')}
+          value={scoreValue(spontaneousSpeech)}
+          hint={t('analytics.speechLanguage.spontaneousHint')}
           color="#2563eb"
           iconWrapClass="text-blue-600"
           cardClass="border-blue-200 bg-blue-50/50"
           titleClass="text-blue-700"
           valueClass="text-blue-700"
           chartType={chartType}
-          chartData={seriesFromKeyedTimeline(timeline, 'sleep')}
+          chartData={seriesFromKeyedTimeline(timeline, 'spontaneousSpeech')}
           variant="sparse"
           yDomain={SCORE_DOMAIN}
           yTicks={SCORE_TICKS}
           allowDecimals
         />
         <CircleAnalyticsSeriesCard
-          icon={Flame}
-          title={stressLabel}
-          value={scoreValue(stress)}
-          hint={t('analytics.psychological.stressHint')}
+          icon={Smile}
+          title={t('analytics.speechLanguage.naming')}
+          value={scoreValue(naming)}
+          hint={t('analytics.speechLanguage.namingHint')}
           color="#d97706"
           iconWrapClass="text-amber-600"
           cardClass="border-amber-200 bg-amber-50/50"
           titleClass="text-amber-700"
           valueClass="text-amber-700"
           chartType={chartType}
-          chartData={seriesFromKeyedTimeline(timeline, 'stress')}
+          chartData={seriesFromKeyedTimeline(timeline, 'naming')}
           variant="sparse"
           yDomain={SCORE_DOMAIN}
           yTicks={SCORE_TICKS}
           allowDecimals
         />
         <CircleAnalyticsSeriesCard
-          icon={Battery}
-          title={energyLabel}
-          value={scoreValue(energy)}
-          hint={t('analytics.psychological.energyHint')}
+          icon={Repeat}
+          title={t('analytics.speechLanguage.repetition')}
+          value={scoreValue(repetition)}
+          hint={t('analytics.speechLanguage.repetitionHint')}
+          color="#e11d48"
+          iconWrapClass="text-rose-600"
+          cardClass="border-rose-200 bg-rose-50/50"
+          titleClass="text-rose-700"
+          valueClass="text-rose-700"
+          chartType={chartType}
+          chartData={seriesFromKeyedTimeline(timeline, 'repetition')}
+          variant="sparse"
+          yDomain={SCORE_DOMAIN}
+          yTicks={SCORE_TICKS}
+          allowDecimals
+        />
+        <CircleAnalyticsSeriesCard
+          icon={BookOpen}
+          title={t('analytics.speechLanguage.readingWriting')}
+          value={scoreValue(readingWriting)}
+          hint={t('analytics.speechLanguage.readingWritingHint')}
+          color="#7c3aed"
+          iconWrapClass="text-violet-600"
+          cardClass="border-violet-200 bg-violet-50/50"
+          titleClass="text-violet-700"
+          valueClass="text-violet-700"
+          chartType={chartType}
+          chartData={seriesFromKeyedTimeline(timeline, 'readingWriting')}
+          variant="sparse"
+          yDomain={SCORE_DOMAIN}
+          yTicks={SCORE_TICKS}
+          allowDecimals
+        />
+        <CircleAnalyticsSeriesCard
+          icon={AudioLines}
+          title={t('analytics.speechLanguage.oralMotor')}
+          value={scoreValue(oralMotor)}
+          hint={t('analytics.speechLanguage.oralMotorHint')}
           color="#059669"
           iconWrapClass="text-emerald-600"
           cardClass="border-emerald-200 bg-emerald-50/50"
           titleClass="text-emerald-700"
           valueClass="text-emerald-700"
           chartType={chartType}
-          chartData={seriesFromKeyedTimeline(timeline, 'energy')}
+          chartData={seriesFromKeyedTimeline(timeline, 'oralMotor')}
           variant="sparse"
           yDomain={SCORE_DOMAIN}
           yTicks={SCORE_TICKS}

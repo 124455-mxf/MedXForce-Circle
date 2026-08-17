@@ -15,6 +15,7 @@ const ANALYTIC_METRIC_TO_HISTORY: Partial<Record<AnalyticsMetricId, keyof Assess
   numbness: 'numbness',
   temperature: 'temperature',
   vision: 'vision',
+  speech: 'speech',
   neurological: 'neurological',
   psychological: 'psychological',
 };
@@ -27,6 +28,20 @@ const SCHEDULE_ID_TO_METRIC: Partial<Record<AssessmentScheduleId, AnalyticsMetri
   numbness: 'numbness',
   temperature: 'temperature',
   vision: 'vision',
+  speech: 'speech',
+  neurological: 'neurological',
+  psychological: 'psychological',
+};
+
+const METRIC_ID_TO_SCHEDULE: Partial<Record<AnalyticsMetricId, AssessmentScheduleId>> = {
+  impact: 'impact',
+  pain: 'physical',
+  'strength-reflex': 'strength-reflex',
+  mobility: 'mobility',
+  numbness: 'numbness',
+  temperature: 'temperature',
+  vision: 'vision',
+  speech: 'speech',
   neurological: 'neurological',
   psychological: 'psychological',
 };
@@ -47,6 +62,12 @@ export function assessmentScheduleIdToAnalyticsMetric(
   id: AssessmentScheduleId,
 ): AnalyticsMetricId | null {
   return SCHEDULE_ID_TO_METRIC[id] ?? null;
+}
+
+export function analyticsMetricIdToAssessmentScheduleId(
+  metricId: string,
+): AssessmentScheduleId | null {
+  return METRIC_ID_TO_SCHEDULE[metricId as AnalyticsMetricId] ?? null;
 }
 
 export function buildCircleAssessmentSchedulePreferences(params: {

@@ -11,6 +11,7 @@ import {
   Clock,
   Eye,
   Heart,
+  Keyboard,
   Loader2,
   MessageSquare,
   Mic,
@@ -32,6 +33,7 @@ import {
   type AnalyticsMetricId,
   type CirclePatientSummary,
   type PatientAnalyticsSummary,
+  type RemoteAssessmentSchedule,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 import {
@@ -55,6 +57,7 @@ import {
 } from '../lib/circleAnalyticsI18n';
 import { firebase } from '../lib/firebaseClient';
 import { CircleAnalyticsDetailSheet } from './CircleAnalyticsDetailSheet';
+import type { CircleMessagesAnalyticsFocus } from './CircleMessagesAnalyticsDetail';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 
 const METRIC_ICONS: Record<AnalyticsMetricId, LucideIcon> = {
@@ -138,19 +141,25 @@ function AnalyticsMetricRow({
   onOpen,
   t,
   language,
+  titleOverride,
+  iconOverride,
+  iconClassOverride,
 }: {
   summary: PatientAnalyticsSummary;
   onOpen: () => void;
   t: CircleTranslator;
   language: CircleUiLanguage;
+  titleOverride?: string;
+  iconOverride?: LucideIcon;
+  iconClassOverride?: string;
 }) {
   const localized = localizeAnalyticsSummary(t, summary, language);
-  const Icon = METRIC_ICONS[localized.metricId] ?? Activity;
+  const Icon = iconOverride ?? METRIC_ICONS[localized.metricId] ?? Activity;
   const footerLabel = metricFooterLabel(localized, t, language);
   const unreleased = !localized.isReleased || localized.status === 'coming_soon';
   const iconClass = unreleased
     ? 'bg-slate-100 text-slate-400'
-    : METRIC_COLORS[localized.metricId] ?? 'bg-blue-50 text-blue-600';
+    : iconClassOverride ?? METRIC_COLORS[localized.metricId] ?? 'bg-blue-50 text-blue-600';
   const tappable = localized.isReleased && localized.status !== 'coming_soon';
   const todayAlertAttention = isTodayAlertAttention(localized);
 
@@ -181,7 +190,7 @@ function AnalyticsMetricRow({
           unreleased ? 'text-slate-400' : 'text-slate-800',
         )}
       >
-        {localized.title}
+        {titleOverride ?? localized.title}
       </p>
       <div
         className={cn(
@@ -201,21 +210,42 @@ function AnalyticsMetricRow({
   );
 }
 
+type AnalyticsListCard = {
+  summary: PatientAnalyticsSummary;
+  messagesFocus?: CircleMessagesAnalyticsFocus;
+};
+
+function expandAnalyticsListCards(summaries: PatientAnalyticsSummary[]): AnalyticsListCard[] {
+  return summaries.flatMap((summary) => {
+    if (summary.metricId !== 'speech-history') return [{ summary }];
+    return [
+      { summary, messagesFocus: 'messaging' as const },
+      { summary, messagesFocus: 'communication' as const },
+    ];
+  });
+}
+
 export function CircleAnalyticsScreen({
   patient,
   initialMetricId = null,
+  initialMessagesFocus = null,
   onInitialMetricConsumed,
   onCloseToOrigin,
 }: {
   patient: CirclePatientSummary;
   initialMetricId?: AnalyticsMetricId | null;
+  initialMessagesFocus?: CircleMessagesAnalyticsFocus | null;
   onInitialMetricConsumed?: () => void;
   onCloseToOrigin?: () => void;
 }) {
   const [detailSummary, setDetailSummary] = useState<PatientAnalyticsSummary | null>(null);
+  const [detailMessagesFocus, setDetailMessagesFocus] =
+    useState<CircleMessagesAnalyticsFocus | null>(null);
   const [remoteSettingsLoading, setRemoteSettingsLoading] = useState(true);
   const [remoteSettingsFromFirestore, setRemoteSettingsFromFirestore] = useState(false);
   const [dailyCheckInEnabled, setDailyCheckInEnabled] = useState(false);
+  const [assessmentSchedule, setAssessmentSchedule] = useState<RemoteAssessmentSchedule | undefined>();
+  const [scheduleEnabled, setScheduleEnabled] = useState(true);
   const compactChrome = useCircleCompactChrome();
   const { t, language } = useCircleI18nContext();
   const { byMetricId, totalFromServer, loading, error } = useCircleAnalyticsSummaries(
@@ -233,11 +263,17 @@ export function CircleAnalyticsScreen({
         setRemoteSettingsFromFirestore(remote != null);
         const enabled = remote?.dailyCheckIn?.enabled === true;
         setDailyCheckInEnabled(enabled);
+        setAssessmentSchedule(remote?.assessmentSchedule);
+        const intensive =
+          remote?.appMode === 'intensive_care' || remote?.appMode === 'hospital';
+        setScheduleEnabled(!intensive && remote?.featuresVisibility?.schedule !== false);
         setRemoteSettingsLoading(false);
       },
       () => {
         setRemoteSettingsFromFirestore(false);
         setDailyCheckInEnabled(false);
+        setAssessmentSchedule(undefined);
+        setScheduleEnabled(true);
         setRemoteSettingsLoading(false);
       },
     );
@@ -248,10 +284,22 @@ export function CircleAnalyticsScreen({
     const summary = resolveAnalyticsSummary(initialMetricId, byMetricId, patient);
     if (summary?.isReleased && summary.status !== 'coming_soon') {
       setDetailSummary(localizeAnalyticsSummary(t, summary, language));
+      setDetailMessagesFocus(
+        initialMetricId === 'speech-history' ? (initialMessagesFocus ?? 'messaging') : null,
+      );
       closeReturnsToOriginRef.current = true;
     }
     onInitialMetricConsumed?.();
-  }, [initialMetricId, loading, byMetricId, patient, onInitialMetricConsumed, t, language]);
+  }, [
+    initialMetricId,
+    initialMessagesFocus,
+    loading,
+    byMetricId,
+    patient,
+    onInitialMetricConsumed,
+    t,
+    language,
+  ]);
 
   return (
     <>
@@ -308,7 +356,8 @@ export function CircleAnalyticsScreen({
                   return buildPlaceholderAnalyticsSummary(id, patient.patientId);
                 })
                 .filter((s): s is PatientAnalyticsSummary => s != null);
-              if (cards.length === 0) return null;
+              const listCards = expandAnalyticsListCards(cards);
+              if (listCards.length === 0) return null;
 
               return (
                 <section key={section.id} className="space-y-1.5">
@@ -316,13 +365,37 @@ export function CircleAnalyticsScreen({
                     {analyticsSectionTitle(t, section.id)}
                   </h4>
                   <div className="flex flex-col gap-1.5">
-                    {cards.map((summary) => (
+                    {listCards.map((card) => (
                       <AnalyticsMetricRow
-                        key={summary.metricId}
-                        summary={summary}
+                        key={`${card.summary.metricId}-${card.messagesFocus ?? 'default'}`}
+                        summary={card.summary}
                         t={t}
                         language={language}
-                        onOpen={() => setDetailSummary(localizeAnalyticsSummary(t, summary, language))}
+                        titleOverride={
+                          card.messagesFocus === 'messaging'
+                            ? t('analytics.metrics.messaging')
+                            : card.messagesFocus === 'communication'
+                              ? t('analytics.metrics.communication')
+                              : undefined
+                        }
+                        iconOverride={
+                          card.messagesFocus === 'communication'
+                            ? Keyboard
+                            : card.messagesFocus === 'messaging'
+                              ? MessageSquare
+                              : undefined
+                        }
+                        iconClassOverride={
+                          card.messagesFocus === 'communication'
+                            ? 'bg-indigo-50 text-indigo-600'
+                            : card.messagesFocus === 'messaging'
+                              ? 'bg-emerald-50 text-emerald-600'
+                              : undefined
+                        }
+                        onOpen={() => {
+                          setDetailSummary(localizeAnalyticsSummary(t, card.summary, language));
+                          setDetailMessagesFocus(card.messagesFocus ?? null);
+                        }}
                       />
                     ))}
                   </div>
@@ -353,8 +426,12 @@ export function CircleAnalyticsScreen({
     </div>
     <CircleAnalyticsDetailSheet
       summary={detailSummary}
+      messagesFocus={detailMessagesFocus}
+      assessmentSchedule={assessmentSchedule}
+      scheduleEnabled={scheduleEnabled}
       onClose={() => {
         setDetailSummary(null);
+        setDetailMessagesFocus(null);
         if (closeReturnsToOriginRef.current) {
           closeReturnsToOriginRef.current = false;
           onCloseToOrigin?.();

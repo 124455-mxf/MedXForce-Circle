@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from 'react';
 import {
-  BarChart3,
   Bell,
   Bot,
   BookOpen,
@@ -8,140 +7,73 @@ import {
   Calendar,
   Eye,
   Heart,
+  Keyboard,
   MessageSquare,
-  Minus,
   Sparkles,
-  TrendingDown,
-  TrendingUp,
   X,
   type LucideIcon,
 } from 'lucide-react';
 import type {
   AnalyticsMetricDetail,
-  AnalyticsTrendDirection,
   PatientAnalyticsSummary,
+  RemoteAssessmentSchedule,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 import { useCircleT } from '../lib/circleI18nContext';
-import {
-  analyticsLastDaysLabel,
-  analyticsTrendHigherLowerStable,
-  analyticsWindowDaysLabel,
-} from '../lib/circleAnalyticsI18n';
+import { analyticsLastDaysLabel } from '../lib/circleAnalyticsI18n';
 import { CircleAlertAttentionAnalyticsDetail } from './CircleAlertAttentionAnalyticsDetail';
+import { CircleAssessmentCountAnalyticsDetail } from './CircleAssessmentCountAnalyticsDetail';
 import { CircleCompanionAnalyticsDetail } from './CircleCompanionAnalyticsDetail';
 import { CircleDailyCheckInAnalyticsDetail } from './CircleDailyCheckInAnalyticsDetail';
-import { CircleMessagesAnalyticsDetail } from './CircleMessagesAnalyticsDetail';
+import {
+  CircleMessagesAnalyticsDetail,
+  type CircleMessagesAnalyticsFocus,
+} from './CircleMessagesAnalyticsDetail';
 import { CircleDiaryAnalyticsDetail } from './CircleDiaryAnalyticsDetail';
 import { CircleVisionAnalyticsDetail } from './CircleVisionAnalyticsDetail';
 import { CircleVitalityGameAnalyticsDetail } from './CircleVitalityGameAnalyticsDetail';
 import { CircleSoulAnalyticsDetail } from './CircleSoulAnalyticsDetail';
 import { CircleNeurologicalAnalyticsDetail } from './CircleNeurologicalAnalyticsDetail';
 import { CirclePsychologicalAnalyticsDetail } from './CirclePsychologicalAnalyticsDetail';
+import { CircleSpeechLanguageAnalyticsDetail } from './CircleSpeechLanguageAnalyticsDetail';
+import { CircleAssessmentScheduleAdherenceBlock } from './CircleAssessmentScheduleAdherenceBlock';
 
 type CircleAnalyticsDetailSheetProps = {
   summary: PatientAnalyticsSummary | null;
+  messagesFocus?: CircleMessagesAnalyticsFocus | null;
+  assessmentSchedule?: RemoteAssessmentSchedule;
+  scheduleEnabled?: boolean;
   onClose: () => void;
 };
 
-function TrendBadge({ trend }: { trend: AnalyticsTrendDirection }) {
-  if (trend === 'up') {
-    return <TrendingUp size={14} className="text-red-500" />;
-  }
-  if (trend === 'down') {
-    return <TrendingDown size={14} className="text-emerald-500" />;
-  }
-  return <Minus size={14} className="text-slate-300" />;
-}
-
-function WindowHeader({ days }: { days: number }) {
-  const t = useCircleT();
+function withScheduleAdherence(
+  summary: PatientAnalyticsSummary,
+  assessmentSchedule: RemoteAssessmentSchedule | undefined,
+  scheduleEnabled: boolean,
+  timeline: Array<{ date: string; label?: string; count?: number }> | undefined,
+  body: ReactNode,
+) {
   return (
-    <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
-      {analyticsWindowDaysLabel(t, days)}
-    </p>
-  );
-}
-
-function MetricMini({
-  label,
-  value,
-  valueClass = 'text-slate-800',
-}: {
-  label: string;
-  value: string | number;
-  valueClass?: string;
-}) {
-  return (
-    <div className="space-y-0.5 min-w-0">
-      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">{label}</p>
-      <p className={cn('text-lg font-black leading-none tabular-nums', valueClass)}>{value}</p>
+    <div className="space-y-3">
+      <CircleAssessmentScheduleAdherenceBlock
+        metricId={summary.metricId}
+        remoteSchedule={assessmentSchedule}
+        scheduleEnabled={scheduleEnabled}
+        timeline={timeline}
+        latestAt={summary.latestAt}
+      />
+      {body}
     </div>
   );
 }
 
-function DetailShell({
-  windowDays = 30,
-  headerClass,
-  children,
-}: {
-  windowDays?: number;
-  headerClass?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-      <div className={cn('px-3 py-2 border-b border-slate-100', headerClass)}>
-        <WindowHeader days={windowDays} />
-      </div>
-      {children}
-    </div>
-  );
-}
-
-
-function AssessmentCountDetail({
-  detail,
-  summary,
-}: {
-  detail: Extract<AnalyticsMetricDetail, { kind: 'assessment_count' }>;
-  summary: PatientAnalyticsSummary;
-}) {
-  const t = useCircleT();
-  const entries = detail.count ?? summary.countInWindow;
-  const average = detail.average ?? summary.averageInWindow;
-  return (
-    <DetailShell>
-      <div className="p-4">
-        <div className="grid grid-cols-3 gap-3">
-          <MetricMini
-            label={t('analytics.entries30Days')}
-            value={entries}
-            valueClass="text-blue-600 text-2xl"
-          />
-          <MetricMini
-            label={t('analytics.average')}
-            value={average != null ? average : '—'}
-            valueClass="text-slate-800 text-2xl"
-          />
-          <div className="space-y-0.5 min-w-0">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
-              {t('analytics.trend')}
-            </p>
-            <div className="flex items-center gap-1.5 pt-1">
-              <TrendBadge trend={detail.trend} />
-              <span className="text-[13px] font-bold text-slate-600">
-                {analyticsTrendHigherLowerStable(t, detail.trend)}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </DetailShell>
-  );
-}
-
-function renderDetailBody(detail: AnalyticsMetricDetail, summary: PatientAnalyticsSummary) {
+function renderDetailBody(
+  detail: AnalyticsMetricDetail,
+  summary: PatientAnalyticsSummary,
+  messagesFocus?: CircleMessagesAnalyticsFocus | null,
+  assessmentSchedule?: RemoteAssessmentSchedule,
+  scheduleEnabled = true,
+) {
   switch (detail.kind) {
     case 'alert_attention':
       return (
@@ -170,6 +102,8 @@ function renderDetailBody(detail: AnalyticsMetricDetail, summary: PatientAnalyti
     case 'messages':
       return (
         <CircleMessagesAnalyticsDetail
+          key={messagesFocus ?? 'messaging'}
+          focus={messagesFocus ?? 'messaging'}
           communication={detail.communication}
           messaging={detail.messaging}
           trend={detail.trend}
@@ -212,6 +146,7 @@ function renderDetailBody(detail: AnalyticsMetricDetail, summary: PatientAnalyti
     case 'soul_gallery':
       return (
         <CircleSoulAnalyticsDetail
+          patientId={summary.patientId}
           albumCount={detail.albumCount}
           photoCount={detail.photoCount}
           videoCount={detail.videoCount}
@@ -219,10 +154,15 @@ function renderDetailBody(detail: AnalyticsMetricDetail, summary: PatientAnalyti
           reactionCount={detail.reactionCount}
           latestAt={detail.latestAt}
           trend={detail.trend}
+          timeline={detail.timeline}
         />
       );
     case 'vision':
-      return (
+      return withScheduleAdherence(
+        summary,
+        assessmentSchedule,
+        scheduleEnabled,
+        detail.timeline,
         <CircleVisionAnalyticsDetail
           count={detail.count}
           average={detail.average}
@@ -230,10 +170,14 @@ function renderDetailBody(detail: AnalyticsMetricDetail, summary: PatientAnalyti
           timeline={detail.timeline}
           latestFindings={detail.latestFindings}
           categoryTrends={detail.categoryTrends}
-        />
+        />,
       );
     case 'neurological':
-      return (
+      return withScheduleAdherence(
+        summary,
+        assessmentSchedule,
+        scheduleEnabled,
+        detail.timeline,
         <CircleNeurologicalAnalyticsDetail
           count={detail.count}
           average={detail.average}
@@ -244,10 +188,14 @@ function renderDetailBody(detail: AnalyticsMetricDetail, summary: PatientAnalyti
           attention={detail.attention}
           timeline={detail.timeline}
           latestSnapshot={detail.latestSnapshot}
-        />
+        />,
       );
     case 'psychological':
-      return (
+      return withScheduleAdherence(
+        summary,
+        assessmentSchedule,
+        scheduleEnabled,
+        detail.timeline,
         <CirclePsychologicalAnalyticsDetail
           count={detail.count}
           trend={detail.trend}
@@ -257,10 +205,41 @@ function renderDetailBody(detail: AnalyticsMetricDetail, summary: PatientAnalyti
           stress={detail.stress}
           energy={detail.energy}
           timeline={detail.timeline}
-        />
+        />,
+      );
+    case 'speech_language':
+      return withScheduleAdherence(
+        summary,
+        assessmentSchedule,
+        scheduleEnabled,
+        detail.timeline,
+        <CircleSpeechLanguageAnalyticsDetail
+          count={detail.count}
+          average={detail.average}
+          trend={detail.trend}
+          overall={detail.overall}
+          spontaneousSpeech={detail.spontaneousSpeech}
+          naming={detail.naming}
+          repetition={detail.repetition}
+          readingWriting={detail.readingWriting}
+          oralMotor={detail.oralMotor}
+          timeline={detail.timeline}
+        />,
       );
     case 'assessment_count':
-      return <AssessmentCountDetail detail={detail} summary={summary} />;
+      return withScheduleAdherence(
+        summary,
+        assessmentSchedule,
+        scheduleEnabled,
+        detail.timeline,
+        <CircleAssessmentCountAnalyticsDetail
+          metricId={summary.metricId}
+          count={detail.count ?? summary.countInWindow}
+          average={detail.average ?? summary.averageInWindow}
+          trend={detail.trend}
+          timeline={detail.timeline}
+        />,
+      );
     default:
       return null;
   }
@@ -281,7 +260,13 @@ const METRIC_ICONS: Record<string, LucideIcon> = {
 
 const SWIPE_DISMISS_PX = 80;
 
-export function CircleAnalyticsDetailSheet({ summary, onClose }: CircleAnalyticsDetailSheetProps) {
+export function CircleAnalyticsDetailSheet({
+  summary,
+  messagesFocus = null,
+  assessmentSchedule,
+  scheduleEnabled = true,
+  onClose,
+}: CircleAnalyticsDetailSheetProps) {
   const t = useCircleT();
   const [dragY, setDragY] = useState(0);
   const touchStartY = useRef(0);
@@ -301,12 +286,29 @@ export function CircleAnalyticsDetailSheet({ summary, onClose }: CircleAnalytics
     dragYRef.current = 0;
     setDragY(0);
     dragging.current = false;
-  }, [summary?.metricId]);
+  }, [summary?.metricId, messagesFocus]);
 
   if (!summary) return null;
 
-  const Icon = METRIC_ICONS[summary.metricId];
+  const Icon =
+    messagesFocus === 'communication'
+      ? Keyboard
+      : messagesFocus === 'messaging'
+        ? MessageSquare
+        : METRIC_ICONS[summary.metricId];
   const detail = summary.detail;
+  const title =
+    messagesFocus === 'communication'
+      ? t('analytics.metrics.communication')
+      : messagesFocus === 'messaging'
+        ? t('analytics.metrics.messaging')
+        : summary.title;
+  const iconWrapClass =
+    messagesFocus === 'communication'
+      ? 'bg-indigo-50 text-indigo-600'
+      : messagesFocus === 'messaging'
+        ? 'bg-emerald-50 text-emerald-600'
+        : 'bg-blue-50 text-blue-600';
 
   const handleTouchStart = (e: TouchEvent) => {
     touchStartY.current = e.touches[0].clientY;
@@ -361,13 +363,18 @@ export function CircleAnalyticsDetailSheet({ summary, onClose }: CircleAnalytics
           <div className="flex items-center justify-between gap-3 px-4 pb-4 sm:pt-4 border-b border-slate-100">
             <div className="flex items-center gap-3 min-w-0">
               {Icon && (
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <div
+                  className={cn(
+                    'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
+                    iconWrapClass,
+                  )}
+                >
                   <Icon size={18} />
                 </div>
               )}
               <div className="min-w-0">
                 <h3 id="circle-analytics-detail-title" className="font-bold text-slate-800 text-base truncate">
-                  {summary.title}
+                  {title}
                 </h3>
                 <p className="text-sm text-slate-500">
                   {analyticsLastDaysLabel(t, summary.windowDays)}
@@ -387,7 +394,7 @@ export function CircleAnalyticsDetailSheet({ summary, onClose }: CircleAnalytics
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-3">
           {detail ? (
-            renderDetailBody(detail, summary)
+            renderDetailBody(detail, summary, messagesFocus, assessmentSchedule, scheduleEnabled)
           ) : (
             <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-6 text-center space-y-2">
               <p className="text-sm font-semibold text-slate-700">{summary.summaryText}</p>

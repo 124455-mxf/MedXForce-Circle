@@ -185,7 +185,10 @@ interface CircleDashboardScreenProps {
   onOpenCircleFolder?: (thread: CircleMemberThreadKind, folder: CircleInboxFolder) => void;
   /** Open Messages on a specific inbox folder (e.g. ICU communication log). */
   onOpenMessagesInbox?: (view: 'communication_log' | 'in_out') => void;
-  onOpenAnalyticsDetail: (metricId: AnalyticsMetricId) => void;
+  onOpenAnalyticsDetail: (
+    metricId: AnalyticsMetricId,
+    messagesFocus?: 'messaging' | 'communication',
+  ) => void;
   /** Open Media gallery on the Reactions album. */
   onOpenGalleryReactions?: () => void;
   onOpenVisitCapture?: () => void;
@@ -1239,7 +1242,7 @@ export function CircleDashboardScreen({
                 }),
               };
             })()),
-        onClick: () => onOpenAnalyticsDetail('speech-history'),
+        onClick: () => onOpenAnalyticsDetail('speech-history', 'messaging'),
       });
     }
 
@@ -1264,7 +1267,7 @@ export function CircleDashboardScreen({
                 }),
               };
             })()),
-        onClick: () => onOpenAnalyticsDetail('speech-history'),
+        onClick: () => onOpenAnalyticsDetail('speech-history', 'communication'),
       });
     }
 

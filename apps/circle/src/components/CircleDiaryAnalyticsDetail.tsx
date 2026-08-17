@@ -1,4 +1,6 @@
+import { BookOpen, Calendar, Flag } from 'lucide-react';
 import { useCircleT } from '../lib/circleI18nContext';
+import { CircleAnalyticsStatCard } from './CircleAnalyticsSeriesCard';
 
 type CircleDiaryAnalyticsDetailProps = {
   entryCount?: number;
@@ -29,34 +31,37 @@ export function CircleDiaryAnalyticsDetail({
           {t('analytics.diary.sharedDiary')}
         </p>
       </div>
-      <div className="p-4">
-        <div className="grid grid-cols-3 gap-3">
-          <div className="space-y-0.5">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
-              {t('analytics.diary.entries')}
-            </p>
-            <p className="text-2xl font-black text-amber-600 tabular-nums leading-none">
-              {entryCount}
-            </p>
-          </div>
-          <div className="space-y-0.5">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
-              {t('analytics.diary.milestones')}
-            </p>
-            <p className="text-2xl font-black text-violet-600 tabular-nums leading-none">
-              {milestoneCount}
-            </p>
-          </div>
-          <div className="space-y-0.5 min-w-0">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
-              {t('analytics.diary.lastEntry')}
-            </p>
-            <p className="text-sm font-black text-slate-800 leading-tight">
-              {formatLatestDate(latestAt)}
-            </p>
-          </div>
-        </div>
-        <p className="text-[11px] text-slate-400 leading-snug mt-4">{t('analytics.diary.footnote')}</p>
+      <div className="p-4 space-y-3">
+        <CircleAnalyticsStatCard
+          icon={BookOpen}
+          title={t('analytics.diary.entries')}
+          value={entryCount}
+          hint={t('analytics.diary.entriesHint')}
+          iconWrapClass="text-amber-600"
+          cardClass="border-amber-200 bg-amber-50/50"
+          titleClass="text-amber-700"
+          valueClass="text-amber-700"
+        />
+        <CircleAnalyticsStatCard
+          icon={Flag}
+          title={t('analytics.diary.milestones')}
+          value={milestoneCount}
+          hint={t('analytics.diary.milestonesHint')}
+          iconWrapClass="text-violet-600"
+          cardClass="border-violet-200 bg-violet-50/50"
+          titleClass="text-violet-700"
+          valueClass="text-violet-700"
+        />
+        <CircleAnalyticsStatCard
+          icon={Calendar}
+          title={t('analytics.diary.lastEntry')}
+          value={formatLatestDate(latestAt)}
+          iconWrapClass="text-slate-600"
+          cardClass="border-slate-200 bg-slate-50/70"
+          titleClass="text-slate-600"
+          valueClass="text-slate-800"
+        />
+        <p className="text-[11px] text-slate-400 leading-snug">{t('analytics.diary.footnote')}</p>
       </div>
     </div>
   );

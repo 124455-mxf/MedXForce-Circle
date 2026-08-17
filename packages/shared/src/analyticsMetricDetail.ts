@@ -18,6 +18,8 @@ export type MessagesTimelinePoint = {
   date: string;
   communication: number;
   messaging: number;
+  sent?: number;
+  replies?: number;
 };
 
 export type AlertAttentionTimelinePoint = {
@@ -42,6 +44,13 @@ export type DailyCheckInTimelinePoint = {
 export type AssessmentCountTimelinePoint = {
   date: string;
   count: number;
+};
+
+export type SoulGalleryTimelinePoint = {
+  date: string;
+  photos: number;
+  videos: number;
+  reactions: number;
 };
 
 export type DailyCheckInAnswerTrendPoint = {
@@ -216,6 +225,7 @@ export type AnalyticsMetricDetail =
       reactionCount: number;
       latestAt: number | null;
       trend: AnalyticsTrendDirection;
+      timeline?: SoulGalleryTimelinePoint[];
     }
   | {
       kind: 'vision';
@@ -318,6 +328,8 @@ function parseMessagesTimeline(raw: unknown): MessagesTimelinePoint[] | undefine
       date: item.date,
       communication: asFiniteNumber(item.communication),
       messaging: asFiniteNumber(item.messaging),
+      sent: asFiniteNumber(item.sent),
+      replies: asFiniteNumber(item.replies),
     }));
   return points.length > 0 ? points : undefined;
 }
@@ -470,6 +482,24 @@ function parseDiaryDetail(raw: Record<string, unknown>): AnalyticsMetricDetail {
   };
 }
 
+function parseSoulGalleryTimeline(raw: unknown): SoulGalleryTimelinePoint[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const points = raw
+    .filter(
+      (item): item is SoulGalleryTimelinePoint =>
+        item != null &&
+        typeof item === 'object' &&
+        typeof (item as SoulGalleryTimelinePoint).date === 'string',
+    )
+    .map((item) => ({
+      date: item.date,
+      photos: asFiniteNumber(item.photos),
+      videos: asFiniteNumber(item.videos),
+      reactions: asFiniteNumber(item.reactions),
+    }));
+  return points.length > 0 ? points : undefined;
+}
+
 function parseSoulGalleryDetail(raw: Record<string, unknown>): AnalyticsMetricDetail {
   const latestAt =
     typeof raw.latestAt === 'number' && Number.isFinite(raw.latestAt) ? raw.latestAt : null;
@@ -477,6 +507,7 @@ function parseSoulGalleryDetail(raw: Record<string, unknown>): AnalyticsMetricDe
   const totalPhotoCount = asFiniteNumber(raw.totalPhotoCount) || photoCount;
   const unseenPhotoCount = asFiniteNumber(raw.unseenPhotoCount);
   const unseenMediaCount = asFiniteNumber(raw.unseenMediaCount) || unseenPhotoCount;
+  const timeline = parseSoulGalleryTimeline(raw.timeline);
   return {
     kind: 'soul_gallery',
     albumCount: asFiniteNumber(raw.albumCount),
@@ -488,6 +519,7 @@ function parseSoulGalleryDetail(raw: Record<string, unknown>): AnalyticsMetricDe
     reactionCount: asFiniteNumber(raw.reactionCount),
     latestAt,
     trend: parseTrend(raw.trend),
+    ...(timeline ? { timeline } : {}),
   };
 }
 

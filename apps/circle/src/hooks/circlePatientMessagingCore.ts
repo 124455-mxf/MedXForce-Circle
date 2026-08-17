@@ -45,7 +45,11 @@ function parseThreadMessage(
   id: string,
   data: Omit<CircleThreadMessage, 'id'>,
 ): CircleThreadMessage {
-  return { id, ...data };
+  return {
+    id,
+    ...data,
+    hasNewReply: data.hasNewReply === true,
+  };
 }
 
 function sortThreadMessages(items: CircleThreadMessage[]): CircleThreadMessage[] {
