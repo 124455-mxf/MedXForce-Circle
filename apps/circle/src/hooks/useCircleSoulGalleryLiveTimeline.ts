@@ -80,6 +80,7 @@ export function useCircleSoulGalleryLiveTimeline(
             mediaId,
             timestamp:
               typeof data.timestamp === 'number' && Number.isFinite(data.timestamp) ? data.timestamp : 0,
+            userId: typeof data.userId === 'string' && data.userId ? data.userId : undefined,
           });
         }
         setReactions(next);
@@ -121,7 +122,7 @@ export function useCircleSoulGalleryLiveTimeline(
 
   return useMemo(() => {
     void viewedTick;
-    const timeline = buildCircleSoulGalleryLiveTimeline(media, reactions);
+    const timeline = buildCircleSoulGalleryLiveTimeline(media, reactions, patientId ?? '');
     const circleViewed = patientId && memberUid ? getCircleGalleryViewedIds(patientId, memberUid) : new Set<string>();
     const circleUnseenPhotoCount = media.filter((item) => {
       if (item.isVideo) return false;

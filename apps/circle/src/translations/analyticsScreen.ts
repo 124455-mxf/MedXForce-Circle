@@ -191,6 +191,8 @@ export const analyticsScreenEnglish = {
     unseenCircle: 'Unseen by you',
     unseenPatient: 'Unseen by patient',
     reactions: 'Reactions',
+    reactionsByPatient: 'Reactions by patient',
+    reactionsByCircle: 'Reactions by Circle',
     lastShared: 'Last shared',
     photosHint: 'Photos shared with the care circle in the last 30 days.',
     videosHint: 'Videos shared with the care circle in the last 30 days.',
@@ -198,6 +200,9 @@ export const analyticsScreenEnglish = {
     unseenCircleHint: 'Shared photos not yet viewed on this Circle account — not a 30-day count.',
     unseenPatientHint: 'Shared photos the patient has not opened yet — not a 30-day count.',
     reactionsHint: 'Reactions on shared photos and videos in the last 30 days.',
+    reactionsByPatientHint: 'Reactions the patient added on shared photos and videos in the last 30 days.',
+    reactionsByCircleHint:
+      'Reactions Circle members added on shared photos and videos in the last 30 days. Not broken down by person.',
     albumsHint: 'Albums with shared photos or videos.',
     moreSharedHint: 'More photos and videos shared in the last 30 days vs the prior 30 days.',
     fewerSharedHint: 'Fewer photos and videos shared in the last 30 days vs the prior 30 days.',
@@ -481,6 +486,8 @@ export const analyticsScreenGerman = {
     unseenCircle: 'Ungesehen von Ihnen',
     unseenPatient: 'Ungesehen vom Patienten',
     reactions: 'Reaktionen',
+    reactionsByPatient: 'Reaktionen vom Patienten',
+    reactionsByCircle: 'Reaktionen vom Circle',
     lastShared: 'Zuletzt geteilt',
     photosHint: 'Fotos, die in den letzten 30 Tagen mit dem Betreuungskreis geteilt wurden.',
     videosHint: 'Videos, die in den letzten 30 Tagen mit dem Betreuungskreis geteilt wurden.',
@@ -488,6 +495,10 @@ export const analyticsScreenGerman = {
     unseenCircleHint: 'Geteilte Fotos, die in diesem Circle-Konto noch nicht angesehen wurden — keine 30-Tage-Zahl.',
     unseenPatientHint: 'Geteilte Fotos, die der Patient noch nicht geöffnet hat — keine 30-Tage-Zahl.',
     reactionsHint: 'Reaktionen auf geteilte Fotos und Videos in den letzten 30 Tagen.',
+    reactionsByPatientHint:
+      'Reaktionen, die der Patient in den letzten 30 Tagen auf geteilte Fotos und Videos gegeben hat.',
+    reactionsByCircleHint:
+      'Reaktionen von Circle-Mitgliedern in den letzten 30 Tagen auf geteilte Fotos und Videos. Nicht nach Person aufgeschlüsselt.',
     albumsHint: 'Alben mit geteilten Fotos oder Videos.',
     moreSharedHint: 'Mehr Fotos und Videos in den letzten 30 Tagen als in den vorherigen 30 Tagen.',
     fewerSharedHint: 'Weniger Fotos und Videos in den letzten 30 Tagen als in den vorherigen 30 Tagen.',
@@ -770,6 +781,8 @@ export const analyticsScreenSpanish = {
     unseenCircle: 'Sin ver por usted',
     unseenPatient: 'Sin ver por el paciente',
     reactions: 'Reacciones',
+    reactionsByPatient: 'Reacciones del paciente',
+    reactionsByCircle: 'Reacciones de Circle',
     lastShared: 'Último compartido',
     photosHint: 'Fotos compartidas con el círculo de cuidado en los últimos 30 días.',
     videosHint: 'Videos compartidos con el círculo de cuidado en los últimos 30 días.',
@@ -777,6 +790,10 @@ export const analyticsScreenSpanish = {
     unseenCircleHint: 'Fotos compartidas aún no vistas en esta cuenta de Circle — no es un recuento de 30 días.',
     unseenPatientHint: 'Fotos compartidas que el paciente aún no ha abierto — no es un recuento de 30 días.',
     reactionsHint: 'Reacciones en fotos y videos compartidos en los últimos 30 días.',
+    reactionsByPatientHint:
+      'Reacciones que el paciente añadió en fotos y videos compartidos en los últimos 30 días.',
+    reactionsByCircleHint:
+      'Reacciones de miembros de Circle en fotos y videos compartidos en los últimos 30 días. No se desglosan por persona.',
     albumsHint: 'Álbumes con fotos o videos compartidos.',
     moreSharedHint: 'Más fotos y videos compartidos en los últimos 30 días.',
     fewerSharedHint: 'Menos fotos y videos compartidos en los últimos 30 días.',
@@ -1058,6 +1075,8 @@ export const analyticsScreenPolish = {
     unseenCircle: 'Nieobejrzane przez Ciebie',
     unseenPatient: 'Nieobejrzane przez pacjenta',
     reactions: 'Reakcje',
+    reactionsByPatient: 'Reakcje pacjenta',
+    reactionsByCircle: 'Reakcje Circle',
     lastShared: 'Ostatnio udostępniono',
     photosHint: 'Zdjęcia udostępnione kręgowi opieki w ciągu ostatnich 30 dni.',
     videosHint: 'Filmy udostępnione kręgowi opieki w ciągu ostatnich 30 dni.',
@@ -1065,6 +1084,10 @@ export const analyticsScreenPolish = {
     unseenCircleHint: 'Udostępnione zdjęcia jeszcze nieobejrzane na tym koncie Circle — to nie suma z 30 dni.',
     unseenPatientHint: 'Udostępnione zdjęcia, których pacjent jeszcze nie otworzył — to nie suma z 30 dni.',
     reactionsHint: 'Reakcje na udostępnione zdjęcia i filmy w ciągu ostatnich 30 dni.',
+    reactionsByPatientHint:
+      'Reakcje dodane przez pacjenta na udostępnionych zdjęciach i filmach w ciągu ostatnich 30 dni.',
+    reactionsByCircleHint:
+      'Reakcje członków Circle na udostępnionych zdjęciach i filmach w ciągu ostatnich 30 dni. Bez podziału na osoby.',
     albumsHint: 'Albumy z udostępnionymi zdjęciami lub filmami.',
     moreSharedHint: 'Więcej zdjęć i filmów udostępnionych w ostatnich 30 dniach.',
     fewerSharedHint: 'Mniej zdjęć i filmów udostępnionych w ostatnich 30 dniach.',

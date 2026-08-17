@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Calendar, Images, Heart, Image, Video, EyeOff, User, Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import { Calendar, Images, Heart, Image, Video, EyeOff, User, Users, Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import type { AnalyticsTrendDirection, SoulGalleryTimelinePoint } from '@medxforce/shared';
 import { useCircleSoulGalleryLiveTimeline } from '../hooks/useCircleSoulGalleryLiveTimeline';
 import { useCircleT } from '../lib/circleI18nContext';
@@ -77,6 +77,13 @@ export function CircleSoulAnalyticsDetail({
     if (live.timeline.length > 0) return live.timeline;
     return Array.isArray(timeline) ? timeline : [];
   }, [live.timeline, timeline]);
+  const hasLiveSplit = live.timeline.length > 0;
+  const patientReactionCount = hasLiveSplit
+    ? live.timeline.reduce((sum, point) => sum + point.patientReactions, 0)
+    : 0;
+  const circleReactionCount = hasLiveSplit
+    ? live.timeline.reduce((sum, point) => sum + point.circleReactions, 0)
+    : 0;
   const circleUnseen = live.circleUnseenPhotoCount;
   const patientUnseen = live.patientUnseenPhotoCount ?? unseenPhotoCount;
   const copy = shareTrendCopy(trend, t);
@@ -129,19 +136,50 @@ export function CircleSoulAnalyticsDetail({
           chartType={chartType}
           chartData={seriesFromKeyedTimeline(chartTimeline, 'videos')}
         />
-        <CircleAnalyticsSeriesCard
-          icon={Heart}
-          title={t('analytics.soul.reactions')}
-          value={reactionCount}
-          hint={t('analytics.soul.reactionsHint')}
-          color="#7c3aed"
-          iconWrapClass="text-violet-600"
-          cardClass="border-violet-200 bg-violet-50/50"
-          titleClass="text-violet-700"
-          valueClass="text-violet-700"
-          chartType={chartType}
-          chartData={seriesFromKeyedTimeline(chartTimeline, 'reactions')}
-        />
+        {hasLiveSplit ? (
+          <>
+            <CircleAnalyticsSeriesCard
+              icon={Heart}
+              title={t('analytics.soul.reactionsByPatient')}
+              value={patientReactionCount}
+              hint={t('analytics.soul.reactionsByPatientHint')}
+              color="#7c3aed"
+              iconWrapClass="text-violet-600"
+              cardClass="border-violet-200 bg-violet-50/50"
+              titleClass="text-violet-700"
+              valueClass="text-violet-700"
+              chartType={chartType}
+              chartData={seriesFromKeyedTimeline(live.timeline, 'patientReactions')}
+            />
+            <CircleAnalyticsSeriesCard
+              icon={Users}
+              title={t('analytics.soul.reactionsByCircle')}
+              value={circleReactionCount}
+              hint={t('analytics.soul.reactionsByCircleHint')}
+              color="#4f46e5"
+              iconWrapClass="text-indigo-600"
+              cardClass="border-indigo-200 bg-indigo-50/50"
+              titleClass="text-indigo-700"
+              valueClass="text-indigo-700"
+              chartType={chartType}
+              chartData={seriesFromKeyedTimeline(live.timeline, 'circleReactions')}
+            />
+          </>
+        ) : (
+          <CircleAnalyticsSeriesCard
+            icon={Heart}
+            title={t('analytics.soul.reactions')}
+            value={reactionCount}
+            hint={t('analytics.soul.reactionsHint')}
+            color="#7c3aed"
+            iconWrapClass="text-violet-600"
+            cardClass="border-violet-200 bg-violet-50/50"
+            titleClass="text-violet-700"
+            valueClass="text-violet-700"
+            chartType={chartType}
+            chartData={seriesFromKeyedTimeline(chartTimeline, 'reactions')}
+          />
+        )}
         <CircleAnalyticsStatCard
           icon={EyeOff}
           title={t('analytics.soul.unseenCircle')}

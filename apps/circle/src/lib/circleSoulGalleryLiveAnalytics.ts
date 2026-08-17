@@ -10,6 +10,7 @@ export type CircleSoulGalleryLiveMedia = {
 export type CircleSoulGalleryLiveReaction = {
   mediaId: string;
   timestamp: number;
+  userId?: string;
 };
 
 export type CircleSoulGalleryLivePoint = {
@@ -17,16 +18,30 @@ export type CircleSoulGalleryLivePoint = {
   photos: number;
   videos: number;
   reactions: number;
+  patientReactions: number;
+  circleReactions: number;
 };
 
 function dateKey(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+function emptyPoint(date: string): CircleSoulGalleryLivePoint {
+  return {
+    date,
+    photos: 0,
+    videos: 0,
+    reactions: 0,
+    patientReactions: 0,
+    circleReactions: 0,
+  };
+}
+
 /** 30 daily buckets of circle-shared photos, videos, and reactions (today on the newest end). */
 export function buildCircleSoulGalleryLiveTimeline(
   media: CircleSoulGalleryLiveMedia[],
   reactions: CircleSoulGalleryLiveReaction[],
+  patientUid: string,
   windowDays = 30,
 ): CircleSoulGalleryLivePoint[] {
   if (media.length === 0) return [];
@@ -37,7 +52,7 @@ export function buildCircleSoulGalleryLiveTimeline(
     const d = new Date(now);
     d.setDate(d.getDate() - i);
     const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    buckets[date] = { date, photos: 0, videos: 0, reactions: 0 };
+    buckets[date] = emptyPoint(date);
   }
 
   const cutoff = Date.now() - windowDays * DAY_MS;
@@ -54,7 +69,10 @@ export function buildCircleSoulGalleryLiveTimeline(
   for (const reaction of reactions) {
     if (!circleMediaIds.has(reaction.mediaId) || reaction.timestamp < cutoff) continue;
     const bucket = buckets[dateKey(reaction.timestamp)];
-    if (bucket) bucket.reactions += 1;
+    if (!bucket) continue;
+    bucket.reactions += 1;
+    if (patientUid && reaction.userId === patientUid) bucket.patientReactions += 1;
+    else bucket.circleReactions += 1;
   }
 
   return Object.values(buckets);
