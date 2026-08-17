@@ -29,10 +29,12 @@ import {
   listUnassignedCircleMedia,
   updateCircleGalleryCaption,
   uploadCircleGalleryMediaToAlbum,
+  circleDisplayFirstName,
   type CircleMemberRole,
   type CirclePatientSummary,
   type GalleryAlbum,
   type GalleryAlbumMedia,
+  type GalleryReactionRecord,
   type GalleryUploadFileProgress,
 } from '@medxforce/shared';
 import type { Firestore } from 'firebase/firestore';
@@ -51,6 +53,7 @@ import { useCircleGallerySkipPhotoDeleteConfirm } from '../hooks/useCircleGaller
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
 import { CircleHorizontalScrollStrip } from './CircleHorizontalScrollStrip';
 import { CircleGalleryLightbox, GalleryThumb } from './CircleGalleryLightbox';
+import { CircleGalleryGridReactionOverlay } from './CircleGalleryGridReactionOverlay';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 import { CircleDeleteAlbumConfirmModal } from './CircleDeleteAlbumConfirmModal';
 import { CircleDeleteMediaConfirmModal } from './CircleDeleteMediaConfirmModal';
@@ -257,7 +260,12 @@ export function PatientGalleryScreen({
     getCircleGalleryViewedIds(patient.patientId, user.uid),
   );
   const [reactedMediaIds, setReactedMediaIds] = useState<Set<string>>(() => new Set());
+  const [reactionsByMediaId, setReactionsByMediaId] = useState<
+    Record<string, GalleryReactionRecord[]>
+  >({});
   const galleryBodyRef = useRef<HTMLDivElement>(null);
+
+  const patientFirstName = circleDisplayFirstName(patient.displayName, patient.firstName);
 
   const role = patient.role as CircleMemberRole;
   const senderName = user.displayName || user.email || t('gallery.familyMemberFallback');
@@ -370,14 +378,29 @@ export function PatientGalleryScreen({
     return onSnapshot(
       reactionsQuery,
       (snapshot) => {
+        const next: Record<string, GalleryReactionRecord[]> = {};
         const ids = new Set<string>();
         for (const docSnap of snapshot.docs) {
-          const mediaId = docSnap.data().mediaId;
-          if (typeof mediaId === 'string' && mediaId) ids.add(mediaId);
+          const data = docSnap.data();
+          const mediaId = typeof data.mediaId === 'string' ? data.mediaId : '';
+          if (!mediaId) continue;
+          ids.add(mediaId);
+          const entry: GalleryReactionRecord = {
+            id: docSnap.id,
+            emoji: String(data.emoji || ''),
+            userId: typeof data.userId === 'string' ? data.userId : undefined,
+            timestamp: typeof data.timestamp === 'number' ? data.timestamp : undefined,
+          };
+          if (!next[mediaId]) next[mediaId] = [];
+          next[mediaId].push(entry);
         }
         setReactedMediaIds(ids);
+        setReactionsByMediaId(next);
       },
-      () => setReactedMediaIds(new Set()),
+      () => {
+        setReactedMediaIds(new Set());
+        setReactionsByMediaId({});
+      },
     );
   }, [db, patient.patientId]);
 
@@ -722,11 +745,18 @@ export function PatientGalleryScreen({
           key={item.id}
           type="button"
           onClick={() => openLightbox(items, index)}
-          className="aspect-square rounded-2xl overflow-hidden border border-slate-100 bg-slate-50"
+          className="relative aspect-square rounded-2xl overflow-hidden border border-slate-100 bg-slate-50"
         >
           <GalleryThumb
             item={item}
             unseen={isCircleGalleryMediaUnseenForMember(item, viewedIds, user.uid)}
+          />
+          <CircleGalleryGridReactionOverlay
+            reactions={reactionsByMediaId[item.id] ?? []}
+            patientUid={patient.patientId}
+            patientFirstName={patientFirstName}
+            compact={compactAlbumTiles}
+            alwaysShow={Boolean(gridAlbum?.isReactions)}
           />
         </button>
       ))}

@@ -34,6 +34,8 @@ export const galleryScreenEnglish = {
   albumFallback: 'Album',
   defaultAlbumTitle: 'Shared photos',
   reactionsAlbumTitle: 'Reactions',
+  reactionsFromPatient: '{{name}}',
+  reactionsFromCircle: 'Circle',
   emptyCreateAlbum: 'Create an album to start sharing photos and videos.',
   emptyNoVideos: 'No videos shared yet.',
   emptyNothingHere: 'Nothing here yet.',
@@ -125,6 +127,8 @@ export const galleryScreenGerman = {
   albumFallback: 'Album',
   defaultAlbumTitle: 'Geteilte Fotos',
   reactionsAlbumTitle: 'Reaktionen',
+  reactionsFromPatient: '{{name}}',
+  reactionsFromCircle: 'Circle',
   emptyCreateAlbum:
     'Erstellen Sie ein Album, um Fotos und Videos zu teilen.',
   emptyNoVideos: 'Noch keine geteilten Videos.',
@@ -218,6 +222,8 @@ export const galleryScreenSpanish = {
   albumFallback: 'Álbum',
   defaultAlbumTitle: 'Fotos compartidas',
   reactionsAlbumTitle: 'Reacciones',
+  reactionsFromPatient: '{{name}}',
+  reactionsFromCircle: 'Circle',
   emptyCreateAlbum:
     'Cree un álbum para empezar a compartir fotos y videos.',
   emptyNoVideos: 'Aún no hay videos compartidos.',
@@ -311,6 +317,8 @@ export const galleryScreenPolish = {
   albumFallback: 'Album',
   defaultAlbumTitle: 'Udostępnione zdjęcia',
   reactionsAlbumTitle: 'Reakcje',
+  reactionsFromPatient: '{{name}}',
+  reactionsFromCircle: 'Circle',
   emptyCreateAlbum:
     'Utwórz album, aby zacząć udostępniać zdjęcia i filmy.',
   emptyNoVideos: 'Brak udostępnionych filmów.',
