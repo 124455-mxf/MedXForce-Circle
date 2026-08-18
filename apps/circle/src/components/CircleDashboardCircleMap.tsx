@@ -319,7 +319,7 @@ export function DashboardCircleMapTile({
             <Sparkles size={18} aria-hidden />
           </span>
           <p className="text-sm font-bold text-slate-800 leading-tight truncate">
-            {t('dashboard.circleMap.compactTitle')}
+            {t('dashboard.circleMap.tileTitle')}
           </p>
         </div>
         <div className="flex items-center justify-between gap-3 min-w-0">

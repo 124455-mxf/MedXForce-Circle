@@ -448,7 +448,10 @@ function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
           <div className="flex items-center justify-between gap-3 min-w-0">
             <p
               className={cn(
-                'font-bold tracking-tight text-lg leading-tight min-w-0',
+                'font-bold tracking-tight min-w-0',
+                typeof spec.heroValue === 'number'
+                  ? 'leading-none text-3xl sm:text-[2rem] shrink-0'
+                  : 'text-lg leading-tight',
                 spec.heroMuted ? 'text-slate-400' : 'text-slate-900',
               )}
             >
@@ -821,6 +824,23 @@ function widgetSpansFullRow(
   if (nextCol === 1) return false;
   const next = widgets[index + 1];
   return !next || next.span === 'full';
+}
+
+const STRETCHED_WEEK_BAR_WIDGET_KEYS = new Set(['alert-attention', 'assessments']);
+
+function withStretchedWeekBarLayout(
+  spec: DashboardWidgetSpec,
+  stretched: boolean,
+): DashboardWidgetSpec {
+  if (!stretched || !STRETCHED_WEEK_BAR_WIDGET_KEYS.has(spec.key)) return spec;
+  return {
+    ...spec,
+    span: 'full',
+    activityDaysPlacement: spec.activityDays && spec.activityDays.length > 0 ? 'end' : spec.activityDaysPlacement,
+    row1: '',
+    row2: '',
+    row3: undefined,
+  };
 }
 
 function DashboardSection({
@@ -2045,18 +2065,19 @@ export function CircleDashboardScreen({
             ) : null}
             {visibleLastSevenDayWidgets.length > 0 ? (
               <div className="grid grid-cols-2 gap-3 items-stretch">
-                {visibleLastSevenDayWidgets.map((widget, index) => (
-                  <div
-                    key={widget.key}
-                    className={
-                      widgetSpansFullRow(visibleLastSevenDayWidgets, index)
-                        ? 'col-span-2'
-                        : DASHBOARD_LAST7_WIDGET_CELL_CLASS
-                    }
-                  >
-                    <DashboardWidget spec={widget} />
-                  </div>
-                ))}
+                {visibleLastSevenDayWidgets.map((widget, index) => {
+                  const stretched = widgetSpansFullRow(visibleLastSevenDayWidgets, index);
+                  return (
+                    <div
+                      key={widget.key}
+                      className={
+                        stretched ? 'col-span-2' : DASHBOARD_LAST7_WIDGET_CELL_CLASS
+                      }
+                    >
+                      <DashboardWidget spec={withStretchedWeekBarLayout(widget, stretched)} />
+                    </div>
+                  );
+                })}
               </div>
             ) : null}
           </section>
