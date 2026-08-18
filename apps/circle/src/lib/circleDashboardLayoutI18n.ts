@@ -2,12 +2,13 @@ import type { CircleDashboardLayoutSection, CircleDashboardWidgetKey } from '@me
 
 export const DASHBOARD_WIDGET_TITLE_KEYS: Record<CircleDashboardWidgetKey, string> = {
   'alert-attention': 'dashboard.alertsAttention',
-  'daily-check-in': 'dashboard.dailyCheckIn',
+  'daily-check-in': 'dashboard.customizeCheckInCompact',
   messages: 'dashboard.messages',
   communication: 'dashboard.communication',
   companion: 'dashboard.companionTitle',
   vitality: 'dashboard.vitality',
   assessments: 'dashboard.assessments',
+  'assessments-compact': 'dashboard.customizeAssessmentsCompact',
   'last-7-days-overview': 'dashboard.last7DaysOverview',
   'last-30-days-overview': 'dashboard.last30DaysOverview',
   diary: 'dashboard.diary',

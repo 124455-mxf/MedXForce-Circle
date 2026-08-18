@@ -1,10 +1,12 @@
 import {
   collection,
   doc,
+  documentId,
   onSnapshot,
   query,
   where,
   type Firestore,
+  type Query,
   type Unsubscribe,
 } from 'firebase/firestore';
 import type { CircleMemberRole, PatientCapabilities } from './patientPermissions';
@@ -287,6 +289,10 @@ export const ANALYTICS_METRIC_DEFINITIONS: Record<AnalyticsMetricId, AnalyticsMe
   },
 };
 
+export const ENGAGEMENT_ANALYTICS_METRIC_IDS: AnalyticsMetricId[] = ANALYTICS_METRIC_IDS.filter(
+  (id) => ANALYTICS_METRIC_DEFINITIONS[id].audience === 'engagement',
+);
+
 const CARE_ROLES: CircleMemberRole[] = [
   'caregiver',
   'professional_caregiver',
@@ -296,6 +302,14 @@ const CARE_ROLES: CircleMemberRole[] = [
 
 export function isCareCircleRole(role: string): boolean {
   return CARE_ROLES.includes(role as CircleMemberRole);
+}
+
+export function resolvedAnalyticsAudience(
+  metricId: string,
+  stored?: AnalyticsAudience | null,
+): AnalyticsAudience {
+  const def = ANALYTICS_METRIC_DEFINITIONS[metricId as AnalyticsMetricId];
+  return def?.audience ?? stored ?? 'engagement';
 }
 
 export function canReadAnalyticsAudience(
@@ -324,7 +338,9 @@ export function filterSummariesForMember(
   role: string,
   capabilities: PatientCapabilities,
 ): PatientAnalyticsSummary[] {
-  return summaries.filter((s) => canReadAnalyticsAudience(s.audience, role, capabilities));
+  return summaries.filter((s) =>
+    canReadAnalyticsAudience(resolvedAnalyticsAudience(s.metricId, s.audience), role, capabilities),
+  );
 }
 
 /** Fallback row when a metric definition exists but the patient has not synced yet. */
@@ -432,10 +448,10 @@ export function subscribeCircleAnalyticsSummaries(
     onSummaries([...byId.values()]);
   };
 
-  const attach = (key: string, audience: AnalyticsAudience) => {
+  const attachQuery = (key: string, q: Query, quiet = false) => {
     unsubs.push(
       onSnapshot(
-        query(coll, where('audience', '==', audience)),
+        q,
         (snap) => {
           buckets.set(
             key,
@@ -446,17 +462,36 @@ export function subscribeCircleAnalyticsSummaries(
           emit();
         },
         (err) => {
+          if (quiet) {
+            buckets.delete(key);
+            emit();
+            return;
+          }
           onError?.(err.message || 'Could not load analytics summaries.');
         },
       ),
     );
   };
 
+  const attachAudience = (audience: AnalyticsAudience) => {
+    attachQuery(audience, query(coll, where('audience', '==', audience)));
+  };
+
   const audiences: AnalyticsAudience[] = ['engagement', 'care', 'clinical'];
   for (const audience of audiences) {
     if (!capabilities || canReadAnalyticsAudience(audience, role, capabilities)) {
-      attach(audience, audience);
+      attachAudience(audience);
     }
+  }
+
+  // Engagement metrics are keyed by doc id so Friends still load Vitality if an
+  // older summary was stored with audience "care".
+  if (!capabilities || canReadAnalyticsAudience('engagement', role, capabilities)) {
+    attachQuery(
+      'engagement-ids',
+      query(coll, where(documentId(), 'in', [...ENGAGEMENT_ANALYTICS_METRIC_IDS])),
+      true,
+    );
   }
 
   if (unsubs.length === 0) {

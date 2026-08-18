@@ -27,42 +27,30 @@ type CircleDashboardCustomizePanelProps = {
 function DashboardWidgetToggle({
   title,
   visible,
-  disabled,
-  disabledHint,
   saving,
   onToggle,
 }: {
   title: string;
   visible: boolean;
-  disabled?: boolean;
-  disabledHint?: string;
   saving: boolean;
   onToggle: () => void;
 }) {
   return (
-    <div
-      className={cn(
-        'flex items-start justify-between gap-4 px-4 py-3.5 rounded-2xl border',
-        disabled ? 'border-slate-100 bg-slate-50/80 opacity-70' : 'border-slate-100 bg-white',
-      )}
-    >
+    <div className="flex items-start justify-between gap-4 px-4 py-3.5 rounded-2xl border border-slate-100 bg-white">
       <div className="min-w-0 flex-1">
         <p className="font-semibold text-slate-800 text-sm">{title}</p>
-        {disabled && disabledHint ? (
-          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{disabledHint}</p>
-        ) : null}
       </div>
       <button
         type="button"
         role="switch"
         aria-checked={visible}
         aria-label={title}
-        disabled={disabled || saving}
+        disabled={saving}
         onClick={onToggle}
         className={cn(
           'w-14 h-8 rounded-full transition-all duration-300 relative shrink-0 mt-0.5',
           visible ? 'bg-blue-600' : 'bg-slate-300',
-          (disabled || saving) && 'opacity-60 cursor-not-allowed',
+          saving && 'opacity-60 cursor-not-allowed',
         )}
       >
         <span
@@ -90,11 +78,11 @@ function DashboardSectionToggles({
   onToggle: (key: CircleDashboardWidgetKey, visible: boolean) => void;
 }) {
   const t = useCircleT();
-  const keys = CIRCLE_DASHBOARD_WIDGET_SECTIONS[section].filter((key) => {
-    if (key === 'check-in-wellness-ring' && normalizeMemberRole(patient.role) === 'friend') return false;
-    if (key === 'assessment-schedule-calendar') return false;
-    return true;
-  });
+  const role = normalizeMemberRole(patient.role);
+  const keys = CIRCLE_DASHBOARD_WIDGET_SECTIONS[section].filter((key) =>
+    isCircleDashboardWidgetAvailable(key, patient.capabilities, role),
+  );
+  if (keys.length === 0) return null;
 
   return (
     <section className="space-y-2">
@@ -103,15 +91,12 @@ function DashboardSectionToggles({
       </h4>
       <div className="space-y-2">
         {keys.map((key) => {
-          const available = isCircleDashboardWidgetAvailable(key, patient.capabilities);
-          const visible = available && !hiddenWidgets.has(key);
+          const visible = !hiddenWidgets.has(key);
           return (
             <DashboardWidgetToggle
               key={key}
               title={t(DASHBOARD_WIDGET_TITLE_KEYS[key])}
               visible={visible}
-              disabled={!available}
-              disabledHint={!available ? t('settings.dashboardWidgetUnavailable') : undefined}
               saving={saving}
               onToggle={() => onToggle(key, !visible)}
             />

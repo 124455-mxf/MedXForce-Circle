@@ -156,9 +156,10 @@ export function useCircleMemberThreadUnread(
             getOpenPostLastRead,
             inviteContext,
             memberRole,
+            suppressPastAppointmentInviteUnread,
           )
         : 0,
-    [canOpen, getOpenPostLastRead, hiddenByPostId, inviteContext, memberRole, openPostsWithInvites, postReadTick, userId],
+    [canOpen, getOpenPostLastRead, hiddenByPostId, inviteContext, memberRole, openPostsWithInvites, postReadTick, suppressPastAppointmentInviteUnread, userId],
   );
 
   const announcementsRestrictedUnreadCount = useMemo(
@@ -200,9 +201,10 @@ export function useCircleMemberThreadUnread(
             getOpenPostLastRead,
             inviteContext,
             memberRole,
+            suppressPastAppointmentInviteUnread,
           )
         : 0,
-    [canOpen, getOpenPostLastRead, hiddenByPostId, inviteContext, memberRole, openPostsWithInvites, postReadTick, userId],
+    [canOpen, getOpenPostLastRead, hiddenByPostId, inviteContext, memberRole, openPostsWithInvites, postReadTick, suppressPastAppointmentInviteUnread, userId],
   );
 
   const discussionsRestrictedUnreadCount = useMemo(
@@ -266,6 +268,7 @@ export function useCircleMemberThreadUnread(
         getOpenPostLastRead,
         inviteContext,
         memberRole,
+        suppressPastAppointmentInviteUnread,
       );
     }
     if (canRestricted) {
@@ -290,6 +293,7 @@ export function useCircleMemberThreadUnread(
     openPostsWithInvites,
     postReadTick,
     restrictedPosts,
+    suppressPastAppointmentInviteUnread,
     userId,
   ]);
 
@@ -305,9 +309,10 @@ export function useCircleMemberThreadUnread(
             getOpenPostLastRead,
             inviteContext,
             memberRole,
+            suppressPastAppointmentInviteUnread,
           )
         : 0,
-    [canOpen, getOpenPostLastRead, hiddenByPostId, inviteContext, memberRole, openPostsWithInvites, postReadTick, userId],
+    [canOpen, getOpenPostLastRead, hiddenByPostId, inviteContext, memberRole, openPostsWithInvites, postReadTick, suppressPastAppointmentInviteUnread, userId],
   );
 
   const visitCapturesRestrictedUnreadCount = useMemo(

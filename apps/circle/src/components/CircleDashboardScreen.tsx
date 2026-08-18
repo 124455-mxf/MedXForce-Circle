@@ -112,7 +112,6 @@ import {
 
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import { isPatientDoNotDisturbSection } from '../hooks/usePatientOnlinePresence';
-import { analyticsSummaryFooterText } from '../lib/circleAnalyticsI18n';
 import { countUnreadIcuDailySummaries, isIcuDailySummary } from '../lib/circleCommunicationLog';
 import {
   CIRCLE_MSG_READ_CHANGED,
@@ -246,6 +245,8 @@ type DashboardWidgetSpec = {
   heroMuted?: boolean;
   iconTone?: DashboardWidgetIconTone;
   activityDays?: DashboardActivityDay[];
+  /** Full-width tiles can put the week bar beside the hero instead of under it. */
+  activityDaysPlacement?: 'bottom' | 'end';
 };
 
 const WIDGET_ICON_TONE_CLASSES: Record<DashboardWidgetIconTone, string> = {
@@ -289,8 +290,10 @@ function closestScrollParent(el: HTMLElement | null): HTMLElement | null {
 
 function WeekActivityDots({
   days,
+  placement = 'bottom',
 }: {
   days: DashboardActivityDay[];
+  placement?: 'bottom' | 'end';
 }) {
   const t = useCircleT();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -318,8 +321,12 @@ function WeekActivityDots({
   }, []);
 
   return (
-    <div ref={rootRef} className="mt-auto pt-2.5" aria-label={t('dashboard.weekActivityAria')}>
-      <div className="flex items-end gap-1 h-7">
+    <div
+      ref={rootRef}
+      className={placement === 'end' ? 'w-full min-w-0' : 'mt-auto pt-2.5'}
+      aria-label={t('dashboard.weekActivityAria')}
+    >
+      <div className={cn('flex items-end gap-1', placement === 'end' ? 'h-8' : 'h-7')}>
         {days.map((day, index) => {
           // Empty days stay a short stub; active days scale by count vs week max.
           const heightPct =
@@ -420,7 +427,24 @@ function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
       </div>
 
       {hasHero ? (
-        spec.span === 'full' && spec.heroVariant === 'label' ? (
+        spec.span === 'full' &&
+        spec.activityDaysPlacement === 'end' &&
+        spec.activityDays &&
+        spec.activityDays.length > 0 ? (
+          <div className="flex items-center justify-between gap-4 min-w-0">
+            <p
+              className={cn(
+                'font-bold tracking-tight leading-none text-3xl sm:text-[2rem] shrink-0',
+                spec.heroMuted ? 'text-slate-400' : 'text-slate-900',
+              )}
+            >
+              {spec.heroValue}
+            </p>
+            <div className="w-[58%] max-w-[18rem] min-w-0">
+              <WeekActivityDots days={spec.activityDays} placement="end" />
+            </div>
+          </div>
+        ) : spec.span === 'full' && spec.heroVariant === 'label' ? (
           <div className="flex items-center justify-between gap-3 min-w-0">
             <p
               className={cn(
@@ -781,6 +805,24 @@ function RecordVisitCaptureWidget({
   );
 }
 
+function widgetSpansFullRow(
+  widgets: Array<{ span?: 'full' }>,
+  index: number,
+): boolean {
+  const widget = widgets[index];
+  if (!widget) return false;
+  if (widget.span === 'full') return true;
+
+  let nextCol = 0;
+  for (let i = 0; i < index; i += 1) {
+    if (widgets[i]?.span === 'full') nextCol = 0;
+    else nextCol = nextCol === 0 ? 1 : 0;
+  }
+  if (nextCol === 1) return false;
+  const next = widgets[index + 1];
+  return !next || next.span === 'full';
+}
+
 function DashboardSection({
   title,
   widgets,
@@ -799,10 +841,10 @@ function DashboardSection({
     <section className="space-y-2">
       <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{title}</h3>
       <div className="grid grid-cols-2 gap-3 items-stretch">
-        {widgets.map((widget) => (
+        {widgets.map((widget, index) => (
           <div
             key={widget.key}
-            className={widget.span === 'full' ? 'col-span-2' : cellClass}
+            className={widgetSpansFullRow(widgets, index) ? 'col-span-2' : cellClass}
           >
             <DashboardWidget spec={widget} />
           </div>
@@ -1091,6 +1133,9 @@ export function CircleDashboardScreen({
   const vitalitySummary = byMetricId.get('vitality-game');
   const vitalityDetail =
     vitalitySummary?.detail?.kind === 'vitality_game' ? vitalitySummary.detail : null;
+  const vitalityGamesLast7 = vitalityDetail
+    ? sumVitalityGamesLast7(vitalityDetail.timeline)
+    : vitalitySummary?.countInWindow || 0;
 
   const alertStats = sumAlertAttentionLast7(alertDetail?.timeline);
   const communicationStats = sumMessagesLast7(speechDetail?.timeline);
@@ -1107,7 +1152,6 @@ export function CircleDashboardScreen({
     isWidgetVisible('check-in-wellness-ring');
   const dailyCheckInLatestAt =
     dailyDetail?.latestCompletedAt ?? dailyCheckIn?.latestAt ?? null;
-  const vitalityGamesLast7 = sumVitalityGamesLast7(vitalityDetail?.timeline);
   const assessmentsLast7 = sumAssessmentsLast7(byMetricId);
   const latestAssessment = getLatestAssessment(byMetricId);
 
@@ -1221,6 +1265,51 @@ export function CircleDashboardScreen({
       onClick: () => onOpenAnalyticsPeriodOverview(30),
     });
 
+    const canReadAssessments =
+      !!patient.capabilities &&
+      canReadAnalyticsAudience('care', patient.role, patient.capabilities);
+
+    const openAssessmentsLast7 = () => {
+      const takenIds = assessmentMetricIdsTakenLast7(byMetricId).filter((metricId) => {
+        const definition = ANALYTICS_METRIC_DEFINITIONS[metricId];
+        if (!definition?.isReleased) return false;
+        if (!patient.capabilities) return false;
+        return canReadAnalyticsAudience(
+          definition.audience,
+          patient.role,
+          patient.capabilities,
+        );
+      });
+      if (takenIds.length === 1) {
+        onOpenAnalyticsDetail(takenIds[0]!);
+        return;
+      }
+      onOpenAssessmentsOverview();
+    };
+
+    if (canReadAssessments) {
+      lastSevenDayWidgets.push({
+        key: 'assessments-compact',
+        title: t('dashboard.assessment'),
+        icon: ClipboardList,
+        span: 'full',
+        heroVariant: 'label',
+        ...(analyticsLoading
+          ? loadingRows(t('common.loading'))
+          : {
+              heroValue: assessmentsLast7,
+              heroMuted: assessmentsLast7 === 0,
+              iconTone: 'sky' as const,
+              row1:
+                assessmentsLast7 === 0
+                  ? t('dashboard.noAssessmentsWeek')
+                  : dashboardPlural(t, 'assessmentWindow', assessmentsLast7),
+              row2: '',
+            }),
+        onClick: openAssessmentsLast7,
+      });
+    }
+
     lastSevenDayWidgets.push({
       key: 'alert-attention',
       title: t('dashboard.alertsAttention'),
@@ -1255,6 +1344,7 @@ export function CircleDashboardScreen({
         key: 'daily-check-in',
         title: t('dashboard.dailyCheckIn'),
         icon: Calendar,
+        span: 'full',
         ...(analyticsLoading
           ? loadingRows(t('common.loading'))
           : (() => {
@@ -1265,42 +1355,17 @@ export function CircleDashboardScreen({
                 hasHistory: !!(dailyDetail || dailyCheckIn?.latestAt),
               });
               const quiet = checkInStats.completed === 0;
-              if (dailyDetail && checkInStats.total > 0) {
-                return {
-                  heroValue: checkInStats.completed,
-                  heroMuted: quiet,
-                  iconTone: iconToneFromRecency(recencyTint),
-                  row1: quiet
-                    ? t('dashboard.checkInsQuietWeek')
-                    : dashboardPlural(t, 'checkInsThisWeek', checkInStats.completed),
-                  row2: dashboardPlural(t, 'skipped', checkInStats.skipped),
-                  recencyTint,
-                  activityDays: activityDaysFromTimeline(dailyDetail.timeline, (point) => {
-                    return point.completed;
-                  }),
-                };
-              }
-              if (dailyDetail) {
-                return {
-                  heroValue: checkInStats.completed,
-                  heroMuted: true,
-                  iconTone: iconToneFromRecency(recencyTint),
-                  row1: t('dashboard.checkInsQuietWeek'),
-                  row2: t('dashboard.skipRate', { rate: dailyDetail.skipRate }),
-                  recencyTint,
-                  activityDays: activityDaysFromTimeline(dailyDetail.timeline, (point) => {
-                    return point.completed;
-                  }),
-                };
-              }
               return {
                 heroValue: checkInStats.completed,
                 heroMuted: quiet,
                 iconTone: iconToneFromRecency(recencyTint),
-                row1: dailyCheckIn
-                  ? analyticsSummaryFooterText(t, dailyCheckIn, language)
-                  : t('dashboard.noCheckInsYet'),
+                row1: '',
+                row2: '',
                 recencyTint,
+                activityDaysPlacement: 'end' as const,
+                activityDays: dailyDetail
+                  ? activityDaysFromTimeline(dailyDetail.timeline, (point) => point.completed)
+                  : undefined,
               };
             })()),
         onClick: () => onOpenAnalyticsDetail('daily-check-in'),
@@ -1411,45 +1476,31 @@ export function CircleDashboardScreen({
     }
 
     // Circle can schedule assessments even when the patient Assessments tab is off.
-    lastSevenDayWidgets.push({
-      key: 'assessments',
-      title: t('dashboard.assessments'),
-      icon: ClipboardList,
-      ...(analyticsLoading
-        ? loadingRows(t('common.loading'))
-        : (() => {
-            const quiet = assessmentsLast7 === 0;
-            return {
-              heroValue: assessmentsLast7,
-              heroMuted: quiet,
-              iconTone: 'sky',
-              row1: quiet
-                ? t('dashboard.noAssessmentsWeek')
-                : dashboardPlural(t, 'assessmentsFinishedWeek', assessmentsLast7),
-              row2: latestAssessment.title
-                ? t('dashboard.lastAssessment', { title: latestAssessment.title })
-                : t('dashboard.noAssessmentsYet'),
-              activityDays: activityDaysFromAssessmentSummaries(byMetricId),
-            };
-          })()),
-      onClick: () => {
-        const takenIds = assessmentMetricIdsTakenLast7(byMetricId).filter((metricId) => {
-          const definition = ANALYTICS_METRIC_DEFINITIONS[metricId];
-          if (!definition?.isReleased) return false;
-          if (!patient.capabilities) return false;
-          return canReadAnalyticsAudience(
-            definition.audience,
-            patient.role,
-            patient.capabilities,
-          );
-        });
-        if (takenIds.length === 1) {
-          onOpenAnalyticsDetail(takenIds[0]!);
-          return;
-        }
-        onOpenAssessmentsOverview();
-      },
-    });
+    if (canReadAssessments) {
+      lastSevenDayWidgets.push({
+        key: 'assessments',
+        title: t('dashboard.assessments'),
+        icon: ClipboardList,
+        ...(analyticsLoading
+          ? loadingRows(t('common.loading'))
+          : (() => {
+              const quiet = assessmentsLast7 === 0;
+              return {
+                heroValue: assessmentsLast7,
+                heroMuted: quiet,
+                iconTone: 'sky',
+                row1: quiet
+                  ? t('dashboard.noAssessmentsWeek')
+                  : dashboardPlural(t, 'assessmentsFinishedWeek', assessmentsLast7),
+                row2: latestAssessment.title
+                  ? t('dashboard.lastAssessment', { title: latestAssessment.title })
+                  : t('dashboard.noAssessmentsYet'),
+                activityDays: activityDaysFromAssessmentSummaries(byMetricId),
+              };
+            })()),
+        onClick: openAssessmentsLast7,
+      });
+    }
   }
 
   if (showEngagementStats) {
@@ -1681,42 +1732,42 @@ export function CircleDashboardScreen({
   const dataComplete =
     profileSnapshot != null && isCircleProfileDataComplete(profileSnapshot);
 
-  patientAppWidgets.push({
-    key: 'user-profile',
-    title: t('dashboard.userProfile'),
-    icon: UserRound,
-    span: 'full',
-    ...(profileLoading
-      ? loadingRows(t('common.loading'))
-      : {
-          heroValue: profileCompletenessLabelT(t, profileSnapshot, false, dataComplete),
-          heroVariant: 'label',
-          heroMuted: !dataComplete,
-          row1: !coreComplete && missingCoreLabel
-            ? t('dashboard.coreProfileMissing', { fields: missingCoreLabel })
-            : (
-                <span className="inline-flex items-center gap-2 min-w-0">
-                  <span className="shrink-0 text-slate-500">{t('dashboard.phasePrefix')}</span>
-                  {profileSnapshot?.clinical.treatmentPhase ? (
-                    <span
-                      className={cn(
-                        'shrink-0 px-2 py-1 rounded-md text-xs sm:text-sm font-bold uppercase tracking-wide',
-                        treatmentPhaseBadgeClass(profileSnapshot.clinical.treatmentPhase),
-                      )}
-                    >
-                      {treatmentPhaseLabelT(t, profileSnapshot.clinical.treatmentPhase)}
-                    </span>
-                  ) : (
-                    <span className="truncate text-slate-500">{t('dashboard.notSet')}</span>
-                  )}
-                </span>
-              ),
-          recencyTint: getUserProfileRecencyUrgency(profileSnapshot),
-        }),
-    onClick: canOpenPatientProfile
-      ? () => onGoToTab('patient-profile')
-      : () => undefined,
-  });
+  if (canOpenPatientProfile) {
+    patientAppWidgets.push({
+      key: 'user-profile',
+      title: t('dashboard.userProfile'),
+      icon: UserRound,
+      span: 'full',
+      ...(profileLoading
+        ? loadingRows(t('common.loading'))
+        : {
+            heroValue: profileCompletenessLabelT(t, profileSnapshot, false, dataComplete),
+            heroVariant: 'label',
+            heroMuted: !dataComplete,
+            row1: !coreComplete && missingCoreLabel
+              ? t('dashboard.coreProfileMissing', { fields: missingCoreLabel })
+              : (
+                  <span className="inline-flex items-center gap-2 min-w-0">
+                    <span className="shrink-0 text-slate-500">{t('dashboard.phasePrefix')}</span>
+                    {profileSnapshot?.clinical.treatmentPhase ? (
+                      <span
+                        className={cn(
+                          'shrink-0 px-2 py-1 rounded-md text-xs sm:text-sm font-bold uppercase tracking-wide',
+                          treatmentPhaseBadgeClass(profileSnapshot.clinical.treatmentPhase),
+                        )}
+                      >
+                        {treatmentPhaseLabelT(t, profileSnapshot.clinical.treatmentPhase)}
+                      </span>
+                    ) : (
+                      <span className="truncate text-slate-500">{t('dashboard.notSet')}</span>
+                    )}
+                  </span>
+                ),
+            recencyTint: getUserProfileRecencyUrgency(profileSnapshot),
+          }),
+      onClick: () => onGoToTab('patient-profile'),
+    });
+  }
 
   const visibleLastSevenDayWidgets = lastSevenDayWidgets.filter((widget) =>
     isWidgetVisible(widget.key),
@@ -1964,34 +2015,18 @@ export function CircleDashboardScreen({
           <section className="space-y-2">
             <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionPatientApp')}</h3>
             <div className="grid grid-cols-2 gap-3">
-              {visiblePatientAppWidgets.map((widget) => (
+              {visiblePatientAppWidgets.map((widget, index) => (
                 <div
                   key={widget.key}
                   className={cn(
-                    widget.span === 'full' ? 'col-span-2' : DASHBOARD_WIDGET_CELL_CLASS,
+                    widgetSpansFullRow(visiblePatientAppWidgets, index)
+                      ? 'col-span-2'
+                      : DASHBOARD_WIDGET_CELL_CLASS,
                   )}
                 >
                   <DashboardWidget spec={widget} />
                 </div>
               ))}
-            </div>
-          </section>
-        ) : null}
-
-        {familyGalleryWidget ? (
-          <section className="space-y-2">
-            <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionStayConnected')}</h3>
-            <div className="grid grid-cols-2 gap-3 items-stretch">
-              <div className={DASHBOARD_LAST7_WIDGET_CELL_CLASS}>
-                <DashboardWidget spec={familyGalleryWidget} />
-              </div>
-              <div className={DASHBOARD_LAST7_WIDGET_CELL_CLASS}>
-                <CircleGalleryRotatingPreviewWidget
-                  photos={galleryDashboard.previewPhotos}
-                  loading={galleryDashboard.loading}
-                  onOpenGallery={() => onGoToTab('media')}
-                />
-              </div>
             </div>
           </section>
         ) : null}
@@ -2010,11 +2045,13 @@ export function CircleDashboardScreen({
             ) : null}
             {visibleLastSevenDayWidgets.length > 0 ? (
               <div className="grid grid-cols-2 gap-3 items-stretch">
-                {visibleLastSevenDayWidgets.map((widget) => (
+                {visibleLastSevenDayWidgets.map((widget, index) => (
                   <div
                     key={widget.key}
                     className={
-                      widget.span === 'full' ? 'col-span-2' : DASHBOARD_LAST7_WIDGET_CELL_CLASS
+                      widgetSpansFullRow(visibleLastSevenDayWidgets, index)
+                        ? 'col-span-2'
+                        : DASHBOARD_LAST7_WIDGET_CELL_CLASS
                     }
                   >
                     <DashboardWidget spec={widget} />
@@ -2022,6 +2059,24 @@ export function CircleDashboardScreen({
                 ))}
               </div>
             ) : null}
+          </section>
+        ) : null}
+
+        {familyGalleryWidget ? (
+          <section className="space-y-2">
+            <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionStayConnected')}</h3>
+            <div className="grid grid-cols-2 gap-3 items-stretch">
+              <div className={DASHBOARD_LAST7_WIDGET_CELL_CLASS}>
+                <DashboardWidget spec={familyGalleryWidget} />
+              </div>
+              <div className={DASHBOARD_LAST7_WIDGET_CELL_CLASS}>
+                <CircleGalleryRotatingPreviewWidget
+                  photos={galleryDashboard.previewPhotos}
+                  loading={galleryDashboard.loading}
+                  onOpenGallery={() => onGoToTab('media')}
+                />
+              </div>
+            </div>
           </section>
         ) : null}
 

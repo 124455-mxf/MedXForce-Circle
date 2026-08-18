@@ -4,7 +4,12 @@ import {
   setDoc,
   type Firestore,
 } from 'firebase/firestore';
-import type { CircleMemberRole, PatientCapabilities } from './patientPermissions';
+import {
+  canViewPatientProfileTab,
+  type CircleMemberRole,
+  type PatientCapabilities,
+} from './patientPermissions';
+import { canReadAnalyticsAudience } from './analyticsSummaries';
 import { canViewRemoteSettingsTab } from './remoteSettings';
 
 /** Dashboard widgets members can show or hide (not the mandatory attention / live blocks). */
@@ -16,6 +21,7 @@ export type CircleDashboardWidgetKey =
   | 'companion'
   | 'vitality'
   | 'assessments'
+  | 'assessments-compact'
   | 'last-7-days-overview'
   | 'last-30-days-overview'
   | 'diary'
@@ -53,6 +59,7 @@ export const ALL_CUSTOMIZABLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
   'companion',
   'vitality',
   'assessments',
+  'assessments-compact',
   'last-7-days-overview',
   'last-30-days-overview',
   'diary',
@@ -73,14 +80,21 @@ export const ALL_CUSTOMIZABLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
 
 /**
  * Optional tiles hidden for proxy until they opt in via Customize dashboard.
- * Matches Demo Patient Test-proxy-01 customize layout (Aug 2026).
- * On by default: Circle Map, participation reminders, last-7-day clinical tiles
- * (incl. daily check-in; Pulse off), remote settings, user profile.
+ * Matches Proxy customize layout (Aug 2026): locale, Circle Compact, Last 7 days,
+ * Alerts, Check-in compact, Assessments, remote settings, user profile.
  */
 export const PROXY_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
-  'patient-locale',
   'patient-insights',
+  'circle-map',
+  'reminder-gallery-upload',
+  'reminder-diary-entry',
+  'last-30-days-overview',
   'check-in-wellness-ring',
+  'messages',
+  'communication',
+  'companion',
+  'vitality',
+  'assessments-compact',
   'diary',
   'circle',
   'gallery-engagement',
@@ -89,9 +103,8 @@ export const PROXY_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
 
 /**
  * Optional tiles hidden for family until they opt in via Customize dashboard.
- * Matches Demo Patient family customize layout (Aug 2026).
- * On by default: locale, insights, Circle Map, reminders, alerts, Check-In Pulse,
- * diary, media gallery.
+ * Matches Family customize layout (Aug 2026): locale, insights, Circle + Compact,
+ * reminders, Last 7/30, alerts, Check-In pulse, media gallery.
  */
 export const FAMILY_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
   'daily-check-in',
@@ -100,56 +113,58 @@ export const FAMILY_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = 
   'companion',
   'vitality',
   'assessments',
-  'last-7-days-overview',
-  'last-30-days-overview',
+  'assessments-compact',
   'assessment-schedule-calendar',
+  'diary',
   'circle',
   'gallery-engagement',
   'remote-settings',
   'user-profile',
-  'circle-compact',
 ];
 
 /** Widgets friends must never see, even if a saved layout marks them visible. */
 export const FRIEND_NEVER_VISIBLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
   'assessment-schedule-calendar',
+  'check-in-wellness-ring',
+  'assessments',
+  'assessments-compact',
 ];
 
 /**
  * Optional tiles hidden for friends until they opt in.
- * Matches Demo Patient Test-friend-01 customize layout (Aug 2026).
- * On by default: Get to know, Circle Map, photo + journal reminders,
- * Your photos, media gallery.
+ * Matches Friend customize layout (Aug 2026): locale, insights, Circle, reminders,
+ * Last 7/30, alerts, Check-in compact, diary, your photos, media gallery.
  */
 export const FRIEND_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
-  'patient-locale',
-  'alert-attention',
-  'daily-check-in',
+  'circle-compact',
   'messages',
   'communication',
   'companion',
   'vitality',
   'assessments',
-  'last-7-days-overview',
-  'last-30-days-overview',
-  'diary',
-  'circle',
+  'assessments-compact',
   'check-in-wellness-ring',
   'assessment-schedule-calendar',
+  'circle',
   'remote-settings',
   'user-profile',
-  'circle-compact',
 ];
 
 /**
- * Caregiver / facility_staff / professional_caregiver defaults (Aug 2026 care-team customize).
- * On by default: locale, Circle Map, reminders, alerts, Pulse, messages/comms/companion/
- * vitality/assessments, Circle messages, media gallery, remote settings, user profile.
+ * Caregiver / facility_staff / professional_caregiver defaults (Aug 2026).
+ * On by default: locale, Circle Compact, reminders, Last 7/30, alerts, Check-In pulse,
+ * messages, assessments, media gallery, remote settings, user profile.
  */
 export const CAREGIVER_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
   'patient-insights',
+  'circle-map',
   'daily-check-in',
+  'communication',
+  'companion',
+  'vitality',
+  'assessments-compact',
   'diary',
+  'circle',
   'gallery-engagement',
 ];
 
@@ -170,6 +185,7 @@ export const CIRCLE_DASHBOARD_WIDGET_SECTIONS: Record<
     'companion',
     'vitality',
     'assessments',
+    'assessments-compact',
   ],
   you: ['diary', 'circle', 'gallery-engagement'],
   stayConnected: ['media-gallery'],
@@ -316,7 +332,11 @@ export async function writeMemberDashboardLayout(
 export function isCircleDashboardWidgetAvailable(
   key: CircleDashboardWidgetKey,
   capabilities: PatientCapabilities | undefined,
+  role?: CircleMemberRole,
 ): boolean {
+  if (role === 'friend' && FRIEND_NEVER_VISIBLE_DASHBOARD_WIDGETS.includes(key)) {
+    return false;
+  }
   const caps = capabilities;
   switch (key) {
     case 'alert-attention':
@@ -325,11 +345,13 @@ export function isCircleDashboardWidgetAvailable(
     case 'communication':
     case 'companion':
     case 'vitality':
-    case 'assessments':
     case 'last-7-days-overview':
     case 'last-30-days-overview':
     case 'diary':
       return caps?.viewEngagementTrends !== false;
+    case 'assessments':
+    case 'assessments-compact':
+      return !!role && !!caps && canReadAnalyticsAudience('care', role, caps);
     case 'circle':
       return true;
     case 'circle-map':
@@ -344,7 +366,7 @@ export function isCircleDashboardWidgetAvailable(
     case 'remote-settings':
       return canViewRemoteSettingsTab(caps);
     case 'user-profile':
-      return true;
+      return canViewPatientProfileTab(caps);
     case 'patient-locale':
     case 'patient-insights':
       return true;

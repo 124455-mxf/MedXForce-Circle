@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import { Loader2, CalendarClock, ClipboardList, Megaphone, MessageCircle, Plus, Shield, Sparkles, Stethoscope, Trash2, Undo2, Users } from 'lucide-react';
@@ -349,8 +349,13 @@ export function CircleCircleScreen({
     [activeThread, patient.patientId, user.uid],
   );
 
+  const skipInboxResetForThreadRef = useRef(false);
+  const pendingAttentionFolderRef = useRef<CirclePostInboxView | null>(null);
+
   useEffect(() => {
     if (!circleInboxIntent) return;
+    skipInboxResetForThreadRef.current = true;
+    pendingAttentionFolderRef.current = circleInboxIntent.view;
     setActiveThread(circleInboxIntent.thread);
     setInboxView(circleInboxIntent.view);
     setSelectedPostId(null);
@@ -364,6 +369,10 @@ export function CircleCircleScreen({
   }, [activeThread, canRestricted]);
 
   useEffect(() => {
+    if (skipInboxResetForThreadRef.current) {
+      skipInboxResetForThreadRef.current = false;
+      return;
+    }
     setInboxView('discussion');
     setSelectedPostId(null);
   }, [activeThread]);
@@ -421,6 +430,35 @@ export function CircleCircleScreen({
         : rawPosts,
     [activeThread, careCalendarEntries, memberInviteContext, memberRole, patient.patientId, rawPosts],
   );
+
+  useEffect(() => {
+    const view = pendingAttentionFolderRef.current;
+    if (!view || loading) return;
+    pendingAttentionFolderRef.current = null;
+    markCirclePostsRead(
+      patient.patientId,
+      user.uid,
+      activeThread,
+      filterPostsForInboxView(
+        allPosts,
+        view,
+        hiddenByPostId,
+        activeThread,
+        user.uid,
+        memberInviteContext,
+        memberRole,
+      ),
+    );
+  }, [
+    activeThread,
+    allPosts,
+    hiddenByPostId,
+    loading,
+    memberInviteContext,
+    memberRole,
+    patient.patientId,
+    user.uid,
+  ]);
 
   const showCircleOnboarding =
     showOnboardingWelcome && activeThread === 'open' && inboxView === 'discussion';
