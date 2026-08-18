@@ -136,6 +136,7 @@ import {
 import {
   DASHBOARD_RECENCY_TINT_CLASSES,
   DASHBOARD_STATS_DAYS,
+  activityDaysFromAssessmentSummaries,
   activityDaysFromTimeline,
   type DashboardActivityDay,
   getAlertAttentionRecencyUrgency,
@@ -1341,7 +1342,7 @@ export function CircleDashboardScreen({
                 row2: latestAssessment.title
                   ? t('dashboard.lastAssessment', { title: latestAssessment.title })
                   : t('dashboard.noAssessmentsYet'),
-                row3: lastLine(latestAssessment.latestAt),
+                activityDays: activityDaysFromAssessmentSummaries(byMetricId),
               };
             })()),
         onClick: () => onGoToTab('analytics'),

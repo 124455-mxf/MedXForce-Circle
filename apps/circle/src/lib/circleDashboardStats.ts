@@ -7,6 +7,7 @@ import type {
   PatientAnalyticsSummary,
   VitalityGameTimelinePoint,
 } from '@medxforce/shared';
+import { timelinePointToTimestamp } from './circleAnalyticsChart';
 
 export const DASHBOARD_STATS_DAYS = 7;
 
@@ -78,6 +79,40 @@ export const DASHBOARD_ASSESSMENT_METRIC_IDS = [
   'psychological',
   'stroke',
 ] as const;
+
+function timelinePointDateKey(date: string, label?: string): string | null {
+  const ts = timelinePointToTimestamp(date, label);
+  if (ts == null) return null;
+  return localDateKey(new Date(ts));
+}
+
+function assessmentPointCount(point: { count?: number }): number {
+  if (typeof point.count === 'number' && Number.isFinite(point.count)) {
+    return Math.max(0, point.count);
+  }
+  return 1;
+}
+
+/** Last-7 calendar-day activity across all assessment metrics (sparse timelines). */
+export function activityDaysFromAssessmentSummaries(
+  byMetricId: Map<string, PatientAnalyticsSummary>,
+): DashboardActivityDay[] {
+  const totals = new Map<string, number>();
+
+  for (const metricId of DASHBOARD_ASSESSMENT_METRIC_IDS) {
+    const detail = byMetricId.get(metricId)?.detail;
+    if (!detail || !('timeline' in detail) || !Array.isArray(detail.timeline)) continue;
+
+    for (const point of detail.timeline) {
+      if (!point || typeof point.date !== 'string') continue;
+      const key = timelinePointDateKey(point.date, 'label' in point ? point.label : undefined);
+      if (!key) continue;
+      totals.set(key, (totals.get(key) ?? 0) + assessmentPointCount(point));
+    }
+  }
+
+  return buildRollingLast7ActivityDays((dateKey) => totals.get(dateKey) ?? 0);
+}
 
 function sumTimelineCountLast7(timeline?: AssessmentCountTimelinePoint[]): number {
   return (timeline ?? [])
