@@ -22,6 +22,7 @@ type CircleSpeechLanguageAnalyticsDetailProps = {
   readingWriting?: SpeechLanguageScoreTrend;
   oralMotor?: SpeechLanguageScoreTrend;
   timeline?: SpeechLanguageTimelinePoint[];
+  windowLabel?: string;
 };
 
 const SCORE_DOMAIN: [number, number] = [0, 10];
@@ -63,6 +64,7 @@ export function CircleSpeechLanguageAnalyticsDetail({
   readingWriting,
   oralMotor,
   timeline,
+  windowLabel,
 }: CircleSpeechLanguageAnalyticsDetailProps) {
   const t = useCircleT();
   const [chartType, setChartType] = useState<CircleAnalyticsChartType>('bar');
@@ -71,7 +73,7 @@ export function CircleSpeechLanguageAnalyticsDetail({
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="px-3 py-2 border-b border-slate-100 bg-teal-50/50">
         <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
-          {analyticsWindowDaysLabel(t, 30)}
+          {windowLabel ?? analyticsWindowDaysLabel(t, 30)}
         </p>
       </div>
       <div className="p-4 space-y-4">

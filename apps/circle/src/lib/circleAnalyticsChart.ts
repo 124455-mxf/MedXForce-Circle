@@ -203,12 +203,17 @@ function localCalendarDayLabel(daysAgo: number): string {
 
 /** One bar per day: finished, skipped, or not taken (mutually exclusive, stacked height 1). */
 export function prepareDailyCheckInParticipationChartData(
-  timeline: Array<{ date: string; completed: number; skipped: number }> | undefined,
+  timeline: Array<{ date: string; completed: number; skipped: number; notTaken?: number }> | undefined,
 ): DailyCheckInParticipationChartPoint[] {
   return prepareDailyBucketChartData(timeline).map((point) => {
-    const finished = point.completed > 0 ? 1 : 0;
-    const skipped = point.skipped > 0 && finished === 0 ? 1 : 0;
-    const notTaken = finished === 0 && skipped === 0 ? 1 : 0;
+    const finished = point.completed;
+    const skipped = point.skipped;
+    const notTaken =
+      typeof point.notTaken === 'number' && Number.isFinite(point.notTaken)
+        ? point.notTaken
+        : finished === 0 && skipped === 0
+          ? 1
+          : 0;
     return {
       ...point,
       finished,
@@ -243,7 +248,8 @@ export function prepareDailyCheckInAnswerTrendChartData(
     Array.isArray(participationTimeline) && participationTimeline.length > 0
       ? [...participationTimeline].reverse().map((point) => point.date)
       : [];
-  const slotCount = Math.max(CIRCLE_ANALYTICS_WINDOW_DAYS, backboneDates.length);
+  const slotCount =
+    backboneDates.length > 0 ? backboneDates.length : CIRCLE_ANALYTICS_WINDOW_DAYS;
 
   const slots: DailyCheckInAnswerTrendChartPoint[] = [];
   for (let daysAgo = 0; daysAgo < slotCount; daysAgo += 1) {
@@ -260,16 +266,22 @@ export function prepareDailyCheckInAnswerTrendChartData(
     });
   }
 
+  const answersByDate = new Map<string, (typeof answers)[number]>();
   for (const point of answers) {
-    const daysAgo = answerTrendDaysAgo(point.date, point.label);
-    if (daysAgo == null || daysAgo < 0 || daysAgo >= slots.length) continue;
-    const slot = slots[daysAgo];
-    slot.chartDate = point.date || slot.chartDate;
-    slot.label = point.label || point.date || slot.label;
-    slot.mood = point.mood ?? null;
-    slot.pain = point.pain ?? null;
-    slot.sleep = point.sleep ?? null;
-    slot.vitality = point.vitality ?? null;
+    if (point.date) answersByDate.set(point.date, point);
+  }
+
+  for (const slot of slots) {
+    const matched =
+      answersByDate.get(slot.date) ??
+      answers.find((point) => answerTrendDaysAgo(point.date, point.label) === slot.daysAgo);
+    if (!matched) continue;
+    slot.chartDate = matched.date || slot.chartDate;
+    slot.label = matched.label || matched.date || slot.label;
+    slot.mood = matched.mood ?? null;
+    slot.pain = matched.pain ?? null;
+    slot.sleep = matched.sleep ?? null;
+    slot.vitality = matched.vitality ?? null;
   }
 
   return slots;

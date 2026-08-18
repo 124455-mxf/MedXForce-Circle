@@ -27,10 +27,16 @@ type CircleVisionAnalyticsDetailProps = {
     field: VisionCategoryTrend;
     motor: VisionCategoryTrend;
   };
+  windowLabel?: string;
 };
 
 const SCORE_DOMAIN: [number, number] = [0, 10];
 const SCORE_TICKS = [0, 5, 10];
+
+function formatVisionValue(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round(value * 10) / 10;
+}
 
 function TrendSummary({
   trend,
@@ -58,12 +64,12 @@ function findingStatusClass(status: VisionFindingItem['status']): string {
 }
 
 export function CircleVisionAnalyticsDetail({
-  count = 0,
   average = 0,
   trend = 'stable',
   timeline,
   latestFindings,
   categoryTrends,
+  windowLabel,
 }: CircleVisionAnalyticsDetailProps) {
   const t = useCircleT();
   const [chartType, setChartType] = useState<CircleAnalyticsChartType>('bar');
@@ -77,7 +83,7 @@ export function CircleVisionAnalyticsDetail({
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="px-3 py-2 border-b border-slate-100 bg-indigo-50/50">
         <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
-          {analyticsWindowDaysLabel(t, 30)}
+          {windowLabel ?? analyticsWindowDaysLabel(t, 30)}
         </p>
       </div>
       <div className="p-4 space-y-4">
@@ -98,7 +104,7 @@ export function CircleVisionAnalyticsDetail({
         <CircleAnalyticsSeriesCard
           icon={Gauge}
           title={severityLabel}
-          value={average}
+          value={formatVisionValue(average)}
           hint={t('analytics.vision.severityHint')}
           color="#6366f1"
           iconWrapClass="text-indigo-600"
@@ -115,7 +121,7 @@ export function CircleVisionAnalyticsDetail({
         <CircleAnalyticsSeriesCard
           icon={ScanSearch}
           title={focusLabel}
-          value={categoryTrends?.focus.current ?? count}
+          value={formatVisionValue(categoryTrends?.focus.current ?? 0)}
           hint={t('analytics.vision.focusHint')}
           color="#f59e0b"
           iconWrapClass="text-amber-600"
@@ -129,7 +135,7 @@ export function CircleVisionAnalyticsDetail({
         <CircleAnalyticsSeriesCard
           icon={Eye}
           title={fieldLabel}
-          value={categoryTrends?.field.current ?? 0}
+          value={formatVisionValue(categoryTrends?.field.current ?? 0)}
           hint={t('analytics.vision.fieldHint')}
           color="#ef4444"
           iconWrapClass="text-red-600"
@@ -143,7 +149,7 @@ export function CircleVisionAnalyticsDetail({
         <CircleAnalyticsSeriesCard
           icon={Move}
           title={motorLabel}
-          value={categoryTrends?.motor.current ?? 0}
+          value={formatVisionValue(categoryTrends?.motor.current ?? 0)}
           hint={t('analytics.vision.motorHint')}
           color="#8b5cf6"
           iconWrapClass="text-violet-600"

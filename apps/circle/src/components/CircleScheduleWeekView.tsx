@@ -624,6 +624,7 @@ function WeekAppointmentDetail({
           onManageClinicalReferences={onManageClinicalReferences}
           detailsContent={detailsContent}
           onRecordVisit={onRecordVisit}
+          memberRole={memberRole}
         />
       </div>
     </>

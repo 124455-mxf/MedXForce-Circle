@@ -33,17 +33,26 @@ export type CompanionTimelinePoint = {
   conversations: number;
   interactions: number;
   detected: number;
+  started?: number;
+  resumed?: number;
 };
 
 export type DailyCheckInTimelinePoint = {
+  /** ISO `YYYY-MM-DD` preferred; locale labels may still appear on older payloads. */
   date: string;
   completed: number;
   skipped: number;
+  label?: string;
+  notTaken?: number;
 };
 
 export type AssessmentCountTimelinePoint = {
+  /** ISO `YYYY-MM-DD` preferred; locale labels may still appear on older payloads. */
   date: string;
   count: number;
+  label?: string;
+  /** Mean score for assessments on this day, when available. */
+  score?: number;
 };
 
 export type SoulGalleryTimelinePoint = {
@@ -82,6 +91,12 @@ export type VisionFindingItem = {
 export type VisionCategoryTrend = {
   current: number;
   trend: AnalyticsTrendDirection;
+};
+
+export type DiaryTimelinePoint = {
+  date: string;
+  entries: number;
+  milestones: number;
 };
 
 export type VitalityGameTimelinePoint = {
@@ -213,6 +228,7 @@ export type AnalyticsMetricDetail =
       milestoneCount: number;
       latestAt: number | null;
       trend: AnalyticsTrendDirection;
+      timeline?: DiaryTimelinePoint[];
     }
   | {
       kind: 'soul_gallery';
@@ -278,7 +294,14 @@ export type AnalyticsMetricDetail =
     };
 
 function asFiniteNumber(value: unknown): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (value === true) return 1;
+  if (value === false) return 0;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return 0;
 }
 
 function parseTrend(value: unknown): AnalyticsTrendDirection {
@@ -375,6 +398,8 @@ function parseCompanionTimeline(raw: unknown): CompanionTimelinePoint[] | undefi
       conversations: asFiniteNumber(item.conversations),
       interactions: asFiniteNumber(item.interactions),
       detected: asFiniteNumber(item.detected),
+      ...('started' in item ? { started: asFiniteNumber(item.started) } : {}),
+      ...('resumed' in item ? { resumed: asFiniteNumber(item.resumed) } : {}),
     }));
   return points.length > 0 ? points : undefined;
 }
@@ -403,44 +428,66 @@ function parseCompanionDetail(raw: Record<string, unknown>): AnalyticsMetricDeta
   };
 }
 
+function asDateString(value: unknown): string {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  if (
+    value &&
+    typeof value === 'object' &&
+    'toDate' in value &&
+    typeof (value as { toDate: () => Date }).toDate === 'function'
+  ) {
+    const d = (value as { toDate: () => Date }).toDate();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  return '';
+}
+
 function parseDailyCheckInTimeline(raw: unknown): DailyCheckInTimelinePoint[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const points = raw
-    .filter(
-      (item): item is DailyCheckInTimelinePoint =>
-        item != null &&
-        typeof item === 'object' &&
-        typeof (item as DailyCheckInTimelinePoint).date === 'string',
-    )
-    .map((item) => ({
-      date: item.date,
-      completed: asFiniteNumber(item.completed),
-      skipped: asFiniteNumber(item.skipped),
-    }));
+    .map((item) => {
+      if (item == null || typeof item !== 'object') return null;
+      const date = asDateString((item as DailyCheckInTimelinePoint).date);
+      if (!date) return null;
+      const label = (item as DailyCheckInTimelinePoint).label;
+      return {
+        date,
+        completed: asFiniteNumber((item as DailyCheckInTimelinePoint).completed),
+        skipped: asFiniteNumber((item as DailyCheckInTimelinePoint).skipped),
+        ...(typeof label === 'string' && label ? { label } : {}),
+        ...(typeof (item as DailyCheckInTimelinePoint).notTaken === 'number' &&
+        Number.isFinite((item as DailyCheckInTimelinePoint).notTaken)
+          ? { notTaken: (item as DailyCheckInTimelinePoint).notTaken }
+          : {}),
+      };
+    })
+    .filter((item): item is DailyCheckInTimelinePoint => item != null);
   return points.length > 0 ? points : undefined;
 }
 
 function parseDailyCheckInAnswerTrend(raw: unknown): DailyCheckInAnswerTrendPoint[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const points = raw
-    .filter(
-      (item): item is DailyCheckInAnswerTrendPoint =>
-        item != null &&
-        typeof item === 'object' &&
-        typeof (item as DailyCheckInAnswerTrendPoint).date === 'string' &&
-        typeof (item as DailyCheckInAnswerTrendPoint).label === 'string',
-    )
-    .map((item) => ({
-      date: item.date,
-      label: item.label,
-      mood: typeof item.mood === 'number' && Number.isFinite(item.mood) ? item.mood : undefined,
-      pain: typeof item.pain === 'number' && Number.isFinite(item.pain) ? item.pain : undefined,
-      sleep: typeof item.sleep === 'number' && Number.isFinite(item.sleep) ? item.sleep : undefined,
-      vitality:
-        typeof item.vitality === 'number' && Number.isFinite(item.vitality)
-          ? item.vitality
-          : undefined,
-    }));
+    .map((item) => {
+      if (item == null || typeof item !== 'object') return null;
+      const row = item as DailyCheckInAnswerTrendPoint;
+      const date = asDateString(row.date);
+      if (!date) return null;
+      const label = typeof row.label === 'string' && row.label ? row.label : date.slice(5).replace('-', '/');
+      return {
+        date,
+        label,
+        mood: typeof row.mood === 'number' && Number.isFinite(row.mood) ? row.mood : undefined,
+        pain: typeof row.pain === 'number' && Number.isFinite(row.pain) ? row.pain : undefined,
+        sleep: typeof row.sleep === 'number' && Number.isFinite(row.sleep) ? row.sleep : undefined,
+        vitality:
+          typeof row.vitality === 'number' && Number.isFinite(row.vitality) ? row.vitality : undefined,
+      };
+    })
+    .filter((item): item is DailyCheckInAnswerTrendPoint => item != null);
   return points.length > 0 ? points : undefined;
 }
 
@@ -470,6 +517,23 @@ function parseDailyCheckInDetail(raw: Record<string, unknown>): AnalyticsMetricD
   };
 }
 
+function parseDiaryTimeline(raw: unknown): DiaryTimelinePoint[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const points = raw
+    .filter(
+      (item): item is DiaryTimelinePoint =>
+        item != null &&
+        typeof item === 'object' &&
+        typeof (item as DiaryTimelinePoint).date === 'string',
+    )
+    .map((item) => ({
+      date: item.date,
+      entries: asFiniteNumber(item.entries),
+      milestones: asFiniteNumber(item.milestones),
+    }));
+  return points.length > 0 ? points : undefined;
+}
+
 function parseDiaryDetail(raw: Record<string, unknown>): AnalyticsMetricDetail {
   const latestAt =
     typeof raw.latestAt === 'number' && Number.isFinite(raw.latestAt) ? raw.latestAt : null;
@@ -479,6 +543,7 @@ function parseDiaryDetail(raw: Record<string, unknown>): AnalyticsMetricDetail {
     milestoneCount: asFiniteNumber(raw.milestoneCount),
     latestAt,
     trend: parseTrend(raw.trend),
+    timeline: parseDiaryTimeline(raw.timeline),
   };
 }
 
@@ -530,12 +595,11 @@ function parseVisionTimeline(raw: unknown): VisionTimelinePoint[] | undefined {
       (item): item is VisionTimelinePoint =>
         item != null &&
         typeof item === 'object' &&
-        typeof (item as VisionTimelinePoint).date === 'string' &&
-        typeof (item as VisionTimelinePoint).label === 'string',
+        typeof (item as VisionTimelinePoint).date === 'string',
     )
     .map((item) => ({
       date: item.date,
-      label: item.label,
+      label: typeof item.label === 'string' && item.label ? item.label : item.date,
       fieldIssues: asFiniteNumber(item.fieldIssues),
       focusIssues: asFiniteNumber(item.focusIssues),
       motorIssues: asFiniteNumber(item.motorIssues),
@@ -757,6 +821,8 @@ function parseAssessmentCountTimeline(raw: unknown): AssessmentCountTimelinePoin
     .map((item) => ({
       date: item.date,
       count: asFiniteNumber(item.count),
+      ...(typeof item.label === 'string' && item.label ? { label: item.label } : {}),
+      ...(typeof item.score === 'number' && Number.isFinite(item.score) ? { score: item.score } : {}),
     }));
   return points.length > 0 ? points : undefined;
 }
@@ -780,12 +846,11 @@ function parseVitalityGameTimeline(raw: unknown): VitalityGameTimelinePoint[] | 
       (item): item is VitalityGameTimelinePoint =>
         item != null &&
         typeof item === 'object' &&
-        typeof (item as VitalityGameTimelinePoint).date === 'string' &&
-        typeof (item as VitalityGameTimelinePoint).label === 'string',
+        typeof (item as VitalityGameTimelinePoint).date === 'string',
     )
     .map((item) => ({
       date: item.date,
-      label: item.label,
+      label: typeof item.label === 'string' && item.label ? item.label : item.date,
       games: asFiniteNumber(item.games),
       accuracy: asFiniteNumber(item.accuracy),
     }));

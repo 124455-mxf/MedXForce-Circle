@@ -1,14 +1,22 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { Firestore } from 'firebase/firestore';
 import { ClipboardCopy, Download, FileText, Loader2, Sparkles } from 'lucide-react';
-import type { CareCalendarVisitBrief } from '@medxforce/shared';
+import {
+  capabilitiesForRole,
+  normalizeMemberRole,
+  subscribeCircleAnalyticsSummaries,
+  type CareCalendarVisitBrief,
+  type PatientAnalyticsSummary,
+} from '@medxforce/shared';
 import { generateVisitBrief } from '../services/visitBriefApi';
 import {
   copyVisitBriefToClipboard,
   downloadVisitBriefHtml,
   downloadVisitBriefWord,
 } from '../lib/visitBriefExport';
+import { buildVisitBriefAnalyticsContext } from '../lib/circleAnalyticsDetailRange';
 
 type CircleCareCalendarVisitBriefPanelProps = {
   patientId: string;
@@ -18,6 +26,8 @@ type CircleCareCalendarVisitBriefPanelProps = {
   assessmentHighlights?: string[];
   generatedByUid?: string;
   generatedByName?: string;
+  db?: Firestore;
+  memberRole?: string;
   t: (path: string, params?: Record<string, unknown>) => string;
   onBriefGenerated?: (brief: CareCalendarVisitBrief) => void;
 };
@@ -30,12 +40,36 @@ export function CircleCareCalendarVisitBriefPanel({
   assessmentHighlights = [],
   generatedByUid,
   generatedByName,
+  db,
+  memberRole,
   t,
   onBriefGenerated,
 }: CircleCareCalendarVisitBriefPanelProps) {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [summaries, setSummaries] = useState<PatientAnalyticsSummary[]>([]);
+
+  const role = normalizeMemberRole(memberRole ?? 'friend');
+
+  useEffect(() => {
+    if (!db || !patientId) {
+      setSummaries([]);
+      return;
+    }
+    return subscribeCircleAnalyticsSummaries(
+      db,
+      patientId,
+      role,
+      capabilitiesForRole(role),
+      setSummaries,
+    );
+  }, [db, patientId, role]);
+
+  const analyticsContext = useMemo(
+    () => buildVisitBriefAnalyticsContext(summaries, patientId),
+    [patientId, summaries],
+  );
 
   const runGenerate = async () => {
     setGenerating(true);
@@ -47,6 +81,7 @@ export function CircleCareCalendarVisitBriefPanel({
         generatedByUid,
         generatedByName,
         assessmentHighlights,
+        analyticsWindow: analyticsContext,
       });
       onBriefGenerated?.(next);
     } catch (err) {

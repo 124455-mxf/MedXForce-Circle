@@ -22,8 +22,12 @@ export type CircleSoulGalleryLivePoint = {
   circleReactions: number;
 };
 
-function dateKey(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+function isoDateKey(timestamp: number): string {
+  const d = new Date(timestamp);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function emptyPoint(date: string): CircleSoulGalleryLivePoint {
@@ -37,7 +41,7 @@ function emptyPoint(date: string): CircleSoulGalleryLivePoint {
   };
 }
 
-/** 30 daily buckets of circle-shared photos, videos, and reactions (today on the newest end). */
+/** Sparse daily buckets of circle-shared photos, videos, and reactions. */
 export function buildCircleSoulGalleryLiveTimeline(
   media: CircleSoulGalleryLiveMedia[],
   reactions: CircleSoulGalleryLiveReaction[],
@@ -46,34 +50,33 @@ export function buildCircleSoulGalleryLiveTimeline(
 ): CircleSoulGalleryLivePoint[] {
   if (media.length === 0) return [];
 
-  const now = new Date();
-  const buckets: Record<string, CircleSoulGalleryLivePoint> = {};
-  for (let i = windowDays - 1; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    buckets[date] = emptyPoint(date);
-  }
-
   const cutoff = Date.now() - windowDays * DAY_MS;
   const circleMediaIds = new Set(media.map((item) => item.id));
+  const buckets = new Map<string, CircleSoulGalleryLivePoint>();
+
+  const bucketFor = (timestamp: number) => {
+    const date = isoDateKey(timestamp);
+    const existing = buckets.get(date);
+    if (existing) return existing;
+    const next = emptyPoint(date);
+    buckets.set(date, next);
+    return next;
+  };
 
   for (const item of media) {
     if (item.timestamp < cutoff) continue;
-    const bucket = buckets[dateKey(item.timestamp)];
-    if (!bucket) continue;
+    const bucket = bucketFor(item.timestamp);
     if (item.isVideo) bucket.videos += 1;
     else bucket.photos += 1;
   }
 
   for (const reaction of reactions) {
     if (!circleMediaIds.has(reaction.mediaId) || reaction.timestamp < cutoff) continue;
-    const bucket = buckets[dateKey(reaction.timestamp)];
-    if (!bucket) continue;
+    const bucket = bucketFor(reaction.timestamp);
     bucket.reactions += 1;
     if (patientUid && reaction.userId === patientUid) bucket.patientReactions += 1;
     else bucket.circleReactions += 1;
   }
 
-  return Object.values(buckets);
+  return [...buckets.values()].sort((a, b) => a.date.localeCompare(b.date));
 }

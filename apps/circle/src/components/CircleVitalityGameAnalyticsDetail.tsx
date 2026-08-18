@@ -23,29 +23,31 @@ type CircleVitalityGameAnalyticsDetailProps = {
   trend?: AnalyticsTrendDirection;
   level?: string;
   timeline?: VitalityGameTimelinePoint[];
+  windowLabel?: string;
 };
 
 function accuracyTrendCopy(
   trend: AnalyticsTrendDirection,
   t: ReturnType<typeof useCircleT>,
+  windowLabel: string,
 ): { label: string; hint: string; colorClass: string } {
   if (trend === 'up') {
     return {
       label: analyticsTrendImprovingDeclining(t, trend),
-      hint: t('analytics.vitalityGame.improvingHint'),
+      hint: t('analytics.vitalityGame.improvingHint', { window: windowLabel }),
       colorClass: 'text-emerald-700 bg-emerald-50',
     };
   }
   if (trend === 'down') {
     return {
       label: analyticsTrendImprovingDeclining(t, trend),
-      hint: t('analytics.vitalityGame.decliningHint'),
+      hint: t('analytics.vitalityGame.decliningHint', { window: windowLabel }),
       colorClass: 'text-amber-700 bg-amber-50',
     };
   }
   return {
     label: analyticsTrendImprovingDeclining(t, trend),
-    hint: t('analytics.vitalityGame.aboutSameHint'),
+    hint: t('analytics.vitalityGame.aboutSameHint', { window: windowLabel }),
     colorClass: 'text-slate-600 bg-slate-100',
   };
 }
@@ -57,10 +59,12 @@ export function CircleVitalityGameAnalyticsDetail({
   trend = 'stable',
   level = 'N/A',
   timeline,
+  windowLabel,
 }: CircleVitalityGameAnalyticsDetailProps) {
   const t = useCircleT();
   const [chartType, setChartType] = useState<CircleAnalyticsChartType>('bar');
-  const copy = accuracyTrendCopy(trend, t);
+  const rangeLabel = windowLabel ?? analyticsWindowDaysLabel(t, 30);
+  const copy = accuracyTrendCopy(trend, t, rangeLabel);
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
   const gamesLabel = t('analytics.vitalityGame.gamesPlayed');
   const accuracyLabel = t('analytics.vitalityGame.avgAccuracy');
@@ -69,7 +73,7 @@ export function CircleVitalityGameAnalyticsDetail({
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="px-3 py-2 border-b border-slate-100 bg-purple-50/50">
         <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
-          {analyticsWindowDaysLabel(t, 30)}
+          {rangeLabel}
         </p>
       </div>
       <div className="p-4 space-y-4">
@@ -100,7 +104,7 @@ export function CircleVitalityGameAnalyticsDetail({
           icon={Sparkles}
           title={gamesLabel}
           value={gamesPlayed}
-          hint={t('analytics.vitalityGame.gamesHint')}
+          hint={t('analytics.vitalityGame.gamesHint', { window: rangeLabel })}
           color="#a855f7"
           iconWrapClass="text-purple-600"
           cardClass="border-purple-200 bg-purple-50/50"
@@ -113,7 +117,7 @@ export function CircleVitalityGameAnalyticsDetail({
           icon={Target}
           title={accuracyLabel}
           value={`${avgAccuracy}%`}
-          hint={t('analytics.vitalityGame.accuracyHint')}
+          hint={t('analytics.vitalityGame.accuracyHint', { window: rangeLabel })}
           color="#2563eb"
           iconWrapClass="text-blue-600"
           cardClass="border-blue-200 bg-blue-50/50"
@@ -131,7 +135,7 @@ export function CircleVitalityGameAnalyticsDetail({
             icon={Clock}
             title={t('analytics.vitalityGame.totalTime')}
             value={totalTimeLabel}
-            hint={t('analytics.vitalityGame.timeHint')}
+            hint={t('analytics.vitalityGame.timeHint', { window: rangeLabel })}
             iconWrapClass="text-slate-600"
             cardClass="border-slate-200 bg-slate-50/70"
             titleClass="text-slate-600"

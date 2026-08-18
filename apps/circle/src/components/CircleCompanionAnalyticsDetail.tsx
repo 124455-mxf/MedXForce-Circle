@@ -23,6 +23,7 @@ type CircleCompanionAnalyticsDetailProps = {
   trend?: AnalyticsTrendDirection;
   topTopics?: TopCountItem[];
   timeline?: CompanionTimelinePoint[];
+  windowLabel?: string;
 };
 
 function TrendSummary({
@@ -79,9 +80,11 @@ export function CircleCompanionAnalyticsDetail({
   trend = 'stable',
   topTopics,
   timeline,
+  windowLabel,
 }: CircleCompanionAnalyticsDetailProps) {
   const t = useCircleT();
   const [chartType, setChartType] = useState<CircleAnalyticsChartType>('bar');
+  const rangeLabel = windowLabel ?? analyticsWindowDaysLabel(t, 30);
   const conversationsLabel = t('analytics.companion.conversations');
   const interactionsLabel = t('analytics.companion.interactions');
   const detectedLabel = t('analytics.companion.detected');
@@ -90,14 +93,14 @@ export function CircleCompanionAnalyticsDetail({
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="px-3 py-2 border-b border-slate-100 bg-blue-50/60">
         <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
-          {analyticsWindowDaysLabel(t, 30)}
+          {rangeLabel}
         </p>
       </div>
       <div className="p-4 space-y-4">
         <div>
           <p className="text-[12px] font-bold text-blue-500 uppercase">{t('analytics.metrics.companion')}</p>
           <p className="text-3xl font-black text-blue-600 leading-none mt-1 tabular-nums">{total}</p>
-          <p className="text-[11px] text-slate-400 mt-1 leading-snug">{t('analytics.companion.totalHint')}</p>
+          <p className="text-[11px] text-slate-400 mt-1 leading-snug">{t('analytics.companion.totalHint', { window: rangeLabel })}</p>
         </div>
 
         <div className="flex items-center justify-between gap-2">
@@ -118,7 +121,7 @@ export function CircleCompanionAnalyticsDetail({
           icon={MessageCircle}
           title={conversationsLabel}
           value={conversations}
-          hint={t('analytics.companion.conversationsHint')}
+          hint={t('analytics.companion.conversationsHint', { window: rangeLabel })}
           color="#2563eb"
           iconWrapClass="text-blue-600"
           cardClass="border-blue-200 bg-blue-50/50"
@@ -131,7 +134,7 @@ export function CircleCompanionAnalyticsDetail({
           icon={Sparkles}
           title={interactionsLabel}
           value={interactions}
-          hint={t('analytics.companion.interactionsHint')}
+          hint={t('analytics.companion.interactionsHint', { window: rangeLabel })}
           color="#059669"
           iconWrapClass="text-emerald-600"
           cardClass="border-emerald-200 bg-emerald-50/50"
@@ -159,7 +162,7 @@ export function CircleCompanionAnalyticsDetail({
             icon={Bot}
             title={t('analytics.companion.new')}
             value={newCount}
-            hint={t('analytics.companion.newHint')}
+            hint={t('analytics.companion.newHint', { window: rangeLabel })}
             iconWrapClass="text-sky-600"
             cardClass="border-sky-200 bg-sky-50/50"
             titleClass="text-sky-700"
@@ -169,7 +172,7 @@ export function CircleCompanionAnalyticsDetail({
             icon={RefreshCw}
             title={t('analytics.companion.resume')}
             value={resumed}
-            hint={t('analytics.companion.resumeHint')}
+            hint={t('analytics.companion.resumeHint', { window: rangeLabel })}
             iconWrapClass="text-indigo-600"
             cardClass="border-indigo-200 bg-indigo-50/50"
             titleClass="text-indigo-700"

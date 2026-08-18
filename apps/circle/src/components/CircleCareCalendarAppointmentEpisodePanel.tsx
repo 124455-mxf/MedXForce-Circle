@@ -50,6 +50,7 @@ type CircleCareCalendarAppointmentEpisodePanelProps = {
   onClinicalReferenceIdsChange?: (ids: string[]) => void | Promise<void>;
   onManageClinicalReferences?: () => void;
   onVisitDebriefChange?: (debrief: CareCalendarVisitDebrief) => void | Promise<void>;
+  memberRole?: string;
 };
 
 export function CircleCareCalendarAppointmentEpisodePanel({
@@ -70,6 +71,7 @@ export function CircleCareCalendarAppointmentEpisodePanel({
   onClinicalReferenceIdsChange,
   onManageClinicalReferences,
   onVisitDebriefChange,
+  memberRole,
 }: CircleCareCalendarAppointmentEpisodePanelProps) {
   const hasEpisode = supportsCareCalendarAppointmentEpisode(event.kind);
   const [tab, setTab] = useState<EpisodeTab>('details');
@@ -284,6 +286,8 @@ export function CircleCareCalendarAppointmentEpisodePanel({
               assessmentHighlights={assessmentHighlights}
               generatedByUid={currentUserUid}
               generatedByName={currentUserName}
+              db={db}
+              memberRole={memberRole}
               t={t}
               onBriefGenerated={(brief) => setBriefOverride(brief)}
             />

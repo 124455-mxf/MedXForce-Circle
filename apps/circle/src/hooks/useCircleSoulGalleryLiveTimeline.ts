@@ -29,6 +29,7 @@ const EMPTY: CircleSoulGalleryLiveStats = {
 export function useCircleSoulGalleryLiveTimeline(
   patientId: string | undefined,
   enabled = true,
+  windowDays = 30,
 ): CircleSoulGalleryLiveStats {
   const [media, setMedia] = useState<CircleSoulGalleryLiveMedia[]>([]);
   const [reactions, setReactions] = useState<CircleSoulGalleryLiveReaction[]>([]);
@@ -122,7 +123,7 @@ export function useCircleSoulGalleryLiveTimeline(
 
   return useMemo(() => {
     void viewedTick;
-    const timeline = buildCircleSoulGalleryLiveTimeline(media, reactions, patientId ?? '');
+    const timeline = buildCircleSoulGalleryLiveTimeline(media, reactions, patientId ?? '', windowDays);
     const circleViewed = patientId && memberUid ? getCircleGalleryViewedIds(patientId, memberUid) : new Set<string>();
     const circleUnseenPhotoCount = media.filter((item) => {
       if (item.isVideo) return false;
@@ -134,5 +135,5 @@ export function useCircleSoulGalleryLiveTimeline(
         ? null
         : media.filter((item) => !item.isVideo && !patientViewedIds.has(item.id)).length;
     return { timeline, circleUnseenPhotoCount, patientUnseenPhotoCount };
-  }, [media, memberUid, patientId, patientViewedIds, reactions, viewedTick]);
+  }, [media, memberUid, patientId, patientViewedIds, reactions, viewedTick, windowDays]);
 }

@@ -23,6 +23,8 @@ type CircleSoulAnalyticsDetailProps = {
   latestAt?: number | null;
   trend?: AnalyticsTrendDirection;
   timeline?: SoulGalleryTimelinePoint[];
+  windowLabel?: string;
+  windowDays?: number;
 };
 
 function formatLatestDate(timestamp: number | null | undefined): string {
@@ -37,24 +39,25 @@ function formatLatestDate(timestamp: number | null | undefined): string {
 function shareTrendCopy(
   trend: AnalyticsTrendDirection,
   t: ReturnType<typeof useCircleT>,
+  windowLabel: string,
 ): { label: string; hint: string; colorClass: string } {
   if (trend === 'up') {
     return {
       label: t('analytics.trendMoreShared'),
-      hint: t('analytics.soul.moreSharedHint'),
+      hint: t('analytics.soul.moreSharedHint', { window: windowLabel }),
       colorClass: 'text-emerald-700 bg-emerald-50',
     };
   }
   if (trend === 'down') {
     return {
       label: t('analytics.trendFewerShared'),
-      hint: t('analytics.soul.fewerSharedHint'),
+      hint: t('analytics.soul.fewerSharedHint', { window: windowLabel }),
       colorClass: 'text-amber-700 bg-amber-50',
     };
   }
   return {
     label: t('analytics.trendAboutTheSame'),
-    hint: t('analytics.soul.aboutSameHint'),
+    hint: t('analytics.soul.aboutSameHint', { window: windowLabel }),
     colorClass: 'text-slate-600 bg-slate-100',
   };
 }
@@ -69,14 +72,24 @@ export function CircleSoulAnalyticsDetail({
   latestAt = null,
   trend = 'stable',
   timeline,
+  windowLabel,
+  windowDays = 30,
 }: CircleSoulAnalyticsDetailProps) {
   const t = useCircleT();
   const [chartType, setChartType] = useState<CircleAnalyticsChartType>('bar');
-  const live = useCircleSoulGalleryLiveTimeline(patientId);
+  const rangeLabel = windowLabel ?? analyticsWindowDaysLabel(t, 30);
+  const live = useCircleSoulGalleryLiveTimeline(patientId, true, windowDays);
+  const hasSyncedTimeline = Array.isArray(timeline) && timeline.length > 0;
   const chartTimeline = useMemo(() => {
-    if (live.timeline.length > 0) return live.timeline;
-    return Array.isArray(timeline) ? timeline : [];
-  }, [live.timeline, timeline]);
+    if (hasSyncedTimeline) return timeline;
+    return live.timeline;
+  }, [hasSyncedTimeline, timeline, live.timeline]);
+  const livePhotos = live.timeline.reduce((sum, point) => sum + point.photos, 0);
+  const liveVideos = live.timeline.reduce((sum, point) => sum + point.videos, 0);
+  const liveReactions = live.timeline.reduce((sum, point) => sum + point.reactions, 0);
+  const displayPhotoCount = hasSyncedTimeline ? photoCount : livePhotos;
+  const displayVideoCount = hasSyncedTimeline ? videoCount : liveVideos;
+  const displayReactionCount = hasSyncedTimeline ? reactionCount : liveReactions;
   const hasLiveSplit = live.timeline.length > 0;
   const patientReactionCount = hasLiveSplit
     ? live.timeline.reduce((sum, point) => sum + point.patientReactions, 0)
@@ -86,7 +99,7 @@ export function CircleSoulAnalyticsDetail({
     : 0;
   const circleUnseen = live.circleUnseenPhotoCount;
   const patientUnseen = live.patientUnseenPhotoCount ?? unseenPhotoCount;
-  const copy = shareTrendCopy(trend, t);
+  const copy = shareTrendCopy(trend, t, rangeLabel);
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
   const hasChart = chartTimeline.length > 0;
 
@@ -94,7 +107,7 @@ export function CircleSoulAnalyticsDetail({
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="px-3 py-2 border-b border-slate-100 bg-rose-50/50">
         <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
-          {analyticsWindowDaysLabel(t, 30)}
+          {rangeLabel}
         </p>
       </div>
       <div className="p-4 space-y-3">
@@ -113,8 +126,8 @@ export function CircleSoulAnalyticsDetail({
         <CircleAnalyticsSeriesCard
           icon={Image}
           title={t('analytics.soul.photos')}
-          value={photoCount}
-          hint={t('analytics.soul.photosHint')}
+          value={displayPhotoCount}
+          hint={t('analytics.soul.photosHint', { window: rangeLabel })}
           color="#e11d48"
           iconWrapClass="text-rose-600"
           cardClass="border-rose-200 bg-rose-50/50"
@@ -126,8 +139,8 @@ export function CircleSoulAnalyticsDetail({
         <CircleAnalyticsSeriesCard
           icon={Video}
           title={t('analytics.soul.videos')}
-          value={videoCount}
-          hint={t('analytics.soul.videosHint')}
+          value={displayVideoCount}
+          hint={t('analytics.soul.videosHint', { window: rangeLabel })}
           color="#2563eb"
           iconWrapClass="text-blue-600"
           cardClass="border-blue-200 bg-blue-50/50"
@@ -142,7 +155,7 @@ export function CircleSoulAnalyticsDetail({
               icon={Heart}
               title={t('analytics.soul.reactionsByPatient')}
               value={patientReactionCount}
-              hint={t('analytics.soul.reactionsByPatientHint')}
+              hint={t('analytics.soul.reactionsByPatientHint', { window: rangeLabel })}
               color="#7c3aed"
               iconWrapClass="text-violet-600"
               cardClass="border-violet-200 bg-violet-50/50"
@@ -155,7 +168,7 @@ export function CircleSoulAnalyticsDetail({
               icon={Users}
               title={t('analytics.soul.reactionsByCircle')}
               value={circleReactionCount}
-              hint={t('analytics.soul.reactionsByCircleHint')}
+              hint={t('analytics.soul.reactionsByCircleHint', { window: rangeLabel })}
               color="#4f46e5"
               iconWrapClass="text-indigo-600"
               cardClass="border-indigo-200 bg-indigo-50/50"
@@ -169,8 +182,8 @@ export function CircleSoulAnalyticsDetail({
           <CircleAnalyticsSeriesCard
             icon={Heart}
             title={t('analytics.soul.reactions')}
-            value={reactionCount}
-            hint={t('analytics.soul.reactionsHint')}
+            value={displayReactionCount}
+            hint={t('analytics.soul.reactionsHint', { window: rangeLabel })}
             color="#7c3aed"
             iconWrapClass="text-violet-600"
             cardClass="border-violet-200 bg-violet-50/50"

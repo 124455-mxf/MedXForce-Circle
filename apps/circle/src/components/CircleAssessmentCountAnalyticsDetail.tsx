@@ -18,6 +18,7 @@ type CircleAssessmentCountAnalyticsDetailProps = {
   average?: number | null;
   trend?: AnalyticsTrendDirection;
   timeline?: AssessmentCountTimelinePoint[];
+  windowLabel?: string;
 };
 
 const PHYSICAL_THEMES: Record<
@@ -114,21 +115,25 @@ export function CircleAssessmentCountAnalyticsDetail({
   average,
   trend = 'stable',
   timeline,
+  windowLabel,
 }: CircleAssessmentCountAnalyticsDetailProps) {
   const t = useCircleT();
   const [chartType, setChartType] = useState<CircleAnalyticsChartType>('bar');
   const theme = (metricId && PHYSICAL_THEMES[metricId]) || DEFAULT_THEME;
-  const entriesLabel = t('analytics.entries30Days');
+  const rangeLabel = windowLabel ?? analyticsWindowDaysLabel(t, 30);
+  const entriesLabel = t('analytics.entriesInWindow');
   const averageLabel = t('analytics.average');
   const chartData = seriesFromKeyedTimeline(timeline, 'count');
   const averageHint =
-    metricId === 'pain' ? t('analytics.assessmentCount.painAverageHint') : t('analytics.assessmentCount.averageHint');
+    metricId === 'pain'
+      ? t('analytics.assessmentCount.painAverageHint', { window: rangeLabel })
+      : t('analytics.assessmentCount.averageHint', { window: rangeLabel });
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className={cn('px-3 py-2 border-b border-slate-100', theme.headerClass)}>
         <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
-          {analyticsWindowDaysLabel(t, 30)}
+          {rangeLabel}
         </p>
       </div>
       <div className="p-4 space-y-4">
@@ -150,7 +155,7 @@ export function CircleAssessmentCountAnalyticsDetail({
           icon={theme.icon}
           title={entriesLabel}
           value={count}
-          hint={t('analytics.assessmentCount.entriesHint')}
+          hint={t('analytics.assessmentCount.entriesHint', { window: rangeLabel })}
           color={theme.color}
           iconWrapClass={theme.iconWrapClass}
           cardClass={theme.cardClass}

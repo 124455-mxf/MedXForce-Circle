@@ -23,6 +23,7 @@ import {
 } from '../lib/circleAnalyticsChart';
 import { useCircleT } from '../lib/circleI18nContext';
 import { analyticsWindowDaysLabel } from '../lib/circleAnalyticsI18n';
+import type { AnalyticsDetailChartGrain } from '../lib/circleAnalyticsDetailRange';
 import { cn } from '../lib/utils';
 import { CircleAnalyticsChartXAxis } from './CircleAnalyticsChartXAxis';
 
@@ -34,6 +35,8 @@ type CircleDailyCheckInAnalyticsDetailProps = {
   trend?: AnalyticsTrendDirection;
   answerTrend?: DailyCheckInAnswerTrendPoint[];
   timeline?: DailyCheckInTimelinePoint[];
+  windowLabel?: string;
+  grain?: AnalyticsDetailChartGrain;
 };
 
 type DailyCheckInChartView = 'answers' | 'participation';
@@ -59,24 +62,25 @@ const SLEEP_COLOR = '#8b5cf6';
 function engagementTrendCopy(
   trend: AnalyticsTrendDirection,
   t: ReturnType<typeof useCircleT>,
+  windowLabel: string,
 ): { label: string; hint: string; colorClass: string } {
   if (trend === 'up') {
     return {
       label: t('analytics.trendMoreCheckIns'),
-      hint: t('analytics.dailyCheckIn.moreCheckInsHint'),
+      hint: t('analytics.dailyCheckIn.moreCheckInsHint', { window: windowLabel }),
       colorClass: 'text-emerald-700 bg-emerald-50',
     };
   }
   if (trend === 'down') {
     return {
       label: t('analytics.trendFewerCheckIns'),
-      hint: t('analytics.dailyCheckIn.fewerCheckInsHint'),
+      hint: t('analytics.dailyCheckIn.fewerCheckInsHint', { window: windowLabel }),
       colorClass: 'text-amber-700 bg-amber-50',
     };
   }
   return {
     label: t('analytics.trendAboutTheSame'),
-    hint: t('analytics.dailyCheckIn.aboutSameCheckInsHint'),
+    hint: t('analytics.dailyCheckIn.aboutSameCheckInsHint', { window: windowLabel }),
     colorClass: 'text-slate-600 bg-slate-100',
   };
 }
@@ -84,11 +88,13 @@ function engagementTrendCopy(
 function EngagementTrendRow({
   trend,
   t,
+  windowLabel,
 }: {
   trend: AnalyticsTrendDirection;
   t: ReturnType<typeof useCircleT>;
+  windowLabel: string;
 }) {
-  const copy = engagementTrendCopy(trend, t);
+  const copy = engagementTrendCopy(trend, t, windowLabel);
   const Icon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
   return (
     <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3 space-y-1">
@@ -161,18 +167,24 @@ function formatTooltipValue(
   return String(value);
 }
 
+function nearestMoodSleepScore(value: number): 1 | 2 | 3 {
+  if (value >= 2.5) return 3;
+  if (value >= 1.5) return 2;
+  return 1;
+}
+
 function moodLabel(value: number, t: ReturnType<typeof useCircleT>): string {
-  if (value === 3) return t('analytics.dailyCheckIn.moodGood');
-  if (value === 2) return t('analytics.dailyCheckIn.moodOk');
-  if (value === 1) return t('analytics.dailyCheckIn.moodBad');
-  return String(value);
+  const rounded = nearestMoodSleepScore(value);
+  if (rounded === 3) return t('analytics.dailyCheckIn.moodGood');
+  if (rounded === 2) return t('analytics.dailyCheckIn.moodOk');
+  return t('analytics.dailyCheckIn.moodBad');
 }
 
 function sleepLabel(value: number, t: ReturnType<typeof useCircleT>): string {
-  if (value === 3) return t('analytics.dailyCheckIn.sleepWell');
-  if (value === 2) return t('analytics.dailyCheckIn.sleepOk');
-  if (value === 1) return t('analytics.dailyCheckIn.sleepPoorly');
-  return String(value);
+  const rounded = nearestMoodSleepScore(value);
+  if (rounded === 3) return t('analytics.dailyCheckIn.sleepWell');
+  if (rounded === 2) return t('analytics.dailyCheckIn.sleepOk');
+  return t('analytics.dailyCheckIn.sleepPoorly');
 }
 
 type CheckInMiniPoint = {
@@ -331,10 +343,10 @@ function participationTooltipFormatter(
   name: string | undefined,
   t: ReturnType<typeof useCircleT>,
 ): string | null {
-  if (value !== 1) return null;
-  if (name === 'finished') return t('analytics.dailyCheckIn.finished');
-  if (name === 'skipped') return t('analytics.dailyCheckIn.skipped');
-  if (name === 'notTaken') return t('analytics.dailyCheckIn.notTaken');
+  if (value == null || value <= 0) return null;
+  if (name === 'finished') return `${t('analytics.dailyCheckIn.finished')}: ${value}`;
+  if (name === 'skipped') return `${t('analytics.dailyCheckIn.skipped')}: ${value}`;
+  if (name === 'notTaken') return `${t('analytics.dailyCheckIn.notTaken')}: ${value}`;
   return null;
 }
 
@@ -346,9 +358,12 @@ export function CircleDailyCheckInAnalyticsDetail({
   trend = 'stable',
   answerTrend,
   timeline,
+  windowLabel,
+  grain = 'day',
 }: CircleDailyCheckInAnalyticsDetailProps) {
   const t = useCircleT();
   const [chartView, setChartView] = useState<DailyCheckInChartView>('answers');
+  const rangeLabel = windowLabel ?? analyticsWindowDaysLabel(t, 30);
 
   const painLabel = t('analytics.dailyCheckIn.pain');
   const moodLabelText = t('analytics.dailyCheckIn.mood');
@@ -361,14 +376,38 @@ export function CircleDailyCheckInAnalyticsDetail({
     skipRate: `${skipRate}%`,
   };
 
-  const answerChartData = useMemo(
-    () =>
-      prepareDailyCheckInAnswerTrendChartData(
-        Array.isArray(answerTrend) ? answerTrend : undefined,
-        Array.isArray(timeline) ? timeline : undefined,
-      ),
-    [answerTrend, timeline],
-  );
+  const answerChartData = useMemo(() => {
+    if (grain !== 'day') {
+      const buckets =
+        Array.isArray(timeline) && timeline.length > 0
+          ? timeline
+          : Array.isArray(answerTrend)
+            ? answerTrend
+            : [];
+      const answersByDate = new Map(
+        (Array.isArray(answerTrend) ? answerTrend : []).map((point) => [point.date, point]),
+      );
+      return [...buckets].reverse().map((point, daysAgo) => {
+        const matched = answersByDate.get(point.date);
+        return {
+          daysAgo,
+          date: point.date,
+          chartDate: point.date,
+          label: point.label ?? point.date,
+          mood: matched?.mood ?? ('mood' in point ? (point as { mood?: number }).mood ?? null : null),
+          pain: matched?.pain ?? ('pain' in point ? (point as { pain?: number }).pain ?? null : null),
+          sleep: matched?.sleep ?? ('sleep' in point ? (point as { sleep?: number }).sleep ?? null : null),
+          vitality:
+            matched?.vitality ??
+            ('vitality' in point ? (point as { vitality?: number }).vitality ?? null : null),
+        };
+      });
+    }
+    return prepareDailyCheckInAnswerTrendChartData(
+      Array.isArray(answerTrend) ? answerTrend : undefined,
+      Array.isArray(timeline) ? timeline : undefined,
+    );
+  }, [answerTrend, grain, timeline]);
   const participationChartData = useMemo(
     () => prepareDailyCheckInParticipationChartData(Array.isArray(timeline) ? timeline : undefined),
     [timeline],
@@ -387,12 +426,14 @@ export function CircleDailyCheckInAnalyticsDetail({
 
   const participationSummary = useMemo(() => {
     const source = Array.isArray(timeline) ? timeline : [];
-    const finished = source.reduce((sum, point) => sum + (point.completed > 0 ? 1 : 0), 0);
-    const skippedDays = source.reduce((sum, point) => sum + (point.skipped > 0 ? 1 : 0), 0);
-    const notTaken = source.reduce(
-      (sum, point) => sum + (point.completed === 0 && point.skipped === 0 ? 1 : 0),
-      0,
-    );
+    const finished = source.reduce((sum, point) => sum + point.completed, 0);
+    const skippedDays = source.reduce((sum, point) => sum + point.skipped, 0);
+    const notTaken = source.reduce((sum, point) => {
+      if (typeof point.notTaken === 'number' && Number.isFinite(point.notTaken)) {
+        return sum + point.notTaken;
+      }
+      return sum + (point.completed === 0 && point.skipped === 0 ? 1 : 0);
+    }, 0);
     return { finished, skipped: skippedDays, notTaken };
   }, [timeline]);
 
@@ -400,7 +441,7 @@ export function CircleDailyCheckInAnalyticsDetail({
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="px-3 py-2 border-b border-slate-100 bg-emerald-50/50">
         <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
-          {analyticsWindowDaysLabel(t, 30)}
+          {rangeLabel}
         </p>
       </div>
       <div className="p-4 space-y-4">
@@ -418,7 +459,7 @@ export function CircleDailyCheckInAnalyticsDetail({
           ))}
         </div>
 
-        <EngagementTrendRow trend={trend} t={t} />
+        <EngagementTrendRow trend={trend} t={t} windowLabel={rangeLabel} />
 
         {chartView === 'participation' && hasParticipationChart ? (
           <div className="grid grid-cols-3 gap-2">
@@ -563,7 +604,7 @@ export function CircleDailyCheckInAnalyticsDetail({
             <p className="text-[13px] text-slate-400 text-center leading-relaxed py-2">
               {completed > 0
                 ? t('analytics.dailyCheckIn.answerTrendsNotSynced')
-                : t('analytics.dailyCheckIn.noCheckInsInWindow')}
+                : t('analytics.dailyCheckIn.noCheckInsInWindow', { window: rangeLabel })}
             </p>
           )
         ) : hasParticipationChart ? (
@@ -572,7 +613,10 @@ export function CircleDailyCheckInAnalyticsDetail({
               <BarChart data={participationChartData} margin={chartMargin}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <CircleAnalyticsChartXAxis variant="daily" />
-                <YAxis hide domain={[0, 1]} />
+                <YAxis
+                  hide
+                  domain={grain === 'day' ? [0, 1] : grain === 'week' ? [0, 7] : [0, 31]}
+                />
                 <Tooltip
                   labelFormatter={circleAnalyticsTooltipLabelFormatter}
                   formatter={(value, name) =>

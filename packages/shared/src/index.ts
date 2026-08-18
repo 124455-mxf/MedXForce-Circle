@@ -48,6 +48,7 @@ export * from './circleMemberRoles';
 export * from './circleMemberThreads';
 export * from './circleMemberThreadReplies';
 export * from './analyticsSummaries';
+export * from './analyticsDetailRange';
 export * from './analyticsMetricDetail';
 export * from './remoteSettings';
 export * from './applicationOverview';

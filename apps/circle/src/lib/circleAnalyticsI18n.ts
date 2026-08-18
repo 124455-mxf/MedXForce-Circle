@@ -1,4 +1,5 @@
 import type {
+  AnalyticsDetailRangeId,
   AnalyticsMetricId,
   AnalyticsSectionId,
   AnalyticsTrendDirection,
@@ -214,6 +215,16 @@ export function analyticsSummaryFooterText(
 
 export function analyticsWindowDaysLabel(t: CircleTranslator, days: number): string {
   return t('analytics.windowDays', { days });
+}
+
+export function analyticsDetailRangeWindowLabel(
+  t: CircleTranslator,
+  rangeId: AnalyticsDetailRangeId,
+  windowDays?: number,
+): string {
+  if (rangeId === 'all') return t('analytics.windowSinceStart');
+  if (rangeId === '180') return t('analytics.window6Months');
+  return t('analytics.windowDays', { days: windowDays ?? (rangeId === '90' ? 90 : 30) });
 }
 
 export function analyticsLastDaysLabel(t: CircleTranslator, days: number): string {

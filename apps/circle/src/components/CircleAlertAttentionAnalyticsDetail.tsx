@@ -29,6 +29,7 @@ type CircleAlertAttentionAnalyticsDetailProps = {
   attentions?: number;
   trend?: AnalyticsTrendDirection;
   timeline?: AlertAttentionTimelinePoint[];
+  windowLabel?: string;
 };
 
 const ALERT_COLOR = '#dc2626';
@@ -199,9 +200,11 @@ export function CircleAlertAttentionAnalyticsDetail({
   attentions = 0,
   trend = 'stable',
   timeline,
+  windowLabel,
 }: CircleAlertAttentionAnalyticsDetailProps) {
   const t = useCircleT();
   const [chartType, setChartType] = useState<'line' | 'bar'>('bar');
+  const rangeLabel = windowLabel ?? analyticsWindowDaysLabel(t, 30);
   const alertLabel = t('analytics.alertAttention.alert');
   const attentionLabel = t('analytics.alertAttention.attention');
   const alertChartData = seriesFromTimeline(timeline, 'alert');
@@ -211,7 +214,7 @@ export function CircleAlertAttentionAnalyticsDetail({
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="px-3 py-2 border-b border-slate-100 bg-rose-50/60">
         <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
-          {analyticsWindowDaysLabel(t, 30)}
+          {rangeLabel}
         </p>
       </div>
       <div className="p-4 space-y-4">
@@ -253,7 +256,7 @@ export function CircleAlertAttentionAnalyticsDetail({
           icon={Siren}
           title={alertLabel}
           value={alerts}
-          hint={t('analytics.alertAttention.alertHint')}
+          hint={t('analytics.alertAttention.alertHint', { window: rangeLabel })}
           color={ALERT_COLOR}
           iconWrapClass="text-red-600"
           cardClass="border-red-200 bg-red-50/50"
@@ -266,7 +269,7 @@ export function CircleAlertAttentionAnalyticsDetail({
           icon={Bell}
           title={attentionLabel}
           value={attentions}
-          hint={t('analytics.alertAttention.attentionHint')}
+          hint={t('analytics.alertAttention.attentionHint', { window: rangeLabel })}
           color={ATTENTION_COLOR}
           iconWrapClass="text-blue-600"
           cardClass="border-blue-200 bg-blue-50/50"

@@ -7,6 +7,7 @@ import {
   completionTimestampsFromAnalyticsTimeline,
   type AnalyticsAdherenceTimelinePoint,
 } from '../lib/circleAssessmentAdherence';
+import { coarsenAdherenceTimeline, type AnalyticsDetailChartGrain } from '../lib/circleAnalyticsDetailRange';
 import { analyticsMetricIdToAssessmentScheduleId } from '../lib/circleAssessmentScheduleMetrics';
 import {
   CircleAnalyticsChartTypeToggle,
@@ -20,6 +21,9 @@ type CircleAssessmentScheduleAdherenceBlockProps = {
   scheduleEnabled?: boolean;
   timeline?: AnalyticsAdherenceTimelinePoint[];
   latestAt?: number | null;
+  windowDays?: number;
+  grain?: AnalyticsDetailChartGrain;
+  windowLabel?: string;
 };
 
 const TAKEN_MISSED_DOMAIN: [number, number] = [0, 1];
@@ -31,6 +35,9 @@ export function CircleAssessmentScheduleAdherenceBlock({
   scheduleEnabled = true,
   timeline,
   latestAt,
+  windowDays,
+  grain = 'day',
+  windowLabel,
 }: CircleAssessmentScheduleAdherenceBlockProps) {
   const t = useCircleT();
   const [chartType, setChartType] = useState<CircleAnalyticsChartType>('bar');
@@ -48,10 +55,22 @@ export function CircleAssessmentScheduleAdherenceBlock({
     return buildAssessmentScheduleAdherence({
       recurrence: rule.recurrence,
       completions: completionTimestampsFromAnalyticsTimeline(timeline, latestAt),
+      windowDays,
     });
-  }, [latestAt, rule, timeline]);
+  }, [latestAt, rule, timeline, windowDays]);
 
   if (!rule || !adherence) return null;
+
+  const takenChart = coarsenAdherenceTimeline(adherence.takenTimeline, grain);
+  const missedChart = coarsenAdherenceTimeline(adherence.missedTimeline, grain);
+  const maxChartValue = Math.max(
+    1,
+    ...takenChart.map((point) => point.value),
+    ...missedChart.map((point) => point.value),
+  );
+  const yDomain: [number, number] = grain === 'day' ? TAKEN_MISSED_DOMAIN : [0, maxChartValue];
+  const yTicks = grain === 'day' ? TAKEN_MISSED_TICKS : undefined;
+  const windowHint = windowLabel ?? t('analytics.windowDays', { days: windowDays ?? 30 });
 
   const graceHint =
     adherence.graceDays > 0
@@ -89,6 +108,7 @@ export function CircleAssessmentScheduleAdherenceBlock({
           hint={t('analytics.scheduleAdherence.takenHint', {
             taken: adherence.taken,
             scheduled: adherence.scheduled,
+            window: windowHint,
           })}
           color="#059669"
           iconWrapClass="text-emerald-600"
@@ -96,9 +116,9 @@ export function CircleAssessmentScheduleAdherenceBlock({
           titleClass="text-emerald-700"
           valueClass="text-emerald-700"
           chartType={chartType}
-          chartData={adherence.takenTimeline}
-          yDomain={TAKEN_MISSED_DOMAIN}
-          yTicks={TAKEN_MISSED_TICKS}
+          chartData={takenChart}
+          yDomain={yDomain}
+          yTicks={yTicks}
         />
 
         <CircleAnalyticsSeriesCard
@@ -115,9 +135,9 @@ export function CircleAssessmentScheduleAdherenceBlock({
           titleClass="text-rose-700"
           valueClass="text-rose-700"
           chartType={chartType}
-          chartData={adherence.missedTimeline}
-          yDomain={TAKEN_MISSED_DOMAIN}
-          yTicks={TAKEN_MISSED_TICKS}
+          chartData={missedChart}
+          yDomain={yDomain}
+          yTicks={yTicks}
         />
       </div>
     </div>

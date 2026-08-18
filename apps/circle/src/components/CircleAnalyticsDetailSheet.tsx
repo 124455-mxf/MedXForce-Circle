@@ -20,7 +20,17 @@ import type {
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 import { useCircleT } from '../lib/circleI18nContext';
-import { analyticsLastDaysLabel } from '../lib/circleAnalyticsI18n';
+import { analyticsDetailRangeWindowLabel } from '../lib/circleAnalyticsI18n';
+import {
+  analyticsDetailRangeDays,
+  applyAnalyticsDetailRange,
+  isAnalyticsRangeDetailKind,
+  readAnalyticsDetailRange,
+  writeAnalyticsDetailRange,
+  type AnalyticsDetailChartGrain,
+  type AnalyticsDetailRangeId,
+} from '../lib/circleAnalyticsDetailRange';
+import { CircleAnalyticsRangeChips } from './CircleAnalyticsRangeChips';
 import { CircleAlertAttentionAnalyticsDetail } from './CircleAlertAttentionAnalyticsDetail';
 import { CircleAssessmentCountAnalyticsDetail } from './CircleAssessmentCountAnalyticsDetail';
 import { CircleCompanionAnalyticsDetail } from './CircleCompanionAnalyticsDetail';
@@ -51,6 +61,9 @@ function withScheduleAdherence(
   assessmentSchedule: RemoteAssessmentSchedule | undefined,
   scheduleEnabled: boolean,
   timeline: Array<{ date: string; label?: string; count?: number }> | undefined,
+  windowDays: number,
+  grain: AnalyticsDetailChartGrain,
+  windowLabel: string | undefined,
   body: ReactNode,
 ) {
   return (
@@ -61,6 +74,9 @@ function withScheduleAdherence(
         scheduleEnabled={scheduleEnabled}
         timeline={timeline}
         latestAt={summary.latestAt}
+        windowDays={windowDays}
+        grain={grain}
+        windowLabel={windowLabel}
       />
       {body}
     </div>
@@ -73,6 +89,10 @@ function renderDetailBody(
   messagesFocus?: CircleMessagesAnalyticsFocus | null,
   assessmentSchedule?: RemoteAssessmentSchedule,
   scheduleEnabled = true,
+  windowLabel?: string,
+  windowDays = 30,
+  grain: AnalyticsDetailChartGrain = 'day',
+  adherenceTimeline?: Array<{ date: string; label?: string; count?: number }>,
 ) {
   switch (detail.kind) {
     case 'alert_attention':
@@ -82,6 +102,7 @@ function renderDetailBody(
           attentions={detail.attentions}
           trend={detail.trend}
           timeline={detail.timeline}
+          windowLabel={windowLabel}
         />
       );
     case 'companion':
@@ -97,6 +118,7 @@ function renderDetailBody(
           trend={detail.trend}
           topTopics={detail.topTopics}
           timeline={detail.timeline}
+          windowLabel={windowLabel}
         />
       );
     case 'messages':
@@ -110,6 +132,8 @@ function renderDetailBody(
           topItems={detail.topItems}
           messagingBreakdown={detail.messagingBreakdown}
           timeline={detail.timeline}
+          windowLabel={windowLabel}
+          windowDays={windowDays}
         />
       );
     case 'daily_check_in':
@@ -122,6 +146,8 @@ function renderDetailBody(
           trend={detail.trend}
           answerTrend={detail.answerTrend}
           timeline={detail.timeline}
+          windowLabel={windowLabel}
+          grain={grain}
         />
       );
     case 'vitality_game':
@@ -133,6 +159,7 @@ function renderDetailBody(
           trend={detail.trend}
           level={detail.level}
           timeline={detail.timeline}
+          windowLabel={windowLabel}
         />
       );
     case 'diary':
@@ -141,6 +168,8 @@ function renderDetailBody(
           entryCount={detail.entryCount}
           milestoneCount={detail.milestoneCount}
           latestAt={detail.latestAt}
+          timeline={detail.timeline}
+          windowLabel={windowLabel}
         />
       );
     case 'soul_gallery':
@@ -155,6 +184,8 @@ function renderDetailBody(
           latestAt={detail.latestAt}
           trend={detail.trend}
           timeline={detail.timeline}
+          windowLabel={windowLabel}
+          windowDays={windowDays}
         />
       );
     case 'vision':
@@ -162,7 +193,10 @@ function renderDetailBody(
         summary,
         assessmentSchedule,
         scheduleEnabled,
-        detail.timeline,
+        adherenceTimeline ?? detail.timeline,
+        windowDays,
+        grain,
+        windowLabel,
         <CircleVisionAnalyticsDetail
           count={detail.count}
           average={detail.average}
@@ -170,6 +204,7 @@ function renderDetailBody(
           timeline={detail.timeline}
           latestFindings={detail.latestFindings}
           categoryTrends={detail.categoryTrends}
+          windowLabel={windowLabel}
         />,
       );
     case 'neurological':
@@ -177,7 +212,10 @@ function renderDetailBody(
         summary,
         assessmentSchedule,
         scheduleEnabled,
-        detail.timeline,
+        adherenceTimeline ?? detail.timeline,
+        windowDays,
+        grain,
+        windowLabel,
         <CircleNeurologicalAnalyticsDetail
           count={detail.count}
           average={detail.average}
@@ -188,6 +226,7 @@ function renderDetailBody(
           attention={detail.attention}
           timeline={detail.timeline}
           latestSnapshot={detail.latestSnapshot}
+          windowLabel={windowLabel}
         />,
       );
     case 'psychological':
@@ -195,7 +234,10 @@ function renderDetailBody(
         summary,
         assessmentSchedule,
         scheduleEnabled,
-        detail.timeline,
+        adherenceTimeline ?? detail.timeline,
+        windowDays,
+        grain,
+        windowLabel,
         <CirclePsychologicalAnalyticsDetail
           count={detail.count}
           trend={detail.trend}
@@ -205,6 +247,7 @@ function renderDetailBody(
           stress={detail.stress}
           energy={detail.energy}
           timeline={detail.timeline}
+          windowLabel={windowLabel}
         />,
       );
     case 'speech_language':
@@ -212,7 +255,10 @@ function renderDetailBody(
         summary,
         assessmentSchedule,
         scheduleEnabled,
-        detail.timeline,
+        adherenceTimeline ?? detail.timeline,
+        windowDays,
+        grain,
+        windowLabel,
         <CircleSpeechLanguageAnalyticsDetail
           count={detail.count}
           average={detail.average}
@@ -224,6 +270,7 @@ function renderDetailBody(
           readingWriting={detail.readingWriting}
           oralMotor={detail.oralMotor}
           timeline={detail.timeline}
+          windowLabel={windowLabel}
         />,
       );
     case 'assessment_count':
@@ -231,13 +278,17 @@ function renderDetailBody(
         summary,
         assessmentSchedule,
         scheduleEnabled,
-        detail.timeline,
+        adherenceTimeline ?? detail.timeline,
+        windowDays,
+        grain,
+        windowLabel,
         <CircleAssessmentCountAnalyticsDetail
           metricId={summary.metricId}
           count={detail.count ?? summary.countInWindow}
           average={detail.average ?? summary.averageInWindow}
           trend={detail.trend}
           timeline={detail.timeline}
+          windowLabel={windowLabel}
         />,
       );
     default:
@@ -269,9 +320,11 @@ export function CircleAnalyticsDetailSheet({
 }: CircleAnalyticsDetailSheetProps) {
   const t = useCircleT();
   const [dragY, setDragY] = useState(0);
+  const [rangeId, setRangeId] = useState<AnalyticsDetailRangeId>('30');
   const touchStartY = useRef(0);
   const dragYRef = useRef(0);
   const dragging = useRef(false);
+  const patientId = summary?.patientId ?? '';
 
   useEffect(() => {
     if (!summary) return;
@@ -288,6 +341,16 @@ export function CircleAnalyticsDetailSheet({
     dragging.current = false;
   }, [summary?.metricId, messagesFocus]);
 
+  useEffect(() => {
+    if (!patientId) return;
+    setRangeId(readAnalyticsDetailRange(patientId));
+  }, [patientId]);
+
+  useEffect(() => {
+    if (!patientId) return;
+    writeAnalyticsDetailRange(patientId, rangeId);
+  }, [patientId, rangeId]);
+
   if (!summary) return null;
 
   const Icon =
@@ -297,6 +360,12 @@ export function CircleAnalyticsDetailSheet({
         ? MessageSquare
         : METRIC_ICONS[summary.metricId];
   const detail = summary.detail;
+  const ranged = isAnalyticsRangeDetailKind(detail?.kind);
+  const applied = ranged && detail ? applyAnalyticsDetailRange(detail, rangeId) : null;
+  const activeDetail = applied?.detail ?? detail;
+  const windowDays = applied?.windowDays ?? analyticsDetailRangeDays(rangeId);
+  const grain = applied?.grain ?? 'day';
+  const windowLabel = analyticsDetailRangeWindowLabel(t, rangeId, windowDays);
   const title =
     messagesFocus === 'communication'
       ? t('analytics.metrics.communication')
@@ -376,9 +445,9 @@ export function CircleAnalyticsDetailSheet({
                 <h3 id="circle-analytics-detail-title" className="font-bold text-slate-800 text-base truncate">
                   {title}
                 </h3>
-                <p className="text-sm text-slate-500">
-                  {analyticsLastDaysLabel(t, summary.windowDays)}
-                </p>
+                <div className="mt-2">
+                  <CircleAnalyticsRangeChips value={rangeId} onChange={setRangeId} t={t} />
+                </div>
               </div>
             </div>
             <button
@@ -393,8 +462,18 @@ export function CircleAnalyticsDetailSheet({
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-3">
-          {detail ? (
-            renderDetailBody(detail, summary, messagesFocus, assessmentSchedule, scheduleEnabled)
+          {activeDetail ? (
+            renderDetailBody(
+              activeDetail,
+              summary,
+              messagesFocus,
+              assessmentSchedule,
+              scheduleEnabled,
+              windowLabel,
+              windowDays,
+              grain,
+              applied?.adherenceTimeline,
+            )
           ) : (
             <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-6 text-center space-y-2">
               <p className="text-sm font-semibold text-slate-700">{summary.summaryText}</p>

@@ -115,6 +115,10 @@ function MiniSeriesChart({
   const chartData =
     variant === 'sparse' ? prepareSparseTimelineChartData(data) : prepareDailyBucketChartData(data);
   const chartMargin = circleAnalyticsChartMargin();
+  const sparseDomainMax = chartData.reduce(
+    (max, point) => Math.max(max, Number(point.daysAgo) || 0),
+    28,
+  );
   if (chartData.length === 0) return null;
 
   const yAxis = (
@@ -138,7 +142,7 @@ function MiniSeriesChart({
         {chartType === 'line' ? (
           <LineChart data={chartData} margin={chartMargin}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-            <CircleAnalyticsChartXAxis variant={variant} />
+            <CircleAnalyticsChartXAxis variant={variant} domainMax={sparseDomainMax} />
             {yAxis}
             {tooltip}
             <Line
@@ -155,7 +159,7 @@ function MiniSeriesChart({
         ) : (
           <BarChart data={chartData} margin={chartMargin}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-            <CircleAnalyticsChartXAxis variant={variant} />
+            <CircleAnalyticsChartXAxis variant={variant} domainMax={sparseDomainMax} />
             {yAxis}
             {tooltip}
             <Bar dataKey="value" name={label} fill={color} radius={[3, 3, 0, 0]} />

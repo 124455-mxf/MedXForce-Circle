@@ -56,6 +56,8 @@ type CircleMessagesAnalyticsDetailProps = {
   topItems?: TopCountItem[];
   messagingBreakdown?: MessagesMessagingBreakdown;
   timeline?: MessagesTimelinePoint[];
+  windowLabel?: string;
+  windowDays?: number;
 };
 
 const BREAKDOWN_ROWS: { key: keyof MessagesMessagingBreakdown; labelKey: string }[] = [
@@ -305,9 +307,12 @@ export function CircleMessagesAnalyticsDetail({
   topItems,
   messagingBreakdown,
   timeline,
+  windowLabel,
+  windowDays = 30,
 }: CircleMessagesAnalyticsDetailProps) {
   const t = useCircleT();
   const [chartType, setChartType] = useState<'line' | 'bar'>('bar');
+  const rangeLabel = windowLabel ?? analyticsWindowDaysLabel(t, 30);
   const isMessaging = focus === 'messaging';
   const { rawMessages, repliesByMessageId } = useCirclePatientThreadsContext();
   const liveStats = useMemo(
@@ -328,15 +333,16 @@ export function CircleMessagesAnalyticsDetail({
 
   const syncedSent = safeBreakdownValue(messagingBreakdown, 'sent');
   const syncedReplies = safeBreakdownValue(messagingBreakdown, 'replies');
-  const sentCount = syncedSent > 0 ? syncedSent : liveStats.newMessages;
-  const replyCount = syncedReplies > 0 ? syncedReplies : liveStats.replies;
+  const allowLiveOverlay = windowDays === 30;
+  const sentCount = !allowLiveOverlay || syncedSent > 0 ? syncedSent : liveStats.newMessages;
+  const replyCount = !allowLiveOverlay || syncedReplies > 0 ? syncedReplies : liveStats.replies;
   const sentChartData = preferNonEmptyTimeline(
     syncedSplitTimeline(timeline, 'sent'),
-    liveStats.newMessagesTimeline,
+    allowLiveOverlay ? liveStats.newMessagesTimeline : [],
   );
   const replyChartData = preferNonEmptyTimeline(
     syncedSplitTimeline(timeline, 'replies'),
-    liveStats.repliesTimeline,
+    allowLiveOverlay ? liveStats.repliesTimeline : [],
   );
 
   const communicationTrend = trendFromSeries(
@@ -367,7 +373,7 @@ export function CircleMessagesAnalyticsDetail({
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className={cn('px-3 py-2 border-b border-slate-100', headerClass)}>
         <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
-          {analyticsWindowDaysLabel(t, 30)}
+          {rangeLabel}
         </p>
       </div>
       <div className="p-4 space-y-4">

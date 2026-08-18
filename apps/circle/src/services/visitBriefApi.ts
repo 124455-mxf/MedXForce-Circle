@@ -1,5 +1,6 @@
 import type { CareCalendarVisitBrief } from '@medxforce/shared';
 import { parseMedxforceApiJson, resolveMedxforceApiBase } from '../lib/medxforceApi';
+import type { VisitBriefAnalyticsContext } from '../lib/circleAnalyticsDetailRange';
 
 export async function generateVisitBrief(params: {
   patientId: string;
@@ -7,6 +8,7 @@ export async function generateVisitBrief(params: {
   generatedByUid?: string;
   generatedByName?: string;
   assessmentHighlights?: string[];
+  analyticsWindow?: VisitBriefAnalyticsContext;
 }): Promise<CareCalendarVisitBrief> {
   const base = resolveMedxforceApiBase();
   if (!base) {
