@@ -1,15 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode, type TouchEvent } from 'react';
 import {
-  Bell,
-  Bot,
-  BookOpen,
-  Brain,
-  Calendar,
-  Eye,
-  Heart,
   Keyboard,
   MessageSquare,
-  Sparkles,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -21,6 +13,11 @@ import type {
 import { cn } from '../lib/utils';
 import { useCircleT } from '../lib/circleI18nContext';
 import { analyticsDetailRangeWindowLabel } from '../lib/circleAnalyticsI18n';
+import {
+  ANALYTICS_SHEET_ICON_TILE_CLASS,
+  analyticsMetricIcon,
+  analyticsMetricIconWrapClass,
+} from '../lib/circleAnalyticsMetricUi';
 import {
   analyticsDetailRangeDays,
   applyAnalyticsDetailRange,
@@ -296,19 +293,6 @@ function renderDetailBody(
   }
 }
 
-const METRIC_ICONS: Record<string, LucideIcon> = {
-  'alert-attention': Bell,
-  'speech-history': MessageSquare,
-  'ai-conversation': Bot,
-  'daily-check-in': Calendar,
-  'vitality-game': Sparkles,
-  vision: Eye,
-  diary: BookOpen,
-  'soul-vitality': Heart,
-  neurological: Brain,
-  psychological: Heart,
-};
-
 const SWIPE_DISMISS_PX = 80;
 
 export function CircleAnalyticsDetailSheet({
@@ -353,12 +337,12 @@ export function CircleAnalyticsDetailSheet({
 
   if (!summary) return null;
 
-  const Icon =
+  const Icon: LucideIcon =
     messagesFocus === 'communication'
       ? Keyboard
       : messagesFocus === 'messaging'
         ? MessageSquare
-        : METRIC_ICONS[summary.metricId];
+        : analyticsMetricIcon(summary.metricId);
   const detail = summary.detail;
   const ranged = isAnalyticsRangeDetailKind(detail?.kind);
   const applied = ranged && detail ? applyAnalyticsDetailRange(detail, rangeId) : null;
@@ -377,7 +361,7 @@ export function CircleAnalyticsDetailSheet({
       ? 'bg-indigo-50 text-indigo-600'
       : messagesFocus === 'messaging'
         ? 'bg-emerald-50 text-emerald-600'
-        : 'bg-blue-50 text-blue-600';
+        : analyticsMetricIconWrapClass(summary.metricId);
 
   const handleTouchStart = (e: TouchEvent) => {
     touchStartY.current = e.touches[0].clientY;
@@ -404,7 +388,7 @@ export function CircleAnalyticsDetailSheet({
 
   return (
     <div
-      className="fixed inset-0 z-[140] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm"
+      className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm"
       onClick={onClose}
       role="presentation"
     >
@@ -429,35 +413,31 @@ export function CircleAnalyticsDetailSheet({
           <div className="flex justify-center pt-2.5 pb-1 sm:hidden" aria-hidden>
             <div className="w-10 h-1 rounded-full bg-slate-200" />
           </div>
-          <div className="flex items-center justify-between gap-3 px-4 pb-4 sm:pt-4 border-b border-slate-100">
-            <div className="flex items-center gap-3 min-w-0">
-              {Icon && (
-                <div
-                  className={cn(
-                    'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
-                    iconWrapClass,
-                  )}
-                >
+          <div className="px-4 pb-4 sm:pt-4 border-b border-slate-100">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={cn(ANALYTICS_SHEET_ICON_TILE_CLASS, iconWrapClass)}>
                   <Icon size={18} />
                 </div>
-              )}
-              <div className="min-w-0">
-                <h3 id="circle-analytics-detail-title" className="font-bold text-slate-800 text-base truncate">
+                <h3
+                  id="circle-analytics-detail-title"
+                  className="font-bold text-slate-800 text-base truncate"
+                >
                   {title}
                 </h3>
-                <div className="mt-2">
-                  <CircleAnalyticsRangeChips value={rangeId} onChange={setRangeId} t={t} />
-                </div>
               </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 shrink-0"
+                aria-label={t('analytics.close')}
+              >
+                <X size={18} />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 shrink-0"
-              aria-label={t('analytics.close')}
-            >
-              <X size={18} />
-            </button>
+            <div className="mt-3">
+              <CircleAnalyticsRangeChips value={rangeId} onChange={setRangeId} t={t} />
+            </div>
           </div>
         </div>
 

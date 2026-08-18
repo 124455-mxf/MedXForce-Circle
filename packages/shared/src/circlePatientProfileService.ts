@@ -161,6 +161,17 @@ export async function readCirclePatientProfile(
   };
 }
 
+export type UpdateCirclePatientProfileFromProxyOptions = {
+  /** Default true. When false, a recovery-stage save does not change tablet app mode or dashboard. */
+  applyRecommendedTabletLayout?: boolean;
+};
+
+function shouldApplyRecommendedTabletLayout(
+  options?: UpdateCirclePatientProfileFromProxyOptions,
+): boolean {
+  return options?.applyRecommendedTabletLayout !== false;
+}
+
 export async function updateCirclePatientProfileFromProxy(
   db: Firestore,
   patientId: string,
@@ -168,6 +179,7 @@ export async function updateCirclePatientProfileFromProxy(
   actorUid: string,
   patientDisplayName: string,
   actorDisplayName?: string,
+  options?: UpdateCirclePatientProfileFromProxyOptions,
 ): Promise<void> {
   const patientRef = doc(db, 'patients', patientId);
   const existingSnap = await getDoc(patientRef);
@@ -244,17 +256,19 @@ export async function updateCirclePatientProfileFromProxy(
         },
         { merge: true },
       );
-      try {
-        await syncRemoteSettingsForTreatmentPhase(
-          db,
-          patientId,
-          snapshot.clinical.treatmentPhase,
-          actorUid,
-          actorDisplayName || patientDisplayName,
-          updatedAt,
-        );
-      } catch (err) {
-        console.warn('[updateCirclePatientProfileFromProxy] remote settings treatment phase', err);
+      if (shouldApplyRecommendedTabletLayout(options)) {
+        try {
+          await syncRemoteSettingsForTreatmentPhase(
+            db,
+            patientId,
+            snapshot.clinical.treatmentPhase,
+            actorUid,
+            actorDisplayName || patientDisplayName,
+            updatedAt,
+          );
+        } catch (err) {
+          console.warn('[updateCirclePatientProfileFromProxy] remote settings treatment phase', err);
+        }
       }
       return;
     }
@@ -305,7 +319,10 @@ export async function updateCirclePatientProfileFromProxy(
     }
   }
 
-  if (changedLabels.includes('Where I am in recovery')) {
+  if (
+    changedLabels.includes('Where I am in recovery') &&
+    shouldApplyRecommendedTabletLayout(options)
+  ) {
     try {
       await syncRemoteSettingsForTreatmentPhase(
         db,

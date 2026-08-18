@@ -1,4 +1,10 @@
-import { LayoutDashboard, Shield, Stethoscope } from 'lucide-react';
+import {
+  LayoutDashboard,
+  ListChecks,
+  Shield,
+  Stethoscope,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useCircleT } from '../lib/circleI18nContext';
 
 type CirclePatientRecoveryPhaseConfirmModalProps = {
@@ -7,8 +13,10 @@ type CirclePatientRecoveryPhaseConfirmModalProps = {
   phaseLabel: string;
   appModeLabel: string;
   dashboardLabel: string;
+  careTransitionLabel?: string | null;
   saving?: boolean;
-  onConfirm: () => void;
+  onUpdateTablet: (startCareTransitionPack: boolean) => void;
+  onKeepTablet: (startCareTransitionPack: boolean) => void;
   onCancel: () => void;
 };
 
@@ -18,13 +26,22 @@ export function CirclePatientRecoveryPhaseConfirmModal({
   phaseLabel,
   appModeLabel,
   dashboardLabel,
+  careTransitionLabel = null,
   saving = false,
-  onConfirm,
+  onUpdateTablet,
+  onKeepTablet,
   onCancel,
 }: CirclePatientRecoveryPhaseConfirmModalProps) {
   const t = useCircleT();
+  const [startCareTransition, setStartCareTransition] = useState(true);
+
+  useEffect(() => {
+    if (open) setStartCareTransition(true);
+  }, [open]);
 
   if (!open) return null;
+
+  const startPack = Boolean(careTransitionLabel) && startCareTransition;
 
   return (
     <div
@@ -54,6 +71,9 @@ export function CirclePatientRecoveryPhaseConfirmModal({
         </div>
 
         <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            {t('profile.recoveryPhaseConfirmSuggested')}
+          </p>
           <div className="flex items-start gap-3">
             <Shield size={18} className="text-blue-600 shrink-0 mt-0.5" />
             <div className="min-w-0">
@@ -74,22 +94,51 @@ export function CirclePatientRecoveryPhaseConfirmModal({
           </div>
         </div>
 
-        <div className="flex gap-3">
+        {careTransitionLabel ? (
+          <label className="flex items-start gap-3 rounded-2xl border border-amber-100 bg-amber-50/70 p-4 cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600"
+              checked={startCareTransition}
+              onChange={(event) => setStartCareTransition(event.target.checked)}
+            />
+            <span className="min-w-0">
+              <span className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <ListChecks size={16} className="text-amber-800 shrink-0" />
+                {t('profile.recoveryPhaseConfirmCareTransition')}
+              </span>
+              <span className="block text-sm text-slate-600 mt-0.5">{careTransitionLabel}</span>
+              <span className="block text-xs text-slate-500 mt-1">
+                {t('profile.recoveryPhaseConfirmCareTransitionHint')}
+              </span>
+            </span>
+          </label>
+        ) : null}
+
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => onUpdateTablet(startPack)}
+            disabled={saving}
+            className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 disabled:opacity-50"
+          >
+            {t('profile.recoveryPhaseConfirmSave')}
+          </button>
+          <button
+            type="button"
+            onClick={() => onKeepTablet(startPack)}
+            disabled={saving}
+            className="w-full py-4 bg-white text-slate-700 rounded-2xl font-bold border border-slate-200 hover:bg-slate-50 transition-all disabled:opacity-50"
+          >
+            {t('profile.recoveryPhaseConfirmKeepTablet')}
+          </button>
           <button
             type="button"
             onClick={onCancel}
             disabled={saving}
-            className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50"
+            className="w-full py-3 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50"
           >
             {t('common.cancel')}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={saving}
-            className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 disabled:opacity-50"
-          >
-            {t('profile.recoveryPhaseConfirmSave')}
           </button>
         </div>
       </div>

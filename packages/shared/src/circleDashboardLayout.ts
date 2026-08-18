@@ -16,9 +16,12 @@ export type CircleDashboardWidgetKey =
   | 'companion'
   | 'vitality'
   | 'assessments'
+  | 'last-7-days-overview'
+  | 'last-30-days-overview'
   | 'diary'
   | 'circle'
   | 'circle-map'
+  | 'circle-compact'
   | 'check-in-wellness-ring'
   | 'assessment-schedule-calendar'
   | 'gallery-engagement'
@@ -50,9 +53,12 @@ export const ALL_CUSTOMIZABLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
   'companion',
   'vitality',
   'assessments',
+  'last-7-days-overview',
+  'last-30-days-overview',
   'diary',
   'circle',
   'circle-map',
+  'circle-compact',
   'check-in-wellness-ring',
   'assessment-schedule-calendar',
   'gallery-engagement',
@@ -94,11 +100,14 @@ export const FAMILY_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = 
   'companion',
   'vitality',
   'assessments',
+  'last-7-days-overview',
+  'last-30-days-overview',
   'assessment-schedule-calendar',
   'circle',
   'gallery-engagement',
   'remote-settings',
   'user-profile',
+  'circle-compact',
 ];
 
 /** Widgets friends must never see, even if a saved layout marks them visible. */
@@ -121,12 +130,15 @@ export const FRIEND_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = 
   'companion',
   'vitality',
   'assessments',
+  'last-7-days-overview',
+  'last-30-days-overview',
   'diary',
   'circle',
   'check-in-wellness-ring',
   'assessment-schedule-calendar',
   'remote-settings',
   'user-profile',
+  'circle-compact',
 ];
 
 /**
@@ -145,9 +157,11 @@ export const CIRCLE_DASHBOARD_WIDGET_SECTIONS: Record<
   CircleDashboardLayoutSection,
   CircleDashboardWidgetKey[]
 > = {
-  patientOverview: ['patient-locale', 'patient-insights', 'circle-map'],
+  patientOverview: ['patient-locale', 'patient-insights', 'circle-map', 'circle-compact'],
   reminders: ['reminder-gallery-upload', 'reminder-diary-entry'],
   last7days: [
+    'last-7-days-overview',
+    'last-30-days-overview',
     'alert-attention',
     'daily-check-in',
     'check-in-wellness-ring',
@@ -312,11 +326,14 @@ export function isCircleDashboardWidgetAvailable(
     case 'companion':
     case 'vitality':
     case 'assessments':
+    case 'last-7-days-overview':
+    case 'last-30-days-overview':
     case 'diary':
       return caps?.viewEngagementTrends !== false;
     case 'circle':
       return true;
     case 'circle-map':
+    case 'circle-compact':
     case 'check-in-wellness-ring':
     case 'assessment-schedule-calendar':
       return true;

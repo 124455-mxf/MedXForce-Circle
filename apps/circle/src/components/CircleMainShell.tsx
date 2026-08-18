@@ -122,6 +122,8 @@ export function CircleMainShell({
     useState<AnalyticsMetricId | null>(null);
   const [initialMessagesFocus, setInitialMessagesFocus] =
     useState<CircleMessagesAnalyticsFocus | null>(null);
+  const [initialAssessmentsOverview, setInitialAssessmentsOverview] = useState(false);
+  const [initialPeriodOverviewDays, setInitialPeriodOverviewDays] = useState<7 | 30 | null>(null);
   const [initialAdminUsersTab, setInitialAdminUsersTab] = useState<'people' | 'access' | null>(
     null,
   );
@@ -177,6 +179,8 @@ export function CircleMainShell({
         return;
       }
       analyticsOriginTabRef.current = null;
+      setInitialAssessmentsOverview(false);
+      setInitialPeriodOverviewDays(null);
       guardedNavigate(() => setActiveTab(tab));
     },
     [activeTab, guardedNavigate],
@@ -191,6 +195,8 @@ export function CircleMainShell({
   const handleOpenAnalyticsDetail = useCallback(
     (metricId: AnalyticsMetricId, messagesFocus?: CircleMessagesAnalyticsFocus) => {
       analyticsOriginTabRef.current = activeTab;
+      setInitialAssessmentsOverview(false);
+      setInitialPeriodOverviewDays(null);
       setInitialAnalyticsMetricId(metricId);
       setInitialMessagesFocus(
         metricId === 'speech-history' ? (messagesFocus ?? 'messaging') : null,
@@ -200,9 +206,32 @@ export function CircleMainShell({
     [activeTab, guardedNavigate],
   );
 
+  const handleOpenAssessmentsOverview = useCallback(() => {
+    analyticsOriginTabRef.current = activeTab;
+    setInitialAnalyticsMetricId(null);
+    setInitialMessagesFocus(null);
+    setInitialPeriodOverviewDays(null);
+    setInitialAssessmentsOverview(true);
+    guardedNavigate(() => setActiveTab('analytics'));
+  }, [activeTab, guardedNavigate]);
+
+  const handleOpenAnalyticsPeriodOverview = useCallback(
+    (days: 7 | 30) => {
+      analyticsOriginTabRef.current = activeTab;
+      setInitialAnalyticsMetricId(null);
+      setInitialMessagesFocus(null);
+      setInitialAssessmentsOverview(false);
+      setInitialPeriodOverviewDays(days);
+      guardedNavigate(() => setActiveTab('analytics'));
+    },
+    [activeTab, guardedNavigate],
+  );
+
   const handleAnalyticsInitialMetricConsumed = useCallback(() => {
     setInitialAnalyticsMetricId(null);
     setInitialMessagesFocus(null);
+    setInitialAssessmentsOverview(false);
+    setInitialPeriodOverviewDays(null);
   }, []);
 
   const handleAnalyticsDetailClosedToOrigin = useCallback(() => {
@@ -688,6 +717,8 @@ export function CircleMainShell({
               onOpenCircleFolder={handleOpenCircleFolder}
               onOpenMessagesInbox={handleOpenMessagesInbox}
               onOpenAnalyticsDetail={handleOpenAnalyticsDetail}
+              onOpenAssessmentsOverview={handleOpenAssessmentsOverview}
+              onOpenAnalyticsPeriodOverview={handleOpenAnalyticsPeriodOverview}
               onOpenGalleryReactions={handleOpenGalleryReactions}
               onOpenGalleryMyAlbums={handleOpenGalleryMyAlbums}
               onOpenVisitCapture={
@@ -810,6 +841,8 @@ export function CircleMainShell({
                 patient={selectedPatient}
                 initialMetricId={initialAnalyticsMetricId}
                 initialMessagesFocus={initialMessagesFocus}
+                initialAssessmentsOverview={initialAssessmentsOverview}
+                initialPeriodOverviewDays={initialPeriodOverviewDays}
                 onInitialMetricConsumed={handleAnalyticsInitialMetricConsumed}
                 onCloseToOrigin={handleAnalyticsDetailClosedToOrigin}
               />

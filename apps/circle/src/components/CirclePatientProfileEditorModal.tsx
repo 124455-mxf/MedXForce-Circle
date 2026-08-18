@@ -4,9 +4,11 @@ import {
   REMOTE_PRIMARY_LANGUAGE_OPTIONS,
   TREATMENT_PHASE_VALUES,
   canonicalizeProfileCountry,
+  getCareTransitionPack,
   listProfileCountryOptions,
   normalizeCountryCode,
   recommendRemoteSettingsForTreatmentPhase,
+  suggestedPackForPhaseTransition,
   type CirclePatientProfileSnapshot,
   type CircleProfileMedItem,
   type RemotePrimaryLanguage,
@@ -21,6 +23,7 @@ import { CirclePatientRecoveryPhaseConfirmModal } from './CirclePatientRecoveryP
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import { treatmentPhaseLabelT } from '../lib/dashboardI18n';
 import { profileEditorSectionTitleI18n, ASSISTIVE_DEVICE_PRESETS, assistiveDeviceLabelI18n } from '../lib/adminScreenI18n';
+import { localizeCareTransitionPack } from '../lib/localizeCareTransition';
 import { cn } from '../lib/utils';
 import {
   remoteSettingsAppModeLabel,
@@ -46,7 +49,10 @@ interface CirclePatientProfileEditorModalProps {
   patientDisplayName?: string;
   saving?: boolean;
   onClose: () => void;
-  onSave: (next: CirclePatientProfileSnapshot) => void;
+  onSave: (
+    next: CirclePatientProfileSnapshot,
+    options?: { applyRecommendedTabletLayout?: boolean; startCareTransitionPack?: boolean },
+  ) => void;
 }
 
 function parseListInput(raw: string): string[] {
@@ -298,10 +304,14 @@ export function CirclePatientProfileEditorModal({
     return !!recommendRemoteSettingsForTreatmentPhase(newPhase);
   };
 
-  const commitSave = (draftToSave: CirclePatientProfileSnapshot) => {
+  const commitSave = (
+    draftToSave: CirclePatientProfileSnapshot,
+    applyRecommendedTabletLayout = true,
+    startCareTransitionPack = true,
+  ) => {
     setPendingLanguage(null);
     setPendingRecoveryPhase(null);
-    onSave(draftToSave);
+    onSave(draftToSave, { applyRecommendedTabletLayout, startCareTransitionPack });
   };
 
   const attemptSave = () => {
@@ -315,6 +325,17 @@ export function CirclePatientProfileEditorModal({
 
   const recoveryRecommendation = pendingRecoveryPhase
     ? recommendRemoteSettingsForTreatmentPhase(pendingRecoveryPhase)
+    : null;
+  const suggestedCareTransitionPack = pendingRecoveryPhase
+    ? getCareTransitionPack(
+        suggestedPackForPhaseTransition(snapshot.clinical.treatmentPhase, pendingRecoveryPhase),
+      )
+    : null;
+  const careTransitionLabel = suggestedCareTransitionPack
+    ? (() => {
+        const localized = localizeCareTransitionPack(t, suggestedCareTransitionPack);
+        return `${localized.fromLabel} → ${localized.toLabel}`;
+      })()
     : null;
 
   return (
@@ -1147,9 +1168,14 @@ export function CirclePatientProfileEditorModal({
               : t('remoteSettings.dashboardPresets.none')
             : ''
         }
-        onConfirm={() => {
+        careTransitionLabel={careTransitionLabel}
+        onUpdateTablet={(startCareTransitionPack) => {
           if (!pendingRecoveryPhase || saving) return;
-          commitSave(buildDraftToSave());
+          commitSave(buildDraftToSave(), true, startCareTransitionPack);
+        }}
+        onKeepTablet={(startCareTransitionPack) => {
+          if (!pendingRecoveryPhase || saving) return;
+          commitSave(buildDraftToSave(), false, startCareTransitionPack);
         }}
         onCancel={() => setPendingRecoveryPhase(null)}
       />

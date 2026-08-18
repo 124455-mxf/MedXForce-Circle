@@ -2,24 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Activity,
   BarChart3,
-  Bell,
-  BookOpen,
-  Bot,
-  Brain,
-  Calendar,
   ChevronRight,
   Clock,
-  Eye,
-  Heart,
   Keyboard,
   Loader2,
   MessageSquare,
-  Mic,
-  Move,
-  Scale,
-  Sparkles,
-  ThermometerSun,
-  Zap,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -30,6 +17,7 @@ import {
   canReadAnalyticsAudience,
   isSameCalendarDay,
   subscribeRemoteSettings,
+  isHospitalFeatureEnabledInRemoteSettings,
   type AnalyticsMetricId,
   type CirclePatientSummary,
   type PatientAnalyticsSummary,
@@ -56,42 +44,20 @@ import {
   localizeAnalyticsSummary,
 } from '../lib/circleAnalyticsI18n';
 import { firebase } from '../lib/firebaseClient';
+import {
+  ANALYTICS_METRIC_ICONS,
+  analyticsMetricIconWrapClass,
+} from '../lib/circleAnalyticsMetricUi';
 import { CircleAnalyticsDetailSheet } from './CircleAnalyticsDetailSheet';
+import { CircleAssessmentsOverviewSheet } from './CircleAssessmentsOverviewSheet';
+import {
+  CircleAnalyticsPeriodOverviewSheet,
+  type AnalyticsPeriodDays,
+} from './CircleAnalyticsPeriodOverviewSheet';
 import type { CircleMessagesAnalyticsFocus } from './CircleMessagesAnalyticsDetail';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 
-const METRIC_ICONS: Record<AnalyticsMetricId, LucideIcon> = {
-  'alert-attention': Bell,
-  'speech-history': MessageSquare,
-  'ai-conversation': Bot,
-  'daily-check-in': Calendar,
-  impact: Activity,
-  pain: Activity,
-  'strength-reflex': Scale,
-  mobility: Move,
-  numbness: Zap,
-  temperature: ThermometerSun,
-  balance: Activity,
-  vision: Eye,
-  speech: Mic,
-  neurological: Brain,
-  physiological: Activity,
-  psychological: Heart,
-  stroke: Heart,
-  diary: BookOpen,
-  'vitality-game': Sparkles,
-  'soul-vitality': Heart,
-};
-
-const METRIC_COLORS: Record<string, string> = {
-  pain: 'bg-rose-50 text-rose-600',
-  numbness: 'bg-purple-50 text-purple-600',
-  mobility: 'bg-emerald-50 text-emerald-600',
-  temperature: 'bg-cyan-50 text-cyan-600',
-  neurological: 'bg-purple-50 text-purple-600',
-  physiological: 'bg-blue-50 text-blue-600',
-  psychological: 'bg-pink-50 text-pink-600',
-};
+const METRIC_ICONS = ANALYTICS_METRIC_ICONS;
 
 function footerColorClass(tone: PatientAnalyticsSummary['footerTone']): string {
   if (tone === 'warning') return 'text-red-500';
@@ -159,7 +125,7 @@ function AnalyticsMetricRow({
   const unreleased = !localized.isReleased || localized.status === 'coming_soon';
   const iconClass = unreleased
     ? 'bg-slate-100 text-slate-400'
-    : iconClassOverride ?? METRIC_COLORS[localized.metricId] ?? 'bg-blue-50 text-blue-600';
+    : iconClassOverride ?? analyticsMetricIconWrapClass(localized.metricId);
   const tappable = localized.isReleased && localized.status !== 'coming_soon';
   const todayAlertAttention = isTodayAlertAttention(localized);
 
@@ -229,21 +195,31 @@ export function CircleAnalyticsScreen({
   patient,
   initialMetricId = null,
   initialMessagesFocus = null,
+  initialAssessmentsOverview = false,
+  initialPeriodOverviewDays = null,
   onInitialMetricConsumed,
   onCloseToOrigin,
 }: {
   patient: CirclePatientSummary;
   initialMetricId?: AnalyticsMetricId | null;
   initialMessagesFocus?: CircleMessagesAnalyticsFocus | null;
+  initialAssessmentsOverview?: boolean;
+  initialPeriodOverviewDays?: AnalyticsPeriodDays | null;
   onInitialMetricConsumed?: () => void;
   onCloseToOrigin?: () => void;
 }) {
   const [detailSummary, setDetailSummary] = useState<PatientAnalyticsSummary | null>(null);
   const [detailMessagesFocus, setDetailMessagesFocus] =
     useState<CircleMessagesAnalyticsFocus | null>(null);
+  const [assessmentsOverviewOpen, setAssessmentsOverviewOpen] = useState(false);
+  const [periodOverviewDays, setPeriodOverviewDays] = useState<AnalyticsPeriodDays | null>(null);
   const [remoteSettingsLoading, setRemoteSettingsLoading] = useState(true);
   const [remoteSettingsFromFirestore, setRemoteSettingsFromFirestore] = useState(false);
   const [dailyCheckInEnabled, setDailyCheckInEnabled] = useState(false);
+  const [messagingEnabled, setMessagingEnabled] = useState(false);
+  const [communicationEnabled, setCommunicationEnabled] = useState(false);
+  const [companionEnabled, setCompanionEnabled] = useState(false);
+  const [vitalityEnabled, setVitalityEnabled] = useState(false);
   const [assessmentSchedule, setAssessmentSchedule] = useState<RemoteAssessmentSchedule | undefined>();
   const [scheduleEnabled, setScheduleEnabled] = useState(true);
   const compactChrome = useCircleCompactChrome();
@@ -263,6 +239,14 @@ export function CircleAnalyticsScreen({
         setRemoteSettingsFromFirestore(remote != null);
         const enabled = remote?.dailyCheckIn?.enabled === true;
         setDailyCheckInEnabled(enabled);
+        setMessagingEnabled(
+          isHospitalFeatureEnabledInRemoteSettings(remote, 'hospitalFeatureMessaging'),
+        );
+        setCommunicationEnabled(remote?.featuresVisibility?.communication === true);
+        setCompanionEnabled(remote?.featuresVisibility?.aiCompanion === true);
+        setVitalityEnabled(
+          isHospitalFeatureEnabledInRemoteSettings(remote, 'hospitalFeatureVitality'),
+        );
         setAssessmentSchedule(remote?.assessmentSchedule);
         const intensive =
           remote?.appMode === 'intensive_care' || remote?.appMode === 'hospital';
@@ -272,6 +256,10 @@ export function CircleAnalyticsScreen({
       () => {
         setRemoteSettingsFromFirestore(false);
         setDailyCheckInEnabled(false);
+        setMessagingEnabled(false);
+        setCommunicationEnabled(false);
+        setCompanionEnabled(false);
+        setVitalityEnabled(false);
         setAssessmentSchedule(undefined);
         setScheduleEnabled(true);
         setRemoteSettingsLoading(false);
@@ -283,6 +271,8 @@ export function CircleAnalyticsScreen({
     if (!initialMetricId || loading) return;
     const summary = resolveAnalyticsSummary(initialMetricId, byMetricId, patient);
     if (summary?.isReleased && summary.status !== 'coming_soon') {
+      setAssessmentsOverviewOpen(false);
+      setPeriodOverviewDays(null);
       setDetailSummary(localizeAnalyticsSummary(t, summary, language));
       setDetailMessagesFocus(
         initialMetricId === 'speech-history' ? (initialMessagesFocus ?? 'messaging') : null,
@@ -301,6 +291,22 @@ export function CircleAnalyticsScreen({
     language,
   ]);
 
+  useEffect(() => {
+    if (!initialAssessmentsOverview || loading) return;
+    setPeriodOverviewDays(null);
+    setAssessmentsOverviewOpen(true);
+    closeReturnsToOriginRef.current = true;
+    onInitialMetricConsumed?.();
+  }, [initialAssessmentsOverview, loading, onInitialMetricConsumed]);
+
+  useEffect(() => {
+    if (!initialPeriodOverviewDays || loading) return;
+    setAssessmentsOverviewOpen(false);
+    setPeriodOverviewDays(initialPeriodOverviewDays);
+    closeReturnsToOriginRef.current = true;
+    onInitialMetricConsumed?.();
+  }, [initialPeriodOverviewDays, loading, onInitialMetricConsumed]);
+
   return (
     <>
     <div className="flex flex-col flex-1 min-h-0 max-h-full overflow-hidden">
@@ -308,7 +314,7 @@ export function CircleAnalyticsScreen({
         <div className={cn(circleWorkTabHeaderClass(compactChrome), circleSectionHeaderStackClass)}>
           <CircleWorkTabSectionIntro
             icon={BarChart3}
-            iconClassName="text-blue-600"
+            iconTileClassName="bg-blue-50 text-blue-600"
             title={t('analytics.title')}
             subtitle={t('analytics.subtitle', {
               name: circleDisplayFirstName(patient.displayName, patient.firstName),
@@ -424,6 +430,54 @@ export function CircleAnalyticsScreen({
         </div>
       </div>
     </div>
+    <CircleAssessmentsOverviewSheet
+      open={assessmentsOverviewOpen}
+      patient={patient}
+      byMetricId={byMetricId}
+      onOpenMetric={(metricId) => {
+        const summary = resolveAnalyticsSummary(metricId, byMetricId, patient);
+        if (!summary?.isReleased || summary.status === 'coming_soon') return;
+        setDetailSummary(localizeAnalyticsSummary(t, summary, language));
+        setDetailMessagesFocus(null);
+      }}
+      onClose={() => {
+        setAssessmentsOverviewOpen(false);
+        setDetailSummary(null);
+        setDetailMessagesFocus(null);
+        if (closeReturnsToOriginRef.current) {
+          closeReturnsToOriginRef.current = false;
+          onCloseToOrigin?.();
+        }
+      }}
+    />
+    <CircleAnalyticsPeriodOverviewSheet
+      open={periodOverviewDays != null}
+      initialDays={periodOverviewDays ?? 7}
+      patient={patient}
+      byMetricId={byMetricId}
+      dailyCheckInEnabled={dailyCheckInEnabled && remoteSettingsFromFirestore && !remoteSettingsLoading}
+      messagingEnabled={messagingEnabled}
+      communicationEnabled={communicationEnabled}
+      companionEnabled={companionEnabled}
+      vitalityEnabled={vitalityEnabled}
+      onOpenMetric={(metricId, messagesFocus) => {
+        const summary = resolveAnalyticsSummary(metricId, byMetricId, patient);
+        if (!summary?.isReleased || summary.status === 'coming_soon') return;
+        setDetailSummary(localizeAnalyticsSummary(t, summary, language));
+        setDetailMessagesFocus(
+          metricId === 'speech-history' ? (messagesFocus ?? 'messaging') : null,
+        );
+      }}
+      onClose={() => {
+        setPeriodOverviewDays(null);
+        setDetailSummary(null);
+        setDetailMessagesFocus(null);
+        if (closeReturnsToOriginRef.current) {
+          closeReturnsToOriginRef.current = false;
+          onCloseToOrigin?.();
+        }
+      }}
+    />
     <CircleAnalyticsDetailSheet
       summary={detailSummary}
       messagesFocus={detailMessagesFocus}
@@ -432,6 +486,7 @@ export function CircleAnalyticsScreen({
       onClose={() => {
         setDetailSummary(null);
         setDetailMessagesFocus(null);
+        if (assessmentsOverviewOpen || periodOverviewDays != null) return;
         if (closeReturnsToOriginRef.current) {
           closeReturnsToOriginRef.current = false;
           onCloseToOrigin?.();

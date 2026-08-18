@@ -4,6 +4,8 @@ import {
   Bot,
   BookOpen,
   Calendar,
+  CalendarDays,
+  CalendarRange,
   ChevronDown,
   ClipboardList,
   Heart,
@@ -24,7 +26,9 @@ import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 
 import {
+  ANALYTICS_METRIC_DEFINITIONS,
   canInviteMembers,
+  canReadAnalyticsAudience,
   canSeeCareTeamDashboardReminders,
   canSeePatientScheduleNudgeTiles,
   canShowIcuCommunicationLogInbox,
@@ -142,13 +146,21 @@ import {
   getAlertAttentionRecencyUrgency,
   getDailyCheckInRecencyUrgency,
   getDiaryRecencyUrgency,
+  DASHBOARD_STATS_DAYS_30,
   sumAlertAttentionLast7,
+  sumAlertAttentionLastN,
   getLatestAssessment,
+  assessmentMetricIdsTakenLast7,
   sumAssessmentsLast7,
+  sumAssessmentsLastN,
   sumCompanionLast7ExcludingDetected,
+  sumCompanionLastNExcludingDetected,
   resolveDailyCheckInLast7Stats,
+  sumDailyCheckInLastN,
   sumMessagesLast7,
+  sumMessagesLastN,
   sumVitalityGamesLast7,
+  sumVitalityGamesLastN,
   type AlertAttentionRecencyUrgency,
 } from '../lib/circleDashboardStats';
 
@@ -188,6 +200,10 @@ interface CircleDashboardScreenProps {
     metricId: AnalyticsMetricId,
     messagesFocus?: 'messaging' | 'communication',
   ) => void;
+  /** Open Analytics on the assessments overview (no charts). */
+  onOpenAssessmentsOverview: () => void;
+  /** Open Analytics on the last-7 / last-30 overview. */
+  onOpenAnalyticsPeriodOverview: (days: 7 | 30) => void;
   /** Open Media gallery on the Reactions album. */
   onOpenGalleryReactions?: () => void;
   /** Open Media gallery on the Shared → My albums filter. */
@@ -824,6 +840,8 @@ export function CircleDashboardScreen({
   onOpenCircleFolder,
   onOpenMessagesInbox,
   onOpenAnalyticsDetail,
+  onOpenAssessmentsOverview,
+  onOpenAnalyticsPeriodOverview,
   onOpenGalleryReactions,
   onOpenGalleryMyAlbums,
   onOpenVisitCapture,
@@ -876,6 +894,7 @@ export function CircleDashboardScreen({
   const showLiveTile = memberRole !== 'friend';
   const showGetToKnow = isWidgetVisible('patient-insights');
   const showCircleMap = isWidgetVisible('circle-map');
+  const showCircleCompact = isWidgetVisible('circle-compact');
   const canOpenPatientProfile = canViewPatientProfileTab(caps);
   const canManageTeam = canInviteMembers(caps);
 
@@ -1134,6 +1153,74 @@ export function CircleDashboardScreen({
     formatDashboardLastLine(t, language, ts);
 
   if (showEngagementStats) {
+    const checkIn30 = sumDailyCheckInLastN(dailyDetail?.timeline, DASHBOARD_STATS_DAYS_30);
+    const messages30 = sumMessagesLastN(speechDetail?.timeline, DASHBOARD_STATS_DAYS_30);
+    const companion30 = sumCompanionLastNExcludingDetected(
+      companionDetail?.timeline,
+      DASHBOARD_STATS_DAYS_30,
+    );
+    const vitality30 = sumVitalityGamesLastN(vitalityDetail?.timeline, DASHBOARD_STATS_DAYS_30);
+    const alerts30 = sumAlertAttentionLastN(alertDetail?.timeline, DASHBOARD_STATS_DAYS_30);
+    const assessments30 = sumAssessmentsLastN(byMetricId, DASHBOARD_STATS_DAYS_30);
+    const last7Total =
+      alertStats.total +
+      (dailyCheckInEnabled ? checkInStats.completed : 0) +
+      (patientMessagingFeatureEnabled ? communicationStats.messaging : 0) +
+      (patientCommunicationFeatureEnabled ? communicationStats.communication : 0) +
+      (patientCompanionFeatureEnabled ? companionLast7 : 0) +
+      (patientVitalityFeatureEnabled ? vitalityGamesLast7 : 0) +
+      assessmentsLast7;
+    const last30Total =
+      alerts30.total +
+      (dailyCheckInEnabled ? checkIn30.completed : 0) +
+      (patientMessagingFeatureEnabled ? messages30.messaging : 0) +
+      (patientCommunicationFeatureEnabled ? messages30.communication : 0) +
+      (patientCompanionFeatureEnabled ? companion30 : 0) +
+      (patientVitalityFeatureEnabled ? vitality30 : 0) +
+      assessments30;
+
+    lastSevenDayWidgets.push({
+      key: 'last-7-days-overview',
+      title: t('dashboard.last7DaysOverview'),
+      icon: CalendarDays,
+      span: 'full',
+      heroVariant: 'label',
+      ...(analyticsLoading
+        ? loadingRows(t('common.loading'))
+        : {
+            heroValue: last7Total,
+            heroMuted: last7Total === 0,
+            iconTone: 'blue' as const,
+            row1:
+              last7Total === 0
+                ? t('dashboard.analyticsQuietWindow')
+                : dashboardPlural(t, 'analyticsEventsWindow', last7Total),
+            row2: '',
+          }),
+      onClick: () => onOpenAnalyticsPeriodOverview(7),
+    });
+
+    lastSevenDayWidgets.push({
+      key: 'last-30-days-overview',
+      title: t('dashboard.last30DaysOverview'),
+      icon: CalendarRange,
+      span: 'full',
+      heroVariant: 'label',
+      ...(analyticsLoading
+        ? loadingRows(t('common.loading'))
+        : {
+            heroValue: last30Total,
+            heroMuted: last30Total === 0,
+            iconTone: 'sky' as const,
+            row1:
+              last30Total === 0
+                ? t('dashboard.analyticsQuietWindow')
+                : dashboardPlural(t, 'analyticsEventsWindow', last30Total),
+            row2: '',
+          }),
+      onClick: () => onOpenAnalyticsPeriodOverview(30),
+    });
+
     lastSevenDayWidgets.push({
       key: 'alert-attention',
       title: t('dashboard.alertsAttention'),
@@ -1319,35 +1406,50 @@ export function CircleDashboardScreen({
                 }),
               };
             })()),
-        onClick: () => onGoToTab('analytics'),
+        onClick: () => onOpenAnalyticsDetail('vitality-game'),
       });
     }
 
-    if (patientAssessmentsFeatureEnabled) {
-      lastSevenDayWidgets.push({
-        key: 'assessments',
-        title: t('dashboard.assessments'),
-        icon: ClipboardList,
-        ...(analyticsLoading
-          ? loadingRows(t('common.loading'))
-          : (() => {
-              const quiet = assessmentsLast7 === 0;
-              return {
-                heroValue: assessmentsLast7,
-                heroMuted: quiet,
-                iconTone: 'sky',
-                row1: quiet
-                  ? t('dashboard.noAssessmentsWeek')
-                  : dashboardPlural(t, 'assessmentsFinishedWeek', assessmentsLast7),
-                row2: latestAssessment.title
-                  ? t('dashboard.lastAssessment', { title: latestAssessment.title })
-                  : t('dashboard.noAssessmentsYet'),
-                activityDays: activityDaysFromAssessmentSummaries(byMetricId),
-              };
-            })()),
-        onClick: () => onGoToTab('analytics'),
-      });
-    }
+    // Circle can schedule assessments even when the patient Assessments tab is off.
+    lastSevenDayWidgets.push({
+      key: 'assessments',
+      title: t('dashboard.assessments'),
+      icon: ClipboardList,
+      ...(analyticsLoading
+        ? loadingRows(t('common.loading'))
+        : (() => {
+            const quiet = assessmentsLast7 === 0;
+            return {
+              heroValue: assessmentsLast7,
+              heroMuted: quiet,
+              iconTone: 'sky',
+              row1: quiet
+                ? t('dashboard.noAssessmentsWeek')
+                : dashboardPlural(t, 'assessmentsFinishedWeek', assessmentsLast7),
+              row2: latestAssessment.title
+                ? t('dashboard.lastAssessment', { title: latestAssessment.title })
+                : t('dashboard.noAssessmentsYet'),
+              activityDays: activityDaysFromAssessmentSummaries(byMetricId),
+            };
+          })()),
+      onClick: () => {
+        const takenIds = assessmentMetricIdsTakenLast7(byMetricId).filter((metricId) => {
+          const definition = ANALYTICS_METRIC_DEFINITIONS[metricId];
+          if (!definition?.isReleased) return false;
+          if (!patient.capabilities) return false;
+          return canReadAnalyticsAudience(
+            definition.audience,
+            patient.role,
+            patient.capabilities,
+          );
+        });
+        if (takenIds.length === 1) {
+          onOpenAnalyticsDetail(takenIds[0]!);
+          return;
+        }
+        onOpenAssessmentsOverview();
+      },
+    });
   }
 
   if (showEngagementStats) {
@@ -1558,7 +1660,15 @@ export function CircleDashboardScreen({
       ) : (
         t('dashboard.modeCustom')
       ),
-      iconTone: 'blue',
+      recencyTint: 'green',
+      iconTone:
+        appMode === 'intensive_care'
+          ? 'rose'
+          : appMode === 'hospital'
+            ? 'amber'
+            : appMode === 'user'
+              ? 'emerald'
+              : 'blue',
       onClick: () => onGoToTab('remote-settings'),
     });
   }
@@ -1826,7 +1936,7 @@ export function CircleDashboardScreen({
           />
         ) : null}
 
-        {showCircleMap ? (
+        {showCircleMap || showCircleCompact ? (
           <section className="space-y-2">
             {!(showPatientLocale && !showPatientLocaleUnderLive) ? (
               <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>
@@ -1843,8 +1953,8 @@ export function CircleDashboardScreen({
               }
               patientNickName={profileSnapshot?.identity.nickName?.trim()}
               galleryPhotos={galleryDashboard.previewPhotos}
-              enabled={showCircleMap}
-              wide
+              showVisual={showCircleMap}
+              showCompact={showCircleCompact}
               onManageContacts={canManageTeam ? () => onGoToTab('admin') : undefined}
             />
           </section>

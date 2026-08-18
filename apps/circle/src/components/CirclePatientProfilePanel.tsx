@@ -212,7 +212,10 @@ export function CirclePatientProfilePanel({
   }, [db, patient.patientId, t]);
 
   const handleSaveSection = useCallback(
-    async (next: CirclePatientProfileSnapshot) => {
+    async (
+      next: CirclePatientProfileSnapshot,
+      options?: { applyRecommendedTabletLayout?: boolean; startCareTransitionPack?: boolean },
+    ) => {
       const targetPatientId = patient.patientId;
       setSaving(true);
       setError(null);
@@ -236,6 +239,7 @@ export function CirclePatientProfilePanel({
           user.uid,
           patient.displayName,
           user.displayName || undefined,
+          options,
         );
         void recordCareDiaryMilestones(db, {
           patientId: targetPatientId,
@@ -246,6 +250,7 @@ export function CirclePatientProfilePanel({
 
         if (
           previousPhase !== nextPhase &&
+          options?.startCareTransitionPack !== false &&
           canManageCareTransitionPack(normalizeMemberRole(patient.role))
         ) {
           const packId = suggestedPackForPhaseTransition(previousPhase, nextPhase);

@@ -81,9 +81,8 @@ type CircleDashboardCircleMapSectionProps = {
   patientPhotoUrl?: string;
   patientNickName?: string;
   galleryPhotos: FamilyGalleryPreviewPhoto[];
-  enabled: boolean;
-  /** Full-row Stay Connected tile — more room for the map visual. */
-  wide?: boolean;
+  showVisual: boolean;
+  showCompact: boolean;
   onManageContacts?: () => void;
 };
 
@@ -95,14 +94,14 @@ export function CircleDashboardCircleMapSection({
   patientPhotoUrl,
   patientNickName,
   galleryPhotos,
-  enabled,
-  wide = false,
+  showVisual,
+  showCompact,
   onManageContacts,
 }: CircleDashboardCircleMapSectionProps) {
   void memberRole;
   const t = useCircleT();
   const [open, setOpen] = useState(false);
-  const active = enabled;
+  const active = showVisual || showCompact;
 
   const { contacts, loading: contactsLoading } = useCircleTeamCoverageFromDashboard();
   const { photosByEmail, photosByContactId } = useCircleMapMemberPhotos(db, patientId, active);
@@ -122,21 +121,25 @@ export function CircleDashboardCircleMapSection({
 
   if (!active || contactsLoading) return null;
 
+  const tileProps = {
+    preferences,
+    messages,
+    galleryPhotos: mappedGalleryPhotos,
+    photosByEmail,
+    photosByContactId,
+    patientPhotoUrl,
+    onOpen: () => setOpen(true),
+    t,
+  };
+
   return (
-    <>
-      <div className={wide ? 'h-[15rem] sm:h-[16.5rem]' : 'h-[13rem] sm:h-[14rem]'}>
-        <CircleDashboardCircleMapTile
-          preferences={preferences}
-          messages={messages}
-          galleryPhotos={mappedGalleryPhotos}
-          photosByEmail={photosByEmail}
-          photosByContactId={photosByContactId}
-          patientPhotoUrl={patientPhotoUrl}
-          wide={wide}
-          onOpen={() => setOpen(true)}
-          t={t}
-        />
-      </div>
+    <div className="space-y-3">
+      {showVisual ? (
+        <div className="h-[15rem] sm:h-[16.5rem]">
+          <CircleDashboardCircleMapTile {...tileProps} variant="visual" />
+        </div>
+      ) : null}
+      {showCompact ? <CircleDashboardCircleMapTile {...tileProps} variant="compact" /> : null}
 
       <CircleDashboardCircleMapModal
         isOpen={open}
@@ -150,6 +153,6 @@ export function CircleDashboardCircleMapSection({
         onManageContacts={onManageContacts}
         t={t}
       />
-    </>
+    </div>
   );
 }

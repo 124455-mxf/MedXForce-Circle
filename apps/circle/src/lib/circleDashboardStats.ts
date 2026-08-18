@@ -1,5 +1,7 @@
 import type {
   AlertAttentionTimelinePoint,
+  AnalyticsMetricId,
+  AnalyticsTrendDirection,
   AssessmentCountTimelinePoint,
   CompanionTimelinePoint,
   DailyCheckInTimelinePoint,
@@ -10,6 +12,7 @@ import type {
 import { timelinePointToTimestamp } from './circleAnalyticsChart';
 
 export const DASHBOARD_STATS_DAYS = 7;
+export const DASHBOARD_STATS_DAYS_30 = 30;
 
 export type DashboardActivityDay = {
   dateKey: string;
@@ -86,9 +89,12 @@ function timelinePointDateKey(date: string, label?: string): string | null {
   return localDateKey(new Date(ts));
 }
 
-function assessmentPointCount(point: { count?: number }): number {
-  if (typeof point.count === 'number' && Number.isFinite(point.count)) {
-    return Math.max(0, point.count);
+function assessmentPointCount(point: unknown): number {
+  if (point && typeof point === 'object' && 'count' in point) {
+    const count = (point as { count?: unknown }).count;
+    if (typeof count === 'number' && Number.isFinite(count)) {
+      return Math.max(0, count);
+    }
   }
   return 1;
 }
@@ -114,6 +120,66 @@ export function activityDaysFromAssessmentSummaries(
   return buildRollingLast7ActivityDays((dateKey) => totals.get(dateKey) ?? 0);
 }
 
+export function mergeActivityDays(series: DashboardActivityDay[][]): DashboardActivityDay[] {
+  const totals = new Map<string, number>();
+  for (const days of series) {
+    for (const day of days) {
+      totals.set(day.dateKey, (totals.get(day.dateKey) ?? 0) + day.value);
+    }
+  }
+  return buildRollingLast7ActivityDays((dateKey) => totals.get(dateKey) ?? 0);
+}
+
+function rollingLocalDateKeys(days: number): string[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Array.from({ length: days }, (_, index) => {
+    const day = new Date(today);
+    day.setDate(today.getDate() - (days - 1 - index));
+    return localDateKey(day);
+  });
+}
+
+/** Completed assessments in the rolling last N calendar days (sparse ISO timelines). */
+export function assessmentTakenCountLastN(
+  summary: PatientAnalyticsSummary | undefined,
+  days: number,
+): number {
+  const detail = summary?.detail;
+  if (!detail || !('timeline' in detail) || !Array.isArray(detail.timeline)) return 0;
+
+  const keys = new Set(rollingLocalDateKeys(days));
+  let total = 0;
+  for (const point of detail.timeline) {
+    if (!point || typeof point.date !== 'string') continue;
+    const key = timelinePointDateKey(point.date, 'label' in point ? point.label : undefined);
+    if (!key || !keys.has(key)) continue;
+    total += assessmentPointCount(point);
+  }
+  return total;
+}
+
+export function assessmentTakenCountLast7(
+  summary: PatientAnalyticsSummary | undefined,
+): number {
+  return assessmentTakenCountLastN(summary, DASHBOARD_STATS_DAYS);
+}
+
+/** 30-day assessment trend from the synced summary (count or score, depending on metric). */
+export function assessmentThirtyDayTrend(
+  summary: PatientAnalyticsSummary | undefined,
+): AnalyticsTrendDirection | null {
+  if (!summary) return null;
+  const detailTrend =
+    summary.detail && 'trend' in summary.detail ? summary.detail.trend : undefined;
+  if (detailTrend === 'up' || detailTrend === 'down' || detailTrend === 'stable') {
+    return detailTrend;
+  }
+  if (summary.trend === 'up' || summary.trend === 'down') return summary.trend;
+  if (summary.trend === 'flat') return 'stable';
+  return null;
+}
+
 function sumTimelineCountLast7(timeline?: AssessmentCountTimelinePoint[]): number {
   return (timeline ?? [])
     .slice(-DASHBOARD_STATS_DAYS)
@@ -125,8 +191,11 @@ function scaleCountToLast7(count: number, windowDays = 30): number {
   return Math.max(0, Math.round((count * DASHBOARD_STATS_DAYS) / windowDays));
 }
 
-export function sumAlertAttentionLast7(timeline?: AlertAttentionTimelinePoint[]) {
-  const slice = (timeline ?? []).slice(-DASHBOARD_STATS_DAYS);
+export function sumAlertAttentionLastN(
+  timeline: AlertAttentionTimelinePoint[] | undefined,
+  days: number,
+) {
+  const slice = (timeline ?? []).slice(-days);
   let alerts = 0;
   let attentions = 0;
   for (const point of slice) {
@@ -134,6 +203,10 @@ export function sumAlertAttentionLast7(timeline?: AlertAttentionTimelinePoint[])
     attentions += point.attention;
   }
   return { alerts, attentions, total: alerts + attentions };
+}
+
+export function sumAlertAttentionLast7(timeline?: AlertAttentionTimelinePoint[]) {
+  return sumAlertAttentionLastN(timeline, DASHBOARD_STATS_DAYS);
 }
 
 export type AlertAttentionRecencyUrgency = 'neutral' | 'green' | 'orange' | 'red';
@@ -183,8 +256,11 @@ export function getAlertAttentionRecencyUrgency(
 }
 
 /** Companion sessions + exchanges in the last 7 days, excluding AI-detected opens. */
-export function sumCompanionLast7ExcludingDetected(timeline?: CompanionTimelinePoint[]): number {
-  const slice = (timeline ?? []).slice(-DASHBOARD_STATS_DAYS);
+export function sumCompanionLastNExcludingDetected(
+  timeline: CompanionTimelinePoint[] | undefined,
+  days: number,
+): number {
+  const slice = (timeline ?? []).slice(-days);
   let conversations = 0;
   let interactions = 0;
   let detected = 0;
@@ -196,8 +272,12 @@ export function sumCompanionLast7ExcludingDetected(timeline?: CompanionTimelineP
   return Math.max(0, conversations + interactions - detected);
 }
 
-export function sumMessagesLast7(timeline?: MessagesTimelinePoint[]) {
-  const slice = (timeline ?? []).slice(-DASHBOARD_STATS_DAYS);
+export function sumCompanionLast7ExcludingDetected(timeline?: CompanionTimelinePoint[]): number {
+  return sumCompanionLastNExcludingDetected(timeline, DASHBOARD_STATS_DAYS);
+}
+
+export function sumMessagesLastN(timeline: MessagesTimelinePoint[] | undefined, days: number) {
+  const slice = (timeline ?? []).slice(-days);
   let communication = 0;
   let messaging = 0;
   for (const point of slice) {
@@ -207,13 +287,27 @@ export function sumMessagesLast7(timeline?: MessagesTimelinePoint[]) {
   return { communication, messaging, total: communication + messaging };
 }
 
-export function sumVitalityGamesLast7(timeline?: VitalityGameTimelinePoint[]) {
-  const slice = (timeline ?? []).slice(-DASHBOARD_STATS_DAYS);
+export function sumMessagesLast7(timeline?: MessagesTimelinePoint[]) {
+  return sumMessagesLastN(timeline, DASHBOARD_STATS_DAYS);
+}
+
+export function sumVitalityGamesLastN(
+  timeline: VitalityGameTimelinePoint[] | undefined,
+  days: number,
+) {
+  const slice = (timeline ?? []).slice(-days);
   return slice.reduce((sum, point) => sum + point.games, 0);
 }
 
-export function sumDailyCheckInLast7(timeline?: DailyCheckInTimelinePoint[]) {
-  const slice = (timeline ?? []).slice(-DASHBOARD_STATS_DAYS);
+export function sumVitalityGamesLast7(timeline?: VitalityGameTimelinePoint[]) {
+  return sumVitalityGamesLastN(timeline, DASHBOARD_STATS_DAYS);
+}
+
+export function sumDailyCheckInLastN(
+  timeline: DailyCheckInTimelinePoint[] | undefined,
+  days: number,
+) {
+  const slice = (timeline ?? []).slice(-days);
   let completed = 0;
   let skipped = 0;
   for (const point of slice) {
@@ -221,6 +315,10 @@ export function sumDailyCheckInLast7(timeline?: DailyCheckInTimelinePoint[]) {
     skipped += point.skipped;
   }
   return { completed, skipped, total: completed + skipped };
+}
+
+export function sumDailyCheckInLast7(timeline?: DailyCheckInTimelinePoint[]) {
+  return sumDailyCheckInLastN(timeline, DASHBOARD_STATS_DAYS);
 }
 
 export function resolveDailyCheckInLast7Stats(detail?: {
@@ -297,16 +395,39 @@ function assessmentCountLast7(summary: PatientAnalyticsSummary): number {
   return 0;
 }
 
-export function sumAssessmentsLast7(byMetricId: Map<string, PatientAnalyticsSummary>): number {
+export function sumAssessmentsLastN(
+  byMetricId: Map<string, PatientAnalyticsSummary>,
+  days: number,
+): number {
   let total = 0;
-
   for (const metricId of DASHBOARD_ASSESSMENT_METRIC_IDS) {
-    const summary = byMetricId.get(metricId);
-    if (!summary) continue;
-    total += assessmentCountLast7(summary);
+    total += assessmentTakenCountLastN(byMetricId.get(metricId), days);
   }
-
   return total;
+}
+
+export function sumAssessmentsLast7(byMetricId: Map<string, PatientAnalyticsSummary>): number {
+  return sumAssessmentsLastN(byMetricId, DASHBOARD_STATS_DAYS);
+}
+
+/** Assessment types with at least one take in the rolling last N calendar days. */
+export function assessmentMetricIdsTakenLastN(
+  byMetricId: Map<string, PatientAnalyticsSummary>,
+  days: number,
+): AnalyticsMetricId[] {
+  const ids: AnalyticsMetricId[] = [];
+  for (const rawId of DASHBOARD_ASSESSMENT_METRIC_IDS) {
+    const metricId = rawId as AnalyticsMetricId;
+    if (assessmentTakenCountLastN(byMetricId.get(metricId), days) <= 0) continue;
+    ids.push(metricId);
+  }
+  return ids;
+}
+
+export function assessmentMetricIdsTakenLast7(
+  byMetricId: Map<string, PatientAnalyticsSummary>,
+): AnalyticsMetricId[] {
+  return assessmentMetricIdsTakenLastN(byMetricId, DASHBOARD_STATS_DAYS);
 }
 
 /** Most recently completed assessment (e.g. Pain, Vision) within the dashboard window. */

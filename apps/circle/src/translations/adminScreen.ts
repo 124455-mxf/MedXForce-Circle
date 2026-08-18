@@ -87,7 +87,7 @@ const profileEnglish = {
   fieldDateOfOnset: 'Date of onset',
   fieldTreatmentPhase: 'Where I am in recovery',
   treatmentPhaseDrivesAppHint:
-    'Changing this updates the patient app application mode and dashboard layout.',
+    'You can keep the tablet as it is, or switch it to the matching application mode and dashboard.',
   treatmentPhaseChange: 'Change',
   fieldSurgicalHistory: 'Surgical history',
   fieldComorbidities: 'Comorbidities',
@@ -422,7 +422,7 @@ const profileGerman = {
   fieldDateOfOnset: 'Beginndatum',
   fieldTreatmentPhase: 'Wo ich in der Genesung stehe',
   treatmentPhaseDrivesAppHint:
-    'Eine Änderung aktualisiert den Anwendungsmodus und das Dashboard-Layout der Patienten-App.',
+    'Sie können das Tablet unverändert lassen oder auf den passenden Anwendungsmodus und das Dashboard umstellen.',
   treatmentPhaseChange: 'Ändern',
   fieldSurgicalHistory: 'Operationsgeschichte',
   fieldComorbidities: 'Komorbiditäten',
@@ -766,7 +766,7 @@ const profileSpanish = {
   fieldDateOfOnset: 'Fecha de inicio',
   fieldTreatmentPhase: 'Dónde estoy en mi recuperación',
   treatmentPhaseDrivesAppHint:
-    'Cambiar esto actualiza el modo de aplicación y el diseño del panel de la app del paciente.',
+    'Puede dejar la tablet como está o cambiarla al modo de aplicación y panel correspondientes.',
   treatmentPhaseChange: 'Cambiar',
   fieldSurgicalHistory: 'Historial quirúrgico',
   fieldComorbidities: 'Comorbilidades',
@@ -1110,7 +1110,7 @@ const profilePolish = {
   fieldDateOfOnset: 'Data początku',
   fieldTreatmentPhase: 'Gdzie jestem w rekonwalescencji',
   treatmentPhaseDrivesAppHint:
-    'Zmiana aktualizuje tryb aplikacji i układ pulpitu aplikacji pacjenta.',
+    'Możesz zostawić tablet bez zmian albo przełączyć go na pasujący tryb aplikacji i układ pulpitu.',
   treatmentPhaseChange: 'Zmień',
   fieldSurgicalHistory: 'Historia operacji',
   fieldComorbidities: 'Choroby współistniejące',

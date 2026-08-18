@@ -272,12 +272,9 @@ type DashboardCircleMapTileProps = {
   photosByContactId?: Record<string, string>;
   patientPhotoUrl?: string;
   preview?: boolean;
-  /** Full-row layout: title left, larger map right. */
-  wide?: boolean;
+  variant?: 'visual' | 'compact';
   onOpen: () => void;
   t: (key: string, params?: Record<string, unknown>) => string;
-  titleClassName?: string;
-  bodyClassName?: string;
 };
 
 export function DashboardCircleMapTile({
@@ -289,11 +286,9 @@ export function DashboardCircleMapTile({
   photosByContactId,
   patientPhotoUrl,
   preview = false,
-  wide = false,
+  variant = 'compact',
   onOpen,
   t,
-  titleClassName,
-  bodyClassName,
 }: DashboardCircleMapTileProps) {
   const model = useMemo(() => {
     if (preview) return buildCircleMapPreviewModel(t);
@@ -310,85 +305,73 @@ export function DashboardCircleMapTile({
     });
   }, [galleryPhotos, messages, onlineNow, patientPhotoUrl, photosByContactId, photosByEmail, preferences, preview, t]);
 
+  const memberCount = model.nodes.length;
+
+  if (variant === 'compact') {
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        className="w-full text-left p-3.5 sm:p-4 rounded-2xl border border-slate-100 bg-white shadow-sm hover:border-blue-200 hover:bg-blue-50/30 transition-colors flex flex-col"
+      >
+        <div className="flex items-center gap-2.5 mb-2 min-w-0">
+          <span className="w-9 h-9 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
+            <Sparkles size={18} aria-hidden />
+          </span>
+          <p className="text-sm font-bold text-slate-800 leading-tight truncate">
+            {t('dashboard.circleMap.compactTitle')}
+          </p>
+        </div>
+        <div className="flex items-center justify-between gap-3 min-w-0">
+          <p className="font-bold tracking-tight text-2xl leading-none text-slate-900 tabular-nums">
+            {memberCount}
+          </p>
+          <p className="text-sm font-medium text-slate-700 text-right">
+            {t('dashboard.circleMap.membersCount', { count: memberCount })}
+          </p>
+        </div>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
       onClick={onOpen}
-      className={cn(
-        'text-left w-full h-full flex bg-white rounded-[28px] border border-violet-100 shadow-sm hover:shadow-lg hover:border-violet-200 transition-all group overflow-hidden relative',
-        wide ? 'flex-row items-stretch pl-4 sm:pl-5 py-3 sm:py-4 pr-1 sm:pr-2 gap-2 sm:gap-3' : 'flex-col p-4 sm:p-5',
-      )}
+      className="text-left w-full h-full flex bg-white rounded-[28px] border border-violet-100 shadow-sm hover:shadow-lg hover:border-violet-200 transition-all group overflow-hidden relative flex-row items-stretch pl-4 sm:pl-5 py-3 sm:py-4 pr-1 sm:pr-2 gap-2 sm:gap-3"
     >
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-[radial-gradient(circle_at_30%_20%,rgba(139,92,246,0.06),transparent_55%)]" />
-      <div
-        className={cn(
-          'relative flex min-w-0',
-          wide
-            ? 'w-[30%] sm:w-[28%] flex-col justify-between shrink-0 py-1'
-            : 'items-center gap-3 mb-2',
-        )}
-      >
-        <div className={cn('flex items-center gap-2.5 min-w-0')}>
+      <div className="relative flex min-w-0 w-[30%] sm:w-[28%] flex-col justify-between shrink-0 py-1">
+        <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center group-hover:bg-violet-600 group-hover:text-white transition-colors shrink-0">
             <Sparkles size={20} />
           </div>
-          <div className="min-w-0">
-            <p className={cn('font-bold text-slate-800 text-sm leading-tight line-clamp-2 min-w-0', titleClassName)}>
-              {t('dashboard.circleMap.tileTitle')}
-            </p>
-            {wide ? null : (
-              <p className={cn('text-xs text-slate-500', bodyClassName)}>
-                {t('dashboard.circleMap.membersCount', { count: model.nodes.length })}
-              </p>
-            )}
-          </div>
-        </div>
-        {wide ? (
-          <div className="relative flex-1 flex flex-col justify-center min-h-0 py-1">
-            <p className="font-bold tracking-tight leading-none text-3xl sm:text-[2rem] text-slate-900">
-              {model.nodes.length}
-            </p>
-            <p className="mt-1.5 text-[13px] text-slate-600 leading-snug">
-              {t('dashboard.circleMap.membersCount', { count: model.nodes.length })}
-            </p>
-          </div>
-        ) : null}
-        {wide ? (
-          <p
-            className={cn(
-              'relative text-[11px] font-bold uppercase tracking-wider text-violet-600',
-              bodyClassName,
-            )}
-          >
-            {t('dashboard.circleMap.tileCta')}
+          <p className="font-bold text-slate-800 text-sm leading-tight line-clamp-2 min-w-0">
+            {t('dashboard.circleMap.tileTitle')}
           </p>
-        ) : null}
+        </div>
+        <div className="relative flex-1 flex flex-col justify-center min-h-0 py-1">
+          <p className="font-bold tracking-tight leading-none text-3xl sm:text-[2rem] text-slate-900">
+            {memberCount}
+          </p>
+          <p className="mt-1.5 text-[13px] text-slate-600 leading-snug">
+            {t('dashboard.circleMap.membersCount', { count: memberCount })}
+          </p>
+        </div>
+        <p className="relative text-[11px] font-bold uppercase tracking-wider text-violet-600">
+          {t('dashboard.circleMap.tileCta')}
+        </p>
       </div>
-      <div
-        className={cn(
-          'relative min-h-0 min-w-0',
-          wide ? 'flex-1' : 'flex-1 -mx-2',
-        )}
-      >
+      <div className="relative min-h-0 min-w-0 flex-1">
         <CircleMapVisual
           model={model}
           mode="roles"
           compact
-          emphasized={wide}
+          emphasized
           t={t}
           className="h-full"
         />
       </div>
-      {wide ? null : (
-        <p
-          className={cn(
-            'relative text-[11px] font-bold uppercase tracking-wider text-violet-600 mt-2',
-            bodyClassName,
-          )}
-        >
-          {t('dashboard.circleMap.tileCta')}
-        </p>
-      )}
     </button>
   );
 }
