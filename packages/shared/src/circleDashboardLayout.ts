@@ -47,8 +47,12 @@ export type CircleDashboardLayoutSection =
   | 'stayConnected'
   | 'patientApp';
 
+export type CircleDashboardLayoutPreset = 'compact' | 'detailed';
+export type CircleDashboardStoredPreset = CircleDashboardLayoutPreset | 'custom';
+
 export type CircleDashboardLayout = {
   hiddenWidgets: CircleDashboardWidgetKey[];
+  preset?: CircleDashboardStoredPreset;
 };
 
 export const ALL_CUSTOMIZABLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
@@ -78,95 +82,179 @@ export const ALL_CUSTOMIZABLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
   'reminder-diary-entry',
 ];
 
-/**
- * Optional tiles hidden for proxy until they opt in via Customize dashboard.
- * Matches Proxy customize layout (Aug 2026): locale, Circle Compact, Last 7 days,
- * Alerts, Check-in compact, Assessments, remote settings, user profile.
- */
-export const PROXY_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
-  'patient-insights',
-  'circle-map',
-  'reminder-gallery-upload',
-  'reminder-diary-entry',
-  'last-30-days-overview',
-  'check-in-wellness-ring',
-  'messages',
-  'communication',
-  'companion',
-  'vitality',
-  'assessments-compact',
-  'diary',
-  'circle',
-  'gallery-engagement',
-  'media-gallery',
-];
-
-/**
- * Optional tiles hidden for family until they opt in via Customize dashboard.
- * Matches Family customize layout (Aug 2026): locale, insights, Circle + Compact,
- * reminders, Last 7/30, alerts, Check-In pulse, media gallery.
- */
-export const FAMILY_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
-  'daily-check-in',
-  'messages',
-  'communication',
-  'companion',
-  'vitality',
-  'assessments',
-  'assessments-compact',
-  'assessment-schedule-calendar',
-  'diary',
-  'circle',
-  'gallery-engagement',
-  'remote-settings',
-  'user-profile',
-];
-
 /** Widgets friends must never see, even if a saved layout marks them visible. */
 export const FRIEND_NEVER_VISIBLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
   'assessment-schedule-calendar',
-  'check-in-wellness-ring',
   'assessments',
   'assessments-compact',
 ];
 
-/**
- * Optional tiles hidden for friends until they opt in.
- * Matches Friend customize layout (Aug 2026): locale, insights, Circle, reminders,
- * Last 7/30, alerts, Check-in compact, diary, your photos, media gallery.
- */
-export const FRIEND_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
-  'circle-compact',
-  'messages',
-  'communication',
-  'companion',
-  'vitality',
-  'assessments',
-  'assessments-compact',
-  'check-in-wellness-ring',
-  'assessment-schedule-calendar',
-  'circle',
-  'remote-settings',
-  'user-profile',
-];
+type DashboardPresetRoleGroup = 'proxy' | 'caregiver' | 'family' | 'friend';
 
-/**
- * Caregiver / facility_staff / professional_caregiver defaults (Aug 2026).
- * On by default: locale, Circle Compact, reminders, Last 7/30, alerts, Check-In pulse,
- * messages, assessments, media gallery, remote settings, user profile.
- */
-export const CAREGIVER_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
-  'patient-insights',
-  'circle-map',
-  'daily-check-in',
-  'communication',
-  'companion',
-  'vitality',
-  'assessments-compact',
-  'diary',
-  'circle',
-  'gallery-engagement',
-];
+function dashboardPresetRoleGroup(role: CircleMemberRole): DashboardPresetRoleGroup {
+  if (role === 'proxy' || role === 'family' || role === 'friend') return role;
+  return 'caregiver';
+}
+
+/** Compact Home starting tiles (Aug 2026 role screenshots). */
+const COMPACT_VISIBLE_BY_ROLE: Record<DashboardPresetRoleGroup, CircleDashboardWidgetKey[]> = {
+  proxy: [
+    'patient-locale',
+    'circle-compact',
+    'last-7-days-overview',
+    'alert-attention',
+    'daily-check-in',
+    'assessments',
+    'remote-settings',
+    'user-profile',
+  ],
+  caregiver: [
+    'patient-locale',
+    'circle-compact',
+    'reminder-gallery-upload',
+    'reminder-diary-entry',
+    'last-7-days-overview',
+    'alert-attention',
+    'daily-check-in',
+    'assessments',
+    'user-profile',
+  ],
+  family: [
+    'patient-locale',
+    'patient-insights',
+    'circle-compact',
+    'reminder-gallery-upload',
+    'reminder-diary-entry',
+    'last-7-days-overview',
+    'alert-attention',
+    'daily-check-in',
+    'diary',
+    'gallery-engagement',
+    'media-gallery',
+  ],
+  friend: [
+    'patient-locale',
+    'patient-insights',
+    'circle-compact',
+    'reminder-gallery-upload',
+    'reminder-diary-entry',
+    'daily-check-in',
+    'media-gallery',
+  ],
+};
+
+/** Detailed Home starting tiles: map / Check-In pulse / Last 30 instead of compact counterparts. */
+const DETAILED_VISIBLE_BY_ROLE: Record<DashboardPresetRoleGroup, CircleDashboardWidgetKey[]> = {
+  proxy: [
+    'patient-locale',
+    'circle-map',
+    'reminder-gallery-upload',
+    'reminder-diary-entry',
+    'last-7-days-overview',
+    'alert-attention',
+    'check-in-wellness-ring',
+    'messages',
+    'communication',
+    'companion',
+    'vitality',
+    'assessments',
+    'remote-settings',
+    'user-profile',
+  ],
+  caregiver: [
+    'patient-locale',
+    'circle-compact',
+    'reminder-gallery-upload',
+    'reminder-diary-entry',
+    'last-7-days-overview',
+    'alert-attention',
+    'check-in-wellness-ring',
+    'messages',
+    'communication',
+    'companion',
+    'vitality',
+    'assessments',
+    'user-profile',
+  ],
+  family: [
+    'patient-locale',
+    'patient-insights',
+    'circle-map',
+    'reminder-gallery-upload',
+    'reminder-diary-entry',
+    'last-7-days-overview',
+    'alert-attention',
+    'check-in-wellness-ring',
+    'vitality',
+    'diary',
+    'gallery-engagement',
+    'media-gallery',
+  ],
+  friend: [
+    'patient-locale',
+    'patient-insights',
+    'circle-map',
+    'reminder-gallery-upload',
+    'reminder-diary-entry',
+    'check-in-wellness-ring',
+    'diary',
+    'gallery-engagement',
+    'media-gallery',
+  ],
+};
+
+function hiddenWidgetsFromVisible(
+  visible: readonly CircleDashboardWidgetKey[],
+  role: CircleMemberRole,
+): CircleDashboardWidgetKey[] {
+  const vis = new Set(visible);
+  if (role === 'friend') {
+    for (const key of FRIEND_NEVER_VISIBLE_DASHBOARD_WIDGETS) vis.delete(key);
+  }
+  return ALL_CUSTOMIZABLE_DASHBOARD_WIDGETS.filter((key) => !vis.has(key));
+}
+
+function hiddenWidgetSetEquals(
+  left: readonly CircleDashboardWidgetKey[],
+  right: readonly CircleDashboardWidgetKey[],
+): boolean {
+  if (left.length !== right.length) return false;
+  const rightSet = new Set(right);
+  return left.every((key) => rightSet.has(key));
+}
+
+export function hiddenDashboardWidgetsForRolePreset(
+  role: CircleMemberRole,
+  preset: CircleDashboardLayoutPreset,
+): CircleDashboardWidgetKey[] {
+  const group = dashboardPresetRoleGroup(role);
+  const visible =
+    preset === 'detailed' ? DETAILED_VISIBLE_BY_ROLE[group] : COMPACT_VISIBLE_BY_ROLE[group];
+  return hiddenWidgetsFromVisible(visible, role);
+}
+
+export function resolveCircleDashboardLayoutPreset(
+  hiddenWidgets: readonly CircleDashboardWidgetKey[],
+  role: CircleMemberRole,
+): CircleDashboardStoredPreset {
+  if (hiddenWidgetSetEquals(hiddenWidgets, hiddenDashboardWidgetsForRolePreset(role, 'compact'))) {
+    return 'compact';
+  }
+  if (hiddenWidgetSetEquals(hiddenWidgets, hiddenDashboardWidgetsForRolePreset(role, 'detailed'))) {
+    return 'detailed';
+  }
+  return 'custom';
+}
+
+/** @deprecated Use hiddenDashboardWidgetsForRolePreset(role, 'compact'). */
+export const PROXY_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] =
+  hiddenDashboardWidgetsForRolePreset('proxy', 'compact');
+export const FAMILY_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] =
+  hiddenDashboardWidgetsForRolePreset('family', 'compact');
+export const FRIEND_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] =
+  hiddenDashboardWidgetsForRolePreset('friend', 'compact');
+export const CAREGIVER_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] =
+  hiddenDashboardWidgetsForRolePreset('caregiver', 'compact');
 
 export const CIRCLE_DASHBOARD_WIDGET_SECTIONS: Record<
   CircleDashboardLayoutSection,
@@ -212,14 +300,16 @@ export function sanitizeHiddenDashboardWidgets(
   return next;
 }
 
-/** Role defaults when the member has not saved a layout yet. */
+/** Role defaults when the member has not saved a layout yet (Compact). */
 export function defaultHiddenDashboardWidgetsForRole(
   role: CircleMemberRole,
 ): CircleDashboardWidgetKey[] {
-  if (role === 'friend') return [...FRIEND_ROLE_HIDDEN_DASHBOARD_WIDGETS];
-  if (role === 'family') return [...FAMILY_ROLE_HIDDEN_DASHBOARD_WIDGETS];
-  if (role === 'proxy') return [...PROXY_ROLE_HIDDEN_DASHBOARD_WIDGETS];
-  return [...CAREGIVER_ROLE_HIDDEN_DASHBOARD_WIDGETS];
+  return hiddenDashboardWidgetsForRolePreset(role, 'compact');
+}
+
+function sanitizeStoredDashboardPreset(raw: unknown): CircleDashboardStoredPreset | undefined {
+  if (raw === 'compact' || raw === 'detailed' || raw === 'custom') return raw;
+  return undefined;
 }
 
 export function parseMemberDashboardLayout(
@@ -239,6 +329,7 @@ export function parseMemberDashboardLayout(
       hiddenWidgets: sanitizeHiddenDashboardWidgets(
         (raw as Record<string, unknown>).hiddenWidgets,
       ),
+      preset: sanitizeStoredDashboardPreset((raw as Record<string, unknown>).preset),
     },
     hasStoredLayout: true,
   };
@@ -281,9 +372,13 @@ export function parsePrefsDashboardLayout(
   if (!data || !Object.prototype.hasOwnProperty.call(data, 'hiddenWidgets')) {
     return { layout: null, hasStoredLayout: false };
   }
+  const hiddenWidgets = sanitizeHiddenDashboardWidgets(data.hiddenWidgets);
   return {
     layout: {
-      hiddenWidgets: sanitizeHiddenDashboardWidgets(data.hiddenWidgets),
+      hiddenWidgets,
+      preset:
+        sanitizeStoredDashboardPreset(data.preset) ??
+        undefined,
     },
     hasStoredLayout: true,
   };
@@ -311,9 +406,11 @@ export async function writeMemberDashboardLayout(
   patientId: string,
   memberUid: string,
   hiddenWidgets: CircleDashboardWidgetKey[],
+  preset?: CircleDashboardStoredPreset,
 ): Promise<CircleDashboardLayout> {
   const layout: CircleDashboardLayout = {
     hiddenWidgets: sanitizeHiddenDashboardWidgets(hiddenWidgets),
+    preset,
   };
 
   // Dedicated prefs doc — create/merge is allowed for the signed-in member only.
@@ -321,6 +418,7 @@ export async function writeMemberDashboardLayout(
     memberDashboardLayoutRef(db, patientId, memberUid),
     {
       hiddenWidgets: layout.hiddenWidgets,
+      ...(preset ? { preset } : {}),
       updatedAt: Date.now(),
     },
     { merge: true },

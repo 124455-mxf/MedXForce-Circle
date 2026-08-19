@@ -1,12 +1,25 @@
 import { Calendar } from 'lucide-react';
-import { setCircleScheduleShowAppointmentDetails } from '../lib/circleSchedulePreferences';
+import {
+  CIRCLE_SCHEDULE_DEFAULT_VIEW_OPTIONS,
+  setCircleScheduleDefaultView,
+  setCircleScheduleShowAppointmentDetails,
+  type CircleScheduleDefaultView,
+} from '../lib/circleSchedulePreferences';
+import { useCircleScheduleDefaultView } from '../hooks/useCircleScheduleDefaultView';
 import { useCircleScheduleShowAppointmentDetails } from '../hooks/useCircleScheduleShowAppointmentDetails';
 import { cn } from '../lib/utils';
 import { useCircleT } from '../lib/circleI18nContext';
 
+const DEFAULT_VIEW_LABEL_KEYS: Record<CircleScheduleDefaultView, string> = {
+  today: 'schedulePage.views.day',
+  week: 'schedulePage.views.week',
+  month: 'schedulePage.views.month',
+};
+
 export function CircleSettingsSchedulePanel() {
   const t = useCircleT();
   const showAppointmentDetails = useCircleScheduleShowAppointmentDetails();
+  const defaultView = useCircleScheduleDefaultView();
 
   return (
     <div className="space-y-6 p-5">
@@ -50,6 +63,39 @@ export function CircleSettingsSchedulePanel() {
               )}
             />
           </button>
+        </div>
+      </div>
+
+      <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
+        <div className="space-y-1">
+          <p className="font-bold text-slate-800">{t('settings.defaultScheduleViewTitle')}</p>
+          <p className="text-sm text-slate-400 leading-relaxed">
+            {t('settings.defaultScheduleViewDesc')}
+          </p>
+        </div>
+        <div
+          className="inline-flex rounded-xl bg-slate-200/80 p-1 gap-0.5 flex-wrap"
+          role="group"
+          aria-label={t('settings.defaultScheduleViewTitle')}
+        >
+          {CIRCLE_SCHEDULE_DEFAULT_VIEW_OPTIONS.map((id) => {
+            const active = defaultView === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setCircleScheduleDefaultView(id)}
+                className={cn(
+                  'px-4 py-2 rounded-lg text-xs font-bold transition-all',
+                  active
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700',
+                )}
+              >
+                {t(DEFAULT_VIEW_LABEL_KEYS[id])}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

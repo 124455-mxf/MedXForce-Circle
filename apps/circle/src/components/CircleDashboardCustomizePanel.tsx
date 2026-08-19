@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import type { User } from 'firebase/auth';
-import { LayoutGrid, Loader2 } from 'lucide-react';
+import { ChevronDown, LayoutGrid, Loader2 } from 'lucide-react';
 import type { Firestore } from 'firebase/firestore';
 import {
   CIRCLE_DASHBOARD_WIDGET_SECTIONS,
   isCircleDashboardWidgetAvailable,
   normalizeMemberRole,
+  type CircleDashboardLayoutPreset,
   type CircleDashboardLayoutSection,
   type CircleDashboardWidgetKey,
   type CirclePatientSummary,
@@ -78,31 +79,58 @@ function DashboardSectionToggles({
   onToggle: (key: CircleDashboardWidgetKey, visible: boolean) => void;
 }) {
   const t = useCircleT();
+  const [collapsed, setCollapsed] = useState(true);
   const role = normalizeMemberRole(patient.role);
   const keys = CIRCLE_DASHBOARD_WIDGET_SECTIONS[section].filter((key) =>
     isCircleDashboardWidgetAvailable(key, patient.capabilities, role),
   );
   if (keys.length === 0) return null;
 
+  const onCount = keys.filter((key) => !hiddenWidgets.has(key)).length;
+
   return (
     <section className="space-y-2">
-      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">
-        {t(DASHBOARD_LAYOUT_SECTION_TITLE_KEYS[section])}
-      </h4>
-      <div className="space-y-2">
-        {keys.map((key) => {
-          const visible = !hiddenWidgets.has(key);
-          return (
-            <DashboardWidgetToggle
-              key={key}
-              title={t(DASHBOARD_WIDGET_TITLE_KEYS[key])}
-              visible={visible}
-              saving={saving}
-              onToggle={() => onToggle(key, !visible)}
-            />
-          );
-        })}
-      </div>
+      <button
+        type="button"
+        onClick={() => setCollapsed((open) => !open)}
+        className="w-full flex items-center justify-between gap-2 px-1 py-1 text-left"
+        aria-expanded={!collapsed}
+      >
+        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          {t(DASHBOARD_LAYOUT_SECTION_TITLE_KEYS[section])}
+        </h4>
+        <span className="flex items-center gap-1.5 shrink-0">
+          {collapsed ? (
+            <span className="text-[11px] font-medium text-slate-400 tabular-nums">
+              {t('settings.dashboardCustomizeSectionOnCount', { count: onCount })}
+            </span>
+          ) : null}
+          <ChevronDown
+            size={16}
+            className={cn(
+              'text-slate-400 transition-transform',
+              collapsed && '-rotate-90',
+            )}
+            aria-hidden
+          />
+        </span>
+      </button>
+      {collapsed ? null : (
+        <div className="space-y-2">
+          {keys.map((key) => {
+            const visible = !hiddenWidgets.has(key);
+            return (
+              <DashboardWidgetToggle
+                key={key}
+                title={t(DASHBOARD_WIDGET_TITLE_KEYS[key])}
+                visible={visible}
+                saving={saving}
+                onToggle={() => onToggle(key, !visible)}
+              />
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
@@ -118,7 +146,7 @@ export function CircleDashboardCustomizePanel({
   const [saved, setSaved] = useState(false);
 
   const memberRole = normalizeMemberRole(patient?.role ?? 'caregiver');
-  const { hiddenWidgets, loading, setWidgetVisible, resetToRoleDefaults } =
+  const { hiddenWidgets, activePreset, loading, setWidgetVisible, applyLayoutPreset, resetToRoleDefaults } =
     useCircleDashboardLayout(
       db,
       patient?.patientId,
@@ -136,6 +164,28 @@ export function CircleDashboardCustomizePanel({
       setSaved(true);
     } catch (err) {
       console.warn('[CircleDashboardCustomizePanel]', err);
+      const detail =
+        err && typeof err === 'object' && 'code' in err && typeof (err as { code: unknown }).code === 'string'
+          ? ` (${(err as { code: string }).code})`
+          : err instanceof Error && err.message
+            ? ` (${err.message})`
+            : '';
+      setError(`${t('settings.dashboardCustomizeSaveFailed')}${detail}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleApplyPreset = async (preset: CircleDashboardLayoutPreset) => {
+    if (!patient || saving) return;
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      await applyLayoutPreset(preset);
+      setSaved(true);
+    } catch (err) {
+      console.warn('[CircleDashboardCustomizePanel] preset', err);
       const detail =
         err && typeof err === 'object' && 'code' in err && typeof (err as { code: unknown }).code === 'string'
           ? ` (${(err as { code: string }).code})`
@@ -196,12 +246,46 @@ export function CircleDashboardCustomizePanel({
         {t('settings.dashboardCustomizeMandatoryHint')}
       </p>
 
+      <div className="space-y-2">
+        <p className="text-xs text-slate-500 leading-relaxed px-1">
+          {t('settings.dashboardCustomizePresetHint')}
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {(['compact', 'detailed'] as const).map((preset) => {
+            const active = activePreset === preset;
+            return (
+              <button
+                key={preset}
+                type="button"
+                disabled={saving || loading}
+                onClick={() => void handleApplyPreset(preset)}
+                className={cn(
+                  'py-3 rounded-2xl border text-sm font-semibold transition-colors disabled:opacity-60',
+                  active
+                    ? 'border-blue-600 bg-blue-50 text-blue-800'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+                )}
+              >
+                {preset === 'compact'
+                  ? t('settings.dashboardCustomizePresetCompact')
+                  : t('settings.dashboardCustomizePresetDetailed')}
+              </button>
+            );
+          })}
+        </div>
+        {activePreset === 'custom' ? (
+          <p className="text-[11px] text-slate-400 px-1">
+            {t('settings.dashboardCustomizePresetCustom')}
+          </p>
+        ) : null}
+      </div>
+
       {loading ? (
         <div className="py-10 flex justify-center text-slate-400">
           <Loader2 size={24} className="animate-spin" />
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-2">
           {(Object.keys(CIRCLE_DASHBOARD_WIDGET_SECTIONS) as CircleDashboardLayoutSection[]).map(
             (section) => (
               <DashboardSectionToggles

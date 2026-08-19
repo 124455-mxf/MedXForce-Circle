@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { DailyCheckInAnswerTrendPoint } from '@medxforce/shared';
-import { normalizeMemberRole, type CircleMemberRole } from '@medxforce/shared';
+import type { CircleMemberRole } from '@medxforce/shared';
 import { useCircleT } from '../lib/circleI18nContext';
 import {
   buildCheckInWellnessAnimationFramesFromTrend,
@@ -23,7 +23,6 @@ type CircleDashboardCheckInWellnessSectionProps = {
 };
 
 export function CircleDashboardCheckInWellnessSection({
-  memberRole,
   answerTrend,
   enabled,
   preview = false,
@@ -32,8 +31,7 @@ export function CircleDashboardCheckInWellnessSection({
 }: CircleDashboardCheckInWellnessSectionProps) {
   const t = useCircleT();
   const [open, setOpen] = useState(false);
-  const role = normalizeMemberRole(memberRole);
-  const active = enabled && role !== 'friend';
+  const active = enabled;
   const windowDays = 30;
 
   const averages = useMemo(() => {

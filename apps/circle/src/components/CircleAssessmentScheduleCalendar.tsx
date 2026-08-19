@@ -34,7 +34,9 @@ import {
 } from '../lib/circleAssessmentScheduleMetrics';
 import { cn } from '../lib/utils';
 import { circleHeaderActionButtonClass } from '../lib/circleSectionStyles';
+import { useCircleScheduleDefaultView } from '../hooks/useCircleScheduleDefaultView';
 import { useCircleScheduleShowAppointmentDetails } from '../hooks/useCircleScheduleShowAppointmentDetails';
+import { getCircleScheduleDefaultView } from '../lib/circleSchedulePreferences';
 import { useCircleI18nContext } from '../lib/circleI18nContext';
 import { formatCircleDate } from '../lib/circleLanguages';
 
@@ -156,10 +158,18 @@ export function CircleAssessmentScheduleCalendar({
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedDateKey, setSelectedDateKey] = useState(todayKey);
-  const [viewMode, setViewMode] = useState<ScheduleViewMode>(enableViewModes ? 'today' : 'month');
+  const defaultScheduleView = useCircleScheduleDefaultView();
+  const [viewMode, setViewMode] = useState<ScheduleViewMode>(
+    enableViewModes ? getCircleScheduleDefaultView() : 'month',
+  );
   const [weekAnchor, setWeekAnchor] = useState(today);
   const [appointmentSelection, setAppointmentSelection] =
     useState<CircleScheduleAppointmentSelection | null>(null);
+
+  useEffect(() => {
+    if (!enableViewModes) return;
+    setViewMode(defaultScheduleView);
+  }, [defaultScheduleView, enableViewModes]);
 
   const rangeStart = useMemo(() => new Date(viewYear, viewMonth, 1), [viewYear, viewMonth]);
   const rangeEnd = useMemo(() => new Date(viewYear, viewMonth + 1, 0), [viewYear, viewMonth]);

@@ -1167,7 +1167,6 @@ export function CircleDashboardScreen({
     dailyCheckIn?.summaryText !== 'Daily check-in off';
   const showCheckInWellnessRing =
     dailyCheckInEnabled &&
-    memberRole !== 'friend' &&
     showEngagementStats &&
     isWidgetVisible('check-in-wellness-ring');
   const dailyCheckInLatestAt =

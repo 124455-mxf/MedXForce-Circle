@@ -283,7 +283,13 @@ export const appShellEnglish = {
     dashboardCustomizeSaveFailed: 'Could not save dashboard layout.',
     dashboardCustomizeNoPatient:
       'Open your account and switch patient to choose who you are supporting first.',
-    dashboardCustomizeReset: 'Reset to role default',
+    dashboardCustomizeReset: 'Reset to Compact',
+    dashboardCustomizePresetCompact: 'Compact',
+    dashboardCustomizePresetDetailed: 'Detailed',
+    dashboardCustomizePresetHint:
+      'Start with Compact or Detailed, then turn tiles on or off as you like.',
+    dashboardCustomizePresetCustom: 'Custom — tiles differ from Compact and Detailed.',
+    dashboardCustomizeSectionOnCount: '{{count}} on',
     turnOffAlertTitle: 'Turn off Alert notifications?',
     turnOffAlertBody:
       'You will no longer be notified when urgent alerts are sent. Turn this back on anytime if you want to receive them again.',
@@ -309,6 +315,9 @@ export const appShellEnglish = {
     showAppointmentDetailsTitle: 'Show appointment details',
     showAppointmentDetailsDesc:
       'When on, cards include notes, location, and record visit. When off, cards stay compact like Week view — tap to open full details.',
+    defaultScheduleViewTitle: 'Default schedule view',
+    defaultScheduleViewDesc:
+      'Choose which view opens first on Schedule. You can still switch to Day, Week, Month, or Tasks anytime.',
     localeSettingsTitle: 'Display preferences',
     localeSettingsSubtitle:
       'Text size for Circle, plus how local time and temperature appear on Home.',
@@ -1507,7 +1516,13 @@ export const appShellGerman = {
     dashboardCustomizeSaveFailed: 'Dashboard-Layout konnte nicht gespeichert werden.',
     dashboardCustomizeNoPatient:
       'Öffnen Sie Ihr Konto und wählen Sie zuerst den Patienten, den Sie unterstützen.',
-    dashboardCustomizeReset: 'Auf Rollen-Standard zurücksetzen',
+    dashboardCustomizeReset: 'Auf Kompakt zurücksetzen',
+    dashboardCustomizePresetCompact: 'Kompakt',
+    dashboardCustomizePresetDetailed: 'Ausführlich',
+    dashboardCustomizePresetHint:
+      'Beginnen Sie mit Kompakt oder Ausführlich und passen Sie die Kacheln danach an.',
+    dashboardCustomizePresetCustom: 'Benutzerdefiniert — weicht von Kompakt und Ausführlich ab.',
+    dashboardCustomizeSectionOnCount: '{{count}} an',
     turnOffAlertTitle: 'Alarm-Benachrichtigungen ausschalten?',
     turnOffAlertBody:
       'Sie werden nicht mehr benachrichtigt, wenn dringende Alarme gesendet werden. Sie können dies jederzeit wieder einschalten.',
@@ -1534,6 +1549,9 @@ export const appShellGerman = {
     showAppointmentDetailsTitle: 'Termindetails anzeigen',
     showAppointmentDetailsDesc:
       'Wenn aktiv, zeigen Karten Notizen, Ort und Besuch aufzeichnen. Wenn aus, bleiben Karten kompakt wie in der Wochenansicht — tippen für alle Details.',
+    defaultScheduleViewTitle: 'Standardansicht',
+    defaultScheduleViewDesc:
+      'Wählen Sie, welche Ansicht sich zuerst im Terminplan öffnet. Sie können jederzeit zwischen Tag, Woche, Monat und Aufgaben wechseln.',
     localeSettingsTitle: 'Anzeigeeinstellungen',
     localeSettingsSubtitle:
       'Textgröße für Circle sowie lokale Uhrzeit und Temperatur auf der Startseite.',
@@ -2728,7 +2746,13 @@ export const appShellSpanish = {
     dashboardCustomizeSaveFailed: 'No se pudo guardar el diseño del panel.',
     dashboardCustomizeNoPatient:
       'Abra su cuenta y elija primero el paciente al que apoya.',
-    dashboardCustomizeReset: 'Restablecer valores del rol',
+    dashboardCustomizeReset: 'Restablecer a Compacto',
+    dashboardCustomizePresetCompact: 'Compacto',
+    dashboardCustomizePresetDetailed: 'Detallado',
+    dashboardCustomizePresetHint:
+      'Empiece con Compacto o Detallado y luego active o desactive mosaicos.',
+    dashboardCustomizePresetCustom: 'Personalizado: los mosaicos no coinciden con Compacto ni Detallado.',
+    dashboardCustomizeSectionOnCount: '{{count}} activos',
     turnOffAlertTitle: '¿Desactivar notificaciones de alerta?',
     turnOffAlertBody:
       'Ya no recibirá avisos cuando se envíen alertas urgentes. Puede volver a activarlo cuando quiera.',
@@ -2755,6 +2779,9 @@ export const appShellSpanish = {
     showAppointmentDetailsTitle: 'Mostrar detalles de la cita',
     showAppointmentDetailsDesc:
       'Si está activo, las tarjetas incluyen notas, ubicación y registrar visita. Si no, las tarjetas son compactas como en Semana — toque para ver todo.',
+    defaultScheduleViewTitle: 'Vista predeterminada',
+    defaultScheduleViewDesc:
+      'Elija qué vista se abre primero en Agenda. Puede cambiar a Día, Semana, Mes o Tareas en cualquier momento.',
     localeSettingsTitle: 'Preferencias de pantalla',
     localeSettingsSubtitle:
       'Tamaño de texto de Circle, más la hora local y la temperatura en Inicio.',
@@ -3949,7 +3976,13 @@ export const appShellPolish = {
     dashboardCustomizeSaveFailed: 'Nie udało się zapisać układu panelu.',
     dashboardCustomizeNoPatient:
       'Otwórz konto i najpierw wybierz pacjenta, którego wspierasz.',
-    dashboardCustomizeReset: 'Przywróć domyślne dla roli',
+    dashboardCustomizeReset: 'Przywróć Compact',
+    dashboardCustomizePresetCompact: 'Kompaktowy',
+    dashboardCustomizePresetDetailed: 'Szczegółowy',
+    dashboardCustomizePresetHint:
+      'Zacznij od Compact lub Szczegółowy, a potem włączaj i wyłączaj kafelki.',
+    dashboardCustomizePresetCustom: 'Własny — kafelki różnią się od Compact i Szczegółowy.',
+    dashboardCustomizeSectionOnCount: '{{count}} włączone',
     turnOffAlertTitle: 'Wyłączyć powiadomienia alarmu?',
     turnOffAlertBody:
       'Nie będziesz już otrzymywać powiadomień o pilnych alarmach. Możesz włączyć je ponownie w dowolnym momencie.',
@@ -3976,6 +4009,9 @@ export const appShellPolish = {
     showAppointmentDetailsTitle: 'Pokaż szczegóły wizyty',
     showAppointmentDetailsDesc:
       'Po włączeniu karty zawierają notatki, lokalizację i nagrywanie wizyty. Po wyłączeniu karty są zwarte jak w widoku Tydzień — dotknij, aby zobaczyć pełne szczegóły.',
+    defaultScheduleViewTitle: 'Domyślny widok harmonogramu',
+    defaultScheduleViewDesc:
+      'Wybierz, który widok otwiera się najpierw w Harmonogramie. W każdej chwili możesz przełączyć na Dzień, Tydzień, Miesiąc lub Zadania.',
     localeSettingsTitle: 'Ustawienia wyświetlania',
     localeSettingsSubtitle:
       'Rozmiar tekstu w Circle oraz lokalny czas i temperatura na ekranie głównym.',

@@ -20,6 +20,7 @@ import {
   dedupeGalleryAlbumsForDisplay,
   ensureReactionsGalleryAlbum,
   findCanonicalReactionsAlbum,
+  galleryAlbumVisibleToSharedViewers,
   isReactionsTitleAlbum,
   mediaBelongsToGalleryAlbum,
   renameGalleryAlbum,
@@ -310,7 +311,7 @@ export function PatientGalleryScreen({
       .filter(({ album, count }) => {
         if (album.isReactions) return count > 0 && album.id === canonicalReactionsId;
         if (canonicalReactionsId && isReactionsTitleAlbum(album.title)) return false;
-        return true;
+        return galleryAlbumVisibleToSharedViewers(count);
       })
       .sort((a, b) => {
         if (a.album.isReactions && !b.album.isReactions) return -1;

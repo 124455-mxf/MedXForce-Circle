@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getDoc, onSnapshot, type Firestore } from 'firebase/firestore';
 import {
-  defaultHiddenDashboardWidgetsForRole,
   FRIEND_NEVER_VISIBLE_DASHBOARD_WIDGETS,
+  hiddenDashboardWidgetsForRolePreset,
   isCircleDashboardWidgetKey,
   isCircleDashboardWidgetVisibleForRole,
   memberDashboardLayoutLegacyRef,
   memberDashboardLayoutRef,
   parseMemberDashboardLayout,
   parsePrefsDashboardLayout,
+  resolveCircleDashboardLayoutPreset,
   resolveEffectiveHiddenDashboardWidgets,
   writeMemberDashboardLayout,
   type CircleDashboardLayout,
+  type CircleDashboardLayoutPreset,
+  type CircleDashboardStoredPreset,
   type CircleDashboardWidgetKey,
   type CircleMemberRole,
 } from '@medxforce/shared';
@@ -79,6 +82,11 @@ export function useCircleDashboardLayout(
     return new Set(effective);
   }, [memberRole, parsed]);
 
+  const activePreset: CircleDashboardStoredPreset = useMemo(() => {
+    if (!parsed?.hasStoredLayout) return 'compact';
+    return resolveCircleDashboardLayoutPreset([...hiddenWidgets], memberRole);
+  }, [hiddenWidgets, memberRole, parsed?.hasStoredLayout]);
+
   const loading = patientId != null && memberUid != null && parsed === null;
 
   const isWidgetVisible = useCallback(
@@ -87,6 +95,22 @@ export function useCircleDashboardLayout(
       return isCircleDashboardWidgetVisibleForRole(key, hiddenWidgets, memberRole);
     },
     [hiddenWidgets, memberRole],
+  );
+
+  const persistHidden = useCallback(
+    async (nextHidden: CircleDashboardWidgetKey[]) => {
+      if (!patientId || !memberUid) return;
+      const preset = resolveCircleDashboardLayoutPreset(nextHidden, memberRole);
+      const layout = await writeMemberDashboardLayout(
+        db,
+        patientId,
+        memberUid,
+        nextHidden,
+        preset,
+      );
+      setParsed({ layout, hasStoredLayout: true });
+    },
+    [db, memberRole, memberUid, patientId],
   );
 
   const setWidgetVisible = useCallback(
@@ -107,35 +131,30 @@ export function useCircleDashboardLayout(
       const next = new Set(current);
       if (visible) next.delete(key);
       else next.add(key);
-
-      const layout = await writeMemberDashboardLayout(
-        db,
-        patientId,
-        memberUid,
-        [...next],
-      );
-      setParsed({ layout, hasStoredLayout: true });
+      await persistHidden([...next]);
     },
-    [db, memberRole, memberUid, parsed, patientId],
+    [memberRole, memberUid, parsed, patientId, persistHidden],
+  );
+
+  const applyLayoutPreset = useCallback(
+    async (preset: CircleDashboardLayoutPreset) => {
+      if (!patientId || !memberUid) return;
+      await persistHidden(hiddenDashboardWidgetsForRolePreset(memberRole, preset));
+    },
+    [memberRole, memberUid, persistHidden, patientId],
   );
 
   const resetToRoleDefaults = useCallback(async () => {
-    if (!patientId || !memberUid) return;
-
-    const layout = await writeMemberDashboardLayout(
-      db,
-      patientId,
-      memberUid,
-      defaultHiddenDashboardWidgetsForRole(memberRole),
-    );
-    setParsed({ layout, hasStoredLayout: true });
-  }, [db, memberRole, memberUid, patientId]);
+    await applyLayoutPreset('compact');
+  }, [applyLayoutPreset]);
 
   return {
     hiddenWidgets,
+    activePreset,
     loading,
     isWidgetVisible,
     setWidgetVisible,
+    applyLayoutPreset,
     resetToRoleDefaults,
     hasStoredLayout: parsed?.hasStoredLayout ?? false,
   };
