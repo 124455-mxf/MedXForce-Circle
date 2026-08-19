@@ -319,11 +319,11 @@ export function DashboardCircleMapTile({
             <Sparkles size={18} aria-hidden />
           </span>
           <p className="text-sm font-bold text-slate-800 leading-tight truncate">
-            {t('dashboard.circleMap.tileTitle')}
+            {t('dashboard.circleMap.compactHomeTitle')}
           </p>
         </div>
         <div className="flex items-center justify-between gap-3 min-w-0">
-          <p className="font-bold tracking-tight text-2xl leading-none text-slate-900 tabular-nums">
+          <p className="font-bold tracking-tight leading-none text-3xl sm:text-[2rem] text-slate-900 tabular-nums">
             {memberCount}
           </p>
           <p className="text-sm font-medium text-slate-700 text-right">

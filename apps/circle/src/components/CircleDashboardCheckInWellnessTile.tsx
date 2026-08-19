@@ -6,6 +6,10 @@ import type {
   CheckInWellnessRingFrame,
   DailyCheckInMetricAverages,
 } from '../lib/circleCheckInWellnessMetrics';
+import {
+  DASHBOARD_RECENCY_TINT_CLASSES,
+  type AlertAttentionRecencyUrgency,
+} from '../lib/circleDashboardStats';
 import { useCheckInWellnessDayPlayback } from '../hooks/useCheckInWellnessDayPlayback';
 import { CheckInWellnessWeekControls } from './CheckInWellnessRingVisual';
 import { CheckInWellnessBarsVisual } from './CheckInWellnessBarsVisual';
@@ -13,6 +17,7 @@ import { CheckInWellnessBarsVisual } from './CheckInWellnessBarsVisual';
 type CircleDashboardCheckInWellnessTileProps = {
   averages: DailyCheckInMetricAverages;
   frames?: CheckInWellnessRingFrame[];
+  recencyTint?: AlertAttentionRecencyUrgency;
   /** Full-row layout: title + day picker left, bars right. */
   wide?: boolean;
   onOpenModal?: () => void;
@@ -23,9 +28,17 @@ type CircleDashboardCheckInWellnessTileProps = {
   className?: string;
 };
 
+const WELLNESS_ICON_TONE_CLASSES: Record<AlertAttentionRecencyUrgency, string> = {
+  neutral: 'bg-blue-100 text-blue-700 group-hover:bg-blue-600 group-hover:text-white',
+  green: 'bg-emerald-100 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white',
+  orange: 'bg-amber-100 text-amber-800 group-hover:bg-amber-600 group-hover:text-white',
+  red: 'bg-rose-100 text-rose-700 group-hover:bg-rose-600 group-hover:text-white',
+};
+
 export function CircleDashboardCheckInWellnessTile({
   averages: _averages,
   frames = [],
+  recencyTint = 'neutral',
   wide = false,
   onOpenModal,
   onOpenDetails,
@@ -78,7 +91,8 @@ export function CircleDashboardCheckInWellnessTile({
     <div
       ref={playbackRootRef}
       className={cn(
-        'relative p-4 sm:p-5 w-full h-full flex bg-white rounded-[28px] border border-emerald-100 shadow-sm hover:shadow-lg hover:border-emerald-200 transition-all group overflow-hidden',
+        'relative p-4 sm:p-5 w-full h-full flex rounded-[28px] border shadow-sm hover:shadow-lg transition-all group overflow-hidden',
+        DASHBOARD_RECENCY_TINT_CLASSES[recencyTint],
         wide ? 'flex-row items-stretch gap-3 sm:gap-5' : 'flex-col',
         className,
       )}
@@ -103,7 +117,12 @@ export function CircleDashboardCheckInWellnessTile({
         )}
       >
         <div className={cn('flex items-center gap-2.5 min-w-0', !wide && 'mb-2')}>
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors shrink-0">
+          <div
+            className={cn(
+              'w-10 h-10 rounded-xl flex items-center justify-center transition-colors shrink-0',
+              WELLNESS_ICON_TONE_CLASSES[recencyTint],
+            )}
+          >
             <Activity size={20} />
           </div>
           <p

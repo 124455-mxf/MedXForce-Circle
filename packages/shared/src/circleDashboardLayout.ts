@@ -44,8 +44,8 @@ export type CircleDashboardLayoutSection =
   | 'reminders'
   | 'last7days'
   | 'you'
-  | 'stayConnected'
-  | 'patientApp';
+  | 'patientApp'
+  | 'stayConnected';
 
 export type CircleDashboardLayoutPreset = 'compact' | 'detailed';
 export type CircleDashboardStoredPreset = CircleDashboardLayoutPreset | 'custom';
@@ -256,6 +256,25 @@ export const FRIEND_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] =
 export const CAREGIVER_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] =
   hiddenDashboardWidgetsForRolePreset('caregiver', 'compact');
 
+/** Compact vs full tiles that cannot both be on in Customize. */
+export const DASHBOARD_EXCLUSIVE_WIDGET_PAIRS: ReadonlyArray<
+  readonly [CircleDashboardWidgetKey, CircleDashboardWidgetKey]
+> = [
+  ['circle-map', 'circle-compact'],
+  ['daily-check-in', 'check-in-wellness-ring'],
+  ['assessments', 'assessments-compact'],
+];
+
+export function exclusivePartnerForDashboardWidget(
+  key: CircleDashboardWidgetKey,
+): CircleDashboardWidgetKey | undefined {
+  for (const [left, right] of DASHBOARD_EXCLUSIVE_WIDGET_PAIRS) {
+    if (key === left) return right;
+    if (key === right) return left;
+  }
+  return undefined;
+}
+
 export const CIRCLE_DASHBOARD_WIDGET_SECTIONS: Record<
   CircleDashboardLayoutSection,
   CircleDashboardWidgetKey[]
@@ -263,11 +282,11 @@ export const CIRCLE_DASHBOARD_WIDGET_SECTIONS: Record<
   patientOverview: ['patient-locale', 'patient-insights', 'circle-map', 'circle-compact'],
   reminders: ['reminder-gallery-upload', 'reminder-diary-entry'],
   last7days: [
-    'last-7-days-overview',
-    'last-30-days-overview',
     'alert-attention',
     'daily-check-in',
     'check-in-wellness-ring',
+    'last-7-days-overview',
+    'last-30-days-overview',
     'messages',
     'communication',
     'companion',
@@ -276,8 +295,8 @@ export const CIRCLE_DASHBOARD_WIDGET_SECTIONS: Record<
     'assessments-compact',
   ],
   you: ['diary', 'circle', 'gallery-engagement'],
-  stayConnected: ['media-gallery'],
   patientApp: ['remote-settings', 'user-profile'],
+  stayConnected: ['media-gallery'],
 };
 
 const WIDGET_KEY_SET = new Set<string>(ALL_CUSTOMIZABLE_DASHBOARD_WIDGETS);

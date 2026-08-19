@@ -7,6 +7,7 @@ import {
   buildCheckInWellnessPreviewFrames,
   getCheckInWellnessAveragesFromTrend,
 } from '../lib/circleCheckInWellnessMetrics';
+import type { AlertAttentionRecencyUrgency } from '../lib/circleDashboardStats';
 import {
   CircleDashboardCheckInWellnessModal,
 } from './CircleDashboardCheckInWellness';
@@ -17,6 +18,7 @@ type CircleDashboardCheckInWellnessSectionProps = {
   answerTrend?: DailyCheckInAnswerTrendPoint[];
   enabled: boolean;
   preview?: boolean;
+  recencyTint?: AlertAttentionRecencyUrgency;
   /** Full-row Stay Connected tile. */
   wide?: boolean;
   onOpenDetails?: () => void;
@@ -26,6 +28,7 @@ export function CircleDashboardCheckInWellnessSection({
   answerTrend,
   enabled,
   preview = false,
+  recencyTint = 'neutral',
   wide = false,
   onOpenDetails,
 }: CircleDashboardCheckInWellnessSectionProps) {
@@ -63,6 +66,7 @@ export function CircleDashboardCheckInWellnessSection({
           averages={averages}
           frames={frames}
           wide={wide}
+          recencyTint={preview ? 'green' : recencyTint}
           onOpenModal={() => setOpen(true)}
           onOpenDetails={onOpenDetails}
           t={t}

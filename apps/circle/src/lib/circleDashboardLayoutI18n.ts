@@ -35,6 +35,6 @@ export const DASHBOARD_LAYOUT_SECTION_TITLE_KEYS: Record<
   reminders: 'dashboard.sectionParticipationReminders',
   last7days: 'dashboard.sectionLast7Days',
   you: 'dashboard.sectionYou',
-  stayConnected: 'dashboard.sectionStayConnected',
   patientApp: 'dashboard.sectionPatientApp',
+  stayConnected: 'dashboard.sectionStayConnected',
 };

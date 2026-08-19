@@ -843,6 +843,39 @@ function withStretchedWeekBarLayout(
   };
 }
 
+function renderLastSevenDayWidgets(widgets: DashboardWidgetSpec[]) {
+  return widgets.map((widget, index) => {
+    const stretched = widgetSpansFullRow(widgets, index);
+    return (
+      <div
+        key={widget.key}
+        className={stretched ? 'col-span-2' : DASHBOARD_LAST7_WIDGET_CELL_CLASS}
+      >
+        <DashboardWidget spec={withStretchedWeekBarLayout(widget, stretched)} />
+      </div>
+    );
+  });
+}
+
+function LastSevenDayWidgetGrid({
+  before,
+  after = [],
+  middle,
+}: {
+  before: DashboardWidgetSpec[];
+  after?: DashboardWidgetSpec[];
+  middle?: ReactNode;
+}) {
+  if (before.length === 0 && after.length === 0 && !middle) return null;
+  return (
+    <div className="grid grid-cols-2 gap-3 items-stretch">
+      {renderLastSevenDayWidgets(before)}
+      {middle ? <div className="col-span-2">{middle}</div> : null}
+      {renderLastSevenDayWidgets(after)}
+    </div>
+  );
+}
+
 function DashboardSection({
   title,
   widgets,
@@ -1171,6 +1204,14 @@ export function CircleDashboardScreen({
     isWidgetVisible('check-in-wellness-ring');
   const dailyCheckInLatestAt =
     dailyDetail?.latestCompletedAt ?? dailyCheckIn?.latestAt ?? null;
+  const dailyCheckInRecencyTint = analyticsLoading
+    ? 'neutral'
+    : getDailyCheckInRecencyUrgency({
+        completedInWindow: checkInStats.completed,
+        skippedInWindow: checkInStats.skipped,
+        latestCompletedAt: dailyCheckInLatestAt,
+        hasHistory: !!(dailyDetail || dailyCheckIn?.latestAt),
+      });
   const assessmentsLast7 = sumAssessmentsLast7(byMetricId);
   const latestAssessment = getLatestAssessment(byMetricId);
 
@@ -1241,48 +1282,6 @@ export function CircleDashboardScreen({
       (patientCompanionFeatureEnabled ? companion30 : 0) +
       (patientVitalityFeatureEnabled ? vitality30 : 0) +
       assessments30;
-
-    lastSevenDayWidgets.push({
-      key: 'last-7-days-overview',
-      title: t('dashboard.last7DaysOverview'),
-      icon: CalendarDays,
-      span: 'full',
-      heroVariant: 'label',
-      ...(analyticsLoading
-        ? loadingRows(t('common.loading'))
-        : {
-            heroValue: last7Total,
-            heroMuted: last7Total === 0,
-            iconTone: 'blue' as const,
-            row1:
-              last7Total === 0
-                ? t('dashboard.analyticsQuietWindow')
-                : dashboardPlural(t, 'analyticsEventsWindow', last7Total),
-            row2: '',
-          }),
-      onClick: () => onOpenAnalyticsPeriodOverview(7),
-    });
-
-    lastSevenDayWidgets.push({
-      key: 'last-30-days-overview',
-      title: t('dashboard.last30DaysOverview'),
-      icon: CalendarRange,
-      span: 'full',
-      heroVariant: 'label',
-      ...(analyticsLoading
-        ? loadingRows(t('common.loading'))
-        : {
-            heroValue: last30Total,
-            heroMuted: last30Total === 0,
-            iconTone: 'sky' as const,
-            row1:
-              last30Total === 0
-                ? t('dashboard.analyticsQuietWindow')
-                : dashboardPlural(t, 'analyticsEventsWindow', last30Total),
-            row2: '',
-          }),
-      onClick: () => onOpenAnalyticsPeriodOverview(30),
-    });
 
     const canReadAssessments =
       !!patient.capabilities &&
@@ -1390,6 +1389,48 @@ export function CircleDashboardScreen({
         onClick: () => onOpenAnalyticsDetail('daily-check-in'),
       });
     }
+
+    lastSevenDayWidgets.push({
+      key: 'last-7-days-overview',
+      title: t('dashboard.last7DaysOverview'),
+      icon: CalendarDays,
+      span: 'full',
+      heroVariant: 'label',
+      ...(analyticsLoading
+        ? loadingRows(t('common.loading'))
+        : {
+            heroValue: last7Total,
+            heroMuted: last7Total === 0,
+            iconTone: 'blue' as const,
+            row1:
+              last7Total === 0
+                ? t('dashboard.analyticsQuietWindow')
+                : dashboardPlural(t, 'analyticsEventsWindow', last7Total),
+            row2: '',
+          }),
+      onClick: () => onOpenAnalyticsPeriodOverview(7),
+    });
+
+    lastSevenDayWidgets.push({
+      key: 'last-30-days-overview',
+      title: t('dashboard.last30DaysOverview'),
+      icon: CalendarRange,
+      span: 'full',
+      heroVariant: 'label',
+      ...(analyticsLoading
+        ? loadingRows(t('common.loading'))
+        : {
+            heroValue: last30Total,
+            heroMuted: last30Total === 0,
+            iconTone: 'sky' as const,
+            row1:
+              last30Total === 0
+                ? t('dashboard.analyticsQuietWindow')
+                : dashboardPlural(t, 'analyticsEventsWindow', last30Total),
+            row2: '',
+          }),
+      onClick: () => onOpenAnalyticsPeriodOverview(30),
+    });
 
     if (patientMessagingFeatureEnabled) {
       lastSevenDayWidgets.push({
@@ -1791,6 +1832,17 @@ export function CircleDashboardScreen({
   const visibleLastSevenDayWidgets = lastSevenDayWidgets.filter((widget) =>
     isWidgetVisible(widget.key),
   );
+  const last7AlertIndex = visibleLastSevenDayWidgets.findIndex(
+    (widget) => widget.key === 'alert-attention',
+  );
+  const last7WidgetsBeforeCheckIn =
+    last7AlertIndex === -1
+      ? []
+      : visibleLastSevenDayWidgets.slice(0, last7AlertIndex + 1);
+  const last7WidgetsAfterCheckIn =
+    last7AlertIndex === -1
+      ? visibleLastSevenDayWidgets
+      : visibleLastSevenDayWidgets.slice(last7AlertIndex + 1);
   const visibleYouWidgets = youWidgets.filter((widget) => isWidgetVisible(widget.key));
   const visiblePatientAppWidgets = patientAppWidgets.filter((widget) =>
     isWidgetVisible(widget.key),
@@ -2030,10 +2082,36 @@ export function CircleDashboardScreen({
           </section>
         ) : null}
 
+        {visibleLastSevenDayWidgets.length > 0 || showCheckInWellnessRing ? (
+          <section className="space-y-2">
+            <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionLast7Days')}</h3>
+            <LastSevenDayWidgetGrid
+              before={
+                showCheckInWellnessRing
+                  ? last7WidgetsBeforeCheckIn
+                  : visibleLastSevenDayWidgets
+              }
+              after={showCheckInWellnessRing ? last7WidgetsAfterCheckIn : []}
+              middle={
+                showCheckInWellnessRing ? (
+                  <CircleDashboardCheckInWellnessSection
+                    memberRole={memberRole}
+                    answerTrend={dailyDetail?.answerTrend}
+                    enabled={showCheckInWellnessRing}
+                    recencyTint={dailyCheckInRecencyTint}
+                    wide
+                    onOpenDetails={() => onOpenAnalyticsDetail('daily-check-in')}
+                  />
+                ) : null
+              }
+            />
+          </section>
+        ) : null}
+
         {visiblePatientAppWidgets.length > 0 ? (
           <section className="space-y-2">
             <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionPatientApp')}</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 items-stretch">
               {visiblePatientAppWidgets.map((widget, index) => (
                 <div
                   key={widget.key}
@@ -2047,38 +2125,6 @@ export function CircleDashboardScreen({
                 </div>
               ))}
             </div>
-          </section>
-        ) : null}
-
-        {visibleLastSevenDayWidgets.length > 0 || showCheckInWellnessRing ? (
-          <section className="space-y-2">
-            <h3 className={DASHBOARD_SECTION_TITLE_CLASS}>{t('dashboard.sectionLast7Days')}</h3>
-            {showCheckInWellnessRing ? (
-              <CircleDashboardCheckInWellnessSection
-                memberRole={memberRole}
-                answerTrend={dailyDetail?.answerTrend}
-                enabled={showCheckInWellnessRing}
-                wide
-                onOpenDetails={() => onOpenAnalyticsDetail('daily-check-in')}
-              />
-            ) : null}
-            {visibleLastSevenDayWidgets.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3 items-stretch">
-                {visibleLastSevenDayWidgets.map((widget, index) => {
-                  const stretched = widgetSpansFullRow(visibleLastSevenDayWidgets, index);
-                  return (
-                    <div
-                      key={widget.key}
-                      className={
-                        stretched ? 'col-span-2' : DASHBOARD_LAST7_WIDGET_CELL_CLASS
-                      }
-                    >
-                      <DashboardWidget spec={withStretchedWeekBarLayout(widget, stretched)} />
-                    </div>
-                  );
-                })}
-              </div>
-            ) : null}
           </section>
         ) : null}
 

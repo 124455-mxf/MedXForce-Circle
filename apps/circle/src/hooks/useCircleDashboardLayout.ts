@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getDoc, onSnapshot, type Firestore } from 'firebase/firestore';
 import {
   FRIEND_NEVER_VISIBLE_DASHBOARD_WIDGETS,
+  exclusivePartnerForDashboardWidget,
   hiddenDashboardWidgetsForRolePreset,
   isCircleDashboardWidgetKey,
   isCircleDashboardWidgetVisibleForRole,
@@ -129,8 +130,13 @@ export function useCircleDashboardLayout(
         memberRole,
       );
       const next = new Set(current);
-      if (visible) next.delete(key);
-      else next.add(key);
+      if (visible) {
+        next.delete(key);
+        const partner = exclusivePartnerForDashboardWidget(key);
+        if (partner) next.add(partner);
+      } else {
+        next.add(key);
+      }
       await persistHidden([...next]);
     },
     [memberRole, memberUid, parsed, patientId, persistHidden],
