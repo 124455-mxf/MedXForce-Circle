@@ -1254,6 +1254,7 @@ export function CircleCircleScreen({
             patientPhotoUrl={patient.photoUrl}
             isPendingProvision={patient.isPendingProvision === true}
             threadKind={activeThread}
+            includeRestrictedPosts={canRestricted}
           />
 
           <CircleHorizontalScrollStrip

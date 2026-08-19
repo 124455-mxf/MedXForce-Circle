@@ -7,6 +7,8 @@ import type { CircleMapGalleryPhoto, CircleMapOnlineMember } from '../lib/circle
 import {
   buildCircleMapModel,
   buildCircleMapPreviewModel,
+  circleMapMemberDetailLine,
+  groupCircleMapMembersByRole,
   type CircleMapNode,
   type CircleMapViewMode,
 } from '../lib/circleMapModel';
@@ -27,6 +29,8 @@ type DashboardCircleMapModalProps = {
   onlineNow?: CircleMapOnlineMember[];
   photosByEmail?: Record<string, string>;
   photosByContactId?: Record<string, string>;
+  uidByEmail?: Record<string, string>;
+  uidByContactId?: Record<string, string>;
   patientPhotoUrl?: string;
   preview?: boolean;
   onManageContacts?: () => void;
@@ -46,6 +50,8 @@ export function DashboardCircleMapModal({
   onlineNow,
   photosByEmail,
   photosByContactId,
+  uidByEmail,
+  uidByContactId,
   patientPhotoUrl,
   preview = false,
   onManageContacts,
@@ -73,16 +79,32 @@ export function DashboardCircleMapModal({
       onlineNow,
       photosByEmail,
       photosByContactId,
+      uidByEmail,
+      uidByContactId,
       patientPhotoUrl,
       mode,
       t,
     });
-  }, [galleryPhotos, messages, mode, onlineNow, patientPhotoUrl, photosByContactId, photosByEmail, preferences, preview, t]);
+  }, [
+    galleryPhotos,
+    messages,
+    mode,
+    onlineNow,
+    patientPhotoUrl,
+    photosByContactId,
+    photosByEmail,
+    uidByContactId,
+    uidByEmail,
+    preferences,
+    preview,
+    t,
+  ]);
 
   const membersList = useMemo(
-    () => [...model.nodes].sort((a, b) => a.name.localeCompare(b.name)),
+    () => groupCircleMapMembersByRole(model.nodes),
     [model.nodes],
   );
+  const memberCount = membersList.reduce((sum, group) => sum + group.members.length, 0);
 
   if (!isOpen) return null;
 
@@ -139,64 +161,78 @@ export function DashboardCircleMapModal({
             {showMembersList ? (
               <div className="space-y-3">
                 <p className="text-xs text-slate-400 font-medium">
-                  {t('dashboard.circleMap.membersCount', { count: membersList.length })}
+                  {t('dashboard.circleMap.membersCount', { count: memberCount })}
                 </p>
-                <ul className="space-y-2 max-h-[min(55dvh,480px)] overflow-y-auto overscroll-contain pr-0.5">
-                  {membersList.map((node) => {
-                    const canMessage = messagingEnabled && node.canMessage && !!onMessageMember;
-                    return (
-                      <li
-                        key={node.id}
-                        className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-3 py-2.5 shadow-sm"
-                      >
-                        <div className="relative shrink-0">
-                          {node.photoUrl ? (
-                            <img
-                              src={node.photoUrl}
-                              alt=""
-                              className="w-11 h-11 rounded-full object-cover border-2 border-white shadow-sm"
-                              referrerPolicy="no-referrer"
-                            />
-                          ) : (
-                            <div
-                              className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-black text-white shadow-sm"
-                              style={{ backgroundColor: node.color }}
+                <div className="space-y-4 max-h-[min(55dvh,480px)] overflow-y-auto overscroll-contain pr-0.5">
+                  {membersList.map((group) => (
+                    <section key={group.key} className="space-y-2">
+                      <h3 className="flex items-center gap-2 px-0.5 text-[11px] font-black uppercase tracking-wider text-slate-500">
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: group.color }}
+                          aria-hidden
+                        />
+                        {group.label}
+                      </h3>
+                      <ul className="space-y-2">
+                        {group.members.map((node) => {
+                          const canMessage = messagingEnabled && node.canMessage && !!onMessageMember;
+                          const detail = circleMapMemberDetailLine(node, group.label);
+                          return (
+                            <li
+                              key={node.id}
+                              className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-3 py-2.5 shadow-sm"
                             >
-                              {node.initials}
-                            </div>
-                          )}
-                          {node.isOnline ? (
-                            <span
-                              className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white"
-                              title={t('dashboard.circleMap.online')}
-                            />
-                          ) : null}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-bold text-slate-800 truncate">{node.name}</p>
-                          <p className="text-xs text-slate-500 truncate">
-                            {node.roleDisplay}
-                            {node.relationshipDisplay ? ` · ${node.relationshipDisplay}` : ''}
-                          </p>
-                        </div>
-                        {canMessage ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onClose();
-                              onMessageMember?.(node.recipientKey);
-                            }}
-                            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-700 transition-colors"
-                          >
-                            <MessageSquare size={14} />
-                            {t('dashboard.circleMap.message')}
-                          </button>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ul>
-                {membersList.length === 0 ? (
+                              <div className="relative shrink-0">
+                                {node.photoUrl ? (
+                                  <img
+                                    src={node.photoUrl}
+                                    alt=""
+                                    className="w-11 h-11 rounded-full object-cover border-2 border-white shadow-sm"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                ) : (
+                                  <div
+                                    className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-black text-white shadow-sm"
+                                    style={{ backgroundColor: node.color }}
+                                  >
+                                    {node.initials}
+                                  </div>
+                                )}
+                                {node.isOnline ? (
+                                  <span
+                                    className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white"
+                                    title={t('dashboard.circleMap.online')}
+                                  />
+                                ) : null}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="font-bold text-slate-800 truncate">{node.name}</p>
+                                {detail ? (
+                                  <p className="text-xs text-slate-500 truncate">{detail}</p>
+                                ) : null}
+                              </div>
+                              {canMessage ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onClose();
+                                    onMessageMember?.(node.recipientKey);
+                                  }}
+                                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-700 transition-colors"
+                                >
+                                  <MessageSquare size={14} />
+                                  {t('dashboard.circleMap.message')}
+                                </button>
+                              ) : null}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </section>
+                  ))}
+                </div>
+                {memberCount === 0 ? (
                   <p className="text-sm text-slate-400 text-center py-8">
                     {t('dashboard.circleMap.membersEmpty')}
                   </p>
@@ -282,6 +318,8 @@ type DashboardCircleMapTileProps = {
   onlineNow?: CircleMapOnlineMember[];
   photosByEmail?: Record<string, string>;
   photosByContactId?: Record<string, string>;
+  uidByEmail?: Record<string, string>;
+  uidByContactId?: Record<string, string>;
   patientPhotoUrl?: string;
   preview?: boolean;
   variant?: 'visual' | 'compact';
@@ -296,6 +334,8 @@ export function DashboardCircleMapTile({
   onlineNow,
   photosByEmail,
   photosByContactId,
+  uidByEmail,
+  uidByContactId,
   patientPhotoUrl,
   preview = false,
   variant = 'compact',
@@ -311,11 +351,25 @@ export function DashboardCircleMapTile({
       onlineNow,
       photosByEmail,
       photosByContactId,
+      uidByEmail,
+      uidByContactId,
       patientPhotoUrl,
       mode: 'roles',
       t,
     });
-  }, [galleryPhotos, messages, onlineNow, patientPhotoUrl, photosByContactId, photosByEmail, preferences, preview, t]);
+  }, [
+    galleryPhotos,
+    messages,
+    onlineNow,
+    patientPhotoUrl,
+    photosByContactId,
+    photosByEmail,
+    uidByContactId,
+    uidByEmail,
+    preferences,
+    preview,
+    t,
+  ]);
 
   const memberCount = model.nodes.length;
 

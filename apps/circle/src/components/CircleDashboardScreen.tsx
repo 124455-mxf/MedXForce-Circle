@@ -2070,7 +2070,7 @@ export function CircleDashboardScreen({
                 profileSnapshot?.identity.profilePicture?.trim() || patient.photoUrl?.trim()
               }
               patientNickName={profileSnapshot?.identity.nickName?.trim()}
-              galleryPhotos={galleryDashboard.previewPhotos}
+              galleryPhotos={galleryDashboard.engagementPhotos}
               showVisual={showCircleMap}
               showCompact={showCircleCompact}
               onManageContacts={canManageTeam ? () => onGoToTab('admin') : undefined}

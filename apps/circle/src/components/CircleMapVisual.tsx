@@ -457,7 +457,7 @@ export function CircleMapVisual({
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="absolute bottom-3 left-3 right-3 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-100 shadow-lg px-4 py-3 pr-10"
+          className="absolute z-20 bottom-3 left-3 right-3 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-100 shadow-lg px-4 py-3 pr-10"
         >
           <button
             type="button"

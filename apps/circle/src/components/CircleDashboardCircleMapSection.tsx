@@ -1,45 +1,25 @@
 import { useMemo, useState } from 'react';
 import type { Firestore } from 'firebase/firestore';
 import {
+  canSeeCircleRestrictedThread,
   type CircleMemberRole,
 } from '@medxforce/shared';
 import { useCircleTeamCoverageFromDashboard } from '../context/CircleTeamCoverageContext';
 import { useCircleMapMemberPhotos } from '../hooks/useCircleMapMemberPhotos';
-import type { CircleThreadMessage, CircleThreadReply } from '../hooks/useCirclePatientThreads';
+import { useCircleMemberThread } from '../hooks/useCircleMemberThread';
 import { useCirclePatientThreadsContext } from '../context/CirclePatientThreadsContext';
 import type { FamilyGalleryPreviewPhoto } from '../hooks/useFamilyGalleryDashboard';
-import type { CircleMapGalleryPhoto } from '../lib/circleMapModel';
-import { contactsToCircleMapPreferences } from '../lib/circleMapContacts';
+import {
+  contactsToCircleMapPreferences,
+  mapCirclePostsForEngagement,
+  mapGalleryPhotosForEngagement,
+  mapMessagesForEngagement,
+} from '../lib/circleMapContacts';
 import { useCircleT } from '../lib/circleI18nContext';
 import {
   CircleDashboardCircleMapModal,
   CircleDashboardCircleMapTile,
 } from './CircleDashboardCircleMap';
-
-function mapMessagesForEngagement(
-  rawMessages: CircleThreadMessage[],
-  repliesByMessageId: Record<string, CircleThreadReply[]>,
-) {
-  return rawMessages.map((msg) => ({
-    timestamp: msg.updatedAt || msg.createdAt,
-    recipients: msg.recipientEmails ?? [],
-    replies: (repliesByMessageId[msg.id] ?? []).map((reply) => ({
-      timestamp: reply.timestamp,
-      senderEmail: reply.senderEmail,
-      senderName: reply.senderName,
-      sender: reply.senderName,
-      isPatient: reply.isPatient,
-    })),
-  }));
-}
-
-function mapGalleryPhotos(photos: FamilyGalleryPreviewPhoto[]): CircleMapGalleryPhoto[] {
-  return photos.map((photo) => ({
-    source: 'member',
-    senderName: photo.senderName,
-    date: photo.timestamp,
-  }));
-}
 
 type CircleDashboardCircleMapSectionProps = {
   db: Firestore;
@@ -66,14 +46,25 @@ export function CircleDashboardCircleMapSection({
   showCompact,
   onManageContacts,
 }: CircleDashboardCircleMapSectionProps) {
-  void memberRole;
   const t = useCircleT();
   const [open, setOpen] = useState(false);
   const active = showVisual || showCompact;
+  const includeRestrictedPosts = canSeeCircleRestrictedThread(memberRole);
 
   const { contacts, loading: contactsLoading } = useCircleTeamCoverageFromDashboard();
-  const { photosByEmail, photosByContactId } = useCircleMapMemberPhotos(db, patientId, active);
+  const { photosByEmail, photosByContactId, uidByEmail, uidByContactId } = useCircleMapMemberPhotos(
+    db,
+    patientId,
+    active,
+  );
   const { rawMessages, repliesByMessageId } = useCirclePatientThreadsContext();
+  const { posts: openPosts } = useCircleMemberThread(db, patientId, 'open', active);
+  const { posts: restrictedPosts } = useCircleMemberThread(
+    db,
+    patientId,
+    'restricted',
+    active && includeRestrictedPosts,
+  );
 
   const preferences = useMemo(
     () => contactsToCircleMapPreferences(contacts, patientDisplayName, patientNickName),
@@ -81,11 +72,18 @@ export function CircleDashboardCircleMapSection({
   );
 
   const messages = useMemo(
-    () => mapMessagesForEngagement(rawMessages, repliesByMessageId),
-    [rawMessages, repliesByMessageId],
+    () => [
+      ...mapMessagesForEngagement(rawMessages, repliesByMessageId),
+      ...mapCirclePostsForEngagement(openPosts),
+      ...mapCirclePostsForEngagement(restrictedPosts),
+    ],
+    [openPosts, rawMessages, repliesByMessageId, restrictedPosts],
   );
 
-  const mappedGalleryPhotos = useMemo(() => mapGalleryPhotos(galleryPhotos), [galleryPhotos]);
+  const mappedGalleryPhotos = useMemo(
+    () => mapGalleryPhotosForEngagement(galleryPhotos),
+    [galleryPhotos],
+  );
 
   if (!active || contactsLoading) return null;
 
@@ -95,6 +93,8 @@ export function CircleDashboardCircleMapSection({
     galleryPhotos: mappedGalleryPhotos,
     photosByEmail,
     photosByContactId,
+    uidByEmail,
+    uidByContactId,
     patientPhotoUrl,
     onOpen: () => setOpen(true),
     t,
@@ -117,6 +117,8 @@ export function CircleDashboardCircleMapSection({
         galleryPhotos={mappedGalleryPhotos}
         photosByEmail={photosByEmail}
         photosByContactId={photosByContactId}
+        uidByEmail={uidByEmail}
+        uidByContactId={uidByContactId}
         patientPhotoUrl={patientPhotoUrl}
         onManageContacts={onManageContacts}
         t={t}

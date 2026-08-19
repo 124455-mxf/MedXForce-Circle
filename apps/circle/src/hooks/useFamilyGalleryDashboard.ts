@@ -18,11 +18,15 @@ export type FamilyGalleryPreviewPhoto = {
   thumbnailUrl?: string;
   caption: string;
   senderName: string;
+  uploadedByUid?: string;
   timestamp: number;
+  source?: 'patient' | 'circle';
 };
 
 export type FamilyGalleryDashboardStats = {
   previewPhotos: FamilyGalleryPreviewPhoto[];
+  /** Member and patient gallery items (no preview cap; used for Warmth media counts). */
+  engagementPhotos: FamilyGalleryPreviewPhoto[];
   photoCount: number;
   /** Media the member can see and has not opened yet (excludes own uploads; includes patient). */
   unseenMediaCount: number;
@@ -42,6 +46,7 @@ export type FamilyGalleryDashboardStats = {
 
 const EMPTY: FamilyGalleryDashboardStats = {
   previewPhotos: [],
+  engagementPhotos: [],
   photoCount: 0,
   unseenMediaCount: 0,
   totalReactions: 0,
@@ -65,6 +70,7 @@ export function useFamilyGalleryDashboard(
   windowDays = 7,
 ): FamilyGalleryDashboardStats {
   const [previewPhotos, setPreviewPhotos] = useState<FamilyGalleryPreviewPhoto[]>([]);
+  const [engagementPhotos, setEngagementPhotos] = useState<FamilyGalleryPreviewPhoto[]>([]);
   const [photoCount, setPhotoCount] = useState(0);
   const [attentionMediaIds, setAttentionMediaIds] = useState<string[]>([]);
   const [myMediaIds, setMyMediaIds] = useState<Set<string>>(new Set());
@@ -94,6 +100,7 @@ export function useFamilyGalleryDashboard(
   useEffect(() => {
     if (!patientId || !memberUid || (!canViewCircle && !canViewPatient)) {
       setPreviewPhotos([]);
+      setEngagementPhotos([]);
       setPhotoCount(0);
       setAttentionMediaIds([]);
       setMyMediaIds(new Set());
@@ -146,12 +153,15 @@ export function useFamilyGalleryDashboard(
             thumbnailUrl,
             caption: String(data.caption || ''),
             senderName: String(data.senderName || 'Family Member'),
+            uploadedByUid: String(data.uploadedByUid || ''),
             timestamp: typeof data.timestamp === 'number' ? data.timestamp : 0,
+            source,
           });
         }
 
         photos.sort((a, b) => b.timestamp - a.timestamp);
         setPreviewPhotos(photos.slice(0, PREVIEW_PHOTO_LIMIT));
+        setEngagementPhotos(photos);
         setPhotoCount(photosTotal);
         setAttentionMediaIds(attentionIds);
         setMyMediaIds(myIds);
@@ -160,6 +170,7 @@ export function useFamilyGalleryDashboard(
       },
       () => {
         setPreviewPhotos([]);
+        setEngagementPhotos([]);
         setPhotoCount(0);
         setAttentionMediaIds([]);
         setMyMediaIds(new Set());
@@ -242,6 +253,7 @@ export function useFamilyGalleryDashboard(
 
     return {
       previewPhotos,
+      engagementPhotos,
       photoCount,
       unseenMediaCount,
       totalReactions,
@@ -265,6 +277,7 @@ export function useFamilyGalleryDashboard(
     patientId,
     photoCount,
     previewPhotos,
+    engagementPhotos,
     reactions,
     viewedTick,
     windowDays,

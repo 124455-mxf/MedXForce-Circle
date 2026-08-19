@@ -4,6 +4,8 @@ import { normalizeInviteEmail } from '@medxforce/shared';
 type MemberPhotoMaps = {
   byEmail: Record<string, string>;
   byContactId: Record<string, string>;
+  uidByEmail: Record<string, string>;
+  uidByContactId: Record<string, string>;
 };
 
 /**
@@ -19,6 +21,8 @@ export async function loadCircleMapPhotoMaps(
 ): Promise<MemberPhotoMaps> {
   const byEmail: Record<string, string> = {};
   const byContactId: Record<string, string> = {};
+  const uidByEmail: Record<string, string> = {};
+  const uidByContactId: Record<string, string> = {};
   try {
     const membersSnap = await getDocs(collection(db, 'patients', patientId, 'members'));
     await Promise.all(
@@ -30,23 +34,26 @@ export async function loadCircleMapPhotoMaps(
         };
         if (data.status && data.status !== 'active') return;
 
+        const uid = memberDoc.id;
+        const email = normalizeInviteEmail(String(data.invitedEmail || ''));
+        const contactId = typeof data.contactId === 'string' ? data.contactId.trim() : '';
+        if (email) uidByEmail[email] = uid;
+        if (contactId) uidByContactId[contactId] = uid;
+
         const profileSnap = await getDoc(doc(db, 'circle_profiles', memberDoc.id));
         const photoUrl = profileSnap.exists()
           ? String(profileSnap.data()?.photoUrl || '').trim()
           : '';
         if (!photoUrl) return;
 
-        const email = normalizeInviteEmail(String(data.invitedEmail || ''));
         if (email) byEmail[email] = photoUrl;
-
-        const contactId = typeof data.contactId === 'string' ? data.contactId.trim() : '';
         if (contactId) byContactId[contactId] = photoUrl;
       }),
     );
   } catch {
     /* optional enrichment */
   }
-  return { byEmail, byContactId };
+  return { byEmail, byContactId, uidByEmail, uidByContactId };
 }
 
 /** Circle member profile photos keyed by normalized invite email. */

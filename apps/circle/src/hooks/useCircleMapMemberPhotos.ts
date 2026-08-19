@@ -9,20 +9,27 @@ export function useCircleMapMemberPhotos(
 ) {
   const [photosByEmail, setPhotosByEmail] = useState<Record<string, string>>({});
   const [photosByContactId, setPhotosByContactId] = useState<Record<string, string>>({});
+  const [uidByEmail, setUidByEmail] = useState<Record<string, string>>({});
+  const [uidByContactId, setUidByContactId] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!enabled || !db || !patientId) {
       setPhotosByEmail({});
       setPhotosByContactId({});
+      setUidByEmail({});
+      setUidByContactId({});
       return undefined;
     }
 
     let active = true;
     const load = async () => {
-      const { byEmail, byContactId } = await loadCircleMapPhotoMaps(db, patientId);
+      const { byEmail, byContactId, uidByEmail: nextUidByEmail, uidByContactId: nextUidByContactId } =
+        await loadCircleMapPhotoMaps(db, patientId);
       if (active) {
         setPhotosByEmail(byEmail);
         setPhotosByContactId(byContactId);
+        setUidByEmail(nextUidByEmail);
+        setUidByContactId(nextUidByContactId);
       }
     };
 
@@ -34,5 +41,5 @@ export function useCircleMapMemberPhotos(
     };
   }, [db, enabled, patientId]);
 
-  return { photosByEmail, photosByContactId };
+  return { photosByEmail, photosByContactId, uidByEmail, uidByContactId };
 }

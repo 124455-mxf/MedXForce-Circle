@@ -4,10 +4,16 @@ import { ChevronRight, Users } from 'lucide-react';
 import type { CircleMemberThreadKind } from '@medxforce/shared';
 import { useCircleTeamCoverage } from '../hooks/useCircleTeamCoverage';
 import { useCircleMapMemberPhotos } from '../hooks/useCircleMapMemberPhotos';
+import { useCircleMemberThread } from '../hooks/useCircleMemberThread';
+import { useCirclePatientThreadsContext } from '../context/CirclePatientThreadsContext';
+import { useCircleGalleryDashboardFromShell } from '../context/CircleSelectedPatientContext';
 import { useCircleT } from '../lib/circleI18nContext';
 import {
   contactsForCircleThread,
   contactsToCircleMapPreferences,
+  mapCirclePostsForEngagement,
+  mapGalleryPhotosForEngagement,
+  mapMessagesForEngagement,
 } from '../lib/circleMapContacts';
 import { buildCircleMapModel } from '../lib/circleMapModel';
 import { cn } from '../lib/utils';
@@ -24,6 +30,7 @@ type CircleThreadMembersRowProps = {
   patientPhotoUrl?: string;
   isPendingProvision?: boolean;
   threadKind: CircleMemberThreadKind;
+  includeRestrictedPosts?: boolean;
 };
 
 export function CircleThreadMembersRow({
@@ -33,11 +40,25 @@ export function CircleThreadMembersRow({
   patientPhotoUrl,
   isPendingProvision = false,
   threadKind,
+  includeRestrictedPosts = false,
 }: CircleThreadMembersRowProps) {
   const t = useCircleT();
   const [open, setOpen] = useState(false);
   const { contacts, loading } = useCircleTeamCoverage(db, patientId, isPendingProvision);
-  const { photosByEmail, photosByContactId } = useCircleMapMemberPhotos(db, patientId, true);
+  const { photosByEmail, photosByContactId, uidByEmail, uidByContactId } = useCircleMapMemberPhotos(
+    db,
+    patientId,
+    true,
+  );
+  const { rawMessages, repliesByMessageId } = useCirclePatientThreadsContext();
+  const { engagementPhotos } = useCircleGalleryDashboardFromShell();
+  const { posts: openPosts } = useCircleMemberThread(db, patientId, 'open', true);
+  const { posts: restrictedPosts } = useCircleMemberThread(
+    db,
+    patientId,
+    'restricted',
+    includeRestrictedPosts,
+  );
 
   const threadContacts = useMemo(
     () => contactsForCircleThread(contacts, threadKind),
@@ -49,17 +70,45 @@ export function CircleThreadMembersRow({
     [patientDisplayName, threadContacts],
   );
 
+  const messages = useMemo(
+    () => [
+      ...mapMessagesForEngagement(rawMessages, repliesByMessageId),
+      ...mapCirclePostsForEngagement(openPosts),
+      ...mapCirclePostsForEngagement(restrictedPosts),
+    ],
+    [openPosts, rawMessages, repliesByMessageId, restrictedPosts],
+  );
+
+  const mappedGalleryPhotos = useMemo(
+    () => mapGalleryPhotosForEngagement(engagementPhotos),
+    [engagementPhotos],
+  );
+
   const model = useMemo(
     () =>
       buildCircleMapModel({
         preferences,
+        messages,
+        galleryPhotos: mappedGalleryPhotos,
         photosByEmail,
         photosByContactId,
+        uidByEmail,
+        uidByContactId,
         patientPhotoUrl,
         mode: 'members',
         t,
       }),
-    [photosByContactId, photosByEmail, patientPhotoUrl, preferences, t],
+    [
+      mappedGalleryPhotos,
+      messages,
+      photosByContactId,
+      photosByEmail,
+      uidByContactId,
+      uidByEmail,
+      patientPhotoUrl,
+      preferences,
+      t,
+    ],
   );
 
   const members = model.nodes;
@@ -127,8 +176,12 @@ export function CircleThreadMembersRow({
         isOpen={open}
         onClose={() => setOpen(false)}
         preferences={preferences}
+        messages={messages}
+        galleryPhotos={mappedGalleryPhotos}
         photosByEmail={photosByEmail}
         photosByContactId={photosByContactId}
+        uidByEmail={uidByEmail}
+        uidByContactId={uidByContactId}
         patientPhotoUrl={patientPhotoUrl}
         initialMode="members"
         subtitle={
