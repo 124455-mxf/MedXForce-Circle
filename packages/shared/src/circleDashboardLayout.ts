@@ -256,13 +256,14 @@ export const FRIEND_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] =
 export const CAREGIVER_ROLE_HIDDEN_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] =
   hiddenDashboardWidgetsForRolePreset('caregiver', 'compact');
 
-/** Compact vs full tiles that cannot both be on in Customize. */
+/** Tiles that cannot both be on in Customize. If both would be visible, the second is hidden. */
 export const DASHBOARD_EXCLUSIVE_WIDGET_PAIRS: ReadonlyArray<
   readonly [CircleDashboardWidgetKey, CircleDashboardWidgetKey]
 > = [
   ['circle-map', 'circle-compact'],
   ['daily-check-in', 'check-in-wellness-ring'],
   ['assessments', 'assessments-compact'],
+  ['last-7-days-overview', 'last-30-days-overview'],
 ];
 
 export function exclusivePartnerForDashboardWidget(
@@ -354,14 +355,26 @@ export function parseMemberDashboardLayout(
   };
 }
 
+/** Hide the second widget when both of an exclusive pair would otherwise be visible. */
+export function applyExclusiveDashboardWidgetPairs(
+  hiddenWidgets: readonly CircleDashboardWidgetKey[],
+): CircleDashboardWidgetKey[] {
+  const next = new Set(hiddenWidgets);
+  for (const [left, right] of DASHBOARD_EXCLUSIVE_WIDGET_PAIRS) {
+    if (!next.has(left) && !next.has(right)) next.add(right);
+  }
+  return [...next];
+}
+
 export function resolveEffectiveHiddenDashboardWidgets(
   parsed: { layout: CircleDashboardLayout | null; hasStoredLayout: boolean },
   role: CircleMemberRole,
 ): CircleDashboardWidgetKey[] {
-  if (parsed.hasStoredLayout && parsed.layout) {
-    return parsed.layout.hiddenWidgets;
-  }
-  return defaultHiddenDashboardWidgetsForRole(role);
+  const hidden =
+    parsed.hasStoredLayout && parsed.layout
+      ? parsed.layout.hiddenWidgets
+      : defaultHiddenDashboardWidgetsForRole(role);
+  return applyExclusiveDashboardWidgetPairs(hidden);
 }
 
 /** Legacy field on members/{uid}; prefer prefs/dashboard for reads/writes. */
