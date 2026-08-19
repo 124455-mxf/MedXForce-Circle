@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Firestore } from 'firebase/firestore';
 import {
-  type CircleManagedContact,
   type CircleMemberRole,
 } from '@medxforce/shared';
 import { useCircleTeamCoverageFromDashboard } from '../context/CircleTeamCoverageContext';
@@ -10,43 +9,12 @@ import type { CircleThreadMessage, CircleThreadReply } from '../hooks/useCircleP
 import { useCirclePatientThreadsContext } from '../context/CirclePatientThreadsContext';
 import type { FamilyGalleryPreviewPhoto } from '../hooks/useFamilyGalleryDashboard';
 import type { CircleMapGalleryPhoto } from '../lib/circleMapModel';
+import { contactsToCircleMapPreferences } from '../lib/circleMapContacts';
 import { useCircleT } from '../lib/circleI18nContext';
 import {
   CircleDashboardCircleMapModal,
   CircleDashboardCircleMapTile,
 } from './CircleDashboardCircleMap';
-
-function managedContactToRecord(contact: CircleManagedContact): Record<string, unknown> {
-  return {
-    id: contact.id,
-    name: contact.name,
-    email: contact.email,
-    relationship: contact.relationship,
-    circleRole: contact.circleRole,
-    proxyTier: contact.proxyTier,
-    kind: contact.kind,
-  };
-}
-
-function contactsToPreferences(
-  contacts: CircleManagedContact[],
-  patientName: string,
-  nickName?: string,
-) {
-  const caregivers = contacts.filter((c) => c.kind === 'caregiver').map(managedContactToRecord);
-  const friendsAndFamily = contacts
-    .filter((c) => c.kind === 'family' || c.kind === 'friend')
-    .map(managedContactToRecord);
-  const messagingContacts = contacts.filter((c) => c.kind === 'contact').map(managedContactToRecord);
-
-  return {
-    userName: patientName,
-    fullUserDetails: nickName ? { identity: { nickName } } : undefined,
-    caregivers,
-    friendsAndFamily,
-    contacts: messagingContacts,
-  };
-}
 
 function mapMessagesForEngagement(
   rawMessages: CircleThreadMessage[],
@@ -108,7 +76,7 @@ export function CircleDashboardCircleMapSection({
   const { rawMessages, repliesByMessageId } = useCirclePatientThreadsContext();
 
   const preferences = useMemo(
-    () => contactsToPreferences(contacts, patientDisplayName, patientNickName),
+    () => contactsToCircleMapPreferences(contacts, patientDisplayName, patientNickName),
     [contacts, patientDisplayName, patientNickName],
   );
 

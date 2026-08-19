@@ -120,7 +120,6 @@ import {
 } from '../lib/circleMessageRead';
 import {
   circlePatientFirstName,
-  patientFriendlyDisplayName,
   dashboardPlural,
   formatLiveTileApplicationModeLineT,
   formatLiveTileLanguageLineT,
@@ -1929,11 +1928,7 @@ export function CircleDashboardScreen({
               <LivePatientWidget
                 onlineDurationLabel={liveOnlineDurationLabel}
                 activeSectionLabel={formatPatientActiveSectionT(t, patientPresence.activeSection)}
-                patientName={
-                  showGetToKnow
-                    ? circlePatientFirstName(profileSnapshot, patient.displayName)
-                    : patientFriendlyDisplayName(profileSnapshot, patient.displayName)
-                }
+                patientName={circlePatientFirstName(profileSnapshot, patient.displayName)}
                 patientId={patient.patientId}
                 memberUid={user.uid}
                 patientContextLines={livePatientContextLines}

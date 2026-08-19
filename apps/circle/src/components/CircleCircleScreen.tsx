@@ -35,7 +35,6 @@ import type { CircleUiLanguage } from '../lib/circleLanguages';
 import { useCirclePatientMemberLanguages } from '../hooks/useCirclePatientMemberLanguages';
 import { buildCircleThreadPostTranslations } from '../lib/circleThreadPostTranslate';
 import {
-  circleThreadDescriptionI18n,
   circleThreadLabelI18n,
   formatCirclePostTime,
   formatCircleThreadActionError,
@@ -47,7 +46,6 @@ import {
   circleInboxTabStripClass,
   circleInboxTextTabExtraClass,
   CIRCLE_INBOX_TAB_ICON_SIZE,
-  circleSectionContextHintClass,
   circleSectionEmptyStateClass,
   circleSectionHeaderClass,
   circleSectionHeaderStackClass,
@@ -59,6 +57,7 @@ import {
 } from '../lib/circleSectionStyles';
 import { isCircleAiAssistAvailable } from '../lib/circleAiAssist';
 import { CircleAiGuidanceModal } from './CircleAiGuidanceModal';
+import { CircleThreadMembersRow } from './CircleThreadMembersRow';
 import { useCircleMemberThread } from '../hooks/useCircleMemberThread';
 import { useCircleMemberThreadPostReplies } from '../hooks/useCircleMemberThreadPostReplies';
 import {
@@ -1247,9 +1246,15 @@ export function CircleCircleScreen({
           </div>
           ) : null}
 
-          <p className={cn(circleSectionContextHintClass, 'px-0')}>
-            {circleThreadDescriptionI18n(t, activeThread)}
-          </p>
+          <CircleThreadMembersRow
+            key={activeThread}
+            db={db}
+            patientId={patient.patientId}
+            patientDisplayName={patient.displayName}
+            patientPhotoUrl={patient.photoUrl}
+            isPendingProvision={patient.isPendingProvision === true}
+            threadKind={activeThread}
+          />
 
           <CircleHorizontalScrollStrip
             className={cn('w-full min-w-0', circleInboxTabStripClass)}

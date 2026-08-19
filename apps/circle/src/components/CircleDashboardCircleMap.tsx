@@ -1,5 +1,5 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageSquare, Sparkles, Users, X } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -32,6 +32,8 @@ type DashboardCircleMapModalProps = {
   onManageContacts?: () => void;
   onMessageMember?: (recipientKey: string) => void;
   messagingEnabled?: boolean;
+  initialMode?: CircleMapViewMode;
+  subtitle?: string;
   t: (key: string, params?: Record<string, unknown>) => string;
 };
 
@@ -49,10 +51,18 @@ export function DashboardCircleMapModal({
   onManageContacts,
   onMessageMember,
   messagingEnabled = false,
+  initialMode = 'roles',
+  subtitle,
   t,
 }: DashboardCircleMapModalProps) {
-  const [mode, setMode] = useState<CircleMapViewMode>('roles');
+  const [mode, setMode] = useState<CircleMapViewMode>(initialMode);
   const [selected, setSelected] = useState<CircleMapNode | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setMode(initialMode);
+    setSelected(null);
+  }, [initialMode, isOpen]);
 
   const model = useMemo(() => {
     if (preview) return buildCircleMapPreviewModel(t);
@@ -105,7 +115,9 @@ export function DashboardCircleMapModal({
                 <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                   {t('dashboard.circleMap.title')}
                 </h2>
-                <p className="text-sm text-slate-500 max-w-md">{t(`dashboard.circleMap.subtitle.${mode}`)}</p>
+                <p className="text-sm text-slate-500 max-w-md">
+                  {subtitle ?? t(`dashboard.circleMap.subtitle.${mode}`)}
+                </p>
                 {mode === 'relationships' && (
                   <p className="text-xs text-violet-700/90 font-medium max-w-md">
                     {t('dashboard.circleMap.relationshipsHint')}
