@@ -381,8 +381,8 @@ export const appShellEnglish = {
     dismissInitiateNotice: 'Dismiss message',
   },
   dashboard: {
-    recordVisit: 'Record visit',
-    recordVisitDesc: 'Capture audio and notes from a doctor visit on your device.',
+    recordVisit: 'Record meeting',
+    recordVisitDesc: 'Capture audio, notes, from a meeting on your device',
     live: 'Live',
     onlineFor: 'Online for {{duration}}',
     currently: 'Currently: {{section}}',
@@ -1622,8 +1622,8 @@ export const appShellGerman = {
     dismissInitiateNotice: 'Hinweis schließen',
   },
   dashboard: {
-    recordVisit: 'Besuch aufzeichnen',
-    recordVisitDesc: 'Audio und Notizen vom Arztbesuch auf Ihrem Gerät erfassen.',
+    recordVisit: 'Meeting aufnehmen',
+    recordVisitDesc: 'Audio und Notizen von einem Termin auf Ihrem Gerät erfassen.',
     live: 'Live',
     onlineFor: 'Online seit {{duration}}',
     currently: 'Aktuell: {{section}}',
@@ -2856,8 +2856,8 @@ export const appShellSpanish = {
     dismissInitiateNotice: 'Cerrar aviso',
   },
   dashboard: {
-    recordVisit: 'Registrar visita',
-    recordVisitDesc: 'Capture audio y notas de una visita médica en su dispositivo.',
+    recordVisit: 'Grabar reunión',
+    recordVisitDesc: 'Capture audio y notas de una reunión en su dispositivo.',
     live: 'En vivo',
     onlineFor: 'En línea durante {{duration}}',
     currently: 'Actualmente: {{section}}',
@@ -4090,8 +4090,8 @@ export const appShellPolish = {
     dismissInitiateNotice: 'Zamknij komunikat',
   },
   dashboard: {
-    recordVisit: 'Nagraj wizytę',
-    recordVisitDesc: 'Nagraj audio i notatki z wizyty u lekarza na swoim urządzeniu.',
+    recordVisit: 'Nagraj spotkanie',
+    recordVisitDesc: 'Nagraj audio i notatki ze spotkania na swoim urządzeniu.',
     live: 'Na żywo',
     onlineFor: 'Online przez {{duration}}',
     currently: 'Obecnie: {{section}}',

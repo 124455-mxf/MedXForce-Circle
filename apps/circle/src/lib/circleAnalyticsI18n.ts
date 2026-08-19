@@ -44,7 +44,8 @@ const SECTION_TITLE_KEYS: Record<AnalyticsSectionId, string> = {
 const SUMMARY_TEXT_KEYS: Record<string, string> = {
   'To be released': 'analytics.summaryToBeReleased',
   'No data yet': 'analytics.summaryNoDataYet',
-  'No assessments yet': 'analytics.summaryNoAssessmentsYet',
+  'No assessments yet': 'analytics.summaryNoDataYet',
+  'No assessment data yet': 'analytics.summaryNoDataYet',
   'No check-ins yet': 'analytics.summaryNoCheckInsYet',
   'Not enabled for patient': 'analytics.summaryNotEnabled',
   'No shared family media yet': 'analytics.summaryNoFamilyMedia',

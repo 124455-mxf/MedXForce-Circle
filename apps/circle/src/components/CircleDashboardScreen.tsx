@@ -7,6 +7,7 @@ import {
   CalendarDays,
   CalendarRange,
   ChevronDown,
+  CircleDot,
   ClipboardList,
   Heart,
   Image as ImageIcon,
@@ -795,7 +796,7 @@ function RecordVisitCaptureWidget({
         'border-slate-100 bg-white hover:border-blue-200 hover:bg-blue-50/30',
       )}
     >
-      <Stethoscope size={20} className="text-blue-600 shrink-0" aria-hidden />
+      <CircleDot size={20} className="text-blue-600 shrink-0" aria-hidden />
       <div className="min-w-0 flex-1">
         <p className="font-bold text-slate-800 text-sm sm:text-base leading-tight">
           {t('dashboard.recordVisit')}

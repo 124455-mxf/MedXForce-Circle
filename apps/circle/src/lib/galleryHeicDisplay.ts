@@ -18,9 +18,15 @@ export async function resolveGalleryImageUrl(url: string): Promise<string> {
   return objectUrl;
 }
 
+function initialResolvedSrc(primary: string | undefined): string {
+  if (!primary) return '';
+  if (!isHeicGalleryUrl(primary)) return primary;
+  return resolvedUrlCache.get(primary) ?? '';
+}
+
 /** Resolves a single gallery URL (HEIC → JPEG object URL in-browser). */
 function useResolvedGalleryImageUrl(primary: string | undefined): string {
-  const [src, setSrc] = useState(primary && !isHeicGalleryUrl(primary) ? primary : '');
+  const [src, setSrc] = useState(() => initialResolvedSrc(primary));
 
   useEffect(() => {
     if (!primary) {
@@ -32,8 +38,13 @@ function useResolvedGalleryImageUrl(primary: string | undefined): string {
       return;
     }
 
+    const cached = resolvedUrlCache.get(primary);
+    if (cached) {
+      setSrc(cached);
+      return;
+    }
+
     let cancelled = false;
-    setSrc('');
     void resolveGalleryImageUrl(primary)
       .then((resolved) => {
         if (!cancelled) setSrc(resolved);

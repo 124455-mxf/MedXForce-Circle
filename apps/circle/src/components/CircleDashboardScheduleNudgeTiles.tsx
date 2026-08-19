@@ -69,20 +69,20 @@ function ScheduleNudgeTile({
         ) : null}
         <span className="text-[11px] text-slate-500 leading-snug">{hint}</span>
       </div>
-      <div className="flex items-end gap-4 sm:gap-6 sm:shrink-0 sm:pl-4 sm:border-l sm:border-slate-200/80">
+      <div className="grid grid-cols-2 gap-x-4 w-full items-start sm:w-56 sm:shrink-0 sm:pl-4 sm:border-l sm:border-slate-200/80">
         <div className="min-w-0">
-          <span className="font-bold tabular-nums leading-none text-4xl text-slate-800">
+          <p className="font-bold tabular-nums leading-none text-3xl text-slate-800">
             {formatCircleBadgeCount(primaryCount)}
-          </span>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-2">
+          </p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-2 leading-snug">
             {primaryLabel}
           </p>
         </div>
         <div className="min-w-0">
-          <span className="font-bold tabular-nums leading-none text-2xl text-slate-700">
+          <p className="font-bold tabular-nums leading-none text-3xl text-slate-800">
             {formatCircleBadgeCount(secondaryCount)}
-          </span>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-2">
+          </p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-2 leading-snug">
             {secondaryLabel}
           </p>
         </div>

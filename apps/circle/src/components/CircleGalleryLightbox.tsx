@@ -73,6 +73,83 @@ function CircleAdaptiveLightboxPhoto({
   );
 }
 
+function CircleLightboxPhotoLayer({
+  url,
+  visible,
+  stageBounds,
+  onReady,
+}: {
+  url: string;
+  visible: boolean;
+  stageBounds: LightboxStageBounds;
+  onReady?: () => void;
+}) {
+  const src = useGalleryFullImageSrc(url);
+
+  useEffect(() => {
+    if (!src || !onReady) return undefined;
+    const probe = new Image();
+    probe.onload = onReady;
+    probe.onerror = onReady;
+    probe.src = src;
+    if (probe.complete) onReady();
+    return undefined;
+  }, [onReady, src]);
+
+  if (!src) return null;
+
+  return (
+    <div
+      className={cn(visible ? 'relative' : 'pointer-events-none absolute opacity-0')}
+      aria-hidden={!visible}
+    >
+      <CircleAdaptiveLightboxPhoto src={src} stageBounds={stageBounds} />
+    </div>
+  );
+}
+
+function CircleLightboxPhotoSwap({
+  item,
+  neighborItems,
+  stageBounds,
+}: {
+  item: GalleryAlbumMedia;
+  neighborItems: GalleryAlbumMedia[];
+  stageBounds: LightboxStageBounds;
+}) {
+  const [displayed, setDisplayed] = useState(item);
+  const requestedRef = useRef(item);
+  requestedRef.current = item;
+  const markRequestedReady = useCallback(() => {
+    const next = requestedRef.current;
+    setDisplayed((current) => (current.id === next.id ? current : next));
+  }, [item.id]);
+
+  const mountedItems = useMemo(() => {
+    const byId = new Map<string, GalleryAlbumMedia>();
+    byId.set(displayed.id, displayed);
+    byId.set(item.id, item);
+    for (const neighbor of neighborItems) {
+      if (!neighbor.isVideo && !byId.has(neighbor.id)) byId.set(neighbor.id, neighbor);
+    }
+    return [...byId.values()];
+  }, [displayed, item, neighborItems]);
+
+  return (
+    <div className="relative flex items-center justify-center">
+      {mountedItems.map((photo) => (
+        <CircleLightboxPhotoLayer
+          key={photo.id}
+          url={photo.url}
+          visible={photo.id === displayed.id}
+          stageBounds={stageBounds}
+          onReady={photo.id === item.id ? markRequestedReady : undefined}
+        />
+      ))}
+    </div>
+  );
+}
+
 type CircleGalleryLightboxProps = {
   db: Firestore;
   user: User;
@@ -292,8 +369,13 @@ export function CircleGalleryLightbox({
     return () => window.removeEventListener('keydown', onKey);
   }, [closeLightbox, goNext, goPrev, hasNext, hasPrev]);
 
-  const imageSrc = useGalleryFullImageSrc(item?.isVideo ? undefined : item?.url);
   const { ref: lightboxStageRef, bounds: lightboxStageBounds } = useLightboxStageBounds<HTMLDivElement>();
+  const neighborItems = useMemo(() => {
+    if (items.length <= 1) return [] as GalleryAlbumMedia[];
+    const next = items[(index + 1) % items.length];
+    const prev = items[(index - 1 + items.length) % items.length];
+    return [next, prev].filter((media): media is GalleryAlbumMedia => !!media && !media.isVideo);
+  }, [index, items]);
 
   const uploaderLabel = resolveGalleryUploaderDisplayName(
     item?.senderName,
@@ -338,17 +420,12 @@ export function CircleGalleryLightbox({
             muted={isSlideshowActive}
             className="max-h-full max-w-full rounded-lg"
           />
-        ) : imageSrc ? (
-          <CircleAdaptiveLightboxPhoto
-            key={item.id}
-            src={imageSrc}
+        ) : (
+          <CircleLightboxPhotoSwap
+            item={item}
+            neighborItems={neighborItems}
             stageBounds={lightboxStageBounds}
           />
-        ) : (
-          <div className="max-w-md rounded-2xl bg-white px-8 py-10 text-center text-slate-500 shadow-lg">
-            <ImageIcon size={40} className="mx-auto mb-3 text-slate-300" />
-            <p className="text-sm">This photo could not be previewed.</p>
-          </div>
         )}
         {hasNext && (
           <button
