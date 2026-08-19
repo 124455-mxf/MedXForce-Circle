@@ -7,19 +7,25 @@ import { cn } from '../lib/utils';
 
 const ROTATE_MS = 4500;
 
-function RotatingPhotoLayer({ photo }: { photo: FamilyGalleryPreviewPhoto }) {
+function RotatingPhotoLayer({
+  photo,
+  fadeIn = false,
+}: {
+  photo: FamilyGalleryPreviewPhoto;
+  fadeIn?: boolean;
+}) {
   const src = useGalleryImageSrc(photo.url, photo.thumbnailUrl);
 
-  if (!src) {
-    return <div className="absolute inset-0 animate-pulse bg-slate-300" />;
-  }
+  if (!src) return null;
 
   return (
     <img
-      key={photo.id}
       src={src}
       alt=""
-      className="absolute inset-0 h-full w-full object-cover animate-[galleryFadeIn_700ms_ease-in-out]"
+      className={cn(
+        'absolute inset-0 h-full w-full object-cover',
+        fadeIn && 'animate-[galleryFadeIn_400ms_ease-out]',
+      )}
     />
   );
 }
@@ -52,6 +58,10 @@ export function CircleGalleryRotatingPreviewWidget({
   }, [photos.length, photosKey]);
 
   const current = photos[index];
+  const previous =
+    photos.length > 1
+      ? photos[(index - 1 + photos.length) % photos.length]
+      : undefined;
   const subtitle =
     current?.caption?.trim() ||
     (current?.senderName
@@ -64,7 +74,7 @@ export function CircleGalleryRotatingPreviewWidget({
       onClick={onOpenGallery}
       className={cn(
         'relative h-full w-full overflow-hidden rounded-2xl border text-left transition-colors',
-        'border-slate-100 bg-slate-900 hover:border-blue-200',
+        'border-slate-100 bg-slate-100 hover:border-blue-200',
       )}
       aria-label={t('dashboard.openMediaGallery')}
     >
@@ -81,7 +91,16 @@ export function CircleGalleryRotatingPreviewWidget({
         </div>
       ) : (
         <>
-          {current ? <RotatingPhotoLayer key={current.id} photo={current} /> : null}
+          {previous && previous.id !== current?.id ? (
+            <RotatingPhotoLayer photo={previous} />
+          ) : null}
+          {current ? (
+            <RotatingPhotoLayer
+              key={current.id}
+              photo={current}
+              fadeIn={Boolean(previous && previous.id !== current.id)}
+            />
+          ) : null}
 
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 

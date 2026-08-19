@@ -7,6 +7,7 @@ import {
   normalizeInviteEmail,
   readMemberContactProfile,
   saveCircleUserProfile,
+  updateOwnCircleContactProfile,
 } from '@medxforce/shared';
 import {
   normalizeCircleUiLanguage,
@@ -137,5 +138,33 @@ export async function resolveContactLanguageForPatient(
   } catch (err) {
     console.warn('[Circle] Welcome contact language lookup skipped —', patientId, err);
     return undefined;
+  }
+}
+
+/** Apply Circle UI language and persist it to profile + My contact details. */
+export async function persistCircleApplicationLanguage(params: {
+  db: Firestore;
+  user: User;
+  language: CircleUiLanguage;
+  patientId?: string | null;
+  setLanguage: (language: CircleUiLanguage) => void;
+}): Promise<void> {
+  const { db, user, language, patientId, setLanguage } = params;
+  setLanguage(language);
+
+  await saveCircleUserProfile(db, user.uid, {
+    language,
+    languageSource: 'circle',
+    ...(user.email?.trim() ? { email: user.email.trim() } : {}),
+    ...(user.displayName?.trim() ? { displayName: user.displayName.trim() } : {}),
+  });
+
+  if (!patientId || !user.email) return;
+  try {
+    await updateOwnCircleContactProfile(db, patientId, user.uid, user.email, {
+      language,
+    });
+  } catch (err) {
+    console.warn('[Circle] Contact language sync skipped —', err);
   }
 }

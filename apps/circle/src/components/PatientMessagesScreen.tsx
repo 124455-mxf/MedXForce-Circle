@@ -1641,7 +1641,7 @@ export function PatientMessagesScreen({
           clearLabel={t('messages.clear')}
           sendLabel={t('messages.sendToPatient')}
           sendingLabel={t('messages.sending')}
-          expandTitle={t('messages.expandComposeTitle', { patient: patient.displayName })}
+          expandTitle={t('messages.expandComposeTitle', { patient: patientFirstName })}
           showSubject
           subject={composeToPatientSubject}
           onSubjectChange={setComposeToPatientSubject}

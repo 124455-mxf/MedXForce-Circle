@@ -312,6 +312,7 @@ const myContactPanelEnglish = {
   editable: 'Editable',
   saved: 'Saved. Your name and language are updated for this circle.',
   saveChanges: 'Save changes',
+  fieldApplicationLanguage: 'Application language',
   displayNameHint: 'Filled from first and last name when those are set. Edit here for a preferred display name.',
   managedByPatient: 'Managed by patient or proxy',
   readOnly: 'Read-only',
@@ -653,6 +654,7 @@ const myContactPanelGerman = {
   editable: 'Bearbeitbar',
   saved: 'Gespeichert. Name und Sprache sind für diesen Circle aktualisiert.',
   saveChanges: 'Änderungen speichern',
+  fieldApplicationLanguage: 'Anwendungssprache',
   displayNameHint:
     'Wird aus Vor- und Nachname gefüllt, wenn diese gesetzt sind. Hier können Sie einen bevorzugten Anzeigenamen bearbeiten.',
   managedByPatient: 'Vom Patienten oder Vertreter verwaltet',
@@ -997,6 +999,7 @@ const myContactPanelSpanish = {
   editable: 'Editable',
   saved: 'Guardado. Su nombre e idioma se actualizaron para este círculo.',
   saveChanges: 'Guardar cambios',
+  fieldApplicationLanguage: 'Idioma de la aplicación',
   displayNameHint:
     'Se rellena con nombre y apellido cuando están definidos. Edite aquí un nombre para mostrar preferido.',
   managedByPatient: 'Gestionado por el paciente o representante',
@@ -1341,6 +1344,7 @@ const myContactPanelPolish = {
   editable: 'Edytowalne',
   saved: 'Zapisano. Imię i język zostały zaktualizowane dla tego Circle.',
   saveChanges: 'Zapisz zmiany',
+  fieldApplicationLanguage: 'Język aplikacji',
   displayNameHint:
     'Uzupełniane z imienia i nazwiska, gdy są ustawione. Tutaj możesz ustawić preferowaną nazwę wyświetlaną.',
   managedByPatient: 'Zarządzane przez pacjenta lub pełnomocnika',

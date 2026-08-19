@@ -531,7 +531,7 @@ export function CircleSettingsMyContactPanel({
             ) : null}
             <div className="space-y-2">
               <label className="text-xs font-bold text-blue-800 uppercase tracking-wider block">
-                {t('admin.contact.fieldLanguage')}
+                {t('admin.myContactPanel.fieldApplicationLanguage')}
               </label>
               <select
                 value={language}
