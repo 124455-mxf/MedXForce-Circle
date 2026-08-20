@@ -44,6 +44,19 @@ export type CareTransitionCustomTask = {
   when: string;
 };
 
+export type CircleHelpTask = {
+  id: string;
+  title: string;
+  note: string;
+  createdAt: number;
+  createdByUid: string;
+  createdByName: string;
+  claimedByUid: string;
+  claimedByName: string;
+  assignedByUid: string;
+  done: boolean;
+};
+
 export type CareTransitionPack = {
   id: CareTransitionPackId;
   title: string;
@@ -583,6 +596,7 @@ export type CareTransitionReadinessState = {
   doneIds: string[];
   dismissedIds: string[];
   customTasks: CareTransitionCustomTask[];
+  circleHelpTasks: CircleHelpTask[];
   attachedKnow: CareTransitionKnowCourse[];
   /** When the current active pack was started (ms). */
   packActivatedAt?: number | null;
@@ -603,6 +617,7 @@ export const EMPTY_CARE_TRANSITION_STATE: CareTransitionReadinessState = {
   doneIds: [],
   dismissedIds: [],
   customTasks: [],
+  circleHelpTasks: [],
   attachedKnow: [],
   packActivatedAt: null,
   regionManual: false,
@@ -629,6 +644,19 @@ export function canWorkCareTransitionTasks(role: CircleMemberRole): boolean {
     normalized === 'professional_caregiver' ||
     normalized === 'family'
   );
+}
+
+/** Family and care team can add everyday Circle help; friends cannot. */
+export function canAddCircleHelpTask(role: CircleMemberRole): boolean {
+  return canWorkCareTransitionTasks(role);
+}
+
+export function canClaimCircleHelpTask(role: CircleMemberRole): boolean {
+  return canWorkCareTransitionTasks(role);
+}
+
+export function canAssignCircleHelpTask(role: CircleMemberRole): boolean {
+  return canManageCareTransitionPack(role);
 }
 
 /** Friends stay informed via announcements; they do not get a personal task list. */
@@ -697,6 +725,54 @@ function parseCustomTasks(raw: unknown): CareTransitionCustomTask[] {
   return out;
 }
 
+function parseCircleHelpTasks(raw: unknown): CircleHelpTask[] {
+  if (!Array.isArray(raw)) return [];
+  const out: CircleHelpTask[] = [];
+  for (const item of raw.slice(0, 40)) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Record<string, unknown>;
+    const id = typeof row.id === 'string' ? row.id : '';
+    const title = typeof row.title === 'string' ? row.title.trim() : '';
+    const createdByUid = typeof row.createdByUid === 'string' ? row.createdByUid : '';
+    if (!id || !title || !createdByUid) continue;
+    out.push({
+      id: id.slice(0, 80),
+      title: title.slice(0, 200),
+      note: typeof row.note === 'string' ? row.note.slice(0, 500) : '',
+      createdAt: typeof row.createdAt === 'number' ? row.createdAt : 0,
+      createdByUid: createdByUid.slice(0, 128),
+      createdByName:
+        typeof row.createdByName === 'string' && row.createdByName.trim()
+          ? row.createdByName.trim().slice(0, 200)
+          : 'Circle member',
+      claimedByUid: typeof row.claimedByUid === 'string' ? row.claimedByUid.slice(0, 128) : '',
+      claimedByName: typeof row.claimedByName === 'string' ? row.claimedByName.slice(0, 200) : '',
+      assignedByUid: typeof row.assignedByUid === 'string' ? row.assignedByUid.slice(0, 128) : '',
+      done: row.done === true,
+    });
+  }
+  return out;
+}
+
+export function circleHelpOpenCount(tasks: CircleHelpTask[]): number {
+  return tasks.filter((task) => !task.done).length;
+}
+
+export function serializeCircleHelpTask(task: CircleHelpTask): CircleHelpTask {
+  return {
+    id: task.id.slice(0, 80),
+    title: task.title.slice(0, 200),
+    note: task.note.slice(0, 500),
+    createdAt: task.createdAt,
+    createdByUid: task.createdByUid.slice(0, 128),
+    createdByName: task.createdByName.slice(0, 200),
+    claimedByUid: task.claimedByUid.slice(0, 128),
+    claimedByName: task.claimedByName.slice(0, 200),
+    assignedByUid: task.assignedByUid.slice(0, 128),
+    done: task.done === true,
+  };
+}
+
 function parseKnowCourses(raw: unknown): CareTransitionKnowCourse[] {
   if (!Array.isArray(raw)) return [];
   const out: CareTransitionKnowCourse[] = [];
@@ -736,6 +812,7 @@ export function parseCareTransitionReadinessState(
     doneIds: asStringArray(data.doneIds).slice(0, 80),
     dismissedIds: asStringArray(data.dismissedIds).slice(0, 80),
     customTasks: parseCustomTasks(data.customTasks),
+    circleHelpTasks: parseCircleHelpTasks(data.circleHelpTasks),
     attachedKnow: parseKnowCourses(data.attachedKnow),
     packActivatedAt:
       typeof data.packActivatedAt === 'number' && data.packActivatedAt > 0
@@ -785,6 +862,7 @@ export async function writeCareTransitionReadinessState(
     doneIds: next.doneIds,
     dismissedIds: next.dismissedIds,
     customTasks: next.customTasks,
+    circleHelpTasks: (next.circleHelpTasks ?? []).map(serializeCircleHelpTask),
     attachedKnow: next.attachedKnow,
     updatedAt: next.updatedAt,
   };
@@ -804,7 +882,13 @@ export async function writeCareTransitionReadinessState(
   try {
     await setDoc(careTransitionReadinessRef(db, patientId), payload, { merge: true });
   } catch (err) {
-    // Rules may lag behind client when new fields were added.
+    if ('circleHelpTasks' in payload) {
+      const { circleHelpTasks: _help, packActivatedAt: _a, regionManual: _b, ...withoutNew } = payload;
+      await setDoc(careTransitionReadinessRef(db, patientId), withoutNew, {
+        merge: true,
+      });
+      return next;
+    }
     if ('packActivatedAt' in payload || 'regionManual' in payload) {
       const { packActivatedAt: _a, regionManual: _b, ...withoutNew } = payload;
       await setDoc(careTransitionReadinessRef(db, patientId), withoutNew, {
@@ -821,8 +905,9 @@ export function careTransitionOpenItemCount(
   state: CareTransitionReadinessState,
   role: CircleMemberRole,
 ): number {
+  const helpOpen = circleHelpOpenCount(state.circleHelpTasks ?? []);
   const pack = getCareTransitionPack(state.activePackId);
-  if (!pack) return 0;
+  if (!pack) return helpOpen;
   const items = filterChecklistForViewer(
     pack,
     state.region,
@@ -831,7 +916,7 @@ export function careTransitionOpenItemCount(
     new Set(state.dismissedIds),
   );
   const done = new Set(state.doneIds);
-  return items.filter((item) => !done.has(item.id)).length;
+  return helpOpen + items.filter((item) => !done.has(item.id)).length;
 }
 
 export function buildCareTransitionAnnouncementText(packId: CareTransitionPackId): string {

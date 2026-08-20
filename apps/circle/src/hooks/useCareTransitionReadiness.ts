@@ -6,6 +6,8 @@ import {
   careTransitionProgress,
   careTransitionReadinessRef,
   careTransitionRegionFromCountry,
+  canAddCircleHelpTask,
+  canClaimCircleHelpTask,
   canManageCareTransitionPack,
   canViewCareTransitionTasks,
   canWorkCareTransitionTasks,
@@ -22,6 +24,7 @@ import {
   type CareTransitionPackId,
   type CareTransitionReadinessState,
   type CareTransitionRegion,
+  type CircleHelpTask,
   type CircleMemberRole,
 } from '@medxforce/shared';
 import {
@@ -94,7 +97,11 @@ export function useCareTransitionReadiness(
   const canManage = canManageCareTransitionPack(role);
   const canWorkTasks = canWorkCareTransitionTasks(role);
   const canViewTasks = canViewCareTransitionTasks(role);
+  const canAddHelp = canAddCircleHelpTask(role);
+  const canClaimHelp = canClaimCircleHelpTask(role);
   const loading = patientId != null && state === null;
+
+  const circleHelpTasks = state?.circleHelpTasks ?? [];
 
   const openItemCount = state ? careTransitionOpenItemCount(state, role) : 0;
 
@@ -266,6 +273,90 @@ export function useCareTransitionReadiness(
     [canManage, pack?.suggestedKnow, persist, state],
   );
 
+  const addCircleHelpTask = useCallback(
+    async (title: string, note: string, memberName: string) => {
+      if (!state || !canAddHelp || !memberUid) return;
+      const trimmed = title.trim();
+      if (!trimmed) return;
+      const task: CircleHelpTask = {
+        id: `help-${Date.now()}`,
+        title: trimmed.slice(0, 200),
+        note: note.trim().slice(0, 500),
+        createdAt: Date.now(),
+        createdByUid: memberUid,
+        createdByName: (memberName.trim() || 'Circle member').slice(0, 200),
+        claimedByUid: '',
+        claimedByName: '',
+        assignedByUid: '',
+        done: false,
+      };
+      await persist({
+        ...state,
+        circleHelpTasks: [...(state.circleHelpTasks ?? []), task].slice(0, 40),
+      });
+    },
+    [canAddHelp, memberUid, persist, state],
+  );
+
+  const claimCircleHelpTask = useCallback(
+    async (taskId: string, memberName: string) => {
+      if (!state || !canClaimHelp || !memberUid) return;
+      const name = memberName.trim() || 'Circle member';
+      await persist({
+        ...state,
+        circleHelpTasks: (state.circleHelpTasks ?? []).map((task) =>
+          task.id === taskId && !task.claimedByUid && !task.done
+            ? { ...task, claimedByUid: memberUid, claimedByName: name.slice(0, 200) }
+            : task,
+        ),
+      });
+    },
+    [canClaimHelp, memberUid, persist, state],
+  );
+
+  const releaseCircleHelpTask = useCallback(
+    async (taskId: string) => {
+      if (!state || !memberUid) return;
+      await persist({
+        ...state,
+        circleHelpTasks: (state.circleHelpTasks ?? []).map((task) => {
+          if (task.id !== taskId || task.done) return task;
+          const canRelease = canManage || task.claimedByUid === memberUid;
+          if (!canRelease) return task;
+          return { ...task, claimedByUid: '', claimedByName: '', assignedByUid: '' };
+        }),
+      });
+    },
+    [canManage, memberUid, persist, state],
+  );
+
+  const toggleCircleHelpDone = useCallback(
+    async (taskId: string) => {
+      if (!state || !canWorkTasks) return;
+      await persist({
+        ...state,
+        circleHelpTasks: (state.circleHelpTasks ?? []).map((task) =>
+          task.id === taskId ? { ...task, done: !task.done } : task,
+        ),
+      });
+    },
+    [canWorkTasks, persist, state],
+  );
+
+  const removeCircleHelpTask = useCallback(
+    async (taskId: string) => {
+      if (!state || !memberUid) return;
+      await persist({
+        ...state,
+        circleHelpTasks: (state.circleHelpTasks ?? []).filter((task) => {
+          if (task.id !== taskId) return true;
+          return !(canManage || task.createdByUid === memberUid);
+        }),
+      });
+    },
+    [canManage, memberUid, persist, state],
+  );
+
   const activateSuggestedPack = useCallback(
     async (packId: CareTransitionPackId) => {
       if (!canManage || !patientId || !memberUid) return;
@@ -311,9 +402,12 @@ export function useCareTransitionReadiness(
     progress,
     doneSet,
     openItemCount,
+    circleHelpTasks,
     canManage,
     canWorkTasks,
     canViewTasks,
+    canAddHelp,
+    canClaimHelp,
     setActivePack,
     setRegion,
     syncRegionFromCountry,
@@ -323,6 +417,11 @@ export function useCareTransitionReadiness(
     addCustomTask,
     removeCustomTask,
     attachKnowCourse,
+    addCircleHelpTask,
+    claimCircleHelpTask,
+    releaseCircleHelpTask,
+    toggleCircleHelpDone,
+    removeCircleHelpTask,
     activateSuggestedPack,
   };
 }

@@ -13,6 +13,7 @@ import {
   isCirclePatientMessageTranslateAvailable,
 } from '../lib/circlePatientMessageTranslate';
 import { translateVisitCaptureParsedForViewer } from '../lib/visitCaptureTranslateDisplay';
+import { visitCaptureStartedByLineWithName } from '../lib/circleReplySenderDisplay';
 import { cn } from '../lib/utils';
 
 /** Visit capture posts — structured sections; headline + analysis in the Circle UI language. */
@@ -24,6 +25,7 @@ export function CircleVisitCapturePost({
   disableTruncate = false,
   patientLanguage,
   showPatientLanguagePill = false,
+  capturedByDisplayName,
 }: {
   text: string;
   translations?: StoredMessageTranslation[];
@@ -32,6 +34,7 @@ export function CircleVisitCapturePost({
   disableTruncate?: boolean;
   patientLanguage?: string | null;
   showPatientLanguagePill?: boolean;
+  capturedByDisplayName?: string;
 }) {
   const resolved = useMemo(
     () => resolveStoredMessageText({ text, translations }, viewerLanguage),
@@ -104,6 +107,19 @@ export function CircleVisitCapturePost({
     return originalParsed;
   }, [originalParsed, showOriginal, storedTranslatedParsed, liveParsed]);
 
+  const viewParsed = useMemo(() => {
+    if (!displayParsed) return null;
+    const heading = t('circle.meetingCaptureHeading', { date: displayParsed.dateLabel });
+    const startedByLine = capturedByDisplayName
+      ? visitCaptureStartedByLineWithName(
+          displayParsed.startedByLine,
+          displayParsed.recordedBy,
+          capturedByDisplayName,
+        )
+      : displayParsed.startedByLine;
+    return { ...displayParsed, heading, startedByLine };
+  }, [capturedByDisplayName, displayParsed, t]);
+
   const hasTranslation = resolved.hasTranslation || liveDiffers;
   const fallbackText = showOriginal ? resolved.originalText : resolved.displayText;
 
@@ -123,9 +139,9 @@ export function CircleVisitCapturePost({
         </p>
       ) : null}
 
-      {displayParsed ? (
+      {viewParsed ? (
         <CircleVisitCapturePostView
-          parsed={displayParsed}
+          parsed={viewParsed}
           className="text-slate-700 font-medium"
           t={t}
           disableTruncate={disableTruncate}

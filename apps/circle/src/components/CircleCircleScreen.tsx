@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
-import { Loader2, CalendarClock, ClipboardList, Megaphone, MessageCircle, Plus, Shield, Sparkles, Stethoscope, Trash2, Undo2, Users } from 'lucide-react';
+import { Loader2, BarChart2, CalendarClock, ClipboardList, CircleDot, Megaphone, MessageCircle, Plus, Shield, Sparkles, Trash2, Undo2, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
   canDeleteCircleThreadPostForEveryone,
@@ -19,6 +19,7 @@ import {
   isAppointmentInviteThreadPost,
   isAppointmentInviteVisibleToMember,
   isDiscussionThreadPost,
+  isPollThreadPost,
   isSyntheticAppointmentInvitePostId,
   isPastAppointmentInvitePost,
   mergeAppointmentInvitePostsWithCareCalendar,
@@ -33,7 +34,7 @@ import { cn } from '../lib/utils';
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import type { CircleUiLanguage } from '../lib/circleLanguages';
 import { useCirclePatientMemberLanguages } from '../hooks/useCirclePatientMemberLanguages';
-import { buildCircleThreadPostTranslations } from '../lib/circleThreadPostTranslate';
+import { buildCirclePollTranslations, buildCircleThreadPostTranslations } from '../lib/circleThreadPostTranslate';
 import {
   circleThreadLabelI18n,
   formatCirclePostTime,
@@ -57,6 +58,7 @@ import {
 } from '../lib/circleSectionStyles';
 import { isCircleAiAssistAvailable } from '../lib/circleAiAssist';
 import { CircleAiGuidanceModal } from './CircleAiGuidanceModal';
+import { CirclePollComposer } from './CirclePollComposer';
 import { CircleThreadMembersRow } from './CircleThreadMembersRow';
 import { useCircleMemberThread } from '../hooks/useCircleMemberThread';
 import { useCircleMemberThreadPostReplies } from '../hooks/useCircleMemberThreadPostReplies';
@@ -86,6 +88,8 @@ import { CircleExpandableMessageComposer } from './CircleExpandableMessageCompos
 import { CircleMessageDeleteConfirmModal } from './CircleMessageDeleteConfirmModal';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 import { CirclePostDetailView } from './CirclePostDetailView';
+import { useCirclePatientMemberDisplayNames } from '../hooks/useCirclePatientMemberDisplayNames';
+import { resolveCircleThreadAuthorName } from '../lib/circleReplySenderDisplay';
 import { useCircleRemoteSettingsFromShell } from '../context/CircleSelectedPatientContext';
 import { normalizeCircleUiLanguage } from '../lib/circleLanguages';
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
@@ -204,7 +208,7 @@ function circlePostInboxTabIcon(view: CirclePostInboxView): LucideIcon | null {
     case 'care_transition':
       return ClipboardList;
     case 'visit_captures':
-      return Stethoscope;
+      return CircleDot;
     case 'appointments':
       return CalendarClock;
     case 'drop_ins':
@@ -277,6 +281,7 @@ export function CircleCircleScreen({
     patient,
   );
   const ownRoleLabel = translateCircleMemberRole(t, memberRole);
+  const memberDisplayNames = useCirclePatientMemberDisplayNames(db, patient.patientId);
   const isProxy = patient.role === 'proxy' && !!patient.capabilities.inviteMembers;
   const canOpen = canParticipateInCircleOpenThread(memberRole);
   const canRestricted = canSeeCircleRestrictedThread(memberRole);
@@ -306,6 +311,7 @@ export function CircleCircleScreen({
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [composerOpen, setComposerOpen] = useState(false);
+  const [pollComposerOpen, setPollComposerOpen] = useState(false);
   const [aiGuidanceOpen, setAiGuidanceOpen] = useState(false);
   const [replyDraft, setReplyDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -466,15 +472,12 @@ export function CircleCircleScreen({
 
   const inboxViews = useMemo(() => {
     const views = circlePostInboxViewsForThread(activeThread, memberRole);
-    if (!careTransitionState?.activePackId) {
-      return views.filter((view) => view !== 'care_transition');
-    }
     // Friends stay informed via announcements; checklist tab is for care team + family.
     if (normalizeMemberRole(memberRole) === 'friend') {
       return views.filter((view) => view !== 'care_transition');
     }
     return views;
-  }, [activeThread, careTransitionState?.activePackId, memberRole]);
+  }, [activeThread, memberRole]);
 
   useEffect(() => {
     if (!inboxViews.includes(inboxView)) {
@@ -624,9 +627,9 @@ export function CircleCircleScreen({
       },
       {} as Record<CirclePostInboxView, { total: number; unread: number }>,
     );
-    if (careTransitionState?.activePackId) {
+    if (inboxViews.includes('care_transition')) {
       counts.care_transition = {
-        total: Math.max(careTransitionOpenCount, 1),
+        total: careTransitionOpenCount,
         unread: careTransitionOpenCount,
       };
     }
@@ -635,7 +638,6 @@ export function CircleCircleScreen({
     activeThread,
     allPosts,
     careTransitionOpenCount,
-    careTransitionState?.activePackId,
     getPostLastRead,
     hiddenByPostId,
     inboxViews,
@@ -759,6 +761,63 @@ export function CircleCircleScreen({
     viewerLanguage,
     t,
   ]);
+
+  const handleSendPoll = useCallback(
+    async (question: string, options: string[], closesAt: number, description: string) => {
+      if (sending || !threadEnabled || inboxView !== 'discussion') return;
+      setSending(true);
+      setSendError(null);
+      try {
+        const targetLanguages = [
+          ...new Set(Object.values(memberLanguages.byUid)),
+        ] as CircleUiLanguage[];
+        const translations = await buildCirclePollTranslations(
+          question,
+          options,
+          viewerLanguage,
+          targetLanguages,
+          description,
+        );
+        await createCircleMemberThreadPost(db, {
+          patientId: patient.patientId,
+          threadKind: activeThread,
+          authorUid: user.uid,
+          authorName,
+          authorRole: memberRole,
+          text: question,
+          postKind: 'poll',
+          pollOptions: options,
+          pollDescription: description,
+          pollClosesAt: closesAt,
+          ...(translations.length > 0 ? { translations } : {}),
+        });
+        setPollComposerOpen(false);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : t('circle.sendFailed');
+        setSendError(
+          /permission-denied|insufficient permissions/i.test(message)
+            ? t('circle.pollPermissionDenied')
+            : message,
+        );
+      } finally {
+        setSending(false);
+      }
+    },
+    [
+      activeThread,
+      authorName,
+      db,
+      inboxView,
+      memberLanguages.byUid,
+      memberRole,
+      patient.patientId,
+      sending,
+      threadEnabled,
+      user.uid,
+      viewerLanguage,
+      t,
+    ],
+  );
 
   const handleSendReply = useCallback(async () => {
     const text = replyDraft.trim();
@@ -913,7 +972,14 @@ export function CircleCircleScreen({
       suppressUnread: suppressPastAppointmentInviteUnread(post),
     });
     const title = circlePostInboxTitle(t, post, viewerLanguage, user.uid);
-    const authorLine = circlePostInboxRowAuthorLine(t, post, user.uid, ownRoleLabel);
+    const authorDisplayName = resolveCircleThreadAuthorName(post, memberDisplayNames);
+    const authorLine = circlePostInboxRowAuthorLine(
+      t,
+      post,
+      user.uid,
+      ownRoleLabel,
+      authorDisplayName,
+    );
     const snippet = circlePostInboxSnippet(post, viewerLanguage, user.uid, t);
     const replyCount = post.replyCount ?? 0;
     const activityAt = getCirclePostLatestActivityAt(post);
@@ -956,6 +1022,11 @@ export function CircleCircleScreen({
                     {isAppointmentInviteThreadPost(post) ? (
                       <span className="text-[10px] font-bold uppercase tracking-wide text-violet-700 bg-violet-50 px-1.5 py-0.5 rounded-md">
                         {t('dashboard.careCalendar.legendAppointment')}
+                      </span>
+                    ) : null}
+                    {isPollThreadPost(post) ? (
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-md">
+                        {t('circle.inboxSnippetPoll')}
                       </span>
                     ) : null}
                     {replyCount > 0 && inboxView === 'discussion' ? (
@@ -1110,7 +1181,9 @@ export function CircleCircleScreen({
           inviteContactId={memberInviteContext.inviteContactId}
           memberDisplayName={memberInviteContext.displayName}
           memberRole={memberRole}
+          authorDisplayName={resolveCircleThreadAuthorName(selectedPost, memberDisplayNames)}
           onRecordVisit={onRecordVisit}
+          translationTargetLanguages={[...new Set(Object.values(memberLanguages.byUid))] as CircleUiLanguage[]}
         />
         {messageModals}
       </>
@@ -1187,9 +1260,26 @@ export function CircleCircleScreen({
                       <Sparkles size={18} className="[@media(max-height:740px)]:size-4" />
                     </button>
                   ) : null}
+                  {inboxView === 'discussion' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setComposerOpen(false);
+                        setPollComposerOpen(true);
+                      }}
+                      className={circleHeaderActionButtonClass}
+                      aria-label={t('circle.composePollAria')}
+                      title={t('circle.composePollTitle')}
+                    >
+                      <BarChart2 size={18} className="[@media(max-height:740px)]:size-4" />
+                    </button>
+                  ) : null}
                   <button
                     type="button"
-                    onClick={() => setComposerOpen(true)}
+                    onClick={() => {
+                      setPollComposerOpen(false);
+                      setComposerOpen(true);
+                    }}
                     className={circleHeaderActionButtonClass}
                     aria-label={
                       inboxView === 'announcements'
@@ -1464,6 +1554,16 @@ export function CircleCircleScreen({
             expandTitle={composerExpandTitle}
             expandSubtitle={composerExpandSubtitle}
             error={sendError}
+          />
+        ) : null}
+
+        {showComposer && inboxView === 'discussion' ? (
+          <CirclePollComposer
+            open={pollComposerOpen}
+            sending={sending}
+            error={sendError}
+            onClose={() => setPollComposerOpen(false)}
+            onPost={handleSendPoll}
           />
         ) : null}
 

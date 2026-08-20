@@ -1,7 +1,9 @@
 import {
   circleThreadPostBoldTitleLine,
   isAppointmentInviteThreadPost,
+  isCirclePollClosed,
   isDropInThreadPost,
+  isPollThreadPost,
   isVisitCaptureThreadPost,
   parseAppointmentInvitePost,
   parseVisitCapturePostText,
@@ -17,7 +19,7 @@ import {
 } from './circlePostBodyPreview';
 import { parseDropInTranscriptText } from './dropInTranscriptDisplay';
 import { resolveStoredMessageText } from './messageTranslationDisplay';
-import { translateCircleMemberRole } from './circleScreenI18n';
+import { formatCirclePollClosesAt, translateCircleMemberRole } from './circleScreenI18n';
 
 const INBOX_TITLE_CHARS = 80;
 const INBOX_SNIPPET_CHARS = 120;
@@ -59,12 +61,21 @@ export function circlePostInboxTitle(
   viewerLanguage: CircleUiLanguage,
   viewerUid: string,
 ): string {
+  if (isPollThreadPost(post) && post.text.trim()) {
+    return trimInboxSnippet(
+      resolvePostDisplayText(post, viewerLanguage, viewerUid) || post.text.trim(),
+      INBOX_TITLE_CHARS,
+    );
+  }
   if (isDropInThreadPost(post)) {
     const parsed = parseDropInTranscriptText(post.text);
     if (parsed?.titleLine) return parsed.titleLine;
   }
   if (isVisitCaptureThreadPost(post)) {
     const parsed = parseVisitCapturePostText(post.text);
+    if (parsed?.dateLabel) {
+      return t('circle.meetingCaptureHeading', { date: parsed.dateLabel });
+    }
     if (parsed?.heading) return parsed.heading;
   }
   if (isAppointmentInviteThreadPost(post)) {
@@ -113,6 +124,25 @@ export function circlePostInboxSnippet(
     if (preview) return trimInboxSnippet(preview);
   }
 
+  if (isPollThreadPost(post)) {
+    const replyPreview = post.lastReplyPreviewText?.trim();
+    if ((post.replyCount ?? 0) > 0 && replyPreview) {
+      return trimInboxSnippet(
+        t('circle.inboxSnippetPollReplied', {
+          count: post.replyCount ?? 0,
+          preview: replyPreview,
+        }),
+      );
+    }
+    if (isCirclePollClosed(post)) return t('circle.pollClosed');
+    if (post.pollClosesAt) {
+      return t('circle.inboxSnippetPollCloses', {
+        date: formatCirclePollClosesAt(post.pollClosesAt),
+      });
+    }
+    return t('circle.inboxSnippetPoll');
+  }
+
   const isOwn = post.authorUid === viewerUid;
   const replyPreview = post.lastReplyPreviewText?.trim();
   if ((post.replyCount ?? 0) > 0 && replyPreview) {
@@ -150,9 +180,10 @@ export function circlePostDetailSubtitle(
   post: CircleMemberThreadPost,
   isOwn: boolean,
   ownRoleLabel: string,
+  authorDisplayName = post.authorName,
 ): string {
   if (isOwn) return ownRoleLabel;
-  return `${post.authorName} · ${translateCircleMemberRole(t, post.authorRole)}`;
+  return `${authorDisplayName} · ${translateCircleMemberRole(t, post.authorRole)}`;
 }
 
 export function circlePostInboxRowAuthorLine(
@@ -160,12 +191,13 @@ export function circlePostInboxRowAuthorLine(
   post: CircleMemberThreadPost,
   viewerUid: string,
   ownRoleLabel: string,
+  authorDisplayName = post.authorName,
 ): string {
   if (post.authorUid === viewerUid) {
     return `${t('circle.you')} · ${ownRoleLabel}`;
   }
   return t('circle.inboxSnippetFrom', {
-    name: post.authorName,
+    name: authorDisplayName,
     role: translateCircleMemberRole(t, post.authorRole),
   });
 }

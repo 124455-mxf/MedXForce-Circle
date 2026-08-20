@@ -1,4 +1,4 @@
-import { MessageCircle, Stethoscope } from 'lucide-react';
+import { CircleDot, MessageCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { useCircleT } from '../lib/circleI18nContext';
 
@@ -67,7 +67,7 @@ export function CirclePostFolderActionCard({
     }
   })();
 
-  const Icon = isDropIn ? MessageCircle : Stethoscope;
+  const Icon = isDropIn ? MessageCircle : CircleDot;
 
   const content = (
     <>

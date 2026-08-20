@@ -889,7 +889,7 @@ export function CircleMainShell({
             patientId={selectedPatient.patientId}
             capturedBy={{
               uid: user.uid,
-              name: user.displayName || user.email || 'Circle member',
+              name: memberDisplayName,
               role: memberRole,
               app: 'circle',
             }}

@@ -67,6 +67,8 @@ export function CirclePostDetailView({
   memberDisplayName,
   memberRole,
   onRecordVisit,
+  authorDisplayName,
+  translationTargetLanguages,
 }: {
   post: CircleMemberThreadPost;
   isOwn: boolean;
@@ -100,6 +102,8 @@ export function CirclePostDetailView({
   memberDisplayName?: string;
   memberRole?: string;
   onRecordVisit?: (entryId?: string) => void;
+  authorDisplayName?: string;
+  translationTargetLanguages?: CircleUiLanguage[];
 }) {
   const [copied, setCopied] = useState(false);
   const [expandedOpen, setExpandedOpen] = useState(false);
@@ -112,13 +116,15 @@ export function CirclePostDetailView({
 
   const handleCopyPost = useCallback(async () => {
     try {
-      await writeCircleThreadPostToClipboard(post);
+      await writeCircleThreadPostToClipboard(post, {
+        recordedByDisplayName: authorDisplayName,
+      });
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
       /* clipboard unavailable */
     }
-  }, [post]);
+  }, [authorDisplayName, post]);
 
   useEffect(() => {
     setReplyComposerOpen(false);
@@ -174,7 +180,13 @@ export function CirclePostDetailView({
               <p className="text-[11px] text-slate-500 mt-0.5">
                 {formatCirclePostTime(t, post.createdAt)}
                 {' · '}
-                {circlePostDetailSubtitle(t, post, isOwn, ownRoleLabel)}
+                {circlePostDetailSubtitle(
+                  t,
+                  post,
+                  isOwn,
+                  ownRoleLabel,
+                  authorDisplayName ?? post.authorName,
+                )}
               </p>
             </div>
             <button
@@ -228,6 +240,8 @@ export function CirclePostDetailView({
             memberDisplayName={memberDisplayName}
             memberRole={memberRole}
             onRecordVisit={onRecordVisit}
+            authorDisplayName={authorDisplayName}
+            translationTargetLanguages={translationTargetLanguages}
           />
           <div className="mt-6 flex flex-wrap items-center gap-2">
             <button
@@ -346,6 +360,8 @@ export function CirclePostDetailView({
             inviteContactId={inviteContactId}
             memberDisplayName={memberDisplayName}
             memberRole={memberRole}
+            authorDisplayName={authorDisplayName}
+            translationTargetLanguages={translationTargetLanguages}
           />
           {replies.length > 0 ? (
             <div className="space-y-3">

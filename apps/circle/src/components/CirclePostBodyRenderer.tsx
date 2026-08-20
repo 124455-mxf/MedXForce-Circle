@@ -2,7 +2,9 @@ import {
   circleThreadPostBoldTitleLine,
   isAppointmentInviteThreadPost,
   isDropInThreadPost,
+  isPollThreadPost,
   isVisitCaptureThreadPost,
+  normalizeMemberRole,
   type CircleMemberThreadPost,
 } from '@medxforce/shared';
 import type { Firestore } from 'firebase/firestore';
@@ -12,6 +14,7 @@ import { CircleAppointmentInvitePost } from './CircleAppointmentInvitePost';
 import { CircleDropInTranscriptMessage } from './CircleDropInTranscriptMessage';
 import { CircleMessageBodyPreview } from './CircleMessageBodyPreview';
 import { CircleStoredTranslationMessage } from './CircleStoredTranslationMessage';
+import { CirclePollPost } from './CirclePollPost';
 import { CircleVisitCapturePost } from './CircleVisitCapturePost';
 
 export function CirclePostBodyRenderer({
@@ -30,6 +33,8 @@ export function CirclePostBodyRenderer({
   memberDisplayName,
   memberRole,
   onRecordVisit,
+  authorDisplayName,
+  translationTargetLanguages,
 }: {
   post: CircleMemberThreadPost;
   isOwn: boolean;
@@ -46,8 +51,27 @@ export function CirclePostBodyRenderer({
   memberDisplayName?: string;
   memberRole?: string;
   onRecordVisit?: (entryId?: string) => void;
+  authorDisplayName?: string;
+  translationTargetLanguages?: CircleUiLanguage[];
 }) {
   const resolvedBoldFirstLine = boldFirstLine ?? circleThreadPostBoldTitleLine(post);
+
+  if (isPollThreadPost(post) && db && patientId && memberUid) {
+    return (
+      <CirclePollPost
+        post={post}
+        db={db}
+        patientId={patientId}
+        memberUid={memberUid}
+        memberDisplayName={memberDisplayName}
+        isProxy={normalizeMemberRole(memberRole ?? '') === 'proxy'}
+        isOwn={isOwn}
+        viewerLanguage={viewerLanguage}
+        translationTargetLanguages={translationTargetLanguages}
+        t={t}
+      />
+    );
+  }
 
   if (isAppointmentInviteThreadPost(post) && db && patientId && memberUid) {
     return (
@@ -76,6 +100,7 @@ export function CirclePostBodyRenderer({
         viewerLanguage={viewerLanguage}
         t={t}
         disableTruncate={disableTruncate}
+        capturedByDisplayName={authorDisplayName}
       />
     );
   }

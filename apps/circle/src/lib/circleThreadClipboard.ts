@@ -5,7 +5,7 @@ type CircleThreadPostClipboardInput = {
   text: string;
   authorName: string;
   createdAt: number;
-  postKind?: 'discussion' | 'announcement' | 'visit_capture' | 'drop_in' | 'appointment_invite';
+  postKind?: 'discussion' | 'announcement' | 'visit_capture' | 'drop_in' | 'appointment_invite' | 'poll';
 };
 
 function formatCircleThreadPostPlain(post: CircleThreadPostClipboardInput): string {
@@ -18,9 +18,10 @@ function formatCircleThreadPostPlain(post: CircleThreadPostClipboardInput): stri
 
 export async function writeCircleThreadPostToClipboard(
   post: CircleThreadPostClipboardInput,
+  options?: { recordedByDisplayName?: string },
 ): Promise<void> {
   if (isVisitCaptureThreadPost(post)) {
-    await writeVisitCaptureToClipboard(post.text);
+    await writeVisitCaptureToClipboard(post.text, options?.recordedByDisplayName);
     return;
   }
 

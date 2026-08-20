@@ -47,6 +47,7 @@ export * from './circleThreadInboxHide';
 export * from './circleMemberRoles';
 export * from './circleMemberThreads';
 export * from './circleMemberThreadReplies';
+export * from './circlePolls';
 export * from './analyticsSummaries';
 export * from './analyticsDetailRange';
 export * from './analyticsMetricDetail';
