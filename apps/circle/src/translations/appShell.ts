@@ -1336,7 +1336,6 @@ export const appShellGerman = {
       'Alltägliche Unterstützung — Essen, Fahrten, Besorgungen.',
     circleHelpEmpty: 'Noch keine Circle-Hilfe-Aufgaben.',
     circleHelpAdd: 'Circle-Hilfe hinzufügen',
-    circleHelpAdd: 'Circle-Hilfe hinzufügen',
     circleHelpCreating: 'Wird erstellt…',
     circleHelpTitlePlaceholder: 'Was muss erledigt werden?',
     circleHelpNotePlaceholder: 'Details (optional)',
@@ -2589,7 +2588,6 @@ export const appShellSpanish = {
       'Apoyo cotidiano — comidas, traslados, recados.',
     circleHelpEmpty: 'Aún no hay tareas de ayuda del círculo.',
     circleHelpAdd: 'Añadir una tarea de ayuda',
-    circleHelpAdd: 'Añadir una tarea de ayuda',
     circleHelpCreating: 'Creando…',
     circleHelpTitlePlaceholder: '¿Qué hay que hacer?',
     circleHelpNotePlaceholder: 'Detalles (opcional)',
@@ -3841,7 +3839,6 @@ export const appShellPolish = {
     circleHelpHint:
       'Codzienne wsparcie — posiłki, podwózki, sprawunki.',
     circleHelpEmpty: 'Nie ma jeszcze zadań pomocy kręgu.',
-    circleHelpAdd: 'Dodaj zadanie pomocy kręgu',
     circleHelpAdd: 'Dodaj zadanie pomocy kręgu',
     circleHelpCreating: 'Tworzenie…',
     circleHelpTitlePlaceholder: 'Co trzeba zrobić?',
