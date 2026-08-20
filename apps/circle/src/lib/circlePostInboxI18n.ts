@@ -109,6 +109,7 @@ export function circlePostInboxSnippet(
     return trimInboxSnippet(buildVisitCapturePostPreviewText(parsedVisit));
   }
   if (isAppointmentInviteThreadPost(post)) {
+    const parsed = parseAppointmentInvitePost(post);
     const lines = post.text
       .replace(/\r\n/g, '\n')
       .split('\n')
@@ -118,8 +119,15 @@ export function circlePostInboxSnippet(
       (line, index) =>
         index > 0 && !line.startsWith('Type:') && !line.startsWith('Invited:'),
     );
-    const typeLine = lines.find((line) => line.startsWith('Type:'));
-    const typeLabel = typeLine?.replace('Type:', '').trim();
+    const kind = parsed?.kind;
+    const kindLabel = kind
+      ? t(`dashboard.careCalendar.kinds.${kind}`)
+      : undefined;
+    const subtypeLabel =
+      parsed?.visitSubtype && kind !== 'wellness'
+        ? t(`dashboard.careCalendar.visitSubtype.${parsed.visitSubtype}`)
+        : undefined;
+    const typeLabel = [kindLabel, subtypeLabel].filter(Boolean).join(' · ');
     const preview = [scheduleLine, typeLabel].filter(Boolean).join(' · ');
     if (preview) return trimInboxSnippet(preview);
   }

@@ -963,13 +963,30 @@ export async function respondToCareCalendarInvite(
     memberRole?: string;
   },
 ): Promise<void> {
-  const entryRef = doc(db, 'patients', patientId, 'care_calendar', entryId);
-  const entrySnap = await getDoc(entryRef);
-  if (!entrySnap.exists()) {
-    throw new Error('Appointment not found.');
+  try {
+    await syncCircleMemberInviteContactId(
+      db,
+      patientId,
+      memberUid,
+      options?.managedContactId,
+      options?.memberDocContactId,
+      options?.memberRole,
+    );
+  } catch {
+    /* Member contactId repair helps family/friend RSVP rules; RSVP can still proceed. */
   }
 
-  const entryData = entrySnap.data() as Record<string, unknown>;
+  const entryRef = doc(db, 'patients', patientId, 'care_calendar', entryId);
+  let entryData: Record<string, unknown> | undefined;
+  try {
+    const entrySnap = await getDoc(entryRef);
+    if (entrySnap.exists()) {
+      entryData = entrySnap.data() as Record<string, unknown>;
+    }
+  } catch {
+    /* Family/friend invitees may be able to RSVP without reading the calendar doc. */
+  }
+
   const inviteContext: CareCalendarMemberInviteContext = {
     memberUid,
     contactId: options?.managedContactId ?? memberContactId,
@@ -977,33 +994,46 @@ export async function respondToCareCalendarInvite(
     inviteContactId: options?.inviteContactId,
     displayName: options?.displayName,
   };
-  const parsedEntry = {
-    inviteeContactIds: Array.isArray(entryData.inviteeContactIds)
-      ? entryData.inviteeContactIds.map((id) => String(id)).filter(Boolean)
-      : undefined,
-    inviteeMemberUidByContactId:
-      entryData.inviteeMemberUidByContactId &&
-      typeof entryData.inviteeMemberUidByContactId === 'object'
-        ? Object.fromEntries(
-            Object.entries(
-              entryData.inviteeMemberUidByContactId as Record<string, unknown>,
-            ).map(([key, value]) => [key, String(value)]),
-          )
-        : undefined,
-    attendees: Array.isArray(entryData.attendees)
-      ? (entryData.attendees as CareCalendarAttendee[])
-      : undefined,
-    attendeeResponseSummary: parseAttendeeResponseSummary(
-      entryData.attendeeResponseSummary,
-    ),
-  };
-  const rsvpContactId = resolveCareCalendarRsvpContactIdForEntry(parsedEntry, inviteContext);
+  const parsedEntry = entryData
+    ? {
+        inviteeContactIds: Array.isArray(entryData.inviteeContactIds)
+          ? entryData.inviteeContactIds.map((id) => String(id)).filter(Boolean)
+          : undefined,
+        inviteeMemberUidByContactId:
+          entryData.inviteeMemberUidByContactId &&
+          typeof entryData.inviteeMemberUidByContactId === 'object'
+            ? Object.fromEntries(
+                Object.entries(
+                  entryData.inviteeMemberUidByContactId as Record<string, unknown>,
+                ).map(([key, value]) => [key, String(value)]),
+              )
+            : undefined,
+        attendees: Array.isArray(entryData.attendees)
+          ? (entryData.attendees as CareCalendarAttendee[])
+          : undefined,
+        attendeeResponseSummary: parseAttendeeResponseSummary(
+          entryData.attendeeResponseSummary,
+        ),
+      }
+    : {
+        inviteeContactIds: undefined,
+        inviteeMemberUidByContactId: undefined,
+        attendees: undefined,
+        attendeeResponseSummary: undefined,
+      };
+  const rsvpContactId = (
+    resolveCareCalendarRsvpContactIdForEntry(parsedEntry, inviteContext) ||
+    memberContactId.trim() ||
+    options?.managedContactId?.trim() ||
+    options?.inviteContactId?.trim() ||
+    ''
+  );
   if (!rsvpContactId) {
     throw new Error('Could not resolve invite contact for RSVP.');
   }
 
   const now = Date.now();
-  const beforeUids = Array.isArray(entryData.inviteeMemberUids)
+  const beforeUids = Array.isArray(entryData?.inviteeMemberUids)
     ? (entryData.inviteeMemberUids as string[]).map(String)
     : [];
   const needsUidBackfill =
@@ -1028,27 +1058,18 @@ export async function respondToCareCalendarInvite(
   }
 
   await updateDoc(entryRef, patch);
-  const verifySnap = await getDoc(entryRef);
-  const verifyData = verifySnap.data() as Record<string, unknown> | undefined;
-  const verifySummary = parseAttendeeResponseSummary(verifyData?.attendeeResponseSummary);
-  const verifyRow = verifySummary?.[rsvpContactId];
-  if (verifyRow?.response !== response || verifyRow.respondedByUid !== memberUid) {
-    throw new Error('Missing or insufficient permissions.');
-  }
 
   try {
-    if (options?.managedContactId) {
-      await syncCircleMemberInviteContactId(
-        db,
-        patientId,
-        memberUid,
-        options.managedContactId,
-        options.memberDocContactId,
-        options.memberRole,
-      );
+    const verifySnap = await getDoc(entryRef);
+    const verifyData = verifySnap.data() as Record<string, unknown> | undefined;
+    const verifySummary = parseAttendeeResponseSummary(verifyData?.attendeeResponseSummary);
+    const verifyRow = verifySummary?.[rsvpContactId];
+    if (verifyRow && (verifyRow.response !== response || verifyRow.respondedByUid !== memberUid)) {
+      throw new Error('Could not save your response.');
     }
-  } catch {
-    /* RSVP succeeded; member contact sync is best-effort */
+  } catch (err) {
+    if (err instanceof Error && err.message === 'Could not save your response.') throw err;
+    /* Re-read is optional: family/friend may lack calendar read after a successful RSVP write. */
   }
 }
 

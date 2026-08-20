@@ -201,6 +201,25 @@ function circlePostInboxTabLabel(t: ReturnType<typeof useCircleT>, view: CircleP
   }
 }
 
+function circlePostInboxListHeading(t: ReturnType<typeof useCircleT>, view: CirclePostInboxView): string {
+  switch (view) {
+    case 'announcements':
+      return t('circle.inboxListHeadingAnnouncements');
+    case 'care_transition':
+      return t('circle.tabCareTransition');
+    case 'drop_ins':
+      return t('circle.inboxListHeadingDropIns');
+    case 'visit_captures':
+      return t('circle.inboxListHeadingVisitCaptures');
+    case 'appointments':
+      return t('circle.inboxListHeadingAppointments');
+    case 'hidden':
+      return t('circle.inboxListHeadingHidden');
+    default:
+      return t('circle.inboxListHeading');
+  }
+}
+
 function circlePostInboxTabIcon(view: CirclePostInboxView): LucideIcon | null {
   switch (view) {
     case 'announcements':
@@ -1574,26 +1593,18 @@ export function CircleCircleScreen({
           </CircleHorizontalScrollStrip>
 
           <div className="flex items-start justify-between gap-2">
-            {inboxView === 'care_transition' ? (
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                {t('circle.tabCareTransition')}
-              </p>
-            ) : (
-              <>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                  {t('circle.inboxListHeading')}
-                </p>
-                {activeTabUnread > 0 ? (
-                  <button
-                    type="button"
-                    onClick={handleMarkTabRead}
-                    className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-red-700 hover:text-red-900 px-2 py-1 rounded-lg hover:bg-red-100/80"
-                  >
-                    {t('circle.markAllRead')}
-                  </button>
-                ) : null}
-              </>
-            )}
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              {circlePostInboxListHeading(t, inboxView)}
+            </p>
+            {inboxView !== 'care_transition' && activeTabUnread > 0 ? (
+              <button
+                type="button"
+                onClick={handleMarkTabRead}
+                className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-red-700 hover:text-red-900 px-2 py-1 rounded-lg hover:bg-red-100/80"
+              >
+                {t('circle.markAllRead')}
+              </button>
+            ) : null}
           </div>
         </div>
 

@@ -89,6 +89,11 @@ export const circleScreenEnglish = {
   inboxSubtitleAppointments: 'Tap an appointment invite to view details and accept or decline.',
   inboxSubtitleHidden: 'Posts you removed from your view. Restore to show them again.',
   inboxListHeading: 'Posts',
+  inboxListHeadingAnnouncements: 'Announcements',
+  inboxListHeadingVisitCaptures: 'Meetings capture',
+  inboxListHeadingAppointments: 'Appointments',
+  inboxListHeadingHidden: 'Archived / Deleted',
+  inboxListHeadingDropIns: 'Drop-in summaries',
   inboxEmptyDiscussion: 'No discussion posts yet. Say hello — everyone in this thread will see your note.',
   inboxEmptyAnnouncement: 'No announcements yet.',
   inboxEmptyAnnouncementReadOnly:
@@ -298,6 +303,11 @@ export const circleScreenGerman = {
   inboxSubtitleHidden:
     'Beiträge, die Sie aus Ihrer Ansicht entfernt haben. Wiederherstellen, um sie erneut anzuzeigen.',
   inboxListHeading: 'Beiträge',
+  inboxListHeadingAnnouncements: 'Ankündigungen',
+  inboxListHeadingVisitCaptures: 'Meeting-Aufnahmen',
+  inboxListHeadingAppointments: 'Termine',
+  inboxListHeadingHidden: 'Archiviert / Gelöscht',
+  inboxListHeadingDropIns: 'Drop-in-Zusammenfassungen',
   inboxEmptyDiscussion:
     'Noch keine Diskussionsbeiträge. Sagen Sie Hallo — alle in diesem Thread sehen Ihre Notiz.',
   inboxEmptyAnnouncement: 'Noch keine Ankündigungen.',
@@ -512,6 +522,11 @@ export const circleScreenSpanish = {
   inboxSubtitleHidden:
     'Publicaciones que quitó de su vista. Restaure para mostrarlas de nuevo.',
   inboxListHeading: 'Publicaciones',
+  inboxListHeadingAnnouncements: 'Anuncios',
+  inboxListHeadingVisitCaptures: 'Capturas de reunión',
+  inboxListHeadingAppointments: 'Citas',
+  inboxListHeadingHidden: 'Archivado / Eliminado',
+  inboxListHeadingDropIns: 'Resúmenes de drop-in',
   inboxEmptyDiscussion:
     'Aún no hay publicaciones de discusión. Salude — todos en este hilo verán su nota.',
   inboxEmptyAnnouncement: 'Aún no hay anuncios.',
@@ -726,6 +741,11 @@ export const circleScreenPolish = {
   inboxSubtitleHidden:
     'Posty usunięte z Twojego widoku. Przywróć, aby pokazać je ponownie.',
   inboxListHeading: 'Posty',
+  inboxListHeadingAnnouncements: 'Ogłoszenia',
+  inboxListHeadingVisitCaptures: 'Nagrania spotkań',
+  inboxListHeadingAppointments: 'Wizyty',
+  inboxListHeadingHidden: 'Zarchiwizowane / Usunięte',
+  inboxListHeadingDropIns: 'Podsumowania drop-inów',
   inboxEmptyDiscussion:
     'Brak postów dyskusji. Przywitaj się — wszyscy w tym wątku zobaczą Twoją notatkę.',
   inboxEmptyAnnouncement: 'Brak ogłoszeń.',
