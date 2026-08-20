@@ -37,6 +37,12 @@ export const circleScreenEnglish = {
   composeAnnouncementTitle: 'New announcement',
   composePollAria: 'Start a poll',
   composePollTitle: 'Start a poll',
+  composeNewMenuAria: 'New discussion or poll',
+  composeNewDiscussion: 'New discussion',
+  composeNewPoll: 'New poll',
+  composeNewTasksMenuAria: 'New task or transition pack',
+  composeNewCircleHelp: 'New task',
+  composeNewCareTransitionPack: 'Start transition pack',
   composePollSubtitle: 'Everyone in this thread can vote and comment',
   pollQuestionLabel: 'Question',
   pollQuestionPlaceholder: 'Ask the circle…',
@@ -77,7 +83,7 @@ export const circleScreenEnglish = {
   inboxSubtitleAnnouncement:
     'One-way updates from proxies and caregivers. To comment, start a discussion.',
   inboxSubtitleCareTransition:
-    'Circle help anyone can take, plus the care-transition checklist when a pack is active.',
+    'Ask for everyday help here. A care-transition checklist appears below when a pack is active.',
   inboxSubtitleDropIns: 'Tap a drop-in to read the full transcript.',
   inboxSubtitleVisitCaptures: 'Tap a meeting capture to read the summary and transcript.',
   inboxSubtitleAppointments: 'Tap an appointment invite to view details and accept or decline.',
@@ -237,6 +243,12 @@ export const circleScreenGerman = {
   composeAnnouncementTitle: 'Neue Ankündigung',
   composePollAria: 'Umfrage starten',
   composePollTitle: 'Umfrage starten',
+  composeNewMenuAria: 'Neue Diskussion oder Umfrage',
+  composeNewDiscussion: 'Neue Diskussion',
+  composeNewPoll: 'Neue Umfrage',
+  composeNewTasksMenuAria: 'Neue Aufgabe oder Übergangspaket',
+  composeNewCircleHelp: 'Neue Aufgabe',
+  composeNewCareTransitionPack: 'Übergangspaket starten',
   composePollSubtitle: 'Alle in diesem Thread können abstimmen und kommentieren',
   pollQuestionLabel: 'Frage',
   pollQuestionPlaceholder: 'Fragen Sie den Circle…',
@@ -277,7 +289,7 @@ export const circleScreenGerman = {
   inboxSubtitleAnnouncement:
     'Einweg-Updates von Vertretern und Betreuenden. Zum Kommentieren eine Diskussion starten.',
   inboxSubtitleCareTransition:
-    'Circle-Hilfe, die jemand übernehmen kann, plus die Checkliste wenn ein Paket aktiv ist.',
+    'Bitten Sie hier um alltägliche Hilfe. Die Übergangscheckliste erscheint darunter, wenn ein Paket aktiv ist.',
   inboxSubtitleDropIns: 'Tippen Sie auf ein Drop-in für das vollständige Transkript.',
   inboxSubtitleVisitCaptures:
     'Tippen Sie auf eine Meeting-Aufnahme für Zusammenfassung und Transkript.',
@@ -445,6 +457,12 @@ export const circleScreenSpanish = {
   composeAnnouncementTitle: 'Nuevo anuncio',
   composePollAria: 'Iniciar una encuesta',
   composePollTitle: 'Iniciar una encuesta',
+  composeNewMenuAria: 'Nueva discusión o encuesta',
+  composeNewDiscussion: 'Nueva discusión',
+  composeNewPoll: 'Nueva encuesta',
+  composeNewTasksMenuAria: 'Nueva tarea o paquete de transición',
+  composeNewCircleHelp: 'Nueva tarea',
+  composeNewCareTransitionPack: 'Iniciar paquete de transición',
   composePollSubtitle: 'Todos en este hilo pueden votar y comentar',
   pollQuestionLabel: 'Pregunta',
   pollQuestionPlaceholder: 'Pregunte al círculo…',
@@ -485,7 +503,7 @@ export const circleScreenSpanish = {
   inboxSubtitleAnnouncement:
     'Actualizaciones unidireccionales de representantes y cuidadores. Para comentar, inicie una discusión.',
   inboxSubtitleCareTransition:
-    'Ayuda del círculo que alguien puede tomar, más la lista de transición cuando hay un paquete activo.',
+    'Pida aquí ayuda cotidiana. La lista de transición aparece debajo cuando hay un paquete activo.',
   inboxSubtitleDropIns: 'Toque un drop-in para leer la transcripción completa.',
   inboxSubtitleVisitCaptures:
     'Toque una captura de reunión para leer el resumen y la transcripción.',
@@ -653,6 +671,12 @@ export const circleScreenPolish = {
   composeAnnouncementTitle: 'Nowe ogłoszenie',
   composePollAria: 'Rozpocznij ankietę',
   composePollTitle: 'Rozpocznij ankietę',
+  composeNewMenuAria: 'Nowa dyskusja lub ankieta',
+  composeNewDiscussion: 'Nowa dyskusja',
+  composeNewPoll: 'Nowa ankieta',
+  composeNewTasksMenuAria: 'Nowe zadanie lub pakiet przejścia',
+  composeNewCircleHelp: 'Nowe zadanie',
+  composeNewCareTransitionPack: 'Uruchom pakiet przejścia',
   composePollSubtitle: 'Wszyscy w tym wątku mogą głosować i komentować',
   pollQuestionLabel: 'Pytanie',
   pollQuestionPlaceholder: 'Zapytaj krąg…',
@@ -693,7 +717,7 @@ export const circleScreenPolish = {
   inboxSubtitleAnnouncement:
     'Jednokierunkowe aktualizacje od pełnomocników i opiekunów. Aby skomentować, rozpocznij dyskusję.',
   inboxSubtitleCareTransition:
-    'Pomoc kręgu, którą ktoś może wziąć, plus lista przejścia, gdy pakiet jest aktywny.',
+    'Poproś tutaj o codzienną pomoc. Lista przejścia pojawia się poniżej, gdy pakiet jest aktywny.',
   inboxSubtitleDropIns: 'Dotknij drop-inu, aby przeczytać pełną transkrypcję.',
   inboxSubtitleVisitCaptures:
     'Dotknij nagrania spotkania, aby przeczytać podsumowanie i transkrypcję.',

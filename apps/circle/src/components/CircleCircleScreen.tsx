@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
-import { Loader2, BarChart2, CalendarClock, ClipboardList, CircleDot, Megaphone, MessageCircle, Plus, Shield, Sparkles, Trash2, Undo2, Users } from 'lucide-react';
+import { Loader2, BarChart2, CalendarClock, ClipboardList, CircleDot, HeartHandshake, Megaphone, MessageCircle, Plus, Shield, Sparkles, Trash2, Undo2, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
   canDeleteCircleThreadPostForEveryone,
@@ -312,6 +312,10 @@ export function CircleCircleScreen({
   const [draft, setDraft] = useState('');
   const [composerOpen, setComposerOpen] = useState(false);
   const [pollComposerOpen, setPollComposerOpen] = useState(false);
+  const [composeMenuOpen, setComposeMenuOpen] = useState(false);
+  const composeMenuRef = useRef<HTMLDivElement | null>(null);
+  const [helpComposerOpen, setHelpComposerOpen] = useState(false);
+  const [packStarterOpen, setPackStarterOpen] = useState(false);
   const [aiGuidanceOpen, setAiGuidanceOpen] = useState(false);
   const [replyDraft, setReplyDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -328,6 +332,8 @@ export function CircleCircleScreen({
     state: careTransitionState,
     loading: careTransitionLoading,
     openItemCount: careTransitionOpenCount,
+    canAddHelp,
+    canManage: canManageCareTransition,
   } = useCareTransitionReadiness(db, patient.patientId, user.uid, memberRole, t);
 
   const showCareTransitionUnderAnnouncements = useMemo(() => {
@@ -384,7 +390,27 @@ export function CircleCircleScreen({
 
   useEffect(() => {
     setSelectedPostId(null);
+    setComposeMenuOpen(false);
+    setHelpComposerOpen(false);
+    setPackStarterOpen(false);
   }, [inboxView]);
+
+  useEffect(() => {
+    if (!composeMenuOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (composeMenuRef.current?.contains(event.target as Node)) return;
+      setComposeMenuOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setComposeMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [composeMenuOpen]);
 
   const threadEnabled = activeThread === 'open' ? canOpen : canRestricted;
 
@@ -487,10 +513,17 @@ export function CircleCircleScreen({
 
   const showComposer =
     inboxView === 'discussion' || (inboxView === 'announcements' && canPostAnnouncement);
+  const canStartCareTransitionPack =
+    canManageCareTransition && !careTransitionState?.activePackId;
+  const showTasksCompose =
+    inboxView === 'care_transition' && (canAddHelp || canStartCareTransitionPack);
+  const showHeaderPlus = showComposer || showTasksCompose;
 
   useEffect(() => {
     if (!showComposer) {
       setComposerOpen(false);
+      setPollComposerOpen(false);
+      setComposeMenuOpen(false);
       setAiGuidanceOpen(false);
     }
   }, [showComposer]);
@@ -1244,7 +1277,7 @@ export function CircleCircleScreen({
               ) : undefined
             }
             trailing={
-              showComposer ? (
+              showHeaderPlus ? (
                 <div className="flex items-center gap-1.5 shrink-0">
                   {showAiGuidanceAction ? (
                     <button
@@ -1261,39 +1294,141 @@ export function CircleCircleScreen({
                     </button>
                   ) : null}
                   {inboxView === 'discussion' ? (
+                    <div className="relative" ref={composeMenuRef}>
+                      <button
+                        type="button"
+                        onClick={() => setComposeMenuOpen((open) => !open)}
+                        className={circleHeaderActionButtonClass}
+                        aria-label={t('circle.composeNewMenuAria')}
+                        title={t('circle.composeNewMenuAria')}
+                        aria-haspopup="menu"
+                        aria-expanded={composeMenuOpen}
+                      >
+                        <Plus size={18} className="[@media(max-height:740px)]:size-4" />
+                      </button>
+                      {composeMenuOpen ? (
+                        <div
+                          role="menu"
+                          className="absolute right-0 mt-1.5 z-20 min-w-[11.5rem] rounded-2xl border border-slate-100 bg-white py-1 shadow-lg"
+                        >
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setComposeMenuOpen(false);
+                              setPollComposerOpen(false);
+                              setComposerOpen(true);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            <MessageCircle size={16} className="text-blue-600 shrink-0" />
+                            {t('circle.composeNewDiscussion')}
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setComposeMenuOpen(false);
+                              setComposerOpen(false);
+                              setPollComposerOpen(true);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            <BarChart2 size={16} className="text-blue-600 shrink-0" />
+                            {t('circle.composeNewPoll')}
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : inboxView === 'care_transition' ? (
+                    <div className="relative" ref={composeMenuRef}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (canAddHelp && canStartCareTransitionPack) {
+                            setComposeMenuOpen((open) => !open);
+                            return;
+                          }
+                          if (canStartCareTransitionPack) {
+                            setPackStarterOpen((open) => !open);
+                            return;
+                          }
+                          setHelpComposerOpen((open) => !open);
+                        }}
+                        className={circleHeaderActionButtonClass}
+                        aria-label={
+                          canAddHelp && canStartCareTransitionPack
+                            ? t('circle.composeNewTasksMenuAria')
+                            : canStartCareTransitionPack
+                              ? t('circle.composeNewCareTransitionPack')
+                              : t('circle.composeNewCircleHelp')
+                        }
+                        title={
+                          canAddHelp && canStartCareTransitionPack
+                            ? t('circle.composeNewTasksMenuAria')
+                            : canStartCareTransitionPack
+                              ? t('circle.composeNewCareTransitionPack')
+                              : t('circle.composeNewCircleHelp')
+                        }
+                        aria-haspopup={canAddHelp && canStartCareTransitionPack ? 'menu' : undefined}
+                        aria-expanded={
+                          canAddHelp && canStartCareTransitionPack
+                            ? composeMenuOpen
+                            : canStartCareTransitionPack
+                              ? packStarterOpen
+                              : helpComposerOpen
+                        }
+                      >
+                        <Plus size={18} className="[@media(max-height:740px)]:size-4" />
+                      </button>
+                      {composeMenuOpen && canAddHelp && canStartCareTransitionPack ? (
+                        <div
+                          role="menu"
+                          className="absolute right-0 mt-1.5 z-20 min-w-[11.5rem] rounded-2xl border border-slate-100 bg-white py-1 shadow-lg"
+                        >
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setComposeMenuOpen(false);
+                              setPackStarterOpen(false);
+                              setHelpComposerOpen(true);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            <HeartHandshake size={16} className="text-sky-700 shrink-0" />
+                            {t('circle.composeNewCircleHelp')}
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setComposeMenuOpen(false);
+                              setHelpComposerOpen(false);
+                              setPackStarterOpen(true);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            <ClipboardList size={16} className="text-amber-700 shrink-0" />
+                            {t('circle.composeNewCareTransitionPack')}
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
                     <button
                       type="button"
                       onClick={() => {
-                        setComposerOpen(false);
-                        setPollComposerOpen(true);
+                        setPollComposerOpen(false);
+                        setComposerOpen(true);
                       }}
                       className={circleHeaderActionButtonClass}
-                      aria-label={t('circle.composePollAria')}
-                      title={t('circle.composePollTitle')}
+                      aria-label={t('circle.composeAnnouncementAria')}
+                      title={t('circle.composeAnnouncementTitle')}
                     >
-                      <BarChart2 size={18} className="[@media(max-height:740px)]:size-4" />
+                      <Plus size={18} className="[@media(max-height:740px)]:size-4" />
                     </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPollComposerOpen(false);
-                      setComposerOpen(true);
-                    }}
-                    className={circleHeaderActionButtonClass}
-                    aria-label={
-                      inboxView === 'announcements'
-                        ? t('circle.composeAnnouncementAria')
-                        : t('circle.composePostAria')
-                    }
-                    title={
-                      inboxView === 'announcements'
-                        ? t('circle.composeAnnouncementTitle')
-                        : t('circle.composePostTitle')
-                    }
-                  >
-                    <Plus size={18} className="[@media(max-height:740px)]:size-4" />
-                  </button>
+                  )}
                 </div>
               ) : undefined
             }
@@ -1503,15 +1638,18 @@ export function CircleCircleScreen({
           ) : null}
 
           {inboxView === 'care_transition' ? (
-            <div className="rounded-3xl border border-slate-100 bg-white overflow-hidden">
-              <CircleCareTransitionReadinessPanel
-                user={user}
-                db={db}
-                patient={patient}
-                compact
-                onExpand={() => setCareTransitionOpen(true)}
-              />
-            </div>
+            <CircleCareTransitionReadinessPanel
+              user={user}
+              db={db}
+              patient={patient}
+              compact
+              composeInHeader
+              helpComposerOpen={helpComposerOpen}
+              onHelpComposerOpenChange={setHelpComposerOpen}
+              packStarterOpen={packStarterOpen}
+              onPackStarterOpenChange={setPackStarterOpen}
+              onExpand={() => setCareTransitionOpen(true)}
+            />
           ) : loading ? (
             <div className="py-12 flex justify-center text-slate-400 [@media(max-height:740px)]:py-8">
               <Loader2 size={24} className="animate-spin" />
@@ -1592,6 +1730,7 @@ export function CircleCircleScreen({
           db={db}
           patient={patient}
           hideHeader
+          showCircleHelp={false}
         />
       </CircleMessageExpandOverlay>
     </div>

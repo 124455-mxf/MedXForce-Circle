@@ -2159,6 +2159,7 @@ export function CircleDashboardScreen({
           db={db}
           patient={patient}
           hideHeader
+          showCircleHelp={false}
         />
       </CircleMessageExpandOverlay>
     </div>

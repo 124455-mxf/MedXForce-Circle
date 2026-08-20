@@ -2,8 +2,10 @@ import {
   isAnnouncementThreadPost,
   isAppointmentInviteThreadPost,
   isAppointmentInviteVisibleToMember,
+  isCirclePollClosed,
   isCircleThreadPostHiddenForUser,
   isDropInThreadPost,
+  isPollThreadPost,
   isVisitCaptureThreadPost,
   canParticipateInCircleOpenThread,
   canViewCircleAppointmentInvites,
@@ -156,6 +158,7 @@ export function isCirclePostUnread(
   options?: { suppressUnread?: boolean },
 ): boolean {
   if (options?.suppressUnread) return false;
+  if (isPollThreadPost(post) && isCirclePollClosed(post)) return false;
   if (post.authorUid !== userUid && post.createdAt > lastReadAt) return true;
   if (
     post.lastReplyAt &&

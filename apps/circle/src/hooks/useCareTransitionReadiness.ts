@@ -274,7 +274,12 @@ export function useCareTransitionReadiness(
   );
 
   const addCircleHelpTask = useCallback(
-    async (title: string, note: string, memberName: string) => {
+    async (
+      title: string,
+      note: string,
+      memberName: string,
+      translations?: CircleHelpTask['translations'],
+    ) => {
       if (!state || !canAddHelp || !memberUid) return;
       const trimmed = title.trim();
       if (!trimmed) return;
@@ -289,6 +294,7 @@ export function useCareTransitionReadiness(
         claimedByName: '',
         assignedByUid: '',
         done: false,
+        ...(translations?.length ? { translations } : {}),
       };
       await persist({
         ...state,
@@ -331,16 +337,24 @@ export function useCareTransitionReadiness(
   );
 
   const toggleCircleHelpDone = useCallback(
-    async (taskId: string) => {
-      if (!state || !canWorkTasks) return;
+    async (taskId: string, memberName: string) => {
+      if (!state || !canWorkTasks || !memberUid) return;
+      const name = (memberName.trim() || 'Circle member').slice(0, 200);
       await persist({
         ...state,
-        circleHelpTasks: (state.circleHelpTasks ?? []).map((task) =>
-          task.id === taskId ? { ...task, done: !task.done } : task,
-        ),
+        circleHelpTasks: (state.circleHelpTasks ?? []).map((task) => {
+          if (task.id !== taskId) return task;
+          if (task.done) return { ...task, done: false };
+          return {
+            ...task,
+            done: true,
+            claimedByUid: memberUid,
+            claimedByName: name,
+          };
+        }),
       });
     },
-    [canWorkTasks, persist, state],
+    [canWorkTasks, memberUid, persist, state],
   );
 
   const removeCircleHelpTask = useCallback(

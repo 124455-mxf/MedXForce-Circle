@@ -643,15 +643,13 @@ export function CirclePatientProfilePanel({
             </p>
           )}
 
-          <section className="rounded-3xl border border-slate-100 bg-white overflow-hidden">
-            <CircleCareTransitionReadinessPanel
-              user={user}
-              db={db}
-              patient={patient}
-              compact
-              collapsible
-            />
-          </section>
+          <CircleCareTransitionReadinessPanel
+            user={user}
+            db={db}
+            patient={patient}
+            compact
+            collapsible
+          />
         </>
       )}
 

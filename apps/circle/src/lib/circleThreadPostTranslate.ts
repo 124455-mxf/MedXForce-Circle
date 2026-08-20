@@ -75,3 +75,42 @@ export async function buildCirclePollTranslations(
   }
   return entries;
 }
+
+/** Translate a Circle-help title and optional details for other members' UI languages. */
+export async function buildCircleHelpTaskTranslations(
+  title: string,
+  note: string,
+  authorLanguage: CircleUiLanguage,
+  targetLanguages: CircleUiLanguage[],
+): Promise<Array<{ language: string; title: string; note?: string; isAuto?: boolean }>> {
+  const trimmedTitle = title.trim();
+  const trimmedNote = note.trim().slice(0, 500);
+  if (!trimmedTitle) return [];
+
+  const uniqueTargets = [...new Set(targetLanguages.filter((lang) => lang !== authorLanguage))];
+  if (uniqueTargets.length === 0) return [];
+
+  const entries: Array<{ language: string; title: string; note?: string; isAuto?: boolean }> = [];
+  for (const language of uniqueTargets) {
+    const translatedTitle = (
+      await translatePatientMessageForViewer(trimmedTitle, language)
+    )
+      .trim()
+      .slice(0, 200);
+    const translatedNote = trimmedNote
+      ? (await translatePatientMessageForViewer(trimmedNote, language)).trim().slice(0, 500)
+      : '';
+    const titleText = translatedTitle || trimmedTitle;
+    const noteText = translatedNote || trimmedNote;
+    const titleChanged = titleText !== trimmedTitle;
+    const noteChanged = Boolean(trimmedNote && noteText !== trimmedNote);
+    if (!titleChanged && !noteChanged) continue;
+    entries.push({
+      language,
+      title: titleText,
+      isAuto: true,
+      ...(noteText ? { note: noteText } : {}),
+    });
+  }
+  return entries;
+}

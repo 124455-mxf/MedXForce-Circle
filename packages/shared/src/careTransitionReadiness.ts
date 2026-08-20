@@ -44,6 +44,13 @@ export type CareTransitionCustomTask = {
   when: string;
 };
 
+export type CircleHelpTaskTranslation = {
+  language: string;
+  title: string;
+  note?: string;
+  isAuto?: boolean;
+};
+
 export type CircleHelpTask = {
   id: string;
   title: string;
@@ -55,6 +62,7 @@ export type CircleHelpTask = {
   claimedByName: string;
   assignedByUid: string;
   done: boolean;
+  translations?: CircleHelpTaskTranslation[];
 };
 
 export type CareTransitionPack = {
@@ -725,6 +733,24 @@ function parseCustomTasks(raw: unknown): CareTransitionCustomTask[] {
   return out;
 }
 
+function parseCircleHelpTaskTranslations(raw: unknown): CircleHelpTaskTranslation[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const parsed: CircleHelpTaskTranslation[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const row = entry as Record<string, unknown>;
+    const language = typeof row.language === 'string' ? row.language.trim() : '';
+    const title = typeof row.title === 'string' ? row.title.trim() : '';
+    if (!language || !title) continue;
+    const item: CircleHelpTaskTranslation = { language, title: title.slice(0, 200) };
+    if (row.isAuto === true) item.isAuto = true;
+    const note = typeof row.note === 'string' ? row.note.trim().slice(0, 500) : '';
+    if (note) item.note = note;
+    parsed.push(item);
+  }
+  return parsed.length > 0 ? parsed : undefined;
+}
+
 function parseCircleHelpTasks(raw: unknown): CircleHelpTask[] {
   if (!Array.isArray(raw)) return [];
   const out: CircleHelpTask[] = [];
@@ -735,6 +761,7 @@ function parseCircleHelpTasks(raw: unknown): CircleHelpTask[] {
     const title = typeof row.title === 'string' ? row.title.trim() : '';
     const createdByUid = typeof row.createdByUid === 'string' ? row.createdByUid : '';
     if (!id || !title || !createdByUid) continue;
+    const translations = parseCircleHelpTaskTranslations(row.translations);
     out.push({
       id: id.slice(0, 80),
       title: title.slice(0, 200),
@@ -749,6 +776,7 @@ function parseCircleHelpTasks(raw: unknown): CircleHelpTask[] {
       claimedByName: typeof row.claimedByName === 'string' ? row.claimedByName.slice(0, 200) : '',
       assignedByUid: typeof row.assignedByUid === 'string' ? row.assignedByUid.slice(0, 128) : '',
       done: row.done === true,
+      ...(translations ? { translations } : {}),
     });
   }
   return out;
@@ -756,6 +784,10 @@ function parseCircleHelpTasks(raw: unknown): CircleHelpTask[] {
 
 export function circleHelpOpenCount(tasks: CircleHelpTask[]): number {
   return tasks.filter((task) => !task.done).length;
+}
+
+export function circleHelpCompletedCount(tasks: CircleHelpTask[]): number {
+  return tasks.filter((task) => task.done).length;
 }
 
 export function serializeCircleHelpTask(task: CircleHelpTask): CircleHelpTask {
@@ -770,6 +802,7 @@ export function serializeCircleHelpTask(task: CircleHelpTask): CircleHelpTask {
     claimedByName: task.claimedByName.slice(0, 200),
     assignedByUid: task.assignedByUid.slice(0, 128),
     done: task.done === true,
+    ...(task.translations?.length ? { translations: task.translations } : {}),
   };
 }
 

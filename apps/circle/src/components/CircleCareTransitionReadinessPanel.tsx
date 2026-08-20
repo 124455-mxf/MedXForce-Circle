@@ -7,6 +7,8 @@ import {
   ClipboardList,
   Copy,
   ChevronDown,
+  ChevronUp,
+  HeartHandshake,
   Loader2,
   Maximize2,
   Plus,
@@ -20,11 +22,17 @@ import {
   type CareTransitionChecklistItem,
   type CareTransitionPackId,
   type CareTransitionRegion,
+  type CircleHelpTask,
   type CirclePatientSummary,
 } from '@medxforce/shared';
 import { useCareTransitionReadiness } from '../hooks/useCareTransitionReadiness';
 import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfileSnapshot';
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
+import { useCirclePatientMemberLanguages } from '../hooks/useCirclePatientMemberLanguages';
+import type { CircleUiLanguage } from '../lib/circleLanguages';
+import { buildCircleHelpTaskTranslations } from '../lib/circleThreadPostTranslate';
+import { CircleHelpTaskCopy } from './CircleHelpTaskCopy';
+import { circleHeaderActionButtonClass } from '../lib/circleSectionStyles';
 import { formatCareTransitionPackStartedAt } from '../lib/careTransitionBannerDismiss';
 import {
   buildLocalizedTaskCopyText,
@@ -50,6 +58,17 @@ type CircleCareTransitionReadinessPanelProps = {
   onClose?: () => void;
   /** Open the full-screen checklist modal */
   onExpand?: () => void;
+  /** When false, hide everyday Circle help (e.g. expanded pack overlay). */
+  showCircleHelp?: boolean;
+  /**
+   * Circle Tasks inbox: create from the screen header +, not per-card plus buttons.
+   * Profile / dashboard keep their own card +.
+   */
+  composeInHeader?: boolean;
+  helpComposerOpen?: boolean;
+  onHelpComposerOpenChange?: (open: boolean) => void;
+  packStarterOpen?: boolean;
+  onPackStarterOpenChange?: (open: boolean) => void;
 };
 
 function careTransitionCollapsedStorageKey(patientId: string): string {
@@ -76,10 +95,19 @@ export function CircleCareTransitionReadinessPanel({
   collapsible = false,
   onClose,
   onExpand,
+  showCircleHelp = true,
+  composeInHeader = false,
+  helpComposerOpen: helpComposerOpenProp,
+  onHelpComposerOpenChange,
+  packStarterOpen: packStarterOpenProp,
+  onPackStarterOpenChange,
 }: CircleCareTransitionReadinessPanelProps) {
   const t = useCircleT();
-  const { language } = useCircleI18nContext();
+  const { language: viewerLanguage } = useCircleI18nContext();
   const role = normalizeMemberRole(patient.role);
+  const memberLanguages = useCirclePatientMemberLanguages(db, patient.patientId, user.uid, {
+    pendingProvision: patient.isPendingProvision === true,
+  });
   const { snapshot: profileSnapshot } = useCirclePatientProfileSnapshot(db, patient.patientId);
   const {
     state,
@@ -114,7 +142,19 @@ export function CircleCareTransitionReadinessPanel({
     removeCircleHelpTask,
   } = useCareTransitionReadiness(db, patient.patientId, user.uid, role, t);
 
+  const openHelpTasks = useMemo(
+    () =>
+      [...circleHelpTasks.filter((task) => !task.done)].sort((a, b) => b.createdAt - a.createdAt),
+    [circleHelpTasks],
+  );
+  const completedHelpTasks = useMemo(
+    () =>
+      [...circleHelpTasks.filter((task) => task.done)].sort((a, b) => b.createdAt - a.createdAt),
+    [circleHelpTasks],
+  );
+
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [expandedHelpTaskId, setExpandedHelpTaskId] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState('');
   const [draftWhy, setDraftWhy] = useState('');
   const [draftHelpTitle, setDraftHelpTitle] = useState('');
@@ -123,9 +163,36 @@ export function CircleCareTransitionReadinessPanel({
   const [draftKnowUrl, setDraftKnowUrl] = useState('');
   const [copiedTaskId, setCopiedTaskId] = useState<string | null>(null);
   const [regionPickerOpen, setRegionPickerOpen] = useState(false);
+  const [localHelpComposerOpen, setLocalHelpComposerOpen] = useState(false);
+  const [localPackStarterOpen, setLocalPackStarterOpen] = useState(false);
+  const [helpCreating, setHelpCreating] = useState(false);
+  const [completedHelpOpen, setCompletedHelpOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() =>
     collapsible ? readCareTransitionCollapsed(patient.patientId) : false,
   );
+
+  const helpComposerOpen = composeInHeader
+    ? Boolean(helpComposerOpenProp)
+    : localHelpComposerOpen;
+  const packStarterOpen = composeInHeader
+    ? Boolean(packStarterOpenProp)
+    : localPackStarterOpen;
+
+  const setHelpComposerOpen = (open: boolean | ((prev: boolean) => boolean)) => {
+    const current = helpComposerOpen;
+    const next = typeof open === 'function' ? open(current) : open;
+    if (composeInHeader) onHelpComposerOpenChange?.(next);
+    else setLocalHelpComposerOpen(next);
+  };
+  const setPackStarterOpen = (open: boolean | ((prev: boolean) => boolean)) => {
+    const current = packStarterOpen;
+    const next = typeof open === 'function' ? open(current) : open;
+    if (composeInHeader) onPackStarterOpenChange?.(next);
+    else setLocalPackStarterOpen(next);
+  };
+
+  const helpActionButtonClass =
+    'px-3 py-1.5 rounded-xl text-xs font-semibold disabled:opacity-50';
 
   useEffect(() => {
     if (!collapsible) return;
@@ -184,19 +251,21 @@ export function CircleCareTransitionReadinessPanel({
   );
 
   const selected = useMemo(() => {
-    if (!selectedId) return localizedActiveItems[0] ?? localizedDismissedItems[0] ?? null;
-    return (
-      localizedActiveItems.find((i) => i.id === selectedId) ??
-      localizedDismissedItems.find((i) => i.id === selectedId) ??
-      null
-    );
-  }, [localizedActiveItems, localizedDismissedItems, selectedId]);
+    if (selectedId) {
+      return (
+        localizedActiveItems.find((i) => i.id === selectedId) ??
+        localizedDismissedItems.find((i) => i.id === selectedId) ??
+        null
+      );
+    }
+    return localizedActiveItems.find((item) => !doneSet.has(item.id)) ?? null;
+  }, [doneSet, localizedActiveItems, localizedDismissedItems, selectedId]);
 
   const packComplete = progress.total > 0 && progress.done >= progress.total;
   const startedLabel =
-    state?.packActivatedAt && state.packActivatedAt > 0
+    state?.activePackId && state.packActivatedAt && state.packActivatedAt > 0
       ? t('careTransition.startedAt', {
-          date: formatCareTransitionPackStartedAt(state.packActivatedAt, language),
+          date: formatCareTransitionPackStartedAt(state.packActivatedAt, viewerLanguage),
         })
       : null;
 
@@ -230,7 +299,7 @@ export function CircleCareTransitionReadinessPanel({
         type="button"
         onClick={toggleCollapsed}
         className={cn(
-          'w-full flex items-start gap-3 text-left',
+          'flex-1 min-w-0 flex items-start gap-3 text-left',
           compact ? 'p-4' : 'p-5',
         )}
         aria-expanded={!collapsed}
@@ -266,6 +335,13 @@ export function CircleCareTransitionReadinessPanel({
 
   if (loading || !state) {
     if (collapsible) {
+      if (!canManage) {
+        return (
+          <div className="py-6 flex justify-center text-slate-400">
+            <Loader2 size={20} className="animate-spin" />
+          </div>
+        );
+      }
       return <div>{collapseToggle}</div>;
     }
     return (
@@ -275,20 +351,325 @@ export function CircleCareTransitionReadinessPanel({
     );
   }
 
-  if (collapsible && collapsed) {
-    return <div>{collapseToggle}</div>;
-  }
+  const cardPad = compact || collapsible ? 'p-4' : 'p-5';
+  const cardClass = cn('rounded-3xl border border-slate-100 bg-white', cardPad);
+  const hasActivePack = Boolean(state.activePackId);
+  const showPackControls = canManage && (hasActivePack || packStarterOpen);
+  const showCareTransitionCard = canManage || hasActivePack;
 
-  return (
-    <div>
-      {collapseToggle}
+  const togglePackStarter = () => {
+    if (collapsible && collapsed) {
+      setCollapsed(false);
+      try {
+        localStorage.setItem(careTransitionCollapsedStorageKey(patient.patientId), '0');
+      } catch {
+        /* ignore */
+      }
+      setPackStarterOpen(true);
+      return;
+    }
+    setPackStarterOpen((open) => !open);
+  };
+
+  const packStartButton =
+    !composeInHeader && canManage && !hasActivePack ? (
+      <button
+        type="button"
+        onClick={togglePackStarter}
+        className={cn(circleHeaderActionButtonClass, collapsible && 'mt-4 mr-4')}
+        aria-label={t('careTransition.startPackAria')}
+        title={t('careTransition.startPackAria')}
+        aria-expanded={packStarterOpen}
+      >
+        {packStarterOpen ? (
+          <X size={18} className="[@media(max-height:740px)]:size-4" />
+        ) : (
+          <Plus size={18} className="[@media(max-height:740px)]:size-4" />
+        )}
+      </button>
+    ) : null;
+
+  const helpMemberName =
+    user.displayName?.trim() || user.email?.split('@')[0] || t('circle.circleMemberFallback');
+
+  const renderHelpTask = (task: CircleHelpTask) => {
+    const claimed = Boolean(task.claimedByUid);
+    const mine = task.claimedByUid === user.uid;
+    const canRemove = canManage || task.createdByUid === user.uid;
+    const canRelease = canManage || mine;
+    const helpExpanded = !task.done || expandedHelpTaskId === task.id;
+    const helpTaskHeader = (
+      <div className="flex items-start gap-2">
+        <CheckCircle2
+          size={18}
+          className={cn(
+            'mt-0.5 shrink-0',
+            task.done ? 'text-emerald-600' : 'text-slate-300',
+          )}
+          aria-hidden
+        />
+        <div className="min-w-0 flex-1">
+          <CircleHelpTaskCopy
+            task={task}
+            isOwn={task.createdByUid === user.uid}
+            viewerLanguage={viewerLanguage}
+            t={t}
+            done={task.done}
+          />
+          {task.done ? (
+            <p className="text-[11px] font-semibold text-emerald-700 mt-1 truncate">
+              {claimed
+                ? `${t('careTransition.circleHelpCompleted')} · ${
+                    task.claimedByName.trim() || t('circle.circleMemberFallback')
+                  }`
+                : t('careTransition.circleHelpCompleted')}
+            </p>
+          ) : (
+            <>
+              <p className="text-[11px] text-slate-400 mt-1">
+                {t('careTransition.circleHelpCreatedBy', {
+                  name: task.createdByName.trim() || t('circle.circleMemberFallback'),
+                })}
+              </p>
+              {claimed ? (
+                <p className="text-[11px] text-slate-400">
+                  {t('careTransition.circleHelpTaskTaken', {
+                    name: task.claimedByName.trim() || t('circle.circleMemberFallback'),
+                  })}
+                </p>
+              ) : null}
+            </>
+          )}
+        </div>
+      </div>
+    );
+    return (
       <div
+        key={task.id}
         className={cn(
-          'space-y-4',
-          compact || collapsible ? 'p-4' : 'p-5',
-          collapsible && 'border-t border-slate-100',
+          'rounded-2xl border px-3 py-3 space-y-2',
+          task.done ? 'border-emerald-200 bg-emerald-50' : 'border-slate-100 bg-white',
         )}
       >
+        {task.done ? (
+          <button
+            type="button"
+            className="w-full text-left"
+            onClick={() =>
+              setExpandedHelpTaskId((current) => (current === task.id ? null : task.id))
+            }
+            aria-expanded={helpExpanded}
+          >
+            {helpTaskHeader}
+          </button>
+        ) : (
+          helpTaskHeader
+        )}
+        {helpExpanded &&
+        (canWorkTasks || (!task.done && (canClaimHelp || canRelease || canRemove))) ? (
+        <div className="flex flex-wrap gap-2 pl-7">
+          {canWorkTasks ? (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => {
+                void toggleCircleHelpDone(task.id, helpMemberName);
+                if (!task.done) setExpandedHelpTaskId(null);
+              }}
+              className={cn(
+                'px-3 py-1.5 rounded-xl text-xs font-semibold text-white',
+                task.done ? 'bg-emerald-600' : 'bg-blue-600',
+              )}
+            >
+              {task.done
+                ? t('careTransition.markNotDone')
+                : t('careTransition.markDone')}
+            </button>
+          ) : null}
+          {!task.done && !claimed && canClaimHelp ? (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void claimCircleHelpTask(task.id, helpMemberName)}
+              className={cn(
+                helpActionButtonClass,
+                'border border-slate-200 bg-white text-slate-700',
+              )}
+            >
+              {t('careTransition.circleHelpClaim')}
+            </button>
+          ) : null}
+          {!task.done && claimed && canRelease ? (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void releaseCircleHelpTask(task.id)}
+              className={cn(
+                helpActionButtonClass,
+                'border border-slate-200 bg-white text-slate-700',
+              )}
+            >
+              {t('careTransition.circleHelpRelease')}
+            </button>
+          ) : null}
+          {!task.done && canRemove ? (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void removeCircleHelpTask(task.id)}
+              className={cn(
+                helpActionButtonClass,
+                'border border-red-200 bg-red-50 text-red-700',
+              )}
+            >
+              {t('careTransition.circleHelpRemove')}
+            </button>
+          ) : null}
+        </div>
+        ) : null}
+      </div>
+    );
+  };
+
+  const circleHelpCard =
+    canViewTasks && showCircleHelp ? (
+      <section className={cn(cardClass, 'space-y-3')}>
+        <div className="flex items-start gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-sky-100 text-sky-800 flex items-center justify-center shrink-0">
+            <HeartHandshake size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-bold text-slate-800">{t('careTransition.circleHelpTitle')}</h3>
+            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+              {t('careTransition.circleHelpHint')}
+            </p>
+          </div>
+          {canAddHelp && !composeInHeader ? (
+            <button
+              type="button"
+              onClick={() => setHelpComposerOpen((open) => !open)}
+              className={circleHeaderActionButtonClass}
+              aria-label={t('careTransition.circleHelpAdd')}
+              title={t('careTransition.circleHelpAdd')}
+              aria-expanded={helpComposerOpen}
+            >
+              {helpComposerOpen ? (
+                <X size={18} className="[@media(max-height:740px)]:size-4" />
+              ) : (
+                <Plus size={18} className="[@media(max-height:740px)]:size-4" />
+              )}
+            </button>
+          ) : null}
+        </div>
+        {openHelpTasks.length === 0 && completedHelpTasks.length === 0 ? (
+          <p className="text-sm text-slate-500">{t('careTransition.circleHelpEmpty')}</p>
+        ) : openHelpTasks.length > 0 ? (
+          <div className="space-y-2">{openHelpTasks.map(renderHelpTask)}</div>
+        ) : null}
+        {canAddHelp && helpComposerOpen ? (
+          <div className="space-y-2 pt-1 border-t border-slate-100">
+            <input
+              value={draftHelpTitle}
+              onChange={(e) => setDraftHelpTitle(e.target.value)}
+              placeholder={t('careTransition.circleHelpTitlePlaceholder')}
+              disabled={helpCreating}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:opacity-60"
+            />
+            <input
+              value={draftHelpNote}
+              onChange={(e) => setDraftHelpNote(e.target.value)}
+              placeholder={t('careTransition.circleHelpNotePlaceholder')}
+              disabled={helpCreating}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:opacity-60"
+            />
+            <button
+              type="button"
+              disabled={helpCreating || saving || !draftHelpTitle.trim()}
+              onClick={() => {
+                const title = draftHelpTitle;
+                const note = draftHelpNote;
+                const memberName =
+                  user.displayName?.trim() ||
+                  user.email?.split('@')[0] ||
+                  t('circle.circleMemberFallback');
+                const targetLanguages = [
+                  ...new Set(Object.values(memberLanguages.byUid)),
+                ] as CircleUiLanguage[];
+                setHelpCreating(true);
+                void buildCircleHelpTaskTranslations(
+                  title,
+                  note,
+                  viewerLanguage,
+                  targetLanguages,
+                )
+                  .then((translations) =>
+                    addCircleHelpTask(title, note, memberName, translations),
+                  )
+                  .then(() => {
+                    setDraftHelpTitle('');
+                    setDraftHelpNote('');
+                    setHelpComposerOpen(false);
+                  })
+                  .finally(() => {
+                    setHelpCreating(false);
+                  });
+              }}
+              className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white disabled:opacity-50"
+            >
+              {helpCreating ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  {t('careTransition.circleHelpCreating')}
+                </>
+              ) : (
+                t('careTransition.circleHelpAdd')
+              )}
+            </button>
+          </div>
+        ) : null}
+        {completedHelpTasks.length > 0 ? (
+          <div className="border-t border-slate-100 pt-2">
+            <button
+              type="button"
+              onClick={() => setCompletedHelpOpen((open) => !open)}
+              className="w-full flex items-center justify-between gap-2 py-1.5 text-left"
+              aria-expanded={completedHelpOpen}
+            >
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                {t('careTransition.circleHelpCompleted')} ({completedHelpTasks.length})
+              </span>
+              {completedHelpOpen ? (
+                <ChevronUp size={16} className="text-slate-400 shrink-0" aria-hidden />
+              ) : (
+                <ChevronDown size={16} className="text-slate-400 shrink-0" aria-hidden />
+              )}
+            </button>
+            {completedHelpOpen ? (
+              <div className="space-y-2 pt-1">{completedHelpTasks.map(renderHelpTask)}</div>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
+    ) : null;
+
+  return (
+    <div className="space-y-3">
+      {circleHelpCard}
+      {showCareTransitionCard ? (
+      <section
+        className={cn(
+          'rounded-3xl border border-slate-100 bg-white',
+          collapsible ? 'overflow-hidden' : cn(cardPad, 'space-y-4'),
+        )}
+      >
+      {collapsible ? (
+        <div className="flex items-start">
+          {collapseToggle}
+          {packStartButton}
+        </div>
+      ) : null}
+      {collapsible && collapsed ? null : (
+      <div className={cn('space-y-4', collapsible && 'border-t border-slate-100', collapsible && cardPad)}>
       {hideHeader || collapsible ? null : (
       <div className="flex items-start gap-3">
         <div className="w-11 h-11 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
@@ -307,8 +688,9 @@ export function CircleCareTransitionReadinessPanel({
                 <p className="text-[11px] text-slate-500 mt-1 font-medium">{startedLabel}</p>
               ) : null}
             </div>
-            <div className="flex items-center gap-1 shrink-0">
-              {onExpand ? (
+            <div className="flex items-center gap-1.5 shrink-0">
+              {packStartButton}
+              {onExpand && hasActivePack ? (
                 <button
                   type="button"
                   onClick={onExpand}
@@ -339,154 +721,17 @@ export function CircleCareTransitionReadinessPanel({
         <p className="text-[11px] text-slate-500 font-medium">{startedLabel}</p>
       ) : null}
 
+      {hideHeader && packStartButton ? (
+        <div className="flex justify-end">{packStartButton}</div>
+      ) : null}
+
       {pack?.kind === 'crisis' ? (
         <p className="text-xs text-slate-600 leading-relaxed bg-amber-50 border border-amber-100 rounded-2xl p-3">
           {t('careTransition.crisisHint')}
         </p>
       ) : null}
 
-      {canViewTasks ? (
-        <div className="rounded-2xl border border-slate-100 bg-white p-4 space-y-3">
-          <div>
-            <p className="text-sm font-semibold text-slate-800">{t('careTransition.circleHelpTitle')}</p>
-            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-              {t('careTransition.circleHelpHint')}
-            </p>
-          </div>
-          {circleHelpTasks.length === 0 ? (
-            <p className="text-sm text-slate-500">{t('careTransition.circleHelpEmpty')}</p>
-          ) : (
-            <div className="space-y-2">
-              {circleHelpTasks.map((task) => {
-                const claimed = Boolean(task.claimedByUid);
-                const mine = task.claimedByUid === user.uid;
-                const canRemove = canManage || task.createdByUid === user.uid;
-                const canRelease = canManage || mine;
-                return (
-                  <div
-                    key={task.id}
-                    className="rounded-xl border border-slate-100 px-3 py-2.5 space-y-1.5"
-                  >
-                    <div className="flex items-start gap-2">
-                      {canWorkTasks ? (
-                        <button
-                          type="button"
-                          disabled={saving}
-                          onClick={() => void toggleCircleHelpDone(task.id)}
-                          className={cn(
-                            'mt-0.5 w-4 h-4 rounded-full border shrink-0',
-                            task.done ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300',
-                          )}
-                          aria-label={
-                            task.done ? t('careTransition.circleHelpNotDone') : t('careTransition.circleHelpDone')
-                          }
-                        />
-                      ) : null}
-                      <div className="min-w-0 flex-1">
-                        <p
-                          className={cn(
-                            'text-sm font-semibold',
-                            task.done ? 'text-slate-400 line-through' : 'text-slate-800',
-                          )}
-                        >
-                          {task.title}
-                        </p>
-                        {task.note ? (
-                          <p className="text-xs text-slate-500 mt-0.5">{task.note}</p>
-                        ) : null}
-                        <p className="text-[11px] text-slate-400 mt-1">
-                          {claimed
-                            ? t('careTransition.circleHelpClaimedBy', {
-                                name: mine ? t('circle.you') : task.claimedByName || t('careTransition.circleHelpUnclaimed'),
-                              })
-                            : t('careTransition.circleHelpUnclaimed')}
-                        </p>
-                      </div>
-                    </div>
-                    {!task.done ? (
-                      <div className="flex flex-wrap gap-2 pl-6">
-                        {!claimed && canClaimHelp ? (
-                          <button
-                            type="button"
-                            disabled={saving}
-                            onClick={() =>
-                              void claimCircleHelpTask(
-                                task.id,
-                                user.displayName?.trim() || user.email?.split('@')[0] || t('circle.circleMemberFallback'),
-                              )
-                            }
-                            className="text-xs font-semibold text-blue-600"
-                          >
-                            {t('careTransition.circleHelpClaim')}
-                          </button>
-                        ) : null}
-                        {claimed && canRelease ? (
-                          <button
-                            type="button"
-                            disabled={saving}
-                            onClick={() => void releaseCircleHelpTask(task.id)}
-                            className="text-xs font-semibold text-slate-600"
-                          >
-                            {t('careTransition.circleHelpRelease')}
-                          </button>
-                        ) : null}
-                        {canRemove ? (
-                          <button
-                            type="button"
-                            disabled={saving}
-                            onClick={() => void removeCircleHelpTask(task.id)}
-                            className="text-xs font-semibold text-red-600"
-                          >
-                            {t('careTransition.circleHelpRemove')}
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {canAddHelp ? (
-            <div className="space-y-2 pt-1 border-t border-slate-100">
-              <p className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                <Plus size={16} /> {t('careTransition.circleHelpAdd')}
-              </p>
-              <input
-                value={draftHelpTitle}
-                onChange={(e) => setDraftHelpTitle(e.target.value)}
-                placeholder={t('careTransition.circleHelpTitlePlaceholder')}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              />
-              <input
-                value={draftHelpNote}
-                onChange={(e) => setDraftHelpNote(e.target.value)}
-                placeholder={t('careTransition.circleHelpNotePlaceholder')}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              />
-              <button
-                type="button"
-                disabled={saving || !draftHelpTitle.trim()}
-                onClick={() => {
-                  void addCircleHelpTask(
-                    draftHelpTitle,
-                    draftHelpNote,
-                    user.displayName?.trim() || user.email?.split('@')[0] || t('circle.circleMemberFallback'),
-                  ).then(() => {
-                    setDraftHelpTitle('');
-                    setDraftHelpNote('');
-                  });
-                }}
-                className="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-white disabled:opacity-50"
-              >
-                {t('careTransition.circleHelpAdd')}
-              </button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {canManage ? (
+      {showPackControls ? (
         <div className="space-y-3">
           <div className="space-y-1.5">
             <label
@@ -531,7 +776,7 @@ export function CircleCareTransitionReadinessPanel({
                 {countryCode ? (
                   <span className="text-slate-500 font-medium">
                     {' '}
-                    · {countryDisplayName(countryCode, language)}
+                    · {countryDisplayName(countryCode, viewerLanguage)}
                   </span>
                 ) : null}
                 {state.regionManual ? (
@@ -600,9 +845,9 @@ export function CircleCareTransitionReadinessPanel({
 
       {!localizedPack ? (
         <p className="text-sm text-slate-500 py-4">
-          {canManage
+          {packStarterOpen
             ? t('careTransition.choosePack')
-            : t('careTransition.noActivePack')}
+            : t('careTransition.startPackEmpty')}
         </p>
       ) : !canViewTasks ? (
         <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-2">
@@ -694,7 +939,13 @@ export function CircleCareTransitionReadinessPanel({
                   <button
                     type="button"
                     className="w-full text-left"
-                    onClick={() => setSelectedId(item.id)}
+                    onClick={() => {
+                      if (done) {
+                        setSelectedId((current) => (current === item.id ? null : item.id));
+                        return;
+                      }
+                      setSelectedId(item.id);
+                    }}
                   >
                     <div className="flex items-start gap-2">
                       <CheckCircle2
@@ -719,6 +970,23 @@ export function CircleCareTransitionReadinessPanel({
                     </div>
                   </button>
                   {selected?.id === item.id ? (
+                    done ? (
+                      canWorkTasks ? (
+                        <div className="pl-7">
+                          <button
+                            type="button"
+                            disabled={saving}
+                            onClick={() => {
+                              void toggleDone(item.id);
+                              setSelectedId(null);
+                            }}
+                            className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-emerald-600"
+                          >
+                            {t('careTransition.markNotDone')}
+                          </button>
+                        </div>
+                      ) : null
+                    ) : (
                     <div className="pl-7 space-y-2">
                       <p className="text-xs text-slate-600 leading-relaxed">{item.why}</p>
                       <div className="flex flex-wrap gap-2">
@@ -726,15 +994,13 @@ export function CircleCareTransitionReadinessPanel({
                           <button
                             type="button"
                             disabled={saving}
-                            onClick={() => void toggleDone(item.id)}
-                            className={cn(
-                              'px-3 py-1.5 rounded-xl text-xs font-semibold text-white',
-                              done ? 'bg-emerald-600' : 'bg-blue-600',
-                            )}
+                            onClick={() => {
+                              void toggleDone(item.id);
+                              setSelectedId(null);
+                            }}
+                            className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-blue-600"
                           >
-                            {done
-                              ? t('careTransition.markNotDone')
-                              : t('careTransition.markDone')}
+                            {t('careTransition.markDone')}
                           </button>
                         ) : null}
                         <button
@@ -769,6 +1035,7 @@ export function CircleCareTransitionReadinessPanel({
                         ) : null}
                       </div>
                     </div>
+                    )
                   ) : null}
                 </div>
               );
@@ -907,6 +1174,9 @@ export function CircleCareTransitionReadinessPanel({
         </p>
       ) : null}
       </div>
+      )}
+      </section>
+      ) : null}
     </div>
   );
 }
