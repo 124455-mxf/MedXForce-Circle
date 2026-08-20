@@ -6,14 +6,18 @@ import {
   canParticipateInCircleOpenThread,
   canSeeCircleRestrictedThread,
   canViewCircleAppointmentInvites,
+  careTransitionReadinessRef,
   circleMemberThreadPostsCollection,
   isCircleThreadPostHiddenForUser,
   isPastAppointmentInvitePost,
   mergeAppointmentInvitePostsWithCareCalendar,
+  parseCareTransitionReadinessState,
   parseCircleMemberThreadPost,
+  type CareTransitionPackId,
   type CircleMemberThreadPost,
   type CirclePatientSummary,
 } from '@medxforce/shared';
+import { shouldSuppressInactiveCareTransitionPackAnnouncement } from '../lib/careTransitionAnnouncementUnread';
 import { countUnreadPostsForInboxView, countUnreadPostsForThread } from '../lib/circlePostInboxViews';
 import {
   getCirclePostThreadLastReadAt,
@@ -56,6 +60,7 @@ export function useCircleMemberThreadUnread(
 
   const [openPosts, setOpenPosts] = useState<CircleMemberThreadPost[]>([]);
   const [restrictedPosts, setRestrictedPosts] = useState<CircleMemberThreadPost[]>([]);
+  const [activePackId, setActivePackId] = useState<CareTransitionPackId | null>(null);
 
   useEffect(() => {
     if (!patientId || !canOpen) {
@@ -93,6 +98,22 @@ export function useCircleMemberThreadUnread(
     });
   }, [canRestricted, db, patientId]);
 
+  useEffect(() => {
+    if (!patientId) {
+      setActivePackId(null);
+      return;
+    }
+    return onSnapshot(careTransitionReadinessRef(db, patientId), (snap) => {
+      if (!snap.exists()) {
+        setActivePackId(null);
+        return;
+      }
+      setActivePackId(
+        parseCareTransitionReadinessState(snap.data() as Record<string, unknown>).activePackId,
+      );
+    });
+  }, [db, patientId]);
+
   const openPostsWithInvites = useMemo(
     () =>
       canOpen && patientId && canViewAppointments
@@ -128,10 +149,11 @@ export function useCircleMemberThreadUnread(
     [careCalendarEntries],
   );
 
-  const suppressPastAppointmentInviteUnread = useMemo(
+  const suppressCirclePostUnread = useMemo(
     () => (post: CircleMemberThreadPost) =>
-      isPastAppointmentInvitePost(post, careCalendarEntryById),
-    [careCalendarEntryById],
+      isPastAppointmentInvitePost(post, careCalendarEntryById) ||
+      shouldSuppressInactiveCareTransitionPackAnnouncement(post, activePackId),
+    [activePackId, careCalendarEntryById],
   );
 
   const getOpenPostLastRead = useMemo(
@@ -156,10 +178,10 @@ export function useCircleMemberThreadUnread(
             getOpenPostLastRead,
             inviteContext,
             memberRole,
-            suppressPastAppointmentInviteUnread,
+            suppressCirclePostUnread,
           )
         : 0,
-    [canOpen, getOpenPostLastRead, hiddenByPostId, inviteContext, memberRole, openPostsWithInvites, postReadTick, suppressPastAppointmentInviteUnread, userId],
+    [canOpen, getOpenPostLastRead, hiddenByPostId, inviteContext, memberRole, openPostsWithInvites, postReadTick, suppressCirclePostUnread, userId],
   );
 
   const announcementsRestrictedUnreadCount = useMemo(
@@ -201,10 +223,10 @@ export function useCircleMemberThreadUnread(
             getOpenPostLastRead,
             inviteContext,
             memberRole,
-            suppressPastAppointmentInviteUnread,
+            suppressCirclePostUnread,
           )
         : 0,
-    [canOpen, getOpenPostLastRead, hiddenByPostId, inviteContext, memberRole, openPostsWithInvites, postReadTick, suppressPastAppointmentInviteUnread, userId],
+    [canOpen, getOpenPostLastRead, hiddenByPostId, inviteContext, memberRole, openPostsWithInvites, postReadTick, suppressCirclePostUnread, userId],
   );
 
   const discussionsRestrictedUnreadCount = useMemo(
@@ -268,7 +290,7 @@ export function useCircleMemberThreadUnread(
         getOpenPostLastRead,
         inviteContext,
         memberRole,
-        suppressPastAppointmentInviteUnread,
+        suppressCirclePostUnread,
       );
     }
     if (canRestricted) {
@@ -293,7 +315,7 @@ export function useCircleMemberThreadUnread(
     openPostsWithInvites,
     postReadTick,
     restrictedPosts,
-    suppressPastAppointmentInviteUnread,
+    suppressCirclePostUnread,
     userId,
   ]);
 
@@ -309,10 +331,10 @@ export function useCircleMemberThreadUnread(
             getOpenPostLastRead,
             inviteContext,
             memberRole,
-            suppressPastAppointmentInviteUnread,
+            suppressCirclePostUnread,
           )
         : 0,
-    [canOpen, getOpenPostLastRead, hiddenByPostId, inviteContext, memberRole, openPostsWithInvites, postReadTick, suppressPastAppointmentInviteUnread, userId],
+    [canOpen, getOpenPostLastRead, hiddenByPostId, inviteContext, memberRole, openPostsWithInvites, postReadTick, suppressCirclePostUnread, userId],
   );
 
   const visitCapturesRestrictedUnreadCount = useMemo(
@@ -348,7 +370,7 @@ export function useCircleMemberThreadUnread(
             userId,
             (postId) => getCirclePostThreadLastReadAt(patientId, userId, 'open', postId),
             inviteContext,
-            suppressPastAppointmentInviteUnread,
+            suppressCirclePostUnread,
           )
         : 0,
     [
@@ -359,7 +381,7 @@ export function useCircleMemberThreadUnread(
       openPostsWithInvites,
       patientId,
       postReadTick,
-      suppressPastAppointmentInviteUnread,
+      suppressCirclePostUnread,
       userId,
     ],
   );

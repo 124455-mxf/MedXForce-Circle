@@ -116,6 +116,7 @@ import { CircleCareTransitionReadinessBanner } from './CircleCareTransitionReadi
 import { CircleCareTransitionReadinessPanel } from './CircleCareTransitionReadinessPanel';
 import { CircleMessageExpandOverlay } from './CircleMessageExpandOverlay';
 import { careTransitionOpenItemCount } from '@medxforce/shared';
+import { shouldSuppressInactiveCareTransitionPackAnnouncement } from '../lib/careTransitionAnnouncementUnread';
 
 interface CircleCircleScreenProps {
   user: User;
@@ -467,6 +468,16 @@ export function CircleCircleScreen({
     [careCalendarEntryById],
   );
 
+  const suppressCirclePostUnread = useCallback(
+    (post: CircleMemberThreadPost) =>
+      suppressPastAppointmentInviteUnread(post) ||
+      shouldSuppressInactiveCareTransitionPackAnnouncement(
+        post,
+        careTransitionState?.activePackId,
+      ),
+    [careTransitionState?.activePackId, suppressPastAppointmentInviteUnread],
+  );
+
   const allPosts = useMemo(
     () =>
       activeThread === 'open' && canViewCircleAppointmentInvites(memberRole)
@@ -672,7 +683,7 @@ export function CircleCircleScreen({
             getPostLastRead,
             memberInviteContext,
             memberRole,
-            activeThread === 'open' ? suppressPastAppointmentInviteUnread : undefined,
+            activeThread === 'open' ? suppressCirclePostUnread : undefined,
           ),
         };
         return acc;
@@ -696,7 +707,7 @@ export function CircleCircleScreen({
     memberInviteContext,
     memberRole,
     postReadTick,
-    suppressPastAppointmentInviteUnread,
+    suppressCirclePostUnread,
     user.uid,
   ]);
 
@@ -1021,7 +1032,7 @@ export function CircleCircleScreen({
 
   const renderInboxRow = (post: CircleMemberThreadPost) => {
     const unread = isCirclePostUnread(post, user.uid, getPostLastRead(post.id), {
-      suppressUnread: suppressPastAppointmentInviteUnread(post),
+      suppressUnread: suppressCirclePostUnread(post),
     });
     const title = circlePostInboxTitle(t, post, viewerLanguage, user.uid);
     const authorDisplayName = resolveCircleThreadAuthorName(post, memberDisplayNames);
@@ -1176,7 +1187,7 @@ export function CircleCircleScreen({
   if (selectedPost) {
     const isOwn = selectedPost.authorUid === user.uid;
     const highlightAsUnread = isCirclePostUnread(selectedPost, user.uid, getPostLastRead(selectedPost.id), {
-      suppressUnread: suppressPastAppointmentInviteUnread(selectedPost),
+      suppressUnread: suppressCirclePostUnread(selectedPost),
     });
     const canDeleteForEveryone = canDeleteCircleThreadPostForEveryone(selectedPost, {
       uid: user.uid,
