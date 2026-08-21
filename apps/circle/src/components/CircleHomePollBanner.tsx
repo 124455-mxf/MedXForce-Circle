@@ -16,9 +16,9 @@ import { useCircleMemberThread } from '../hooks/useCircleMemberThread';
 import { useCirclePatientMemberLanguages } from '../hooks/useCirclePatientMemberLanguages';
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import type { CircleUiLanguage } from '../lib/circleLanguages';
-import { formatCirclePollClosesAt } from '../lib/circleScreenI18n';
 import { DASHBOARD_RECENCY_TINT_CLASSES } from '../lib/circleDashboardStats';
 import { dashboardTileTitleClass } from '../lib/circleSectionStyles';
+import { circlePollInboxBadgeLabel } from '../lib/circlePostInboxI18n';
 import { resolveStoredMessageText } from '../lib/messageTranslationDisplay';
 import { cn } from '../lib/utils';
 import { formatCircleBadgeCount } from './CircleCountBadge';
@@ -120,11 +120,6 @@ export function CircleHomePollBanner({ user, db, patient }: CircleHomePollBanner
     { text: post.text, translations: post.translations },
     viewerLanguage,
   );
-  const closesAt = post.pollClosesAt;
-  const closesLabel =
-    typeof closesAt === 'number' && closesAt > 0
-      ? t('circle.pollClosesOn', { date: formatCirclePollClosesAt(closesAt) })
-      : null;
   const translationTargetLanguages = [
     ...new Set(Object.values(memberLanguages.byUid)),
   ] as CircleUiLanguage[];
@@ -187,15 +182,12 @@ export function CircleHomePollBanner({ user, db, patient }: CircleHomePollBanner
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold uppercase tracking-widest text-blue-700/80">
-                {t('circle.inboxSnippetPoll')}
+                {circlePollInboxBadgeLabel(t, post)}
                 {post.threadKind === 'restricted' ? ` · ${t('circle.threadLabelRestricted')}` : ''}
               </p>
               <p className="font-semibold text-slate-800 text-sm mt-1.5 leading-snug">
                 {question.displayText}
               </p>
-              {closesLabel ? (
-                <p className="text-xs text-slate-600 mt-1">{closesLabel}</p>
-              ) : null}
             </div>
             <span className="text-xs font-semibold text-blue-800 shrink-0 mt-1 inline-flex items-center gap-1">
               {expanded ? t('circle.pollHideVotes') : t('circle.pollSeeVotes')}
@@ -223,6 +215,7 @@ export function CircleHomePollBanner({ user, db, patient }: CircleHomePollBanner
                 memberUid={user.uid}
                 memberDisplayName={user.displayName || undefined}
                 isProxy={memberRole === 'proxy'}
+                memberRole={memberRole}
                 isOwn={row.authorUid === user.uid}
                 viewerLanguage={viewerLanguage}
                 translationTargetLanguages={translationTargetLanguages}

@@ -23,7 +23,6 @@ import {
   isAppointmentInviteThreadPost,
   isAppointmentInviteVisibleToMember,
   isDiscussionThreadPost,
-  isCirclePollClosed,
   isPollThreadPost,
   isSyntheticAppointmentInvitePostId,
   isPastAppointmentInvitePost,
@@ -68,6 +67,7 @@ import { CircleThreadMembersRow } from './CircleThreadMembersRow';
 import { useCircleMemberThread } from '../hooks/useCircleMemberThread';
 import { useCircleMemberThreadPostReplies } from '../hooks/useCircleMemberThreadPostReplies';
 import {
+  circlePollInboxBadgeLabel,
   circlePostInboxTitle,
   circlePostInboxSnippet,
   circlePostInboxRowAuthorLine,
@@ -1104,9 +1104,7 @@ export function CircleCircleScreen({
                     ) : null}
                     {isPollThreadPost(post) ? (
                       <span className="text-[10px] font-bold uppercase tracking-wide text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-md">
-                        {isCirclePollClosed(post)
-                          ? t('circle.pollClosed')
-                          : t('circle.inboxSnippetPoll')}
+                        {circlePollInboxBadgeLabel(t, post)}
                       </span>
                     ) : null}
                     {replyCount > 0 && inboxView === 'discussion' ? (

@@ -4,9 +4,13 @@ import type { Firestore } from 'firebase/firestore';
 import {
   canCloseCirclePoll,
   canEditCirclePoll,
+  canReplyToCircleMemberThreadPost,
   castCirclePollVote,
   closeCirclePoll,
+  createCircleMemberThreadPostReply,
+  formatCirclePollResultsTally,
   isCirclePollClosed,
+  normalizeMemberRole,
   subscribeCirclePollVotes,
   tallyCirclePollVotes,
   updateCirclePoll,
@@ -16,7 +20,7 @@ import {
 import type { CircleUiLanguage } from '../lib/circleLanguages';
 import type { CircleTranslator } from '../lib/circleI18nContext';
 import { formatCirclePollClosesAt } from '../lib/circleScreenI18n';
-import { buildCirclePollTranslations } from '../lib/circleThreadPostTranslate';
+import { buildCirclePollTranslations, buildCircleThreadPostTranslations } from '../lib/circleThreadPostTranslate';
 import {
   resolveStoredMessageText,
   resolveStoredPollDescription,
@@ -32,6 +36,7 @@ export function CirclePollPost({
   memberUid,
   memberDisplayName,
   isProxy,
+  memberRole,
   isOwn = false,
   viewerLanguage,
   translationTargetLanguages = [],
@@ -45,6 +50,7 @@ export function CirclePollPost({
   memberUid: string;
   memberDisplayName?: string;
   isProxy?: boolean;
+  memberRole?: string;
   isOwn?: boolean;
   viewerLanguage: CircleUiLanguage;
   translationTargetLanguages?: CircleUiLanguage[];
@@ -146,6 +152,52 @@ export function CirclePollPost({
         threadKind: post.threadKind,
         postId: post.id,
       });
+      const closerRole = normalizeMemberRole(memberRole || (isProxy ? 'proxy' : 'family'));
+      if (!canReplyToCircleMemberThreadPost(post, closerRole, post.threadKind)) return;
+      const tally = formatCirclePollResultsTally(originalOptions, counts);
+      const text =
+        total === 0
+          ? t('circle.pollResultsReplyNone')
+          : t('circle.pollResultsReply', { tally: tally || '—' });
+      let translations: Awaited<ReturnType<typeof buildCircleThreadPostTranslations>> = [];
+      try {
+        translations = await buildCircleThreadPostTranslations(
+          text,
+          viewerLanguage,
+          translationTargetLanguages,
+        );
+      } catch {
+        translations = [];
+      }
+      try {
+        await createCircleMemberThreadPostReply(db, {
+          patientId,
+          threadKind: post.threadKind,
+          postId: post.id,
+          post,
+          authorUid: memberUid,
+          authorName: memberDisplayName || 'Circle member',
+          authorRole: closerRole,
+          text,
+          ...(translations.length > 0 ? { translations } : {}),
+        });
+      } catch (replyErr) {
+        const message = replyErr instanceof Error ? replyErr.message : '';
+        if (translations.length > 0 && /permission-denied|insufficient permissions/i.test(message)) {
+          await createCircleMemberThreadPostReply(db, {
+            patientId,
+            threadKind: post.threadKind,
+            postId: post.id,
+            post,
+            authorUid: memberUid,
+            authorName: memberDisplayName || 'Circle member',
+            authorRole: closerRole,
+            text,
+          });
+          return;
+        }
+        setError(t('circle.pollResultsReplyFailed'));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('circle.pollCloseFailed'));
     } finally {

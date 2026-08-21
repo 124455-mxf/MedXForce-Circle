@@ -158,8 +158,9 @@ export function isCirclePostUnread(
   options?: { suppressUnread?: boolean },
 ): boolean {
   if (options?.suppressUnread) return false;
-  if (isPollThreadPost(post) && isCirclePollClosed(post)) return false;
-  if (post.authorUid !== userUid && post.createdAt > lastReadAt) return true;
+  const closedPoll = isPollThreadPost(post) && isCirclePollClosed(post);
+  // Closed polls stay out of unread unless someone else replied (results notice).
+  if (!closedPoll && post.authorUid !== userUid && post.createdAt > lastReadAt) return true;
   if (
     post.lastReplyAt &&
     post.lastReplyAt > lastReadAt &&

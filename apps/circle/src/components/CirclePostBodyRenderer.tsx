@@ -65,6 +65,7 @@ export function CirclePostBodyRenderer({
         memberUid={memberUid}
         memberDisplayName={memberDisplayName}
         isProxy={normalizeMemberRole(memberRole ?? '') === 'proxy'}
+        memberRole={memberRole}
         isOwn={isOwn}
         viewerLanguage={viewerLanguage}
         translationTargetLanguages={translationTargetLanguages}

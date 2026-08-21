@@ -146,6 +146,8 @@ export function circlePostInboxSnippet(
 
   if (isPollThreadPost(post)) {
     if (isCirclePollClosed(post)) {
+      const replyPreview = post.lastReplyPreviewText?.trim();
+      if (replyPreview) return trimInboxSnippet(replyPreview);
       const closedAt = circlePollEndedAt(post);
       return closedAt
         ? t('circle.inboxSnippetPollClosed', { date: formatCirclePollClosesAt(closedAt) })
@@ -160,12 +162,9 @@ export function circlePostInboxSnippet(
         }),
       );
     }
-    if (post.pollClosesAt) {
-      return t('circle.inboxSnippetPollCloses', {
-        date: formatCirclePollClosesAt(post.pollClosesAt),
-      });
-    }
-    return t('circle.inboxSnippetPoll');
+    const description = post.pollDescription?.trim();
+    if (description) return trimInboxSnippet(description);
+    return '';
   }
 
   const isOwn = post.authorUid === viewerUid;
@@ -204,6 +203,21 @@ export function circlePostInboxSnippet(
       });
   const preview = trimInboxSnippet(body);
   return preview ? `${roleLabel} · ${preview}` : roleLabel;
+}
+
+export function circlePollInboxBadgeLabel(
+  t: CircleTranslator,
+  post: Pick<CircleMemberThreadPost, 'pollClosedAt' | 'pollClosesAt'>,
+): string {
+  if (isCirclePollClosed(post)) {
+    return t('circle.pollClosed');
+  }
+  if (typeof post.pollClosesAt === 'number' && post.pollClosesAt > 0) {
+    return t('circle.inboxSnippetPollCloses', {
+      date: formatCirclePollClosesAt(post.pollClosesAt),
+    });
+  }
+  return t('circle.inboxSnippetPoll');
 }
 
 export function circlePostDetailSubtitle(

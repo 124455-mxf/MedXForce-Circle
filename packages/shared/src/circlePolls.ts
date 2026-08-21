@@ -127,6 +127,14 @@ export function tallyCirclePollVotes(
   return counts;
 }
 
+/** Option order, e.g. "Hamilton 3 · Antonelli 2". */
+export function formatCirclePollResultsTally(options: string[], counts: number[]): string {
+  return options
+    .map((option, index) => `${option.trim()} ${counts[index] ?? 0}`)
+    .filter((part) => part.trim())
+    .join(' · ');
+}
+
 export function subscribeCirclePollVotes(
   db: Firestore,
   patientId: string,
