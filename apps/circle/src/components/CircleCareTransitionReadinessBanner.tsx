@@ -4,6 +4,8 @@ import {
   careTransitionProgress,
   filterChecklistForViewer,
   getCareTransitionPack,
+  isCareTransitionPackDraft,
+  isCareTransitionPackLive,
   normalizeMemberRole,
   type CareTransitionReadinessState,
   type CirclePatientSummary,
@@ -16,6 +18,7 @@ import {
   rememberCareTransitionBannerHidden,
 } from '../lib/careTransitionBannerDismiss';
 import { localizeCareTransitionPack } from '../lib/localizeCareTransition';
+import { CircleCareTransitionDraftBadge } from './CircleCareTransitionDraftBadge';
 
 type CircleCareTransitionReadinessBannerProps = {
   patient: CirclePatientSummary;
@@ -47,12 +50,18 @@ export function CircleCareTransitionReadinessBanner({
 
   useEffect(() => {
     setHidden(false);
-  }, [patient.patientId, readerUid, state?.activePackId, state?.packActivatedAt]);
+  }, [patient.patientId, readerUid, state?.activePackId, state?.packActivatedAt, state?.packLive]);
 
   if (!enabled || loading || !state?.activePackId || hidden) return null;
 
   const pack = getCareTransitionPack(state.activePackId);
   if (!pack) return null;
+
+  const role = normalizeMemberRole(patient.role);
+  const draft = isCareTransitionPackDraft(state);
+  const live = isCareTransitionPackLive(state);
+  if (draft && role !== 'proxy') return null;
+  if (!draft && !live) return null;
 
   if (
     maxAgeMs != null &&
@@ -73,7 +82,6 @@ export function CircleCareTransitionReadinessBanner({
   }
 
   const localizedPack = localizeCareTransitionPack(t, pack);
-  const role = normalizeMemberRole(patient.role);
   const items = filterChecklistForViewer(
     pack,
     state.region,
@@ -82,7 +90,7 @@ export function CircleCareTransitionReadinessBanner({
     new Set(state.dismissedIds),
   );
   const progress = careTransitionProgress(items, new Set(state.doneIds));
-  if (progress.total > 0 && progress.done >= progress.total) return null;
+  if (!draft && progress.total > 0 && progress.done >= progress.total) return null;
 
   const startedLabel =
     state.packActivatedAt && state.packActivatedAt > 0
@@ -104,7 +112,13 @@ export function CircleCareTransitionReadinessBanner({
   };
 
   return (
-    <div className="relative rounded-2xl border border-amber-200 bg-amber-50">
+    <div
+      className={
+        draft
+          ? 'relative rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50'
+          : 'relative rounded-2xl border border-amber-200 bg-amber-50'
+      }
+    >
       <button
         type="button"
         onClick={onOpen}
@@ -117,19 +131,27 @@ export function CircleCareTransitionReadinessBanner({
           <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700/80">
             {t('careTransition.title')}
           </p>
-          <p className="font-semibold text-slate-800 text-sm mt-0.5">{localizedPack.title}</p>
-          <p className="text-xs text-slate-600 mt-1">
-            {t('careTransition.bannerProgress', {
-              done: String(progress.done),
-              total: String(progress.total),
-            })}
+          {draft ? <CircleCareTransitionDraftBadge className="mt-1.5" /> : null}
+          <p className="font-semibold text-slate-800 text-sm mt-1.5">{localizedPack.title}</p>
+          <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+            {draft
+              ? t('careTransition.bannerReview')
+              : t('careTransition.bannerProgress', {
+                  done: String(progress.done),
+                  total: String(progress.total),
+                })}
           </p>
           {startedLabel ? (
             <p className="text-[11px] text-slate-500 mt-0.5">{startedLabel}</p>
           ) : null}
+          {state.packNote?.trim() && !draft ? (
+            <p className="text-xs text-slate-700 mt-1.5 leading-relaxed line-clamp-3 whitespace-pre-wrap">
+              {state.packNote.trim()}
+            </p>
+          ) : null}
         </div>
         <span className="text-xs font-semibold text-amber-800 shrink-0 mt-1">
-          {t('careTransition.open')}
+          {draft ? t('careTransition.bannerReviewCta') : t('careTransition.open')}
         </span>
       </button>
       <button

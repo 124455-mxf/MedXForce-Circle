@@ -36,6 +36,8 @@ export function CirclePollPost({
   viewerLanguage,
   translationTargetLanguages = [],
   t,
+  hideQuestion = false,
+  allowEdit = true,
 }: {
   post: CircleMemberThreadPost;
   db: Firestore;
@@ -47,6 +49,8 @@ export function CirclePollPost({
   viewerLanguage: CircleUiLanguage;
   translationTargetLanguages?: CircleUiLanguage[];
   t: CircleTranslator;
+  hideQuestion?: boolean;
+  allowEdit?: boolean;
 }) {
   const originalOptions = post.pollOptions ?? [];
   const closed = isCirclePollClosed(post);
@@ -195,7 +199,9 @@ export function CirclePollPost({
 
   return (
     <div className="space-y-3">
-      <p className="text-base font-semibold text-slate-800 leading-snug">{questionText}</p>
+      {hideQuestion ? null : (
+        <p className="text-base font-semibold text-slate-800 leading-snug">{questionText}</p>
+      )}
       {descriptionText ? (
         <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{descriptionText}</p>
       ) : null}
@@ -259,7 +265,7 @@ export function CirclePollPost({
                 .join(' · ')}
         </p>
         <div className="flex items-center gap-3 shrink-0">
-          {canEdit ? (
+          {allowEdit && canEdit ? (
             <button
               type="button"
               disabled={saving || editSaving}

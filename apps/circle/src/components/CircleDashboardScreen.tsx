@@ -35,7 +35,10 @@ import {
   canShowIcuCommunicationLogInbox,
   canViewPatientProfileTab,
   canViewRemoteSettingsTab,
+  canManageCareTransitionPack,
   canSendPatientRemoteCommands,
+  circleDisplayFirstName,
+  isCareTransitionPackDraft,
   isHospitalFeatureEnabledInRemoteSettings,
   isPatientInsightsPreviewRemindersEnabled,
   isRemoteSettingsCustomized,
@@ -53,6 +56,8 @@ import type { CircleMainTab } from './CircleBottomNav';
 
 import { CircleProfileChangeBanner } from './CircleProfileChangeBanner';
 import { CircleCareTransitionReadinessBanner } from './CircleCareTransitionReadinessBanner';
+import { CircleHomePollBanner } from './CircleHomePollBanner';
+import { CircleHomeTasksBanner } from './CircleHomeTasksBanner';
 import { CircleCareTransitionReadinessPanel } from './CircleCareTransitionReadinessPanel';
 import { CircleMessageExpandOverlay } from './CircleMessageExpandOverlay';
 import { CircleDashboardWelcomeSection } from './CircleDashboardWelcomeSection';
@@ -984,6 +989,21 @@ export function CircleDashboardScreen({
     loading: careTransitionLoading,
   } = useCareTransitionReadiness(db, patient.patientId, user.uid, memberRole, t);
   const [careTransitionOpen, setCareTransitionOpen] = useState(false);
+  const [careTransitionReviewOpen, setCareTransitionReviewOpen] = useState(false);
+  useEffect(() => {
+    if (!careTransitionOpen || !careTransitionState) return;
+    if (!careTransitionState.activePackId) {
+      setCareTransitionOpen(false);
+      return;
+    }
+    if (
+      isCareTransitionPackDraft(careTransitionState) &&
+      canManageCareTransitionPack(memberRole)
+    ) {
+      setCareTransitionOpen(false);
+      setCareTransitionReviewOpen(true);
+    }
+  }, [careTransitionOpen, careTransitionState, memberRole]);
   const showEngagementStats = caps.viewEngagementTrends !== false;
   const showRemoteSettings = canViewRemoteSettingsTab(caps);
   const showLiveTile = memberRole !== 'friend';
@@ -1893,8 +1913,22 @@ export function CircleDashboardScreen({
         loading={careTransitionLoading}
         maxAgeMs={CARE_TRANSITION_HOME_BANNER_MAX_AGE_MS}
         enabled={memberRole !== 'friend'}
-        onOpen={() => setCareTransitionOpen(true)}
+        onOpen={() => {
+          if (
+            careTransitionState &&
+            isCareTransitionPackDraft(careTransitionState) &&
+            canManageCareTransitionPack(memberRole)
+          ) {
+            setCareTransitionReviewOpen(true);
+            return;
+          }
+          setCareTransitionOpen(true);
+        }}
       />
+
+      <CircleHomeTasksBanner user={user} db={db} patient={patient} />
+
+      <CircleHomePollBanner user={user} db={db} patient={patient} />
 
       <CircleDashboardWelcomeSection user={user} db={db} patient={patient} />
 
@@ -2147,10 +2181,23 @@ export function CircleDashboardScreen({
         ) : null}
       </div>
 
+      {careTransitionReviewOpen ? (
+        <CircleCareTransitionReadinessPanel
+          user={user}
+          db={db}
+          patient={patient}
+          composerOnly
+          packStarterOpen={careTransitionReviewOpen}
+          onPackStarterOpenChange={setCareTransitionReviewOpen}
+        />
+      ) : null}
+
       <CircleMessageExpandOverlay
         open={careTransitionOpen}
         title={t('careTransition.title')}
-        subtitle={t('careTransition.subtitle', { name: patient.displayName })}
+        subtitle={t('careTransition.subtitle', {
+          name: circleDisplayFirstName(patient.displayName, patient.firstName),
+        })}
         onClose={() => setCareTransitionOpen(false)}
         t={t}
       >

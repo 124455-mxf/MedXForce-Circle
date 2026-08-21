@@ -5,7 +5,10 @@ import type { Firestore } from 'firebase/firestore';
 import {
   canParticipateInCircleOpenThread,
   canSeeCircleRestrictedThread,
+  canViewCareTransitionTasks,
   canViewCircleAppointmentInvites,
+  careTransitionFolderCounts,
+  careTransitionLivePackId,
   careTransitionReadinessRef,
   circleMemberThreadPostsCollection,
   isCircleThreadPostHiddenForUser,
@@ -14,6 +17,7 @@ import {
   parseCareTransitionReadinessState,
   parseCircleMemberThreadPost,
   type CareTransitionPackId,
+  type CareTransitionReadinessState,
   type CircleMemberThreadPost,
   type CirclePatientSummary,
 } from '@medxforce/shared';
@@ -61,6 +65,8 @@ export function useCircleMemberThreadUnread(
   const [openPosts, setOpenPosts] = useState<CircleMemberThreadPost[]>([]);
   const [restrictedPosts, setRestrictedPosts] = useState<CircleMemberThreadPost[]>([]);
   const [activePackId, setActivePackId] = useState<CareTransitionPackId | null>(null);
+  const [careTransitionState, setCareTransitionState] =
+    useState<CareTransitionReadinessState | null>(null);
 
   useEffect(() => {
     if (!patientId || !canOpen) {
@@ -101,16 +107,18 @@ export function useCircleMemberThreadUnread(
   useEffect(() => {
     if (!patientId) {
       setActivePackId(null);
+      setCareTransitionState(null);
       return;
     }
     return onSnapshot(careTransitionReadinessRef(db, patientId), (snap) => {
       if (!snap.exists()) {
         setActivePackId(null);
+        setCareTransitionState(null);
         return;
       }
-      setActivePackId(
-        parseCareTransitionReadinessState(snap.data() as Record<string, unknown>).activePackId,
-      );
+      const parsed = parseCareTransitionReadinessState(snap.data() as Record<string, unknown>);
+      setCareTransitionState(parsed);
+      setActivePackId(careTransitionLivePackId(parsed));
     });
   }, [db, patientId]);
 
@@ -401,7 +409,12 @@ export function useCircleMemberThreadUnread(
     [canRestricted, hiddenByPostId, memberRole, patientId, postReadTick, restrictedPosts, userId],
   );
 
-  const unreadCount = openUnreadCount + restrictedUnreadCount;
+  const careTransitionUnreadCount = useMemo(() => {
+    if (!careTransitionState || !canViewCareTransitionTasks(memberRole)) return 0;
+    return careTransitionFolderCounts(careTransitionState, memberRole).unread;
+  }, [careTransitionState, memberRole]);
+
+  const unreadCount = openUnreadCount + restrictedUnreadCount + careTransitionUnreadCount;
   const circlePostCount = visibleOpenPosts.length + visibleRestrictedPosts.length;
 
   return {

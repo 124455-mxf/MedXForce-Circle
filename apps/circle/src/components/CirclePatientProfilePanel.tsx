@@ -22,7 +22,7 @@ import {
   normalizeMemberRole,
   readCareTransitionReadinessState,
   writeCareTransitionReadinessState,
-  ensureCareTransitionAnnouncementPosted,
+  beginCareTransitionPackReview,
   type CirclePatientProfileSnapshot,
   type CirclePatientSummary,
 } from '@medxforce/shared';
@@ -261,25 +261,10 @@ export function CirclePatientProfilePanel({
                 const written = await writeCareTransitionReadinessState(
                   db,
                   targetPatientId,
-                  {
-                    ...current,
-                    activePackId: packId,
-                    doneIds: [],
-                    dismissedIds: [],
-                    packActivatedAt: Date.now(),
-                    announcedPackId: null,
-                    announcementPostId: null,
-                  },
+                  beginCareTransitionPackReview(current, packId),
                   user.uid,
                 );
-                await ensureCareTransitionAnnouncementPosted(db, {
-                  patientId: targetPatientId,
-                  packId,
-                  state: written,
-                  authorUid: user.uid,
-                  authorName: user.displayName || 'Care team',
-                  authorRole: normalizeMemberRole(patient.role),
-                });
+                return written;
               })
               .catch((err) => console.warn('[careTransitionReadiness]', err));
           }

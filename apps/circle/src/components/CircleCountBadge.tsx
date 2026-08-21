@@ -70,6 +70,8 @@ type CircleFolderCountBadgeProps = {
   placement?: 'inline' | 'overlay';
   /** Active primary pill (e.g. blue browse tab). */
   onPrimary?: boolean;
+  /** When set, show total and use red only as the attention color. */
+  showTotalWhenUnread?: boolean;
 };
 
 /** Red when unread > 0; otherwise gray total for the folder. Hidden when empty. */
@@ -78,9 +80,16 @@ export function CircleFolderCountBadge({
   total,
   placement = 'inline',
   onPrimary = false,
+  showTotalWhenUnread = false,
 }: CircleFolderCountBadgeProps) {
   const showUnread = unread > 0;
-  const count = showUnread ? unread : total;
+  const count = showTotalWhenUnread
+    ? total > 0
+      ? total
+      : unread
+    : showUnread
+      ? unread
+      : total;
   if (count <= 0) return null;
 
   const label = formatCircleBadgeCount(count);

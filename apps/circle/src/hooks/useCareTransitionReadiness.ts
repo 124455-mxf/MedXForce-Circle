@@ -2,7 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { onSnapshot, type Firestore } from 'firebase/firestore';
 import {
   CARE_TRANSITION_PACKS,
+  beginCareTransitionPackReview,
+  endCareTransitionPack,
+  buildCareTransitionAnnouncementText,
+  buildCareTransitionPackNoteText,
+  CARE_TRANSITION_PACK_NOTE_MAX,
   careTransitionOpenItemCount,
+  careTransitionPackIdForViewer,
   careTransitionProgress,
   careTransitionReadinessRef,
   careTransitionRegionFromCountry,
@@ -15,6 +21,10 @@ import {
   ensureCareTransitionAnnouncementPosted,
   filterChecklistForViewer,
   getCareTransitionPack,
+  isCareTransitionPackDraft,
+  isCareTransitionPackLive,
+  postCareTransitionPackNoteAnnouncement,
+  careTransitionItemClaim,
   normalizeMemberRole,
   parseCareTransitionReadinessState,
   writeCareTransitionReadinessState,
@@ -29,6 +39,7 @@ import {
 } from '@medxforce/shared';
 import {
   buildLocalizedCareTransitionAnnouncementText,
+  buildLocalizedCareTransitionPackNoteText,
   type CareTransitionTranslateFn,
 } from '../lib/localizeCareTransition';
 
@@ -63,7 +74,10 @@ export function useCareTransitionReadiness(
     );
   }, [db, patientId]);
 
-  const pack = getCareTransitionPack(state?.activePackId);
+  const pack = getCareTransitionPack(
+    state ? careTransitionPackIdForViewer(state, role) : null,
+  );
+  const packDraft = Boolean(state && isCareTransitionPackDraft(state) && canManageCareTransitionPack(role));
   const dismissedSet = useMemo(
     () => new Set(state?.dismissedIds ?? []),
     [state?.dismissedIds],
@@ -132,35 +146,70 @@ export function useCareTransitionReadiness(
   const setActivePack = useCallback(
     async (packId: CareTransitionPackId | null) => {
       if (!state || !canManage || !patientId || !memberUid) return;
-      const next: CareTransitionReadinessState = {
+      if (!packId) {
+        await persist(endCareTransitionPack(state));
+        return;
+      }
+      await persist(beginCareTransitionPackReview(state, packId));
+    },
+    [canManage, memberUid, patientId, persist, state],
+  );
+
+  const sharePackWithCircle = useCallback(
+    async (options?: { note?: string; authorName?: string }) => {
+      if (!state || !canManage || !patientId || !memberUid || !state.activePackId) return;
+      if (!isCareTransitionPackDraft(state)) return;
+      const packId = state.activePackId;
+      const note = options?.note?.trim().slice(0, CARE_TRANSITION_PACK_NOTE_MAX) ?? '';
+      const authorName = options?.authorName?.trim() || 'Care team';
+      const written = await persist({
         ...state,
-        activePackId: packId,
-        doneIds: [],
-        dismissedIds: [],
-        packActivatedAt: packId ? Date.now() : null,
-        // Reset markers when (re)activating so ensure can post once for this pack.
+        packLive: true,
+        packActivatedAt: Date.now(),
         announcedPackId: null,
         announcementPostId: null,
-      };
-      const written = await persist(next);
-      if (packId && canManage) {
-        try {
-          const withAnnouncement = await ensureCareTransitionAnnouncementPosted(db, {
-            patientId,
-            packId,
-            state: written,
-            authorUid: memberUid,
-            authorName: 'Care team',
-            authorRole: role,
-            announcementText: t
-              ? buildLocalizedCareTransitionAnnouncementText(t, packId)
-              : undefined,
-          });
-          setState(withAnnouncement);
-        } catch (err) {
-          console.warn('[careTransitionReadiness] announcement post skipped', err);
-        }
+        packNote: note,
+      });
+      try {
+        const withAnnouncement = await ensureCareTransitionAnnouncementPosted(db, {
+          patientId,
+          packId,
+          state: written,
+          authorUid: memberUid,
+          authorName,
+          authorRole: role,
+          announcementText: t
+            ? buildLocalizedCareTransitionAnnouncementText(t, packId, note)
+            : buildCareTransitionAnnouncementText(packId, note),
+        });
+        setState(withAnnouncement);
+      } catch (err) {
+        console.warn('[careTransitionReadiness] announcement post skipped', err);
       }
+    },
+    [canManage, db, memberUid, patientId, persist, role, state, t],
+  );
+
+  const postPackNote = useCallback(
+    async (note: string, authorName: string) => {
+      if (!state || !canManage || !patientId || !memberUid || !state.activePackId) return;
+      if (!isCareTransitionPackLive(state)) return;
+      const trimmed = note.trim().slice(0, CARE_TRANSITION_PACK_NOTE_MAX);
+      if (!trimmed) return;
+      const packId = state.activePackId;
+      const postId = await postCareTransitionPackNoteAnnouncement(db, {
+        patientId,
+        packId,
+        authorUid: memberUid,
+        authorName: authorName.trim() || 'Care team',
+        authorRole: role,
+        note: trimmed,
+        announcementText: t
+          ? buildLocalizedCareTransitionPackNoteText(t, packId, trimmed)
+          : buildCareTransitionPackNoteText(packId, trimmed),
+      });
+      if (!postId) throw new Error('Could not post pack note.');
+      await persist({ ...state, packNote: trimmed });
     },
     [canManage, db, memberUid, patientId, persist, role, state, t],
   );
@@ -212,6 +261,7 @@ export function useCareTransitionReadiness(
         ...state,
         dismissedIds: [...state.dismissedIds, itemId],
         doneIds: state.doneIds.filter((id) => id !== itemId),
+        packItemClaims: (state.packItemClaims ?? []).filter((claim) => claim.itemId !== itemId),
       });
     },
     [canWorkTasks, persist, state],
@@ -255,6 +305,7 @@ export function useCareTransitionReadiness(
         customTasks: state.customTasks.filter((t) => t.id !== taskId),
         doneIds: state.doneIds.filter((id) => id !== taskId),
         dismissedIds: state.dismissedIds.filter((id) => id !== taskId),
+        packItemClaims: (state.packItemClaims ?? []).filter((claim) => claim.itemId !== taskId),
       });
     },
     [canManage, persist, state],
@@ -344,10 +395,14 @@ export function useCareTransitionReadiness(
         ...state,
         circleHelpTasks: (state.circleHelpTasks ?? []).map((task) => {
           if (task.id !== taskId) return task;
-          if (task.done) return { ...task, done: false };
+          if (task.done) {
+            const { doneAt: _doneAt, ...rest } = task;
+            return { ...rest, done: false };
+          }
           return {
             ...task,
             done: true,
+            doneAt: Date.now(),
             claimedByUid: memberUid,
             claimedByName: name,
           };
@@ -371,37 +426,46 @@ export function useCareTransitionReadiness(
     [canManage, memberUid, persist, state],
   );
 
+  const claimPackItem = useCallback(
+    async (itemId: string, memberName: string) => {
+      if (!state || !canClaimHelp || !memberUid) return;
+      if (state.doneIds.includes(itemId) || state.dismissedIds.includes(itemId)) return;
+      if (careTransitionItemClaim(state.packItemClaims, itemId)) return;
+      const name = (memberName.trim() || 'Circle member').slice(0, 200);
+      await persist({
+        ...state,
+        packItemClaims: [
+          ...(state.packItemClaims ?? []).filter((claim) => claim.itemId !== itemId),
+          { itemId, claimedByUid: memberUid, claimedByName: name },
+        ],
+      });
+    },
+    [canClaimHelp, memberUid, persist, state],
+  );
+
+  const releasePackItem = useCallback(
+    async (itemId: string) => {
+      if (!state || !memberUid) return;
+      const claim = careTransitionItemClaim(state.packItemClaims, itemId);
+      if (!claim || state.doneIds.includes(itemId)) return;
+      const canRelease = canManage || claim.claimedByUid === memberUid;
+      if (!canRelease) return;
+      await persist({
+        ...state,
+        packItemClaims: (state.packItemClaims ?? []).filter((row) => row.itemId !== itemId),
+      });
+    },
+    [canManage, memberUid, persist, state],
+  );
+
   const activateSuggestedPack = useCallback(
     async (packId: CareTransitionPackId) => {
       if (!canManage || !patientId || !memberUid) return;
       const base = state ?? { ...EMPTY_CARE_TRANSITION_STATE };
-      const written = await persist({
-        ...base,
-        activePackId: packId,
-        doneIds: [],
-        dismissedIds: [],
-        packActivatedAt: Date.now(),
-        announcedPackId: null,
-        announcementPostId: null,
-      });
-      try {
-        const withAnnouncement = await ensureCareTransitionAnnouncementPosted(db, {
-          patientId,
-          packId,
-          state: written,
-          authorUid: memberUid,
-          authorName: 'Care team',
-          authorRole: role,
-          announcementText: t
-            ? buildLocalizedCareTransitionAnnouncementText(t, packId)
-            : undefined,
-        });
-        setState(withAnnouncement);
-      } catch (err) {
-        console.warn('[careTransitionReadiness] announcement post skipped', err);
-      }
+      const written = await persist(beginCareTransitionPackReview(base, packId));
+      return written;
     },
-    [canManage, db, memberUid, patientId, persist, role, state, t],
+    [canManage, memberUid, patientId, persist, state],
   );
 
   return {
@@ -410,6 +474,7 @@ export function useCareTransitionReadiness(
     saving,
     error,
     pack,
+    packDraft,
     packs: CARE_TRANSITION_PACKS,
     activeItems,
     dismissedItems,
@@ -423,6 +488,8 @@ export function useCareTransitionReadiness(
     canAddHelp,
     canClaimHelp,
     setActivePack,
+    sharePackWithCircle,
+    postPackNote,
     setRegion,
     syncRegionFromCountry,
     toggleDone,
@@ -436,6 +503,8 @@ export function useCareTransitionReadiness(
     releaseCircleHelpTask,
     toggleCircleHelpDone,
     removeCircleHelpTask,
+    claimPackItem,
+    releasePackItem,
     activateSuggestedPack,
   };
 }

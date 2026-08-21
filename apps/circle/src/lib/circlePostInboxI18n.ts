@@ -20,6 +20,7 @@ import {
 import { parseDropInTranscriptText } from './dropInTranscriptDisplay';
 import { resolveStoredMessageText } from './messageTranslationDisplay';
 import { formatCirclePollClosesAt, translateCircleMemberRole } from './circleScreenI18n';
+import { careTransitionPackIdFromAnnouncementPost } from './careTransitionAnnouncementUnread';
 
 const INBOX_TITLE_CHARS = 80;
 const INBOX_SNIPPET_CHARS = 120;
@@ -42,6 +43,14 @@ function resolvePostDisplayText(
         { text: post.text, translations: post.translations },
         viewerLanguage,
       ).displayText.trim();
+}
+
+function circlePollEndedAt(
+  post: Pick<CircleMemberThreadPost, 'pollClosedAt' | 'pollClosesAt'>,
+): number | undefined {
+  if (typeof post.pollClosedAt === 'number' && post.pollClosedAt > 0) return post.pollClosedAt;
+  if (typeof post.pollClosesAt === 'number' && post.pollClosesAt > 0) return post.pollClosesAt;
+  return undefined;
 }
 
 function discussionPostTitleLine(
@@ -85,6 +94,9 @@ export function circlePostInboxTitle(
     if (firstLine.startsWith(APPOINTMENT_INVITE_POST_MARKER)) {
       return firstLine.slice(APPOINTMENT_INVITE_POST_MARKER.length).trim();
     }
+  }
+  if (careTransitionPackIdFromAnnouncementPost(post)) {
+    return discussionPostTitleLine(post, viewerLanguage, viewerUid);
   }
   const boldLine = circleThreadPostBoldTitleLine(post);
   if (boldLine) {
@@ -133,6 +145,12 @@ export function circlePostInboxSnippet(
   }
 
   if (isPollThreadPost(post)) {
+    if (isCirclePollClosed(post)) {
+      const closedAt = circlePollEndedAt(post);
+      return closedAt
+        ? t('circle.inboxSnippetPollClosed', { date: formatCirclePollClosesAt(closedAt) })
+        : t('circle.pollClosed');
+    }
     const replyPreview = post.lastReplyPreviewText?.trim();
     if ((post.replyCount ?? 0) > 0 && replyPreview) {
       return trimInboxSnippet(
@@ -142,7 +160,6 @@ export function circlePostInboxSnippet(
         }),
       );
     }
-    if (isCirclePollClosed(post)) return t('circle.pollClosed');
     if (post.pollClosesAt) {
       return t('circle.inboxSnippetPollCloses', {
         date: formatCirclePollClosesAt(post.pollClosesAt),
@@ -165,6 +182,12 @@ export function circlePostInboxSnippet(
 
   const body = resolvePostDisplayText(post, viewerLanguage, viewerUid);
   if (!body) return '';
+
+  if (careTransitionPackIdFromAnnouncementPost(post)) {
+    const newlineIdx = body.indexOf('\n');
+    const rest = newlineIdx >= 0 ? body.slice(newlineIdx + 1).trim() : '';
+    if (rest) return trimInboxSnippet(rest);
+  }
 
   const boldLine = circleThreadPostBoldTitleLine(post);
   if (boldLine) {

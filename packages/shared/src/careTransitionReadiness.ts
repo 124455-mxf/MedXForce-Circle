@@ -62,6 +62,8 @@ export type CircleHelpTask = {
   claimedByName: string;
   assignedByUid: string;
   done: boolean;
+  /** When the task was marked done (ms). */
+  doneAt?: number;
   translations?: CircleHelpTaskTranslation[];
 };
 
@@ -598,6 +600,35 @@ export const CARE_TRANSITION_PACKS: CareTransitionPack[] = [
   },
 ];
 
+export type CareTransitionPackItemClaim = {
+  itemId: string;
+  claimedByUid: string;
+  claimedByName: string;
+};
+
+export const CARE_TRANSITION_CLOSED_PACKS_MAX = 20;
+
+export type ClosedCareTransitionPackReason = 'ended' | 'switched';
+
+export type ClosedCareTransitionPackItem = {
+  id: string;
+  title: string;
+  when: string;
+  done: boolean;
+};
+
+export type ClosedCareTransitionPack = {
+  id: string;
+  packId: CareTransitionPackId;
+  startedAt: number | null;
+  endedAt: number;
+  done: number;
+  total: number;
+  packNote: string;
+  endedReason: ClosedCareTransitionPackReason;
+  items: ClosedCareTransitionPackItem[];
+};
+
 export type CareTransitionReadinessState = {
   activePackId: CareTransitionPackId | null;
   region: CareTransitionRegion;
@@ -605,6 +636,7 @@ export type CareTransitionReadinessState = {
   dismissedIds: string[];
   customTasks: CareTransitionCustomTask[];
   circleHelpTasks: CircleHelpTask[];
+  packItemClaims: CareTransitionPackItemClaim[];
   attachedKnow: CareTransitionKnowCourse[];
   /** When the current active pack was started (ms). */
   packActivatedAt?: number | null;
@@ -612,9 +644,18 @@ export type CareTransitionReadinessState = {
    * When true, region was chosen manually and should not be overwritten from patient country.
    */
   regionManual?: boolean;
+  /**
+   * False while the proxy is reviewing a selected pack. Missing/true = live with the circle
+   * (legacy docs with an active pack and no flag stay live).
+   */
+  packLive?: boolean;
   /** Pack id for which an open-thread announcement was already posted. */
   announcedPackId?: CareTransitionPackId | null;
   announcementPostId?: string | null;
+  /** Latest proxy note shown on the pack and included in the share announcement. */
+  packNote?: string;
+  /** Live packs that were ended or switched away from. Drafts are not stored. */
+  closedPacks?: ClosedCareTransitionPack[];
   updatedAt: number;
   updatedByUid?: string;
 };
@@ -626,21 +667,140 @@ export const EMPTY_CARE_TRANSITION_STATE: CareTransitionReadinessState = {
   dismissedIds: [],
   customTasks: [],
   circleHelpTasks: [],
+  packItemClaims: [],
   attachedKnow: [],
   packActivatedAt: null,
   regionManual: false,
+  packLive: false,
   announcedPackId: null,
   announcementPostId: null,
+  packNote: '',
+  closedPacks: [],
   updatedAt: 0,
 };
+
+/** Max length for a proxy pack note (share announcement or follow-up). */
+export const CARE_TRANSITION_PACK_NOTE_MAX = 2000;
 
 export function getCareTransitionPack(id: CareTransitionPackId | null | undefined): CareTransitionPack | null {
   if (!id) return null;
   return CARE_TRANSITION_PACKS.find((p) => p.id === id) ?? null;
 }
 
-export function canManageCareTransitionPack(role: CircleMemberRole): boolean {
+export function canManageCareTransitionPack(role: CircleMemberRole | string): boolean {
   return normalizeMemberRole(role) === 'proxy';
+}
+
+/** Pack is shared with caregiver/family. Legacy docs without packLive stay live. */
+export function isCareTransitionPackLive(state: CareTransitionReadinessState): boolean {
+  if (!state.activePackId) return false;
+  return state.packLive !== false;
+}
+
+export function isCareTransitionPackDraft(state: CareTransitionReadinessState): boolean {
+  return Boolean(state.activePackId) && state.packLive === false;
+}
+
+export function careTransitionLivePackId(
+  state: CareTransitionReadinessState | null | undefined,
+): CareTransitionPackId | null {
+  if (!state || !isCareTransitionPackLive(state)) return null;
+  return state.activePackId;
+}
+
+/** Pack the viewer may see: draft is proxy-only; live is the whole care team. */
+export function careTransitionPackIdForViewer(
+  state: CareTransitionReadinessState,
+  role: CircleMemberRole | string,
+): CareTransitionPackId | null {
+  if (!state.activePackId) return null;
+  if (isCareTransitionPackLive(state)) return state.activePackId;
+  return canManageCareTransitionPack(role) ? state.activePackId : null;
+}
+
+/** Snapshot a live pack into history. Drafts are ignored. */
+export function archiveLiveCareTransitionPack(
+  state: CareTransitionReadinessState,
+  reason: ClosedCareTransitionPackReason,
+  endedAt = Date.now(),
+): CareTransitionReadinessState {
+  if (!isCareTransitionPackLive(state) || !state.activePackId) return state;
+  const pack = getCareTransitionPack(state.activePackId);
+  if (!pack) return state;
+  const items = filterChecklistForViewer(
+    pack,
+    state.region,
+    'proxy',
+    state.customTasks,
+    new Set(state.dismissedIds),
+  );
+  const doneSet = new Set(state.doneIds);
+  const progress = careTransitionProgress(items, doneSet);
+  const closed: ClosedCareTransitionPack = {
+    id: `closed-${state.activePackId}-${endedAt}`,
+    packId: state.activePackId,
+    startedAt:
+      typeof state.packActivatedAt === 'number' && state.packActivatedAt > 0
+        ? state.packActivatedAt
+        : null,
+    endedAt,
+    done: progress.done,
+    total: progress.total,
+    packNote: (state.packNote ?? '').trim().slice(0, CARE_TRANSITION_PACK_NOTE_MAX),
+    endedReason: reason,
+    items: items.map((item) => ({
+      id: item.id.slice(0, 80),
+      title: item.title.slice(0, 200),
+      when: item.when.slice(0, 80),
+      done: doneSet.has(item.id),
+    })),
+  };
+  return {
+    ...state,
+    closedPacks: [closed, ...(state.closedPacks ?? [])].slice(
+      0,
+      CARE_TRANSITION_CLOSED_PACKS_MAX,
+    ),
+  };
+}
+
+export function beginCareTransitionPackReview(
+  state: CareTransitionReadinessState,
+  packId: CareTransitionPackId,
+): CareTransitionReadinessState {
+  const archived = archiveLiveCareTransitionPack(state, 'switched');
+  return {
+    ...archived,
+    activePackId: packId,
+    packLive: false,
+    doneIds: [],
+    dismissedIds: [],
+    packItemClaims: [],
+    packActivatedAt: null,
+    announcedPackId: null,
+    announcementPostId: null,
+    packNote: '',
+  };
+}
+
+/** End or discard the current pack. Live packs are archived; drafts are not. */
+export function endCareTransitionPack(
+  state: CareTransitionReadinessState,
+  endedAt = Date.now(),
+): CareTransitionReadinessState {
+  const archived = archiveLiveCareTransitionPack(state, 'ended', endedAt);
+  return {
+    ...archived,
+    activePackId: null,
+    packLive: false,
+    doneIds: [],
+    dismissedIds: [],
+    packItemClaims: [],
+    packActivatedAt: null,
+    announcedPackId: null,
+    announcementPostId: null,
+    packNote: '',
+  };
 }
 
 /** Mark done / dismiss — care team and family; not friends. */
@@ -776,6 +936,7 @@ function parseCircleHelpTasks(raw: unknown): CircleHelpTask[] {
       claimedByName: typeof row.claimedByName === 'string' ? row.claimedByName.slice(0, 200) : '',
       assignedByUid: typeof row.assignedByUid === 'string' ? row.assignedByUid.slice(0, 128) : '',
       done: row.done === true,
+      ...(typeof row.doneAt === 'number' && row.doneAt > 0 ? { doneAt: row.doneAt } : {}),
       ...(translations ? { translations } : {}),
     });
   }
@@ -790,6 +951,42 @@ export function circleHelpCompletedCount(tasks: CircleHelpTask[]): number {
   return tasks.filter((task) => task.done).length;
 }
 
+export function parsePackItemClaims(raw: unknown): CareTransitionPackItemClaim[] {
+  if (!Array.isArray(raw)) return [];
+  const out: CareTransitionPackItemClaim[] = [];
+  const seen = new Set<string>();
+  for (const item of raw.slice(0, 80)) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Record<string, unknown>;
+    const itemId = typeof row.itemId === 'string' ? row.itemId.trim() : '';
+    const claimedByUid = typeof row.claimedByUid === 'string' ? row.claimedByUid.trim() : '';
+    const claimedByName = typeof row.claimedByName === 'string' ? row.claimedByName.trim() : '';
+    if (!itemId || !claimedByUid || seen.has(itemId)) continue;
+    seen.add(itemId);
+    out.push({
+      itemId: itemId.slice(0, 80),
+      claimedByUid: claimedByUid.slice(0, 128),
+      claimedByName: (claimedByName || 'Circle member').slice(0, 200),
+    });
+  }
+  return out;
+}
+
+export function serializePackItemClaim(claim: CareTransitionPackItemClaim): CareTransitionPackItemClaim {
+  return {
+    itemId: claim.itemId.slice(0, 80),
+    claimedByUid: claim.claimedByUid.slice(0, 128),
+    claimedByName: claim.claimedByName.slice(0, 200),
+  };
+}
+
+export function careTransitionItemClaim(
+  claims: CareTransitionPackItemClaim[] | undefined,
+  itemId: string,
+): CareTransitionPackItemClaim | undefined {
+  return (claims ?? []).find((claim) => claim.itemId === itemId);
+}
+
 export function serializeCircleHelpTask(task: CircleHelpTask): CircleHelpTask {
   return {
     id: task.id.slice(0, 80),
@@ -802,6 +999,7 @@ export function serializeCircleHelpTask(task: CircleHelpTask): CircleHelpTask {
     claimedByName: task.claimedByName.slice(0, 200),
     assignedByUid: task.assignedByUid.slice(0, 128),
     done: task.done === true,
+    ...(typeof task.doneAt === 'number' && task.doneAt > 0 ? { doneAt: task.doneAt } : {}),
     ...(task.translations?.length ? { translations: task.translations } : {}),
   };
 }
@@ -827,6 +1025,78 @@ function parseKnowCourses(raw: unknown): CareTransitionKnowCourse[] {
   return out;
 }
 
+function parseClosedPacks(raw: unknown): ClosedCareTransitionPack[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ClosedCareTransitionPack[] = [];
+  for (const item of raw.slice(0, CARE_TRANSITION_CLOSED_PACKS_MAX)) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Record<string, unknown>;
+    const packIdRaw = typeof row.packId === 'string' ? row.packId : '';
+    const packId = CARE_TRANSITION_PACKS.some((p) => p.id === packIdRaw)
+      ? (packIdRaw as CareTransitionPackId)
+      : null;
+    const endedAt = typeof row.endedAt === 'number' && row.endedAt > 0 ? row.endedAt : 0;
+    if (!packId || !endedAt) continue;
+    const id =
+      typeof row.id === 'string' && row.id.trim()
+        ? row.id.trim()
+        : `closed-${packId}-${endedAt}`;
+    const total = typeof row.total === 'number' && row.total >= 0 ? Math.round(row.total) : 0;
+    const done = typeof row.done === 'number' && row.done >= 0 ? Math.round(row.done) : 0;
+    const items: ClosedCareTransitionPackItem[] = [];
+    if (Array.isArray(row.items)) {
+      for (const rawItem of row.items.slice(0, 40)) {
+        if (!rawItem || typeof rawItem !== 'object') continue;
+        const item = rawItem as Record<string, unknown>;
+        const itemId = typeof item.id === 'string' ? item.id.trim() : '';
+        const title = typeof item.title === 'string' ? item.title.trim() : '';
+        if (!itemId || !title) continue;
+        items.push({
+          id: itemId.slice(0, 80),
+          title: title.slice(0, 200),
+          when: typeof item.when === 'string' ? item.when.slice(0, 80) : '',
+          done: item.done === true,
+        });
+      }
+    }
+    out.push({
+      id: id.slice(0, 80),
+      packId,
+      startedAt:
+        typeof row.startedAt === 'number' && row.startedAt > 0 ? row.startedAt : null,
+      endedAt,
+      done: Math.min(done, 80),
+      total: Math.min(total, 80),
+      packNote:
+        typeof row.packNote === 'string'
+          ? row.packNote.trim().slice(0, CARE_TRANSITION_PACK_NOTE_MAX)
+          : '',
+      endedReason: row.endedReason === 'switched' ? 'switched' : 'ended',
+      items,
+    });
+  }
+  return out;
+}
+
+function serializeClosedPack(row: ClosedCareTransitionPack): Record<string, unknown> {
+  return {
+    id: row.id.slice(0, 80),
+    packId: row.packId,
+    startedAt: row.startedAt && row.startedAt > 0 ? row.startedAt : 0,
+    endedAt: row.endedAt,
+    done: row.done,
+    total: row.total,
+    packNote: row.packNote.slice(0, CARE_TRANSITION_PACK_NOTE_MAX),
+    endedReason: row.endedReason,
+    items: (row.items ?? []).slice(0, 40).map((item) => ({
+      id: item.id.slice(0, 80),
+      title: item.title.slice(0, 200),
+      when: item.when.slice(0, 80),
+      done: item.done === true,
+    })),
+  };
+}
+
 export function parseCareTransitionReadinessState(
   data: Record<string, unknown> | undefined,
 ): CareTransitionReadinessState {
@@ -846,12 +1116,20 @@ export function parseCareTransitionReadinessState(
     dismissedIds: asStringArray(data.dismissedIds).slice(0, 80),
     customTasks: parseCustomTasks(data.customTasks),
     circleHelpTasks: parseCircleHelpTasks(data.circleHelpTasks),
+    packItemClaims: parsePackItemClaims(data.packItemClaims),
     attachedKnow: parseKnowCourses(data.attachedKnow),
     packActivatedAt:
       typeof data.packActivatedAt === 'number' && data.packActivatedAt > 0
         ? data.packActivatedAt
         : null,
     regionManual: data.regionManual === true,
+    packLive: activePackId
+      ? data.packLive === false
+        ? false
+        : data.packLive === true
+          ? true
+          : typeof data.packActivatedAt === 'number' && data.packActivatedAt > 0
+      : false,
     announcedPackId:
       typeof data.announcedPackId === 'string' &&
       CARE_TRANSITION_PACKS.some((p) => p.id === data.announcedPackId)
@@ -859,6 +1137,11 @@ export function parseCareTransitionReadinessState(
         : null,
     announcementPostId:
       typeof data.announcementPostId === 'string' ? data.announcementPostId : null,
+    packNote:
+      typeof data.packNote === 'string'
+        ? data.packNote.trim().slice(0, CARE_TRANSITION_PACK_NOTE_MAX)
+        : '',
+    closedPacks: parseClosedPacks(data.closedPacks),
     updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : 0,
     updatedByUid: typeof data.updatedByUid === 'string' ? data.updatedByUid : undefined,
   };
@@ -896,6 +1179,7 @@ export async function writeCareTransitionReadinessState(
     dismissedIds: next.dismissedIds,
     customTasks: next.customTasks,
     circleHelpTasks: (next.circleHelpTasks ?? []).map(serializeCircleHelpTask),
+    packItemClaims: (next.packItemClaims ?? []).map(serializePackItemClaim),
     attachedKnow: next.attachedKnow,
     updatedAt: next.updatedAt,
   };
@@ -908,22 +1192,65 @@ export async function writeCareTransitionReadinessState(
   if (typeof next.announcementPostId === 'string' && next.announcementPostId.length > 0) {
     payload.announcementPostId = next.announcementPostId;
   }
+  payload.packNote = (next.packNote ?? '').trim().slice(0, CARE_TRANSITION_PACK_NOTE_MAX);
+  payload.closedPacks = (next.closedPacks ?? [])
+    .slice(0, CARE_TRANSITION_CLOSED_PACKS_MAX)
+    .map(serializeClosedPack);
   if (typeof next.packActivatedAt === 'number' && next.packActivatedAt > 0) {
     payload.packActivatedAt = next.packActivatedAt;
+  } else {
+    payload.packActivatedAt = 0;
   }
   payload.regionManual = next.regionManual === true;
+  payload.packLive = isCareTransitionPackLive(next);
   try {
     await setDoc(careTransitionReadinessRef(db, patientId), payload, { merge: true });
   } catch (err) {
-    if ('circleHelpTasks' in payload) {
-      const { circleHelpTasks: _help, packActivatedAt: _a, regionManual: _b, ...withoutNew } = payload;
+    if ('closedPacks' in payload) {
+      const { closedPacks: _closed, ...withoutClosed } = payload;
+      try {
+        await setDoc(careTransitionReadinessRef(db, patientId), withoutClosed, { merge: true });
+        return next;
+      } catch {
+        // Fall through to older field fallbacks.
+      }
+    }
+    if ('packNote' in payload) {
+      const { packNote: _note, ...withoutNote } = payload;
+      try {
+        await setDoc(careTransitionReadinessRef(db, patientId), withoutNote, { merge: true });
+        return next;
+      } catch {
+        // Fall through to older field fallbacks.
+      }
+    }
+    if ('circleHelpTasks' in payload || 'packItemClaims' in payload) {
+      const {
+        circleHelpTasks: _help,
+        packItemClaims: _claims,
+        packActivatedAt: _a,
+        regionManual: _b,
+        packLive: _c,
+        ...withoutNew
+      } = payload;
       await setDoc(careTransitionReadinessRef(db, patientId), withoutNew, {
         merge: true,
       });
       return next;
     }
-    if ('packActivatedAt' in payload || 'regionManual' in payload) {
-      const { packActivatedAt: _a, regionManual: _b, ...withoutNew } = payload;
+    if (
+      'packActivatedAt' in payload ||
+      'regionManual' in payload ||
+      'packLive' in payload ||
+      'packItemClaims' in payload
+    ) {
+      const {
+        packActivatedAt: _a,
+        regionManual: _b,
+        packLive: _c,
+        packItemClaims: _claims,
+        ...withoutNew
+      } = payload;
       await setDoc(careTransitionReadinessRef(db, patientId), withoutNew, {
         merge: true,
       });
@@ -934,29 +1261,112 @@ export async function writeCareTransitionReadinessState(
   return next;
 }
 
-export function careTransitionOpenItemCount(
+export function careTransitionPackRemainingCount(
   state: CareTransitionReadinessState,
   role: CircleMemberRole,
 ): number {
-  const helpOpen = circleHelpOpenCount(state.circleHelpTasks ?? []);
-  const pack = getCareTransitionPack(state.activePackId);
-  if (!pack) return helpOpen;
-  const items = filterChecklistForViewer(
+  const items = careTransitionVisiblePackItems(state, role);
+  const done = new Set(state.doneIds);
+  return items.filter((item) => !done.has(item.id)).length;
+}
+
+export function careTransitionVisiblePackItems(
+  state: CareTransitionReadinessState,
+  role: CircleMemberRole,
+) {
+  const pack = getCareTransitionPack(careTransitionPackIdForViewer(state, role));
+  if (!pack) return [];
+  return filterChecklistForViewer(
     pack,
     state.region,
     role,
     state.customTasks,
     new Set(state.dismissedIds),
   );
-  const done = new Set(state.doneIds);
-  return helpOpen + items.filter((item) => !done.has(item.id)).length;
 }
 
-export function buildCareTransitionAnnouncementText(packId: CareTransitionPackId): string {
+export function careTransitionOpenItemCount(
+  state: CareTransitionReadinessState,
+  role: CircleMemberRole,
+): number {
+  return circleHelpOpenCount(state.circleHelpTasks ?? []) + careTransitionPackRemainingCount(state, role);
+}
+
+/**
+ * Tasks folder: open Circle-help plus pack items still to do.
+ * Completed Circle-help and completed pack items stay on the list, not on the badge.
+ */
+export function careTransitionFolderCounts(
+  state: CareTransitionReadinessState,
+  role: CircleMemberRole,
+): { total: number; unread: number } {
+  const helpOpen = circleHelpOpenCount(state.circleHelpTasks ?? []);
+  const packRemaining = careTransitionPackRemainingCount(state, role);
+  const remaining = helpOpen + packRemaining;
+  return {
+    total: remaining,
+    unread: remaining,
+  };
+}
+
+export type CareTransitionHomeOpenItem =
+  | {
+      kind: 'help';
+      id: string;
+      claimedByUid: string;
+      task: CircleHelpTask;
+    }
+  | {
+      kind: 'pack';
+      id: string;
+      claimedByUid: string;
+      item: CareTransitionChecklistItem;
+    };
+
+/** Open Circle help plus remaining live-pack items, claimed-by-viewer first. */
+export function careTransitionHomeOpenItems(
+  state: CareTransitionReadinessState,
+  role: CircleMemberRole,
+  viewerUid: string,
+): CareTransitionHomeOpenItem[] {
+  const help: CareTransitionHomeOpenItem[] = (state.circleHelpTasks ?? [])
+    .filter((task) => !task.done)
+    .map((task) => ({
+      kind: 'help',
+      id: `help:${task.id}`,
+      claimedByUid: task.claimedByUid,
+      task,
+    }));
+  const pack: CareTransitionHomeOpenItem[] = isCareTransitionPackLive(state)
+    ? careTransitionVisiblePackItems(state, role)
+        .filter((item) => !state.doneIds.includes(item.id))
+        .map((item) => ({
+          kind: 'pack',
+          id: `pack:${item.id}`,
+          claimedByUid: careTransitionItemClaim(state.packItemClaims, item.id)?.claimedByUid ?? '',
+          item,
+        }))
+    : [];
+  return [...help, ...pack].sort((a, b) => {
+    const aMine = a.claimedByUid && a.claimedByUid === viewerUid ? 0 : 1;
+    const bMine = b.claimedByUid && b.claimedByUid === viewerUid ? 0 : 1;
+    if (aMine !== bMine) return aMine - bMine;
+    if (a.kind === 'help' && b.kind === 'help') return b.task.createdAt - a.task.createdAt;
+    if (a.kind === b.kind) return 0;
+    return a.kind === 'help' ? -1 : 1;
+  });
+}
+
+export function buildCareTransitionAnnouncementText(
+  packId: CareTransitionPackId,
+  note?: string,
+): string {
   const pack = getCareTransitionPack(packId);
   if (!pack) return 'Care transition readiness checklist is available.';
+  const trimmedNote = (note?.trim() ?? '').slice(0, CARE_TRANSITION_PACK_NOTE_MAX);
   return [
     pack.title,
+    ...(trimmedNote ? ['', trimmedNote] : []),
     '',
     pack.subtitle,
     '',
@@ -964,9 +1374,17 @@ export function buildCareTransitionAnnouncementText(packId: CareTransitionPackId
   ].join('\n');
 }
 
+export function buildCareTransitionPackNoteText(packId: CareTransitionPackId, note: string): string {
+  const pack = getCareTransitionPack(packId);
+  return [pack?.title ?? 'Care transition readiness', '', note.trim().slice(0, CARE_TRANSITION_PACK_NOTE_MAX)].join('\n');
+}
+
 function careTransitionAnnouncementSessionKey(patientId: string, packId: string): string {
   return `mxf-ct-announced:${patientId}:${packId}`;
 }
+
+/** In-flight lock so concurrent callers cannot double-post. Cleared after each attempt. */
+const careTransitionAnnouncementInFlight = new Set<string>();
 
 /** Post a one-time open-thread announcement when a pack becomes active (proxy/caregiver only). */
 export async function ensureCareTransitionAnnouncementPosted(
@@ -995,43 +1413,68 @@ export async function ensureCareTransitionAnnouncementPosted(
   }
 
   const sessionKey = careTransitionAnnouncementSessionKey(params.patientId, params.packId);
-  try {
-    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(sessionKey)) {
-      return params.state;
-    }
-    // Set before any await so concurrent callers in this tab cannot double-post.
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.setItem(sessionKey, '1');
-    }
-  } catch {
-    // sessionStorage may be unavailable.
+  if (careTransitionAnnouncementInFlight.has(sessionKey)) {
+    return params.state;
   }
+  careTransitionAnnouncementInFlight.add(sessionKey);
 
-  const postId = await createCircleMemberThreadPost(db, {
+  try {
+    const postId = await createCircleMemberThreadPost(db, {
+      patientId: params.patientId,
+      threadKind: 'open',
+      authorUid: params.authorUid,
+      authorName: params.authorName,
+      authorRole: params.authorRole,
+      text: params.announcementText ?? buildCareTransitionAnnouncementText(params.packId),
+      postKind: 'announcement',
+    });
+
+    const next: CareTransitionReadinessState = {
+      ...params.state,
+      activePackId: params.packId,
+      announcedPackId: params.packId,
+      announcementPostId: postId,
+    };
+
+    try {
+      return await writeCareTransitionReadinessState(db, params.patientId, next, params.authorUid);
+    } catch (err) {
+      // Post already created once. If rules reject announcement fields, keep local markers
+      // so callers do not retry posting in this session.
+      console.warn('[careTransitionReadiness] could not persist announcement markers', err);
+      return next;
+    }
+  } finally {
+    careTransitionAnnouncementInFlight.delete(sessionKey);
+  }
+}
+
+/** Extra pack note after the pack is already live — always posts a new announcement. */
+export async function postCareTransitionPackNoteAnnouncement(
+  db: Firestore,
+  params: {
+    patientId: string;
+    packId: CareTransitionPackId;
+    authorUid: string;
+    authorName: string;
+    authorRole: CircleMemberRole;
+    note: string;
+    announcementText?: string;
+  },
+): Promise<string | null> {
+  const note = params.note.trim().slice(0, CARE_TRANSITION_PACK_NOTE_MAX);
+  if (!note) return null;
+  if (!canPostCircleAnnouncement(params.authorRole)) return null;
+  const text = params.announcementText?.trim() || buildCareTransitionPackNoteText(params.packId, note);
+  return createCircleMemberThreadPost(db, {
     patientId: params.patientId,
     threadKind: 'open',
     authorUid: params.authorUid,
     authorName: params.authorName,
     authorRole: params.authorRole,
-    text: params.announcementText ?? buildCareTransitionAnnouncementText(params.packId),
+    text,
     postKind: 'announcement',
   });
-
-  const next: CareTransitionReadinessState = {
-    ...params.state,
-    activePackId: params.packId,
-    announcedPackId: params.packId,
-    announcementPostId: postId,
-  };
-
-  try {
-    return await writeCareTransitionReadinessState(db, params.patientId, next, params.authorUid);
-  } catch (err) {
-    // Post already created once. If rules reject announcement fields, keep local markers
-    // so callers do not retry posting in this session.
-    console.warn('[careTransitionReadiness] could not persist announcement markers', err);
-    return next;
-  }
 }
 
 export function filterChecklistForViewer(

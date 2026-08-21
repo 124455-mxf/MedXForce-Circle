@@ -9,14 +9,18 @@ import {
   ChevronDown,
   ChevronUp,
   HeartHandshake,
+  ListTodo,
   Loader2,
   Maximize2,
   Plus,
   X,
 } from 'lucide-react';
 import {
+  careTransitionItemClaim,
   careTransitionRegionFromCountry,
+  circleDisplayFirstName,
   countryDisplayName,
+  createDiaryEntry,
   normalizeCountryCode,
   normalizeMemberRole,
   type CareTransitionChecklistItem,
@@ -24,6 +28,7 @@ import {
   type CareTransitionRegion,
   type CircleHelpTask,
   type CirclePatientSummary,
+  getCareTransitionPack,
 } from '@medxforce/shared';
 import { useCareTransitionReadiness } from '../hooks/useCareTransitionReadiness';
 import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfileSnapshot';
@@ -32,6 +37,9 @@ import { useCirclePatientMemberLanguages } from '../hooks/useCirclePatientMember
 import type { CircleUiLanguage } from '../lib/circleLanguages';
 import { buildCircleHelpTaskTranslations } from '../lib/circleThreadPostTranslate';
 import { CircleHelpTaskCopy } from './CircleHelpTaskCopy';
+import { CircleHelpTaskComposer } from './CircleHelpTaskComposer';
+import { CircleCareTransitionPackComposer, CircleCareTransitionPackNoteFields } from './CircleCareTransitionPackComposer';
+import { CircleCareTransitionDraftBadge } from './CircleCareTransitionDraftBadge';
 import { circleHeaderActionButtonClass } from '../lib/circleSectionStyles';
 import { formatCareTransitionPackStartedAt } from '../lib/careTransitionBannerDismiss';
 import {
@@ -41,6 +49,7 @@ import {
   localizeCareTransitionPack,
 } from '../lib/localizeCareTransition';
 import { cn } from '../lib/utils';
+import { buildCircleDiaryTranslations } from '../lib/buildCircleDiaryTranslations';
 
 type CircleCareTransitionReadinessPanelProps = {
   user: User;
@@ -69,6 +78,11 @@ type CircleCareTransitionReadinessPanelProps = {
   onHelpComposerOpenChange?: (open: boolean) => void;
   packStarterOpen?: boolean;
   onPackStarterOpenChange?: (open: boolean) => void;
+  /**
+   * Render only the pack review/start modal (e.g. Home banner Open on a draft).
+   * Pair with packStarterOpen / onPackStarterOpenChange.
+   */
+  composerOnly?: boolean;
 };
 
 function careTransitionCollapsedStorageKey(patientId: string): string {
@@ -101,10 +115,12 @@ export function CircleCareTransitionReadinessPanel({
   onHelpComposerOpenChange,
   packStarterOpen: packStarterOpenProp,
   onPackStarterOpenChange,
+  composerOnly = false,
 }: CircleCareTransitionReadinessPanelProps) {
   const t = useCircleT();
   const { language: viewerLanguage } = useCircleI18nContext();
   const role = normalizeMemberRole(patient.role);
+  const patientFirstName = circleDisplayFirstName(patient.displayName, patient.firstName);
   const memberLanguages = useCirclePatientMemberLanguages(db, patient.patientId, user.uid, {
     pendingProvision: patient.isPendingProvision === true,
   });
@@ -115,6 +131,7 @@ export function CircleCareTransitionReadinessPanel({
     saving,
     error,
     pack,
+    packDraft,
     packs,
     activeItems,
     dismissedItems,
@@ -124,6 +141,8 @@ export function CircleCareTransitionReadinessPanel({
     canWorkTasks,
     canViewTasks,
     setActivePack,
+    sharePackWithCircle,
+    postPackNote,
     setRegion,
     syncRegionFromCountry,
     toggleDone,
@@ -140,6 +159,8 @@ export function CircleCareTransitionReadinessPanel({
     releaseCircleHelpTask,
     toggleCircleHelpDone,
     removeCircleHelpTask,
+    claimPackItem,
+    releasePackItem,
   } = useCareTransitionReadiness(db, patient.patientId, user.uid, role, t);
 
   const openHelpTasks = useMemo(
@@ -157,8 +178,6 @@ export function CircleCareTransitionReadinessPanel({
   const [expandedHelpTaskId, setExpandedHelpTaskId] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState('');
   const [draftWhy, setDraftWhy] = useState('');
-  const [draftHelpTitle, setDraftHelpTitle] = useState('');
-  const [draftHelpNote, setDraftHelpNote] = useState('');
   const [draftKnowTitle, setDraftKnowTitle] = useState('');
   const [draftKnowUrl, setDraftKnowUrl] = useState('');
   const [copiedTaskId, setCopiedTaskId] = useState<string | null>(null);
@@ -166,7 +185,17 @@ export function CircleCareTransitionReadinessPanel({
   const [localHelpComposerOpen, setLocalHelpComposerOpen] = useState(false);
   const [localPackStarterOpen, setLocalPackStarterOpen] = useState(false);
   const [helpCreating, setHelpCreating] = useState(false);
+  const [packNote, setPackNote] = useState('');
+  const [packNoteInDiary, setPackNoteInDiary] = useState(false);
+  const [followUpNoteOpen, setFollowUpNoteOpen] = useState(false);
+  const [followUpNote, setFollowUpNote] = useState('');
+  const [followUpNoteInDiary, setFollowUpNoteInDiary] = useState(false);
+  const [followUpSending, setFollowUpSending] = useState(false);
+  const [packSharing, setPackSharing] = useState(false);
+  const [packConfirm, setPackConfirm] = useState<'end' | 'discard' | null>(null);
   const [completedHelpOpen, setCompletedHelpOpen] = useState(false);
+  const [closedPacksOpen, setClosedPacksOpen] = useState(false);
+  const [expandedClosedPackId, setExpandedClosedPackId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(() =>
     collapsible ? readCareTransitionCollapsed(patient.patientId) : false,
   );
@@ -174,7 +203,8 @@ export function CircleCareTransitionReadinessPanel({
   const helpComposerOpen = composeInHeader
     ? Boolean(helpComposerOpenProp)
     : localHelpComposerOpen;
-  const packStarterOpen = composeInHeader
+  const packStarterControlled = composeInHeader || composerOnly;
+  const packStarterOpen = packStarterControlled
     ? Boolean(packStarterOpenProp)
     : localPackStarterOpen;
 
@@ -187,7 +217,7 @@ export function CircleCareTransitionReadinessPanel({
   const setPackStarterOpen = (open: boolean | ((prev: boolean) => boolean)) => {
     const current = packStarterOpen;
     const next = typeof open === 'function' ? open(current) : open;
-    if (composeInHeader) onPackStarterOpenChange?.(next);
+    if (packStarterControlled) onPackStarterOpenChange?.(next);
     else setLocalPackStarterOpen(next);
   };
 
@@ -271,7 +301,7 @@ export function CircleCareTransitionReadinessPanel({
 
   const copyTask = async (item: CareTransitionChecklistItem) => {
     if (!localizedPack) return;
-    const text = buildLocalizedTaskCopyText(t, localizedPack.title, item, patient.displayName);
+    const text = buildLocalizedTaskCopyText(t, localizedPack.title, item, patientFirstName);
     try {
       await navigator.clipboard.writeText(text);
       setCopiedTaskId(item.id);
@@ -285,13 +315,19 @@ export function CircleCareTransitionReadinessPanel({
 
   const collapsedSummary =
     localizedPack != null
-      ? t('careTransition.collapsedSummary', {
-          pack: localizedPack.title,
-          done: progress.done,
-          total: progress.total,
-          percent: progress.percent,
-        })
-      : t('careTransition.collapsedSummaryNone');
+      ? packDraft
+        ? t('careTransition.collapsedSummaryReview', { pack: localizedPack.title })
+        : t('careTransition.collapsedSummary', {
+            pack: localizedPack.title,
+            done: progress.done,
+            total: progress.total,
+            percent: progress.percent,
+          })
+      : (state?.closedPacks?.length ?? 0) > 0
+        ? t('careTransition.collapsedSummaryClosed', {
+            count: state?.closedPacks?.length ?? 0,
+          })
+        : t('careTransition.collapsedSummaryNone');
 
   const collapseToggle =
     collapsible ? (
@@ -333,31 +369,77 @@ export function CircleCareTransitionReadinessPanel({
       </button>
     ) : null;
 
+  const createCircleHelpTaskFromComposer = async (title: string, note: string) => {
+    if (!state) return;
+    const memberName =
+      user.displayName?.trim() ||
+      user.email?.split('@')[0] ||
+      t('circle.circleMemberFallback');
+    const targetLanguages = [...new Set(Object.values(memberLanguages.byUid))] as CircleUiLanguage[];
+    setHelpCreating(true);
+    try {
+      const translations = await buildCircleHelpTaskTranslations(
+        title,
+        note,
+        viewerLanguage,
+        targetLanguages,
+      );
+      await addCircleHelpTask(title, note, memberName, translations);
+      setHelpComposerOpen(false);
+    } finally {
+      setHelpCreating(false);
+    }
+  };
+
+  const helpTaskComposer = canAddHelp ? (
+    <CircleHelpTaskComposer
+      open={helpComposerOpen}
+      sending={helpCreating}
+      onClose={() => setHelpComposerOpen(false)}
+      onPost={createCircleHelpTaskFromComposer}
+    />
+  ) : null;
+
   if (loading || !state) {
+    if (composerOnly) return null;
     if (collapsible) {
       if (!canManage) {
         return (
-          <div className="py-6 flex justify-center text-slate-400">
-            <Loader2 size={20} className="animate-spin" />
-          </div>
+          <>
+            <div className="py-6 flex justify-center text-slate-400">
+              <Loader2 size={20} className="animate-spin" />
+            </div>
+            {helpTaskComposer}
+          </>
         );
       }
-      return <div>{collapseToggle}</div>;
+      return (
+        <>
+          <div>{collapseToggle}</div>
+          {helpTaskComposer}
+        </>
+      );
     }
     return (
-      <div className="py-10 flex justify-center text-slate-400">
-        <Loader2 size={24} className="animate-spin" />
-      </div>
+      <>
+        <div className="py-10 flex justify-center text-slate-400">
+          <Loader2 size={24} className="animate-spin" />
+        </div>
+        {helpTaskComposer}
+      </>
     );
   }
 
   const cardPad = compact || collapsible ? 'p-4' : 'p-5';
   const cardClass = cn('rounded-3xl border border-slate-100 bg-white', cardPad);
-  const hasActivePack = Boolean(state.activePackId);
-  const showPackControls = canManage && (hasActivePack || packStarterOpen);
-  const showCareTransitionCard = canManage || hasActivePack;
+  const hasSelectedPack = Boolean(state.activePackId);
+  const hasActivePack = Boolean(pack);
+  const closedPacks = state.closedPacks ?? [];
+  const showPackControls = canManage && hasSelectedPack && !packDraft && !hideHeader;
+  const showCareTransitionCard =
+    canManage || hasActivePack || (canViewTasks && closedPacks.length > 0);
 
-  const togglePackStarter = () => {
+  const openPackStarter = () => {
     if (collapsible && collapsed) {
       setCollapsed(false);
       try {
@@ -365,32 +447,98 @@ export function CircleCareTransitionReadinessPanel({
       } catch {
         /* ignore */
       }
-      setPackStarterOpen(true);
-      return;
     }
-    setPackStarterOpen((open) => !open);
+    setPackStarterOpen(true);
   };
 
   const packStartButton =
-    !composeInHeader && canManage && !hasActivePack ? (
+    !composeInHeader && !hideHeader && !composerOnly && canManage && (!hasSelectedPack || packDraft) ? (
       <button
         type="button"
-        onClick={togglePackStarter}
+        onClick={openPackStarter}
         className={cn(circleHeaderActionButtonClass, collapsible && 'mt-4 mr-4')}
         aria-label={t('careTransition.startPackAria')}
         title={t('careTransition.startPackAria')}
         aria-expanded={packStarterOpen}
       >
-        {packStarterOpen ? (
-          <X size={18} className="[@media(max-height:740px)]:size-4" />
-        ) : (
-          <Plus size={18} className="[@media(max-height:740px)]:size-4" />
-        )}
+        <Plus size={18} className="[@media(max-height:740px)]:size-4" />
       </button>
     ) : null;
 
   const helpMemberName =
     user.displayName?.trim() || user.email?.split('@')[0] || t('circle.circleMemberFallback');
+
+  const addPackNoteToDiary = async (note: string) => {
+    const body = note.trim();
+    if (!body) return;
+    const title = (localizedPack?.title.trim() || t('careTransition.title')).slice(0, 200);
+    const targetLanguages = [
+      ...new Set([viewerLanguage, ...Object.values(memberLanguages.byUid)]),
+    ] as CircleUiLanguage[];
+    const { sourceLanguage, translations } = await buildCircleDiaryTranslations({
+      title,
+      body,
+      targetLanguages,
+      fallbackSourceLanguage: viewerLanguage,
+    });
+    await createDiaryEntry(db, {
+      patientId: patient.patientId,
+      authorUid: user.uid,
+      authorName: helpMemberName,
+      draft: {
+        title,
+        body,
+        mood: '',
+        experienceAt: Date.now(),
+        visibility: 'circle',
+        isMilestone: false,
+      },
+      sourceLanguage,
+      translations,
+    });
+  };
+
+  const shareDraftPack = async (note: string, alsoDiary: boolean) => {
+    setPackSharing(true);
+    try {
+      await sharePackWithCircle({ note, authorName: helpMemberName });
+      if (alsoDiary && note.trim()) {
+        try {
+          await addPackNoteToDiary(note);
+        } catch (err) {
+          console.warn('[careTransitionReadiness] pack note diary skipped', err);
+        }
+      }
+      setPackNote('');
+      setPackNoteInDiary(false);
+      setPackStarterOpen(false);
+    } finally {
+      setPackSharing(false);
+    }
+  };
+
+  const postLivePackNote = async () => {
+    const note = followUpNote.trim();
+    if (!note || followUpSending) return;
+    setFollowUpSending(true);
+    try {
+      await postPackNote(note, helpMemberName);
+      if (followUpNoteInDiary) {
+        try {
+          await addPackNoteToDiary(note);
+        } catch (err) {
+          console.warn('[careTransitionReadiness] pack note diary skipped', err);
+        }
+      }
+      setFollowUpNote('');
+      setFollowUpNoteInDiary(false);
+      setFollowUpNoteOpen(false);
+    } catch (err) {
+      console.warn('[careTransitionReadiness] pack note announcement skipped', err);
+    } finally {
+      setFollowUpSending(false);
+    }
+  };
 
   const renderHelpTask = (task: CircleHelpTask) => {
     const claimed = Boolean(task.claimedByUid);
@@ -417,13 +565,20 @@ export function CircleCareTransitionReadinessPanel({
             done={task.done}
           />
           {task.done ? (
-            <p className="text-[11px] font-semibold text-emerald-700 mt-1 truncate">
-              {claimed
-                ? `${t('careTransition.circleHelpCompleted')} · ${
-                    task.claimedByName.trim() || t('circle.circleMemberFallback')
-                  }`
-                : t('careTransition.circleHelpCompleted')}
-            </p>
+            <>
+              <p className="text-[11px] font-semibold text-emerald-700 mt-1 truncate">
+                {claimed
+                  ? `${t('careTransition.circleHelpCompleted')} · ${
+                      task.claimedByName.trim() || t('circle.circleMemberFallback')
+                    }`
+                  : t('careTransition.circleHelpCompleted')}
+              </p>
+              {task.doneAt && task.doneAt > 0 ? (
+                <p className="text-[11px] text-emerald-700 mt-0.5">
+                  {formatCareTransitionPackStartedAt(task.doneAt, viewerLanguage)}
+                </p>
+              ) : null}
+            </>
           ) : (
             <>
               <p className="text-[11px] text-slate-400 mt-1">
@@ -547,17 +702,13 @@ export function CircleCareTransitionReadinessPanel({
           {canAddHelp && !composeInHeader ? (
             <button
               type="button"
-              onClick={() => setHelpComposerOpen((open) => !open)}
+              onClick={() => setHelpComposerOpen(true)}
               className={circleHeaderActionButtonClass}
               aria-label={t('careTransition.circleHelpAdd')}
               title={t('careTransition.circleHelpAdd')}
               aria-expanded={helpComposerOpen}
             >
-              {helpComposerOpen ? (
-                <X size={18} className="[@media(max-height:740px)]:size-4" />
-              ) : (
-                <Plus size={18} className="[@media(max-height:740px)]:size-4" />
-              )}
+              <Plus size={18} className="[@media(max-height:740px)]:size-4" />
             </button>
           ) : null}
         </div>
@@ -565,67 +716,6 @@ export function CircleCareTransitionReadinessPanel({
           <p className="text-sm text-slate-500">{t('careTransition.circleHelpEmpty')}</p>
         ) : openHelpTasks.length > 0 ? (
           <div className="space-y-2">{openHelpTasks.map(renderHelpTask)}</div>
-        ) : null}
-        {canAddHelp && helpComposerOpen ? (
-          <div className="space-y-2 pt-1 border-t border-slate-100">
-            <input
-              value={draftHelpTitle}
-              onChange={(e) => setDraftHelpTitle(e.target.value)}
-              placeholder={t('careTransition.circleHelpTitlePlaceholder')}
-              disabled={helpCreating}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:opacity-60"
-            />
-            <input
-              value={draftHelpNote}
-              onChange={(e) => setDraftHelpNote(e.target.value)}
-              placeholder={t('careTransition.circleHelpNotePlaceholder')}
-              disabled={helpCreating}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:opacity-60"
-            />
-            <button
-              type="button"
-              disabled={helpCreating || saving || !draftHelpTitle.trim()}
-              onClick={() => {
-                const title = draftHelpTitle;
-                const note = draftHelpNote;
-                const memberName =
-                  user.displayName?.trim() ||
-                  user.email?.split('@')[0] ||
-                  t('circle.circleMemberFallback');
-                const targetLanguages = [
-                  ...new Set(Object.values(memberLanguages.byUid)),
-                ] as CircleUiLanguage[];
-                setHelpCreating(true);
-                void buildCircleHelpTaskTranslations(
-                  title,
-                  note,
-                  viewerLanguage,
-                  targetLanguages,
-                )
-                  .then((translations) =>
-                    addCircleHelpTask(title, note, memberName, translations),
-                  )
-                  .then(() => {
-                    setDraftHelpTitle('');
-                    setDraftHelpNote('');
-                    setHelpComposerOpen(false);
-                  })
-                  .finally(() => {
-                    setHelpCreating(false);
-                  });
-              }}
-              className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white disabled:opacity-50"
-            >
-              {helpCreating ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  {t('careTransition.circleHelpCreating')}
-                </>
-              ) : (
-                t('careTransition.circleHelpAdd')
-              )}
-            </button>
-          </div>
         ) : null}
         {completedHelpTasks.length > 0 ? (
           <div className="border-t border-slate-100 pt-2">
@@ -653,7 +743,9 @@ export function CircleCareTransitionReadinessPanel({
     ) : null;
 
   return (
-    <div className="space-y-3">
+    <div className={composerOnly ? undefined : 'space-y-3'}>
+      {composerOnly ? null : (
+      <>
       {circleHelpCard}
       {showCareTransitionCard ? (
       <section
@@ -682,15 +774,15 @@ export function CircleCareTransitionReadinessPanel({
                 {t('careTransition.title')}
               </h3>
               <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                {t('careTransition.subtitle', { name: patient.displayName })}
-              </p>
-              {startedLabel ? (
-                <p className="text-[11px] text-slate-500 mt-1 font-medium">{startedLabel}</p>
-              ) : null}
+              {t('careTransition.subtitle', { name: patientFirstName })}
+            </p>
+            {startedLabel && !packDraft ? (
+              <p className="text-[11px] text-slate-500 mt-1 font-medium">{startedLabel}</p>
+            ) : null}
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               {packStartButton}
-              {onExpand && hasActivePack ? (
+              {onExpand && hasActivePack && !packDraft ? (
                 <button
                   type="button"
                   onClick={onExpand}
@@ -717,7 +809,7 @@ export function CircleCareTransitionReadinessPanel({
       </div>
       )}
 
-      {(hideHeader || collapsible) && startedLabel ? (
+      {(hideHeader || collapsible) && !packDraft && startedLabel ? (
         <p className="text-[11px] text-slate-500 font-medium">{startedLabel}</p>
       ) : null}
 
@@ -725,51 +817,18 @@ export function CircleCareTransitionReadinessPanel({
         <div className="flex justify-end">{packStartButton}</div>
       ) : null}
 
-      {pack?.kind === 'crisis' ? (
+      {pack?.kind === 'crisis' && !packDraft ? (
         <p className="text-xs text-slate-600 leading-relaxed bg-amber-50 border border-amber-100 rounded-2xl p-3">
           {t('careTransition.crisisHint')}
         </p>
       ) : null}
 
       {showPackControls ? (
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <label
-              htmlFor="care-transition-active-pack"
-              className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 block"
-            >
-              {t('careTransition.activePack')}
-            </label>
-            <select
-              id="care-transition-active-pack"
-              disabled={saving}
-              value={state.activePackId ?? ''}
-              onChange={(e) => {
-                const value = e.target.value;
-                void setActivePack(value ? (value as CareTransitionPackId) : null);
-              }}
-              className={cn(
-                'w-full rounded-xl border px-3 py-2.5 text-sm font-semibold bg-white',
-                packComplete
-                  ? 'border-emerald-300 text-emerald-800'
-                  : 'border-slate-200 text-slate-800',
-              )}
-            >
-              <option value="">{t('careTransition.none')}</option>
-              {localizedPacks.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.kind === 'crisis' ? p.title : `${p.fromLabel} → ${p.toLabel}`}
-                </option>
-              ))}
-            </select>
-            <p className="text-[11px] text-slate-500 px-1 leading-relaxed">
-              {t('careTransition.packSelectHint')}
-            </p>
-          </div>
-          <div className="space-y-1.5">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">
-              {t('careTransition.tasksFor')}
-            </p>
+        <div className="space-y-1.5">
+          <p className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">
+            <ListTodo size={14} className="text-slate-400" aria-hidden />
+            {t('careTransition.tasksFor')}
+          </p>
             <div className="flex items-center justify-between gap-2 px-1">
               <p className="text-sm font-semibold text-slate-800">
                 {t(`careTransition.region.${state.region}`)}
@@ -839,22 +898,51 @@ export function CircleCareTransitionReadinessPanel({
                 ) : null}
               </div>
             ) : null}
-          </div>
         </div>
       ) : null}
 
-      {!localizedPack ? (
-        <p className="text-sm text-slate-500 py-4">
-          {packStarterOpen
-            ? t('careTransition.choosePack')
-            : t('careTransition.startPackEmpty')}
-        </p>
+      {hideHeader && (packDraft || !localizedPack) ? null : packDraft && canManage && localizedPack ? (
+        <div className="rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 p-4 space-y-3">
+          <div className="space-y-1.5">
+            <CircleCareTransitionDraftBadge />
+            <p className="font-semibold text-slate-800 text-sm">{localizedPack.title}</p>
+            <p className="text-xs text-amber-950 leading-relaxed">
+              {t('careTransition.reviewHint')}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPackStarterOpen(true)}
+            className="w-full px-3 py-2.5 rounded-xl text-sm font-semibold bg-blue-600 text-white"
+          >
+            {t('careTransition.continueReview')}
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => setPackConfirm('discard')}
+            className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-slate-600"
+          >
+            {t('careTransition.discardDraft')}
+          </button>
+        </div>
+      ) : !localizedPack ? (
+        canManage ? (
+          <p className="text-sm text-slate-500 py-4">
+            {t('careTransition.startPackEmpty')}
+          </p>
+        ) : null
       ) : !canViewTasks ? (
         <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-2">
           <p className="font-semibold text-slate-800 text-sm">{localizedPack.title}</p>
           <p className="text-xs text-slate-600 leading-relaxed">
-            {t('careTransition.friendAwareness', { name: patient.displayName })}
+            {t('careTransition.friendAwareness', { name: patientFirstName })}
           </p>
+          {state.packNote?.trim() ? (
+            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+              {state.packNote.trim()}
+            </p>
+          ) : null}
           {startedLabel ? (
             <p className="text-[11px] text-slate-500 font-medium">{startedLabel}</p>
           ) : null}
@@ -871,6 +959,60 @@ export function CircleCareTransitionReadinessPanel({
                 ) : null}
               </div>
             </div>
+            {canManage && followUpNoteOpen ? (
+              <div className="space-y-3">
+                <CircleCareTransitionPackNoteFields
+                  note={followUpNote}
+                  onNoteChange={setFollowUpNote}
+                  alsoDiary={followUpNoteInDiary}
+                  onAlsoDiaryChange={setFollowUpNoteInDiary}
+                  disabled={followUpSending}
+                  required
+                />
+                <div className="flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    disabled={followUpSending}
+                    onClick={() => {
+                      setFollowUpNoteOpen(false);
+                      setFollowUpNote('');
+                      setFollowUpNoteInDiary(false);
+                    }}
+                    className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600"
+                  >
+                    {t('careTransition.packCancelNote')}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={followUpSending || !followUpNote.trim()}
+                    onClick={() => void postLivePackNote()}
+                    className="px-3 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white disabled:opacity-50"
+                  >
+                    {followUpSending
+                      ? t('careTransition.packNotePosting')
+                      : t('careTransition.packPostNote')}
+                  </button>
+                </div>
+              </div>
+            ) : canManage ? (
+              <button
+                type="button"
+                onClick={() => setFollowUpNoteOpen(true)}
+                className="px-3 py-2 rounded-xl text-xs font-semibold border border-blue-200 bg-blue-50 text-blue-800"
+              >
+                {t('careTransition.packAddNote')}
+              </button>
+            ) : null}
+            {state.packNote?.trim() ? (
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  {t('careTransition.packLiveNote')}
+                </p>
+                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                  {state.packNote.trim()}
+                </p>
+              </div>
+            ) : null}
             <div className="grid grid-cols-4 gap-2 pt-1 border-t border-slate-100">
               <div className="min-w-0">
                 <p
@@ -919,11 +1061,38 @@ export function CircleCareTransitionReadinessPanel({
                 </p>
               </div>
             </div>
+            {packComplete && canManage ? (
+              <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 leading-relaxed">
+                {t('careTransition.endPackReadyHint')}
+              </p>
+            ) : null}
+            {canManage ? (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => setPackConfirm('end')}
+                className={cn(
+                  'px-3 py-2 rounded-xl text-xs font-semibold',
+                  packComplete
+                    ? 'bg-slate-800 text-white'
+                    : 'border border-slate-200 text-slate-700',
+                )}
+              >
+                {t('careTransition.endPack')}
+              </button>
+            ) : null}
           </div>
 
           <div className="space-y-2">
             {localizedActiveItems.map((item) => {
               const done = doneSet.has(item.id);
+              const claim = careTransitionItemClaim(state?.packItemClaims, item.id);
+              const claimed = Boolean(claim?.claimedByUid);
+              const claimName =
+                claim?.claimedByName.trim() || t('circle.circleMemberFallback');
+              const canReleasePack = Boolean(
+                claim && (canManage || claim.claimedByUid === user.uid),
+              );
               return (
                 <div
                   key={item.id}
@@ -933,7 +1102,7 @@ export function CircleCareTransitionReadinessPanel({
                       ? 'border-emerald-200 bg-emerald-50'
                       : selected?.id === item.id
                         ? 'border-blue-200 bg-blue-50/40'
-                        : 'border-slate-100 bg-white',
+                        : 'border-slate-200 bg-slate-50',
                   )}
                 >
                   <button
@@ -966,6 +1135,17 @@ export function CircleCareTransitionReadinessPanel({
                           {item.title}
                         </p>
                         <p className="text-xs text-slate-500 mt-0.5">{item.when}</p>
+                        {done ? (
+                          claimed ? (
+                            <p className="text-[11px] font-semibold text-emerald-700 mt-1 truncate">
+                              {`${t('careTransition.circleHelpCompleted')} · ${claimName}`}
+                            </p>
+                          ) : null
+                        ) : claimed ? (
+                          <p className="text-[11px] text-slate-400 mt-1">
+                            {t('careTransition.circleHelpTaskTaken', { name: claimName })}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   </button>
@@ -1003,24 +1183,30 @@ export function CircleCareTransitionReadinessPanel({
                             {t('careTransition.markDone')}
                           </button>
                         ) : null}
-                        <button
-                          type="button"
-                          onClick={() => void copyTask(item)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-700"
-                        >
-                          <Copy size={13} />
-                          {copiedTaskId === item.id
-                            ? t('careTransition.copied')
-                            : t('careTransition.copyTask')}
-                        </button>
-                        {canWorkTasks ? (
+                        {!claimed && canClaimHelp ? (
                           <button
                             type="button"
                             disabled={saving}
-                            onClick={() => void dismissItem(item.id)}
-                            className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600"
+                            onClick={() => void claimPackItem(item.id, helpMemberName)}
+                            className={cn(
+                              helpActionButtonClass,
+                              'border border-slate-200 bg-white text-slate-700',
+                            )}
                           >
-                            {t('careTransition.dismiss')}
+                            {t('careTransition.circleHelpClaim')}
+                          </button>
+                        ) : null}
+                        {claimed && canReleasePack ? (
+                          <button
+                            type="button"
+                            disabled={saving}
+                            onClick={() => void releasePackItem(item.id)}
+                            className={cn(
+                              helpActionButtonClass,
+                              'border border-slate-200 bg-white text-slate-700',
+                            )}
+                          >
+                            {t('careTransition.circleHelpRelease')}
                           </button>
                         ) : null}
                         {item.custom && canManage ? (
@@ -1034,6 +1220,32 @@ export function CircleCareTransitionReadinessPanel({
                           </button>
                         ) : null}
                       </div>
+                      {canManage || canWorkTasks ? (
+                        <div className="flex flex-wrap gap-2">
+                          {canManage ? (
+                            <button
+                              type="button"
+                              onClick={() => void copyTask(item)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-700"
+                            >
+                              <Copy size={13} />
+                              {copiedTaskId === item.id
+                                ? t('careTransition.copied')
+                                : t('careTransition.copyTask')}
+                            </button>
+                          ) : null}
+                          {canWorkTasks ? (
+                            <button
+                              type="button"
+                              disabled={saving}
+                              onClick={() => void dismissItem(item.id)}
+                              className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600"
+                            >
+                              {t('careTransition.dismiss')}
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
                     )
                   ) : null}
@@ -1163,6 +1375,135 @@ export function CircleCareTransitionReadinessPanel({
         </>
       )}
 
+      {!hideHeader && canViewTasks && closedPacks.length > 0 ? (
+        <div className="border-t border-slate-100 pt-2">
+          <button
+            type="button"
+            onClick={() => setClosedPacksOpen((open) => !open)}
+            className="w-full flex items-center justify-between gap-2 py-1.5 text-left"
+            aria-expanded={closedPacksOpen}
+          >
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              {t('careTransition.closedPacks')} ({closedPacks.length})
+            </span>
+            {closedPacksOpen ? (
+              <ChevronUp size={16} className="text-slate-400 shrink-0" aria-hidden />
+            ) : (
+              <ChevronDown size={16} className="text-slate-400 shrink-0" aria-hidden />
+            )}
+          </button>
+          {closedPacksOpen ? (
+            <div className="space-y-2 pt-1">
+              {closedPacks.map((closed) => {
+                const closedPack = getCareTransitionPack(closed.packId);
+                const closedTitle = closedPack
+                  ? localizeCareTransitionPack(t, closedPack).title
+                  : closed.packId;
+                const endedLabel = formatCareTransitionPackStartedAt(
+                  closed.endedAt,
+                  viewerLanguage,
+                );
+                const datesLabel =
+                  closed.startedAt && closed.startedAt > 0
+                    ? t('careTransition.closedPackDates', {
+                        started: formatCareTransitionPackStartedAt(
+                          closed.startedAt,
+                          viewerLanguage,
+                        ),
+                        ended: endedLabel,
+                      })
+                    : t('careTransition.closedPackEndedOnly', { date: endedLabel });
+                return (
+                  <div
+                    key={closed.id}
+                    className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 space-y-2"
+                  >
+                    <button
+                      type="button"
+                      className="w-full text-left"
+                      onClick={() =>
+                        setExpandedClosedPackId((current) =>
+                          current === closed.id ? null : closed.id,
+                        )
+                      }
+                      aria-expanded={expandedClosedPackId === closed.id}
+                    >
+                      <div className="flex items-start gap-2">
+                        <CheckCircle2
+                          size={18}
+                          className="mt-0.5 shrink-0 text-emerald-600"
+                          aria-hidden
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-emerald-900">{closedTitle}</p>
+                          <p className="text-[11px] text-emerald-700 mt-0.5">
+                            {datesLabel}
+                            {closed.total > 0
+                              ? ` · ${t('careTransition.closedPackProgress', {
+                                  done: closed.done,
+                                  total: closed.total,
+                                })}`
+                              : ''}
+                          </p>
+                          {closed.packNote.trim() ? (
+                            <p className="text-xs text-emerald-900/80 leading-relaxed whitespace-pre-wrap line-clamp-2 mt-1">
+                              {closed.packNote.trim()}
+                            </p>
+                          ) : null}
+                        </div>
+                        {expandedClosedPackId === closed.id ? (
+                          <ChevronUp size={16} className="text-emerald-600 shrink-0 mt-0.5" aria-hidden />
+                        ) : (
+                          <ChevronDown size={16} className="text-emerald-600 shrink-0 mt-0.5" aria-hidden />
+                        )}
+                      </div>
+                    </button>
+                    {expandedClosedPackId === closed.id ? (
+                      <div className="space-y-1.5 pl-7">
+                        {(closed.items.length > 0
+                          ? closed.items
+                          : (closedPack?.items ?? []).map((item) => ({
+                              id: item.id,
+                              title: item.title,
+                              when: item.when,
+                              done: closed.total > 0 && closed.done >= closed.total,
+                            }))
+                        ).map((item) => {
+                          const template = closedPack?.items.find((row) => row.id === item.id);
+                          const localized = template
+                            ? localizeCareTransitionItem(t, template)
+                            : item;
+                          return (
+                            <div key={item.id} className="flex items-start gap-2">
+                              <CheckCircle2
+                                size={16}
+                                className={cn(
+                                  'mt-0.5 shrink-0',
+                                  item.done ? 'text-emerald-600' : 'text-emerald-300',
+                                )}
+                                aria-hidden
+                              />
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-emerald-900">
+                                  {localized.title}
+                                </p>
+                                {localized.when ? (
+                                  <p className="text-[11px] text-emerald-700">{localized.when}</p>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {error ? (
         <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
           {error}
@@ -1176,6 +1517,285 @@ export function CircleCareTransitionReadinessPanel({
       </div>
       )}
       </section>
+      ) : null}
+      {helpTaskComposer}
+      </>
+      )}
+      {canManage ? (
+        <CircleCareTransitionPackComposer
+          open={packStarterOpen}
+          sending={saving || packSharing}
+          packs={localizedPacks}
+          resumeReview={packDraft}
+          currentPackId={state.activePackId}
+          reviewTitle={localizedPack?.title}
+          packNote={packNote}
+          onPackNoteChange={setPackNote}
+          alsoDiary={packNoteInDiary}
+          onAlsoDiaryChange={setPackNoteInDiary}
+          onClose={() => setPackStarterOpen(false)}
+          onStart={async (packId) => {
+            if (state.activePackId !== packId) await setActivePack(packId);
+          }}
+          onShare={shareDraftPack}
+        >
+          <div className="space-y-4">
+            {pack?.kind === 'crisis' ? (
+              <p className="text-xs text-slate-600 leading-relaxed bg-amber-50 border border-amber-100 rounded-2xl p-3">
+                {t('careTransition.crisisHint')}
+              </p>
+            ) : null}
+            <div className="space-y-1.5">
+              <p className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wide">
+                <ListTodo size={14} className="text-slate-400" aria-hidden />
+                {t('careTransition.tasksFor')}
+              </p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-800">
+                  {t(`careTransition.region.${state.region}`)}
+                  {countryCode ? (
+                    <span className="text-slate-500 font-medium">
+                      {' '}
+                      · {countryDisplayName(countryCode, viewerLanguage)}
+                    </span>
+                  ) : null}
+                </p>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => setRegionPickerOpen((open) => !open)}
+                  className="text-xs font-semibold text-blue-600 shrink-0"
+                >
+                  {regionPickerOpen ? t('careTransition.regionDone') : t('careTransition.regionChange')}
+                </button>
+              </div>
+              {regionPickerOpen ? (
+                <div className="flex flex-wrap gap-2">
+                  {(['us', 'de', 'generic'] as CareTransitionRegion[]).map((region) => (
+                    <button
+                      key={region}
+                      type="button"
+                      disabled={saving}
+                      onClick={() => {
+                        void setRegion(region, { manual: true });
+                        setRegionPickerOpen(false);
+                      }}
+                      className={cn(
+                        'px-3 py-1.5 rounded-full text-xs font-semibold border',
+                        state.region === region
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-slate-600 border-slate-200',
+                      )}
+                    >
+                      {t(`careTransition.region.${region}`)}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <div className="space-y-2">
+              {localizedActiveItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 space-y-2"
+                >
+                  <div className="flex items-start gap-2">
+                    <ListTodo size={18} className="mt-0.5 shrink-0 text-slate-500" aria-hidden />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-800">
+                        {item.custom ? `[${t('careTransition.custom')}] ` : ''}
+                        {item.title}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">{item.when}</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">{item.why}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {canWorkTasks ? (
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => void dismissItem(item.id)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600"
+                      >
+                        {t('careTransition.dismiss')}
+                      </button>
+                    ) : null}
+                    {item.custom && canManage ? (
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => void removeCustomTask(item.id)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-semibold text-red-600"
+                      >
+                        {t('careTransition.removeCustom')}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {dismissedItems.length > 0 ? (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3 space-y-2">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  {t('careTransition.dismissed')} ({dismissedItems.length})
+                </p>
+                {localizedDismissedItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-2 text-sm text-slate-600"
+                  >
+                    <span className="min-w-0 truncate">{item.title}</span>
+                    {canWorkTasks ? (
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => void restoreDismissed(item.id)}
+                        className="text-xs font-semibold text-blue-600 shrink-0"
+                      >
+                        {t('careTransition.restore')}
+                      </button>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <div className="rounded-2xl border border-slate-100 bg-white p-4 space-y-3">
+              <p className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                <Plus size={16} /> {t('careTransition.addCustomTask')}
+              </p>
+              <input
+                value={draftTitle}
+                onChange={(e) => setDraftTitle(e.target.value)}
+                placeholder={t('careTransition.taskTitlePlaceholder')}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              />
+              <input
+                value={draftWhy}
+                onChange={(e) => setDraftWhy(e.target.value)}
+                placeholder={t('careTransition.taskWhyPlaceholder')}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              />
+              <button
+                type="button"
+                disabled={saving || !draftTitle.trim()}
+                onClick={() => {
+                  void addCustomTask(draftTitle, draftWhy).then(() => {
+                    setDraftTitle('');
+                    setDraftWhy('');
+                  });
+                }}
+                className="px-3 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-white disabled:opacity-50"
+              >
+                {t('careTransition.addToPack')}
+              </button>
+            </div>
+            <div className="rounded-2xl border border-slate-100 bg-white p-4 space-y-3">
+              <p className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                <BookOpen size={16} /> {t('careTransition.knowTitle')}
+              </p>
+              <p className="text-xs text-slate-500">{t('careTransition.knowHint')}</p>
+              {knowList.map((course) => (
+                <div key={course.id} className="space-y-1">
+                  <p className="text-sm font-medium text-slate-800">{course.title}</p>
+                  <p className="text-xs text-slate-400">
+                    {course.duration} · {course.audience}
+                  </p>
+                  <a
+                    href={course.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-semibold text-blue-600"
+                  >
+                    {t('careTransition.openKnow')}
+                  </a>
+                </div>
+              ))}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <input
+                  value={draftKnowTitle}
+                  onChange={(e) => setDraftKnowTitle(e.target.value)}
+                  placeholder={t('careTransition.knowTitlePlaceholder')}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                />
+                <input
+                  value={draftKnowUrl}
+                  onChange={(e) => setDraftKnowUrl(e.target.value)}
+                  placeholder={t('careTransition.knowUrlPlaceholder')}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                />
+                <button
+                  type="button"
+                  disabled={saving || !draftKnowTitle.trim()}
+                  onClick={() => {
+                    void attachKnowCourse({
+                      id: `know-custom-${Date.now()}`,
+                      title: draftKnowTitle.trim(),
+                      duration: 'Link',
+                      audience: 'Circle',
+                      href:
+                        draftKnowUrl.trim() ||
+                        'https://know.medxforce.example/courses/custom',
+                    }).then(() => {
+                      setDraftKnowTitle('');
+                      setDraftKnowUrl('');
+                    });
+                  }}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 text-slate-700 disabled:opacity-50"
+                >
+                  {t('careTransition.attachKnow')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </CircleCareTransitionPackComposer>
+      ) : null}
+      {packConfirm ? (
+        <div className="fixed inset-0 z-[180] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div
+            className="bg-white p-6 rounded-[28px] shadow-2xl max-w-md w-full space-y-4 border border-slate-100"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="care-transition-pack-confirm-title"
+          >
+            <h3
+              id="care-transition-pack-confirm-title"
+              className="text-lg font-bold text-slate-900"
+            >
+              {packConfirm === 'end'
+                ? t('careTransition.endPackConfirmTitle')
+                : t('careTransition.discardDraftConfirmTitle')}
+            </h3>
+            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+              {packConfirm === 'end'
+                ? t('careTransition.endPackConfirmBody')
+                : t('careTransition.discardDraftConfirmBody')}
+            </p>
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => setPackConfirm(null)}
+                className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-semibold text-sm"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => {
+                  setPackConfirm(null);
+                  void setActivePack(null);
+                }}
+                className="flex-1 py-3 rounded-2xl bg-slate-800 text-white font-semibold text-sm disabled:opacity-50"
+              >
+                {packConfirm === 'end'
+                  ? t('careTransition.endPackConfirm')
+                  : t('careTransition.discardDraft')}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );

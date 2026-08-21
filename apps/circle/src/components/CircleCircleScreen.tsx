@@ -11,6 +11,10 @@ import {
   canReplyToCircleMemberThreadPost,
   canSeeCircleRestrictedThread,
   canViewCircleAppointmentInvites,
+  careTransitionFolderCounts,
+  careTransitionLivePackId,
+  circleDisplayFirstName,
+  isCareTransitionPackDraft,
   createCircleMemberThreadPost,
   createCircleMemberThreadPostReply,
   deleteCircleThreadPostForEveryone,
@@ -19,6 +23,7 @@ import {
   isAppointmentInviteThreadPost,
   isAppointmentInviteVisibleToMember,
   isDiscussionThreadPost,
+  isCirclePollClosed,
   isPollThreadPost,
   isSyntheticAppointmentInvitePostId,
   isPastAppointmentInvitePost,
@@ -115,7 +120,6 @@ import { useCareTransitionReadiness } from '../hooks/useCareTransitionReadiness'
 import { CircleCareTransitionReadinessBanner } from './CircleCareTransitionReadinessBanner';
 import { CircleCareTransitionReadinessPanel } from './CircleCareTransitionReadinessPanel';
 import { CircleMessageExpandOverlay } from './CircleMessageExpandOverlay';
-import { careTransitionOpenItemCount } from '@medxforce/shared';
 import { shouldSuppressInactiveCareTransitionPackAnnouncement } from '../lib/careTransitionAnnouncementUnread';
 
 interface CircleCircleScreenProps {
@@ -356,15 +360,27 @@ export function CircleCircleScreen({
     canManage: canManageCareTransition,
   } = useCareTransitionReadiness(db, patient.patientId, user.uid, memberRole, t);
 
+  useEffect(() => {
+    if (!careTransitionOpen || !careTransitionState) return;
+    if (!careTransitionState.activePackId) {
+      setCareTransitionOpen(false);
+      return;
+    }
+    if (isCareTransitionPackDraft(careTransitionState) && canManageCareTransition) {
+      setCareTransitionOpen(false);
+      setPackStarterOpen(true);
+    }
+  }, [canManageCareTransition, careTransitionOpen, careTransitionState]);
+
   const showCareTransitionUnderAnnouncements = useMemo(() => {
-    if (inboxView !== 'announcements' || careTransitionLoading || !careTransitionState?.activePackId) {
+    if (inboxView !== 'announcements' || careTransitionLoading || !careTransitionLivePackId(careTransitionState)) {
       return false;
     }
     return careTransitionOpenCount > 0;
   }, [
     careTransitionLoading,
     careTransitionOpenCount,
-    careTransitionState?.activePackId,
+    careTransitionState,
     inboxView,
   ]);
 
@@ -473,9 +489,9 @@ export function CircleCircleScreen({
       suppressPastAppointmentInviteUnread(post) ||
       shouldSuppressInactiveCareTransitionPackAnnouncement(
         post,
-        careTransitionState?.activePackId,
+        careTransitionLivePackId(careTransitionState),
       ),
-    [careTransitionState?.activePackId, suppressPastAppointmentInviteUnread],
+    [careTransitionState, suppressPastAppointmentInviteUnread],
   );
 
   const allPosts = useMemo(
@@ -691,16 +707,15 @@ export function CircleCircleScreen({
       {} as Record<CirclePostInboxView, { total: number; unread: number }>,
     );
     if (inboxViews.includes('care_transition')) {
-      counts.care_transition = {
-        total: careTransitionOpenCount,
-        unread: careTransitionOpenCount,
-      };
+      counts.care_transition = careTransitionState
+        ? careTransitionFolderCounts(careTransitionState, memberRole)
+        : { total: 0, unread: 0 };
     }
     return counts;
   }, [
     activeThread,
     allPosts,
-    careTransitionOpenCount,
+    careTransitionState,
     getPostLastRead,
     hiddenByPostId,
     inboxViews,
@@ -1089,7 +1104,9 @@ export function CircleCircleScreen({
                     ) : null}
                     {isPollThreadPost(post) ? (
                       <span className="text-[10px] font-bold uppercase tracking-wide text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-md">
-                        {t('circle.inboxSnippetPoll')}
+                        {isCirclePollClosed(post)
+                          ? t('circle.pollClosed')
+                          : t('circle.inboxSnippetPoll')}
                       </span>
                     ) : null}
                     {replyCount > 0 && inboxView === 'discussion' ? (
@@ -1479,7 +1496,12 @@ export function CircleCircleScreen({
                   long={t('circle.tabCircleLong')}
                   compact={t('circle.tabCircleCompact')}
                 />
-                <CircleTabCountBadge count={openUnreadCount} />
+                <CircleTabCountBadge
+                  count={
+                    openUnreadCount +
+                    (inboxViews.includes('care_transition') ? careTransitionOpenCount : 0)
+                  }
+                />
               </span>
             </button>
             <button
@@ -1541,7 +1563,11 @@ export function CircleCircleScreen({
                       className={circlePostInboxTabIconClass(view, active)}
                       aria-hidden
                     />
-                    <CircleFolderCountBadge {...inboxTabCounts[view]} placement="overlay" />
+                    <CircleFolderCountBadge
+                      {...inboxTabCounts[view]}
+                      placement="overlay"
+                      showTotalWhenUnread={view === 'care_transition'}
+                    />
                   </span>
                 </button>
               );
@@ -1577,7 +1603,11 @@ export function CircleCircleScreen({
                           aria-hidden
                         />
                       ) : null}
-                      <CircleFolderCountBadge {...inboxTabCounts[view]} placement="overlay" />
+                      <CircleFolderCountBadge
+                      {...inboxTabCounts[view]}
+                      placement="overlay"
+                      showTotalWhenUnread={view === 'care_transition'}
+                    />
                     </span>
                   </button>
                 );
@@ -1740,10 +1770,23 @@ export function CircleCircleScreen({
 
       {messageModals}
 
+      {packStarterOpen && inboxView !== 'care_transition' ? (
+        <CircleCareTransitionReadinessPanel
+          user={user}
+          db={db}
+          patient={patient}
+          composerOnly
+          packStarterOpen={packStarterOpen}
+          onPackStarterOpenChange={setPackStarterOpen}
+        />
+      ) : null}
+
       <CircleMessageExpandOverlay
         open={careTransitionOpen}
         title={t('careTransition.title')}
-        subtitle={t('careTransition.subtitle', { name: patient.displayName })}
+        subtitle={t('careTransition.subtitle', {
+          name: circleDisplayFirstName(patient.displayName, patient.firstName),
+        })}
         onClose={() => setCareTransitionOpen(false)}
         t={t}
       >

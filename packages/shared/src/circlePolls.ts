@@ -40,6 +40,24 @@ export function isCirclePollClosed(
   return typeof post.pollClosesAt === 'number' && post.pollClosesAt > 0 && now >= post.pollClosesAt;
 }
 
+/** Open polls, newest first. Closed and expired polls are ignored. */
+export function openCirclePolls(
+  posts: readonly CircleMemberThreadPost[],
+  now = Date.now(),
+): CircleMemberThreadPost[] {
+  return posts
+    .filter((post) => isPollThreadPost(post) && !isCirclePollClosed(post, now))
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** Newest poll that is still open. Closed and expired polls are ignored. */
+export function newestOpenCirclePoll(
+  posts: readonly CircleMemberThreadPost[],
+  now = Date.now(),
+): CircleMemberThreadPost | null {
+  return openCirclePolls(posts, now)[0] ?? null;
+}
+
 export function parseCirclePollOptions(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   const out: string[] = [];
