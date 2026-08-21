@@ -820,7 +820,7 @@ export const circleScreenPolish = {
   pollVotes_one: '{{count}} głos',
   pollVotes_other: '{{count}} głosów',
   pollYourVote: 'Twój głos',
-  pollChangeVoteHint: 'Dotknij innej opcji, aby zmienić'
+  pollChangeVoteHint: 'Dotknij innej opcji, aby zmienić',
   pollClosed: 'Ankieta zamknięta',
   pollClose: 'Zamknij ankietę',
   pollClosesLabel: 'Zamyka się',
