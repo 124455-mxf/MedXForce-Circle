@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Languages } from 'lucide-react';
+import { Check, Languages } from 'lucide-react';
 import type { Firestore } from 'firebase/firestore';
 import {
   canCloseCirclePoll,
@@ -116,7 +116,7 @@ export function CirclePollPost({
   const hasVotes = total > 0;
 
   const handleVote = async (optionIndex: number) => {
-    if (closed || saving) return;
+    if (closed || saving || myVote?.optionIndex === optionIndex) return;
     setSaving(true);
     setError(null);
     try {
@@ -209,7 +209,7 @@ export function CirclePollPost({
         {options.map((option, index) => {
           const count = counts[index] ?? 0;
           const selected = myVote?.optionIndex === index;
-          const width = total > 0 ? Math.max(6, Math.round((count / total) * 100)) : 0;
+          const width = total > 0 && count > 0 ? Math.max(10, Math.round((count / total) * 100)) : 0;
           return (
             <button
               key={`${index}`}
@@ -217,24 +217,37 @@ export function CirclePollPost({
               disabled={closed || saving}
               onClick={() => void handleVote(index)}
               className={cn(
-                'relative w-full text-left rounded-xl border overflow-hidden disabled:opacity-80',
-                selected ? 'border-blue-400' : 'border-slate-200',
+                'relative w-full text-left rounded-xl border overflow-hidden',
+                selected ? 'border-sky-500 ring-1 ring-sky-400/70' : 'border-slate-200',
+                !closed && !selected ? 'hover:border-sky-300' : null,
+                closed || saving ? 'cursor-default' : null,
               )}
             >
               <div
-                className={cn('absolute inset-y-0 left-0', selected ? 'bg-blue-100' : 'bg-slate-100')}
+                className="absolute inset-y-0 left-0 bg-sky-300/80"
                 style={{ width: `${width}%` }}
               />
               <span className="relative flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
-                <span className={cn('font-medium', selected ? 'text-blue-800' : 'text-slate-800')}>
-                  {option}
+                <span className="flex items-center gap-1.5 min-w-0 font-medium text-slate-800">
+                  {selected ? (
+                    <Check size={14} className="shrink-0 text-sky-700" aria-hidden />
+                  ) : null}
+                  <span className="truncate">{option}</span>
+                  {selected ? (
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-sky-700 shrink-0">
+                      {t('circle.pollYourVote')}
+                    </span>
+                  ) : null}
                 </span>
-                <span className="tabular-nums text-slate-500 shrink-0">{count}</span>
+                <span className="tabular-nums font-semibold text-slate-700 shrink-0">{count}</span>
               </span>
             </button>
           );
         })}
       </div>
+      {!closed && myVote ? (
+        <p className="text-[11px] text-slate-500">{t('circle.pollChangeVoteHint')}</p>
+      ) : null}
       {hasStoredTranslation ? (
         <button
           type="button"
