@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { cn } from '../lib/utils';
 import { useCircleT } from '../lib/circleI18nContext';
+import { CircleFormattedBody } from './CircleFormattedBody';
 
 const MESSAGE_BODY_PREVIEW_CHARS = 200;
 
@@ -40,23 +41,25 @@ export function CircleMessageBodyPreview({
       ? restBody
       : `${restBody.slice(0, MESSAGE_BODY_PREVIEW_CHARS).trimEnd()}…`;
 
+  const showMore = needsTruncate ? (
+    <button
+      type="button"
+      onClick={() => setExpanded((value) => !value)}
+      className="text-blue-600 font-bold whitespace-nowrap hover:underline text-sm"
+    >
+      {expanded ? t('messages.bodyShowLess') : t('messages.bodyShowMore')}
+    </button>
+  ) : null;
+
   if (titleLine !== null) {
     return (
-      <div className={cn('text-slate-800 leading-relaxed text-base whitespace-pre-wrap', className)}>
+      <div className={cn('text-slate-800 leading-relaxed text-base', className)}>
         <p className="font-bold text-slate-900">{titleLine}</p>
         {restBody ? (
-          <p className={cn(restBody && 'mt-1.5')}>
-            {displayRest}
-            {needsTruncate ? (
-              <button
-                type="button"
-                onClick={() => setExpanded((value) => !value)}
-                className="text-blue-600 font-bold ml-1 whitespace-nowrap hover:underline"
-              >
-                {expanded ? t('messages.bodyShowLess') : t('messages.bodyShowMore')}
-              </button>
-            ) : null}
-          </p>
+          <div className="mt-1.5 space-y-2">
+            <CircleFormattedBody text={displayRest} className={className} />
+            {showMore}
+          </div>
         ) : null}
       </div>
     );
@@ -69,17 +72,17 @@ export function CircleMessageBodyPreview({
       : `${body.slice(0, MESSAGE_BODY_PREVIEW_CHARS).trimEnd()}…`;
 
   return (
-    <p className={cn('text-slate-800 leading-relaxed text-base whitespace-pre-wrap', className)}>
-      {displayText}
+    <div className={cn('text-slate-800 leading-relaxed text-base space-y-2', className)}>
+      <CircleFormattedBody text={displayText} className={className} />
       {needsTruncateAll ? (
         <button
           type="button"
           onClick={() => setExpanded((value) => !value)}
-          className="text-blue-600 font-bold ml-1 whitespace-nowrap hover:underline"
+          className="text-blue-600 font-bold whitespace-nowrap hover:underline"
         >
           {expanded ? t('messages.bodyShowLess') : t('messages.bodyShowMore')}
         </button>
       ) : null}
-    </p>
+    </div>
   );
 }

@@ -1,4 +1,5 @@
 import { isVisitCaptureThreadPost } from '@medxforce/shared';
+import { writeFormattedTextToClipboard } from './formattedClipboard';
 import { writeVisitCaptureToClipboard } from './visitCaptureClipboard';
 
 type CircleThreadPostClipboardInput = {
@@ -25,5 +26,5 @@ export async function writeCircleThreadPostToClipboard(
     return;
   }
 
-  await navigator.clipboard.writeText(formatCircleThreadPostPlain(post));
+  await writeFormattedTextToClipboard(formatCircleThreadPostPlain(post));
 }

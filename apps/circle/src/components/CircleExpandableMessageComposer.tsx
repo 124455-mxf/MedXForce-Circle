@@ -4,7 +4,9 @@ import type { CircleMemberRole } from '@medxforce/shared';
 import { useDictation } from '../hooks/useDictation';
 import { isCircleAiAssistAvailable } from '../lib/circleAiAssist';
 import { cn } from '../lib/utils';
+import { messageLooksFormatted } from '../lib/formattedMessage';
 import { CircleAiGuidanceModal } from './CircleAiGuidanceModal';
+import { CircleFormattedBody } from './CircleFormattedBody';
 import { useCircleT } from '../lib/circleI18nContext';
 
 type CircleAiGuidanceConfig = {
@@ -409,10 +411,19 @@ export function CircleExpandableMessageComposer({
                 value={value}
                 onChange={(e) => setText(e.target.value)}
                 placeholder={placeholder}
-                className={cn(expandedTextareaClass, 'flex-1', textareaRecordingClass)}
+                className={cn(expandedTextareaClass, 'flex-1 min-h-[120px]', textareaRecordingClass)}
                 disabled={inputDisabled}
                 maxLength={maxLength}
               />
+
+              {messageLooksFormatted(value) ? (
+                <div className="shrink-0 max-h-40 overflow-y-auto rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2">
+                    {t('circle.composerFormatPreview')}
+                  </p>
+                  <CircleFormattedBody text={value} className="text-sm text-slate-700" />
+                </div>
+              ) : null}
 
               {maxLength != null && (
                 <p className="text-xs text-slate-400 text-right tabular-nums shrink-0">

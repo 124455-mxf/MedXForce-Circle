@@ -11,6 +11,7 @@ import { careTransitionPackIdFromAnnouncementPost } from '../lib/careTransitionA
 import { localizeCareTransitionPack } from '../lib/localizeCareTransition';
 import { resolveStoredMessageText } from '../lib/messageTranslationDisplay';
 import { CircleStoredTranslationMessage } from './CircleStoredTranslationMessage';
+import { CircleFormattedBody } from './CircleFormattedBody';
 
 function splitAnnouncementBody(text: string): { title: string; rest: string } {
   const body = text.replace(/\r\n/g, '\n').trim();
@@ -109,7 +110,7 @@ export function CircleAnnouncementPost({
         <p className="text-base font-bold text-amber-950 leading-snug">{title}</p>
       ) : rest ? (
         isOwn ? (
-          <p className="text-sm text-slate-800 font-medium leading-relaxed whitespace-pre-wrap">{rest}</p>
+          <CircleFormattedBody text={rest} className="text-sm text-slate-800 font-medium" />
         ) : (
           <CircleStoredTranslationMessage
             text={rest}

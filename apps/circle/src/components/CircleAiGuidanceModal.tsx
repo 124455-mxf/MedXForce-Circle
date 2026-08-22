@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Check, Copy, Loader2, Mic, MicOff, Sparkles, X } from 'lucide-react';
 import type { CircleMemberRole } from '@medxforce/shared';
-import { askCircleAiGuidance, isCircleAiAssistAvailable } from '../lib/circleAiAssist';
+import { writeFormattedTextToClipboard } from '../lib/formattedClipboard';
 import { useDictation } from '../hooks/useDictation';
 import { cn } from '../lib/utils';
 import { CircleAiGuidanceContent } from './CircleAiGuidanceContent';
@@ -75,7 +75,7 @@ export function CircleAiGuidanceModal({
       ? `${t('circle.aiGuidanceYourQuestion')}:\n${q}\n\n${t('circle.aiGuidanceLabel')}:\n${answer.trim()}`
       : answer.trim();
     try {
-      await navigator.clipboard.writeText(text);
+      await writeFormattedTextToClipboard(text);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
