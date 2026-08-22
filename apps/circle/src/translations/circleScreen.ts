@@ -142,6 +142,8 @@ export const circleScreenEnglish = {
   folderActionDropInDndHint: 'Try again when the patient is available.',
   folderActionRecordVisit: 'Record a meeting',
   folderActionRecordVisitHint: 'Capture audio, get a summary, and share it in this folder.',
+  folderActionAddInSchedule: 'Add in Schedule',
+  folderActionAddInScheduleHint: 'Create appointments on the Schedule tab. Invites to accept or decline stay here.',
   meetingCaptureHeading: 'Meeting capture — {{date}}',
   inboxEmptyHidden: 'Nothing removed from your view.',
   inboxSnippetYouPosted: 'You posted',
@@ -392,6 +394,9 @@ export const circleScreenGerman = {
   folderActionRecordVisit: 'Meeting aufnehmen',
   folderActionRecordVisitHint:
     'Audio aufnehmen, Zusammenfassung erhalten und in diesem Ordner teilen.',
+  folderActionAddInSchedule: 'Im Zeitplan hinzufügen',
+  folderActionAddInScheduleHint:
+    'Termine im Zeitplan anlegen. Einladungen zum Zusagen oder Absagen bleiben hier.',
   meetingCaptureHeading: 'Meeting-Aufnahme — {{date}}',
   inboxEmptyHidden: 'Nichts aus Ihrer Ansicht entfernt.',
   inboxSnippetYouPosted: 'Sie haben gepostet',
@@ -643,6 +648,9 @@ export const circleScreenSpanish = {
   folderActionRecordVisit: 'Grabar una reunión',
   folderActionRecordVisitHint:
     'Capture audio, obtenga un resumen y compártalo en esta carpeta.',
+  folderActionAddInSchedule: 'Añadir en Agenda',
+  folderActionAddInScheduleHint:
+    'Cree citas en la pestaña Agenda. Las invitaciones para aceptar o rechazar se quedan aquí.',
   meetingCaptureHeading: 'Captura de reunión — {{date}}',
   inboxEmptyHidden: 'Nada quitado de su vista.',
   inboxSnippetYouPosted: 'Usted publicó',
@@ -894,6 +902,9 @@ export const circleScreenPolish = {
   folderActionRecordVisit: 'Nagraj spotkanie',
   folderActionRecordVisitHint:
     'Nagraj audio, uzyskaj podsumowanie i udostępnij w tym folderze.',
+  folderActionAddInSchedule: 'Dodaj w Harmonogramie',
+  folderActionAddInScheduleHint:
+    'Twórz wizyty w Harmonogramie. Zaproszenia do przyjęcia lub odrzucenia zostają tutaj.',
   meetingCaptureHeading: 'Nagranie spotkania — {{date}}',
   inboxEmptyHidden: 'Nic nie usunięto z Twojego widoku.',
   inboxSnippetYouPosted: 'Opublikowałeś',

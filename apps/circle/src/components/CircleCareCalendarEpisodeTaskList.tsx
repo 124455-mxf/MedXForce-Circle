@@ -38,8 +38,10 @@ export function CircleCareCalendarEpisodeTaskList({
   const tasks = phaseTasks ?? [];
   const canEdit = !!onTasksChange;
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState(false);
   const focusTaskIdRef = useRef<string | null>(null);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+  const editorCardRef = useRef<HTMLLIElement | null>(null);
 
   useEffect(() => {
     if (!focusTaskIdRef.current) return;
@@ -49,6 +51,17 @@ export function CircleCareCalendarEpisodeTaskList({
       focusTaskIdRef.current = null;
     }
   }, [tasks, editingTaskId]);
+
+  useEffect(() => {
+    if (!editingTaskId) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const card = editorCardRef.current;
+      if (card && event.target instanceof Node && card.contains(event.target)) return;
+      setEditingTaskId(null);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [editingTaskId]);
 
   const mergePhaseTasks = (nextPhaseTasks: CareCalendarAppointmentTask[]) => {
     const otherPhase = phase === 'pre' ? 'post' : 'pre';
@@ -78,8 +91,12 @@ export function CircleCareCalendarEpisodeTaskList({
     try {
       await onTasksChange(sanitized);
       onDraftTasksChange?.(localTasksWithEmptyDraft(sanitized, nextAll));
-    } catch {
+      setSaveError(false);
+    } catch (err) {
+      console.warn('Care calendar task save failed', err);
       onDraftTasksChange?.(null);
+      setSaveError(true);
+      throw err;
     }
   };
 
@@ -148,6 +165,9 @@ export function CircleCareCalendarEpisodeTaskList({
           </button>
         ) : null}
       </div>
+      {saveError ? (
+        <p className="text-sm text-rose-600 px-0.5">{ct('errors.saveFailed')}</p>
+      ) : null}
 
       {tasks.length === 0 ? (
         <p className="text-sm text-slate-400 px-0.5">{ct('episode.noTasks')}</p>
@@ -165,6 +185,7 @@ export function CircleCareCalendarEpisodeTaskList({
             return (
               <li
                 key={task.id}
+                ref={editingTaskId === task.id ? editorCardRef : undefined}
                 className={cn(
                   'flex items-start gap-3 p-3 rounded-xl border',
                   done ? 'border-slate-100 bg-slate-50/60' : 'border-violet-100 bg-violet-50/40',
@@ -196,9 +217,6 @@ export function CircleCareCalendarEpisodeTaskList({
                         }}
                         value={task.title}
                         onChange={(value) => void updateTask(task.id, { title: value })}
-                        onBlur={() => {
-                          if (task.title.trim()) setEditingTaskId(null);
-                        }}
                         debounceTime={300}
                         placeholder={ct('fields.taskPlaceholder')}
                         className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm"

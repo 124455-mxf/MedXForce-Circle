@@ -163,6 +163,22 @@ export function collectSchedulePostTaskRows(
   return options.limit ? rows.slice(0, options.limit) : rows;
 }
 
+/** Open before/after visit tasks assigned to this viewer (not assessment nudges or RSVP). */
+export function countOpenVisitTasksForScheduleViewer(
+  entries: CareCalendarEntry[],
+  options: {
+    memberRole?: ScheduleTaskViewerRole;
+    now?: Date;
+  } = {},
+): number {
+  const pre = collectSchedulePreTaskRows(entries, options);
+  const post = collectSchedulePostTaskRows(entries, options);
+  return (
+    pre.reduce((sum, row) => sum + row.openPreTasks, 0) +
+    post.reduce((sum, row) => sum + row.openPostTasks, 0)
+  );
+}
+
 /** Max Prepare cards on the Tasks screen (badge uses the same cap). */
 export const SCHEDULE_TASKS_PREPARE_CARD_LIMIT = 5;
 /** Max Follow-up cards on the Tasks screen (badge uses the same cap). */

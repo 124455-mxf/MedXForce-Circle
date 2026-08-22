@@ -80,7 +80,16 @@ export function CircleCareCalendarAppointmentEpisodePanel({
   const [briefOverride, setBriefOverride] = useState<CareCalendarVisitBrief | null>(null);
   const [debriefOverride, setDebriefOverride] = useState<CareCalendarVisitDebrief | null>(null);
 
-  const activeTasks = tasksOverride ?? event.appointmentTasks;
+  const activeTasks = useMemo(() => {
+    const live = event.appointmentTasks ?? [];
+    if (!tasksOverride) return event.appointmentTasks;
+    const liveIds = new Set(live.map((task) => task.id));
+    const extraDrafts = tasksOverride.filter(
+      (task) => task.source === 'manual' && !task.title.trim() && !liveIds.has(task.id),
+    );
+    if (tasksOverride.some((task) => task.title.trim())) return tasksOverride;
+    return extraDrafts.length ? [...live, ...extraDrafts] : event.appointmentTasks;
+  }, [event.appointmentTasks, tasksOverride]);
   const activeReferenceIds = refsOverride ?? event.clinicalReferenceIds ?? [];
   const activeBrief = briefOverride ?? event.visitBrief;
   const activeDebrief = debriefOverride ?? event.visitDebrief;
@@ -105,7 +114,12 @@ export function CircleCareCalendarAppointmentEpisodePanel({
   useEffect(() => {
     setTasksOverride((current) => {
       if (!current) return null;
-      return appointmentTasksStatusMatch(event.appointmentTasks, current) ? null : current;
+      if (appointmentTasksStatusMatch(event.appointmentTasks, current)) return null;
+      const liveIds = new Set((event.appointmentTasks ?? []).map((task) => task.id));
+      const unsavedDrafts = current.filter(
+        (task) => task.source === 'manual' && !task.title.trim() && !liveIds.has(task.id),
+      );
+      return unsavedDrafts.length ? unsavedDrafts : null;
     });
   }, [event.appointmentTasks]);
 

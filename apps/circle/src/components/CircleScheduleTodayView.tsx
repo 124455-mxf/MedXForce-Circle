@@ -37,6 +37,7 @@ import { CircleCareCalendarKindMeta } from './CircleCareCalendarKindMeta';
 import { CircleTranslatedUserText } from './CircleTranslatedUserText';
 import {
   CircleScheduleAppointmentDetailSheet,
+  resolveCircleScheduleAppointmentSelection,
   type CircleScheduleAppointmentSelection,
 } from './CircleScheduleWeekView';
 import { cn } from '../lib/utils';
@@ -130,6 +131,10 @@ export function CircleScheduleTodayView({
   const timedCare = [...careEvents].sort(
     (a, b) => (a.startTimeMinutes ?? 0) - (b.startTimeMinutes ?? 0),
   );
+  const resolvedSelection = useMemo(() => {
+    if (!selection) return null;
+    return resolveCircleScheduleAppointmentSelection(selection, timedCare);
+  }, [selection, timedCare]);
   const hasContent = timedCare.length > 0 || assessmentEvents.length > 0;
 
   const [now, setNow] = useState(() => new Date());
@@ -324,16 +329,16 @@ export function CircleScheduleTodayView({
         </div>
       )}
 
-      {selection ? (
+      {resolvedSelection ? (
         <CircleScheduleAppointmentDetailSheet
-          selection={selection}
+          selection={resolvedSelection}
           ct={ct}
           t={t}
           onClose={() => setSelection(null)}
           onEdit={
             onEditAppointment
               ? () => {
-                  const entryId = selection.event.entryId;
+                  const entryId = resolvedSelection.event.entryId;
                   setSelection(null);
                   onEditAppointment(entryId);
                 }

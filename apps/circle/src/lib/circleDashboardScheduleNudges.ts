@@ -1,5 +1,6 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 import {
+  countOpenVisitTasksForScheduleViewer,
   countPatientAppointmentsRemainingToday,
   countPatientAppointmentsUpcomingWithinDays,
   countUpcomingScheduledAssessmentsWithinDays,
@@ -19,12 +20,15 @@ export type CircleScheduleNudgeCounts = {
   upcomingAppointments: number;
   /** Appointments starting within the schedule imminent window (same as Today banner). */
   imminentAppointments: number;
+  /** Open before/after visit tasks assigned to this viewer. */
+  openVisitTasks: number;
 };
 
 export function computeCircleScheduleNudgeCounts(params: {
   assessmentSchedule?: CircleAssessmentScheduleContext | null;
   careEntries: CareCalendarEntry[];
   scheduleEnabled?: boolean;
+  memberRole?: string;
   now?: Date;
 }): CircleScheduleNudgeCounts {
   const now = params.now ?? new Date();
@@ -60,6 +64,10 @@ export function computeCircleScheduleNudgeCounts(params: {
     ),
     imminentAppointments: findImminentCareCalendarAppointments(params.careEntries, { now })
       .length,
+    openVisitTasks: countOpenVisitTasksForScheduleViewer(params.careEntries, {
+      memberRole: params.memberRole,
+      now,
+    }),
   };
 }
 
@@ -73,5 +81,6 @@ export function buildPreviewScheduleNudgeCounts(
     appointmentsToday: Math.max(live.appointmentsToday, 1),
     upcomingAppointments: Math.max(live.upcomingAppointments, 3),
     imminentAppointments: Math.max(live.imminentAppointments, 1),
+    openVisitTasks: Math.max(live.openVisitTasks, 2),
   };
 }

@@ -7,6 +7,7 @@ import {
   orderBy,
   query,
   updateDoc,
+  waitForPendingWrites,
   where,
   type Firestore,
   type Unsubscribe,
@@ -595,10 +596,7 @@ export async function updateCareCalendarEntry(
   inviteContext?: CareCalendarInviteContext,
 ): Promise<void> {
   if (isEpisodeOnlyCareCalendarUpdate(input as Record<string, unknown>)) {
-    await patchCareCalendarEpisodeFields({
-      patientId,
-      entryId,
-      kind: input.kind!,
+    const episodePatch = episodeFirestorePatch(input.kind!, {
       ...(input.visitSubtype !== undefined ? { visitSubtype: input.visitSubtype } : {}),
       ...(input.supportingNotes !== undefined ? { supportingNotes: input.supportingNotes } : {}),
       ...(input.appointmentTasks !== undefined ? { appointmentTasks: input.appointmentTasks } : {}),
@@ -608,7 +606,33 @@ export async function updateCareCalendarEntry(
       ...(input.visitBrief !== undefined ? { visitBrief: input.visitBrief } : {}),
       ...(input.visitDebrief !== undefined ? { visitDebrief: input.visitDebrief } : {}),
     });
-    return;
+    try {
+      await updateDoc(doc(db, 'patients', patientId, 'care_calendar', entryId), {
+        ...episodePatch,
+        updatedAt: Date.now(),
+      });
+      await waitForPendingWrites(db);
+      return;
+    } catch (err) {
+      try {
+        await patchCareCalendarEpisodeFields({
+          patientId,
+          entryId,
+          kind: input.kind!,
+          ...(input.visitSubtype !== undefined ? { visitSubtype: input.visitSubtype } : {}),
+          ...(input.supportingNotes !== undefined ? { supportingNotes: input.supportingNotes } : {}),
+          ...(input.appointmentTasks !== undefined ? { appointmentTasks: input.appointmentTasks } : {}),
+          ...(input.clinicalReferenceIds !== undefined
+            ? { clinicalReferenceIds: input.clinicalReferenceIds }
+            : {}),
+          ...(input.visitBrief !== undefined ? { visitBrief: input.visitBrief } : {}),
+          ...(input.visitDebrief !== undefined ? { visitDebrief: input.visitDebrief } : {}),
+        });
+        return;
+      } catch {
+        throw err;
+      }
+    }
   }
 
   const patch: Record<string, unknown> = { updatedAt: Date.now() };

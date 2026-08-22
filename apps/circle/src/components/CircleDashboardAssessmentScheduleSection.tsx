@@ -11,6 +11,7 @@ import { useCareCalendarEntries, buildCareCalendarEntriesSubscription } from '..
 import { useCircleMemberInviteContext } from '../hooks/useCircleMemberInviteContext';
 import { updateCareCalendarEntry } from '../services/careCalendarService';
 import type { CareCalendarAppointmentTask, CareCalendarEntry, CareCalendarVisitDebrief } from '@medxforce/shared';
+import type { CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
 
 export type CircleDashboardAssessmentScheduleSectionProps = {
   db: Firestore;
@@ -33,6 +34,7 @@ export type CircleDashboardAssessmentScheduleSectionProps = {
   onManageClinicalReferences?: () => void;
   onRegisterAddAppointment?: (add: ((dateKey?: string) => void) | null) => void;
   onOpenCountChange?: (count: number) => void;
+  viewIntent?: CircleScheduleViewIntent | null;
 };
 
 export function CircleDashboardAssessmentScheduleSection({
@@ -56,6 +58,7 @@ export function CircleDashboardAssessmentScheduleSection({
   onManageClinicalReferences,
   onRegisterAddAppointment,
   onOpenCountChange,
+  viewIntent = null,
 }: CircleDashboardAssessmentScheduleSectionProps) {
   const { inviteContext, memberContactId, contact: ownContact, loading: ownContactLoading, inviteContextReady } =
     useCircleMemberInviteContext(db, user, patient);
@@ -215,6 +218,7 @@ export function CircleDashboardAssessmentScheduleSection({
           hideInlineAddButton={fullPage}
           onRecordVisit={onRecordVisit}
           onOpenCountChange={onOpenCountChange}
+          viewIntent={viewIntent}
         />
       </div>
       {canManageAppointments && (

@@ -1,6 +1,7 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Firestore } from 'firebase/firestore';
 import { AnimatePresence, motion } from 'motion/react';
 import { Calendar, CheckSquare, ClipboardList, Eye, Users, X } from 'lucide-react';
@@ -9,6 +10,7 @@ import { CircleCareCalendarAttendeeFields } from './CircleCareCalendarAttendeeFi
 import {
   CircleCareCalendarAppointmentEpisodeFields,
   CircleCareCalendarAppointmentTaskFields,
+  CircleCareCalendarDictationTextarea,
 } from './CircleCareCalendarAppointmentFields';
 import { CareCalendarDiscardConfirmModal } from './CareCalendarDiscardConfirmModal';
 import { CircleCareCalendarDurationSelect } from './CircleCareCalendarDurationSelect';
@@ -523,32 +525,43 @@ function CircleCareCalendarEntryModalContent({
     );
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className={RESPONSIVE_FORM_MODAL_BACKDROP_CLASS}
-        onClick={requestClose}
       >
+        <button
+          type="button"
+          className="absolute inset-0 bg-slate-900/40"
+          onClick={requestClose}
+          aria-label={t('common.close')}
+        />
         <motion.div
           initial={{ y: 24, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 24, opacity: 0 }}
           className={RESPONSIVE_FORM_MODAL_PANEL_CLASS}
-          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="circle-care-calendar-entry-title"
         >
+          <div className="mx-auto mb-5 h-1 w-10 shrink-0 rounded-full bg-slate-200" aria-hidden />
           <div className={RESPONSIVE_FORM_MODAL_HEADER_CLASS}>
-            <h3 className="text-lg font-bold text-slate-800">
+            <h3 id="circle-care-calendar-entry-title" className="text-lg font-bold text-slate-900">
               {editingEntry ? ct('editTitle') : ct('addTitle')}
             </h3>
             <button
               type="button"
               onClick={requestClose}
-              className="p-2 rounded-xl text-slate-400 hover:bg-slate-100"
+              className="p-2 rounded-xl text-slate-400 hover:bg-slate-50"
+              aria-label={t('common.close')}
             >
-              <X size={20} />
+              <X size={18} />
             </button>
           </div>
 
@@ -609,16 +622,13 @@ function CircleCareCalendarEntryModalContent({
                   </label>
                 ) : null}
 
-                <label className="block space-y-1.5">
-                  <span className="text-sm font-bold text-slate-700">{ct('fields.details')}</span>
-                  <textarea
-                    value={details}
-                    onChange={(e) => setDetails(e.target.value)}
-                    rows={3}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 resize-none"
-                    placeholder={ct('fields.detailsPlaceholder')}
-                  />
-                </label>
+                <CircleCareCalendarDictationTextarea
+                  label={ct('fields.details')}
+                  value={details}
+                  onChange={setDetails}
+                  placeholder={ct('fields.detailsPlaceholder')}
+                  t={ct}
+                />
 
                 <CircleCareCalendarAppointmentEpisodeFields
                   kind={kind}
@@ -897,6 +907,7 @@ function CircleCareCalendarEntryModalContent({
           void handleCancelEntry();
         }}
       />
-    </>
+    </>,
+    document.body,
   );
 }

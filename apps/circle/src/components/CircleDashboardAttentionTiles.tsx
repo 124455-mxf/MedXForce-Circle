@@ -18,6 +18,7 @@ import {
   CircleDashboardScheduleNudgeTiles,
 } from './CircleDashboardScheduleNudgeTiles';
 import type { CircleScheduleNudgeCounts } from '../lib/circleDashboardScheduleNudges';
+import type { CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
 import {
   dashboardSectionTitleClass,
   dashboardTileTitleClass,
@@ -116,7 +117,7 @@ export function CircleDashboardAttentionTiles({
   onOpenCircleFolder?: (thread: CircleMemberThreadKind, folder: CircleInboxFolder) => void;
   scheduleNudgeCounts?: CircleScheduleNudgeCounts | null;
   scheduleEnabled?: boolean;
-  onOpenSchedule?: () => void;
+  onOpenSchedule?: (view?: CircleScheduleViewIntent) => void;
 }) {
   const t = useCircleT();
   const canSeeDropIns = canSeeCircleRestrictedThread(memberRole);
@@ -251,6 +252,7 @@ export function CircleDashboardAttentionTiles({
       || scheduleNudgeCounts.appointmentsToday > 0
       || scheduleNudgeCounts.upcomingAppointments > 0
       || scheduleNudgeCounts.imminentAppointments > 0
+      || scheduleNudgeCounts.openVisitTasks > 0
     );
 
   if (unreadTiles.length === 0 && !showScheduleNudgeSection) return null;

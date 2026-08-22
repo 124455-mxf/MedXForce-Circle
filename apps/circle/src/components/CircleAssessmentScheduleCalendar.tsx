@@ -1,5 +1,5 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Firestore } from 'firebase/firestore';
 import { Calendar, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import {
@@ -24,6 +24,7 @@ import { CircleScheduleTodayView, CircleScheduleDayAppointmentCard } from './Cir
 import { CircleScheduleTasksView } from './CircleScheduleTasksView';
 import {
   CircleScheduleAppointmentDetailSheet,
+  resolveCircleScheduleAppointmentSelection,
   type CircleScheduleAppointmentSelection,
 } from './CircleScheduleWeekView';
 import { CircleScheduleWeekView } from './CircleScheduleWeekView';
@@ -37,6 +38,7 @@ import { circleHeaderActionButtonClass } from '../lib/circleSectionStyles';
 import { useCircleScheduleDefaultView } from '../hooks/useCircleScheduleDefaultView';
 import { useCircleScheduleShowAppointmentDetails } from '../hooks/useCircleScheduleShowAppointmentDetails';
 import { getCircleScheduleDefaultView } from '../lib/circleSchedulePreferences';
+import type { CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
 import { useCircleI18nContext } from '../lib/circleI18nContext';
 import { formatCircleDate } from '../lib/circleLanguages';
 
@@ -79,6 +81,7 @@ type CircleAssessmentScheduleCalendarProps = {
   onRecordVisit?: (entryId: string) => void;
   /** Called with the Tasks-screen card count so header / nav can stay in sync. */
   onOpenCountChange?: (count: number) => void;
+  viewIntent?: CircleScheduleViewIntent | null;
 };
 
 type ScheduleViewMode = 'today' | 'week' | 'month' | 'tasks';
@@ -147,6 +150,7 @@ export function CircleAssessmentScheduleCalendar({
   hideInlineAddButton = false,
   onRecordVisit,
   onOpenCountChange,
+  viewIntent = null,
 }: CircleAssessmentScheduleCalendarProps) {
   const { language } = useCircleI18nContext();
   const ct = (key: string, params?: Record<string, unknown>) =>
@@ -159,17 +163,26 @@ export function CircleAssessmentScheduleCalendar({
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedDateKey, setSelectedDateKey] = useState(todayKey);
   const defaultScheduleView = useCircleScheduleDefaultView();
-  const [viewMode, setViewMode] = useState<ScheduleViewMode>(
-    enableViewModes ? getCircleScheduleDefaultView() : 'month',
-  );
+  const [viewMode, setViewMode] = useState<ScheduleViewMode>(() => {
+    if (enableViewModes && viewIntent === 'tasks') return 'tasks';
+    return enableViewModes ? getCircleScheduleDefaultView() : 'month';
+  });
+  const appliedViewIntentRef = useRef(viewIntent === 'tasks');
   const [weekAnchor, setWeekAnchor] = useState(today);
   const [appointmentSelection, setAppointmentSelection] =
     useState<CircleScheduleAppointmentSelection | null>(null);
 
   useEffect(() => {
     if (!enableViewModes) return;
+    if (viewIntent === 'tasks') {
+      if (!appliedViewIntentRef.current) {
+        appliedViewIntentRef.current = true;
+        setViewMode('tasks');
+      }
+      return;
+    }
     setViewMode(defaultScheduleView);
-  }, [defaultScheduleView, enableViewModes]);
+  }, [defaultScheduleView, enableViewModes, viewIntent]);
 
   const rangeStart = useMemo(() => new Date(viewYear, viewMonth, 1), [viewYear, viewMonth]);
   const rangeEnd = useMemo(() => new Date(viewYear, viewMonth + 1, 0), [viewYear, viewMonth]);
@@ -231,6 +244,13 @@ export function CircleAssessmentScheduleCalendar({
     () => getCareCalendarByDay(careEntries, rangeStart, rangeEnd),
     [careEntries, rangeStart, rangeEnd],
   );
+
+  const resolvedAppointmentSelection = useMemo(() => {
+    if (!appointmentSelection) return null;
+    const dayEvents =
+      (viewMode === 'month' ? monthCareByDay : careByDay).get(appointmentSelection.dateKey) ?? [];
+    return resolveCircleScheduleAppointmentSelection(appointmentSelection, dayEvents);
+  }, [appointmentSelection, careByDay, monthCareByDay, viewMode]);
 
   const monthCells = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
   const assessmentsEnabled = isScheduleEnabled(schedule.preferences);
@@ -578,16 +598,16 @@ export function CircleAssessmentScheduleCalendar({
           />
         )}
 
-        {appointmentSelection ? (
+        {resolvedAppointmentSelection ? (
           <CircleScheduleAppointmentDetailSheet
-            selection={appointmentSelection}
+            selection={resolvedAppointmentSelection}
             ct={ct}
             t={t}
             onClose={() => setAppointmentSelection(null)}
             onEdit={
               onEditAppointment
                 ? () => {
-                    const entryId = appointmentSelection.event.entryId;
+                    const entryId = resolvedAppointmentSelection.event.entryId;
                     setAppointmentSelection(null);
                     onEditAppointment(entryId);
                   }
@@ -782,16 +802,16 @@ export function CircleAssessmentScheduleCalendar({
         />
       ) : null}
 
-      {appointmentSelection ? (
+      {resolvedAppointmentSelection ? (
         <CircleScheduleAppointmentDetailSheet
-          selection={appointmentSelection}
+          selection={resolvedAppointmentSelection}
           ct={ct}
           t={t}
           onClose={() => setAppointmentSelection(null)}
           onEdit={
             onEditAppointment
               ? () => {
-                  const entryId = appointmentSelection.event.entryId;
+                  const entryId = resolvedAppointmentSelection.event.entryId;
                   setAppointmentSelection(null);
                   onEditAppointment(entryId);
                 }

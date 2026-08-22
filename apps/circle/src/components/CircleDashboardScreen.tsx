@@ -108,6 +108,7 @@ import {
   buildPreviewScheduleNudgeCounts,
   type CircleScheduleNudgeCounts,
 } from '../lib/circleDashboardScheduleNudges';
+import type { CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
 
 import {
   isCircleProfileDataComplete,
@@ -212,6 +213,7 @@ interface CircleDashboardScreenProps {
   onOpenGalleryReactions?: () => void;
   /** Open Media gallery on the Shared → My albums filter. */
   onOpenGalleryMyAlbums?: () => void;
+  onOpenSchedule?: (view?: CircleScheduleViewIntent) => void;
   onOpenVisitCapture?: () => void;
   onRequestDropIn?: () => void;
   onResumeDropIn?: () => void;
@@ -795,7 +797,7 @@ function RecordVisitCaptureWidget({
       type="button"
       onClick={onRecordVisitCapture}
       className={cn(
-        'col-span-2 w-full p-3 sm:px-4 sm:py-3.5 rounded-2xl border text-left transition-colors',
+        'w-full p-3 sm:px-4 sm:py-3.5 rounded-2xl border text-left transition-colors',
         'flex items-center gap-3 sm:gap-4 min-h-[4.5rem] sm:min-h-[5rem]',
         'border-slate-100 bg-white hover:border-blue-200 hover:bg-blue-50/30',
       )}
@@ -944,6 +946,7 @@ export function CircleDashboardScreen({
   onOpenAnalyticsPeriodOverview,
   onOpenGalleryReactions,
   onOpenGalleryMyAlbums,
+  onOpenSchedule,
   onOpenVisitCapture,
   onRequestDropIn,
   onResumeDropIn,
@@ -1156,6 +1159,7 @@ export function CircleDashboardScreen({
       assessmentSchedule: assessmentScheduleContext,
       careEntries: visibleCareCalendarEntries,
       scheduleEnabled: remoteSettings?.featuresVisibility?.schedule !== false,
+      memberRole,
       now: scheduleNudgeNow,
     });
     const gated: CircleScheduleNudgeCounts = patientAssessmentsFeatureEnabled
@@ -1164,6 +1168,7 @@ export function CircleDashboardScreen({
     return previewReminders ? buildPreviewScheduleNudgeCounts(gated) : gated;
   }, [
     assessmentScheduleContext,
+    memberRole,
     patientAssessmentsFeatureEnabled,
     previewReminders,
     remoteSettings?.featuresVisibility?.schedule,
@@ -1904,6 +1909,10 @@ export function CircleDashboardScreen({
         onOpenMessages={() => onGoToTab('messages')}
       />
 
+      {onOpenVisitCapture ? (
+        <RecordVisitCaptureWidget onRecordVisitCapture={onOpenVisitCapture} t={t} />
+      ) : null}
+
       <CircleProfileChangeBanner user={user} db={db} patient={patient} />
 
       <CircleCareTransitionReadinessBanner
@@ -1945,12 +1954,6 @@ export function CircleDashboardScreen({
       />
 
       <div className="space-y-5">
-        {onOpenVisitCapture ? (
-          <div className="grid grid-cols-2 gap-3">
-            <RecordVisitCaptureWidget onRecordVisitCapture={onOpenVisitCapture} t={t} />
-          </div>
-        ) : null}
-
         {patientPresence.online && showLiveTile && !previewOfflineAlert ? (
           <div className="grid grid-cols-2 gap-3">
             <div
@@ -2044,7 +2047,13 @@ export function CircleDashboardScreen({
           onOpenCircleFolder={onOpenCircleFolder}
           scheduleNudgeCounts={showScheduleNudgeTiles ? scheduleNudgeCounts : null}
           scheduleEnabled={scheduleEnabledForNudges}
-          onOpenSchedule={() => onGoToTab('schedule')}
+          onOpenSchedule={(view) => {
+            if (onOpenSchedule) {
+              onOpenSchedule(view);
+              return;
+            }
+            onGoToTab('schedule');
+          }}
         />
 
         <CircleDashboardCelebrationSection

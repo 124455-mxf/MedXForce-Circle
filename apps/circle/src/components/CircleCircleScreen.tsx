@@ -139,6 +139,7 @@ interface CircleCircleScreenProps {
   dropInActive?: boolean;
   dropInChatOpen?: boolean;
   onRecordVisit?: (entryId?: string) => void;
+  onOpenSchedule?: () => void;
   circleInboxIntent?: { thread: CircleMemberThreadKind; view: CirclePostInboxView } | null;
   onCircleInboxIntentConsumed?: () => void;
 }
@@ -288,6 +289,7 @@ export function CircleCircleScreen({
   dropInActive = false,
   dropInChatOpen = false,
   onRecordVisit,
+  onOpenSchedule,
   circleInboxIntent = null,
   onCircleInboxIntentConsumed,
 }: CircleCircleScreenProps) {
@@ -606,6 +608,7 @@ export function CircleCircleScreen({
     inboxView === 'visit_captures' &&
     canRecordVisitCaptureInCircleFolder(memberRole, activeThread) &&
     !!onRecordVisit;
+  const showOpenScheduleAction = inboxView === 'appointments' && !!onOpenSchedule;
 
   const folderActionCard = dropInFolderVariant ? (
     <CirclePostFolderActionCard
@@ -622,6 +625,8 @@ export function CircleCircleScreen({
     />
   ) : showRecordVisitAction ? (
     <CirclePostFolderActionCard variant="record_visit" onAction={onRecordVisit} t={t} className="mb-3" />
+  ) : showOpenScheduleAction ? (
+    <CirclePostFolderActionCard variant="open_schedule" onAction={onOpenSchedule} t={t} className="mb-3" />
   ) : null;
 
   const filteredPosts = useMemo(

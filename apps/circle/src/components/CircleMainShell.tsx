@@ -82,6 +82,7 @@ import { CircleSelectedPatientProvider } from '../context/CircleSelectedPatientC
 import { normalizeCircleUiLanguage } from '../lib/circleLanguages';
 import type { CirclePostInboxView } from '../lib/circlePostInboxViews';
 import type { CircleGalleryIntent } from '../lib/circleGalleryIntent';
+import type { CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
 
 function TabLoadingFallback() {
   return <div className="flex flex-1 items-center justify-center p-6 text-sm text-slate-500">Loading…</div>;
@@ -139,6 +140,9 @@ export function CircleMainShell({
     'communication_log' | 'in_out' | null
   >(null);
   const [galleryIntent, setGalleryIntent] = useState<CircleGalleryIntent | null>(null);
+  const [scheduleViewIntent, setScheduleViewIntent] = useState<CircleScheduleViewIntent | null>(
+    null,
+  );
   const [dropInConfirmOpen, setDropInConfirmOpen] = useState(false);
   const [dropInSentThisOpen, setDropInSentThisOpen] = useState(false);
   const replyDraftGuardRef = useRef<UnsavedReplyDraftGuard | null>(null);
@@ -146,6 +150,10 @@ export function CircleMainShell({
   const mainRef = useRef<HTMLElement>(null);
 
   const compactChrome = activeTab !== 'dashboard';
+
+  useEffect(() => {
+    if (activeTab !== 'schedule') setScheduleViewIntent(null);
+  }, [activeTab]);
 
   useLayoutEffect(() => {
     const el = mainRef.current;
@@ -181,6 +189,7 @@ export function CircleMainShell({
       analyticsOriginTabRef.current = null;
       setInitialAssessmentsOverview(false);
       setInitialPeriodOverviewDays(null);
+      setScheduleViewIntent(null);
       guardedNavigate(() => setActiveTab(tab));
     },
     [activeTab, guardedNavigate],
@@ -188,7 +197,21 @@ export function CircleMainShell({
 
   const handleGoToTab = handleTabChange;
 
+  const handleOpenSchedule = useCallback(
+    (view?: CircleScheduleViewIntent) => {
+      analyticsOriginTabRef.current = null;
+      setInitialAssessmentsOverview(false);
+      setInitialPeriodOverviewDays(null);
+      guardedNavigate(() => {
+        setScheduleViewIntent(view ?? null);
+        setActiveTab('schedule');
+      });
+    },
+    [guardedNavigate],
+  );
+
   const handleBackToDashboard = useCallback(() => {
+    setScheduleViewIntent(null);
     guardedNavigate(() => setActiveTab('dashboard'));
   }, [guardedNavigate]);
 
@@ -594,6 +617,7 @@ export function CircleMainShell({
 
   const handleSelectPatient = (patient: CirclePatientSummary) => {
     guardedNavigate(() => {
+      setScheduleViewIntent(null);
       onSelectPatient(patient);
       setActiveTab('dashboard');
     });
@@ -721,6 +745,7 @@ export function CircleMainShell({
               onOpenAnalyticsPeriodOverview={handleOpenAnalyticsPeriodOverview}
               onOpenGalleryReactions={handleOpenGalleryReactions}
               onOpenGalleryMyAlbums={handleOpenGalleryMyAlbums}
+              onOpenSchedule={handleOpenSchedule}
               onOpenVisitCapture={
                 showVisitCapture ? () => handleOpenVisitCapture() : undefined
               }
@@ -759,6 +784,7 @@ export function CircleMainShell({
                 db={db}
                 patient={selectedPatient}
                 actionBadgeCount={scheduleActionBadgeCount}
+                viewIntent={scheduleViewIntent}
                 onOpenCountChange={setScheduleScreenOpenCount}
                 onOpenAssessment={handleOpenAnalyticsDetail}
                 onRecordVisit={
@@ -810,6 +836,7 @@ export function CircleMainShell({
                     ? (entryId?: string) => handleOpenVisitCapture(entryId)
                     : undefined
                 }
+                onOpenSchedule={handleOpenSchedule}
                 circleInboxIntent={circleInboxIntent}
                 onCircleInboxIntentConsumed={handleCircleInboxIntentConsumed}
               />

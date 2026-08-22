@@ -91,7 +91,7 @@ export function CircleCareCalendarEntryFormNav({
             type="button"
             onClick={isLastStep ? onFinish : onNext}
             disabled={busy}
-            className="p-2.5 rounded-2xl transition-all shadow-lg disabled:opacity-50 bg-blue-600 text-white shadow-blue-100 hover:bg-blue-700"
+            className="p-2.5 rounded-2xl transition-all disabled:opacity-50 bg-blue-600 text-white hover:bg-blue-700"
             aria-label={isLastStep ? 'Save appointment' : 'Next section'}
           >
             {isLastStep ? <Check size={18} /> : <ChevronRight size={18} />}

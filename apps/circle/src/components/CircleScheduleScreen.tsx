@@ -20,12 +20,14 @@ import {
 import { CircleDashboardAssessmentScheduleSection } from './CircleDashboardAssessmentScheduleSection';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 import { formatCircleBadgeCount } from './CircleCountBadge';
+import type { CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
 
 type CircleScheduleScreenProps = {
   user: User;
   db: Firestore;
   patient: CirclePatientSummary;
   actionBadgeCount?: number;
+  viewIntent?: CircleScheduleViewIntent | null;
   onOpenCountChange?: (count: number) => void;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
   onRecordVisit?: (entryId: string) => void;
@@ -37,6 +39,7 @@ export function CircleScheduleScreen({
   db,
   patient,
   actionBadgeCount = 0,
+  viewIntent = null,
   onOpenCountChange,
   onOpenAssessment,
   onRecordVisit,
@@ -140,6 +143,7 @@ export function CircleScheduleScreen({
             onManageClinicalReferences={onManageClinicalReferences}
             onRegisterAddAppointment={registerAddAppointment}
             onOpenCountChange={handleOpenCountChange}
+            viewIntent={viewIntent}
           />
         </div>
       </div>

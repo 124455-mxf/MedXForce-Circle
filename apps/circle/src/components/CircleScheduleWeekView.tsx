@@ -10,6 +10,7 @@ import {
   formatCareCalendarTimeRange,
   mergeAttendeeResponses,
   parseAttendeeResponseSummary,
+  parseCareCalendarAppointmentTasks,
   shouldShowAttendeeInviteResponseBadge,
   type AnalyticsMetricId,
   type AssessmentHistoryMap,
@@ -41,6 +42,14 @@ export type CircleScheduleAppointmentSelection = {
   dateKey: string;
   event: CareCalendarDayEvent;
 };
+
+export function resolveCircleScheduleAppointmentSelection(
+  selection: CircleScheduleAppointmentSelection,
+  dayEvents: CareCalendarDayEvent[],
+): CircleScheduleAppointmentSelection {
+  const fresh = dayEvents.find((event) => event.entryId === selection.event.entryId);
+  return fresh ? { dateKey: selection.dateKey, event: fresh } : selection;
+}
 
 type CircleScheduleWeekViewProps = {
   weekAnchor: Date;
@@ -102,30 +111,45 @@ function inviteeUidMapSignature(map: Record<string, string> | undefined): string
     .join('|');
 }
 
+function appointmentTasksSignature(tasks: CareCalendarAppointmentTask[] | undefined): string {
+  if (!tasks?.length) return '';
+  return tasks.map((task) => `${task.id}:${task.status}:${task.title}`).join('|');
+}
+
 /**
- * Live-merge attendee RSVP badges from the care_calendar doc.
+ * Live-merge attendee RSVP badges and visit tasks from the care_calendar doc.
  * Keep fallback/uid-map out of effect deps — callers often pass freshly merged
  * arrays each render, and resetting to a stale selection.event caused PENDING↔GOING flicker.
  */
-function useLiveMergedAttendees(
+function useLiveCareCalendarSheetFields(
   db: Firestore | undefined,
   patientId: string | undefined,
   entryId: string,
-  fallback?: CareCalendarAttendee[],
+  fallbackAttendees?: CareCalendarAttendee[],
   inviteeMemberUidByContactId?: Record<string, string>,
-): CareCalendarAttendee[] | undefined {
-  const [attendees, setAttendees] = useState(fallback);
-  const fallbackRef = useRef(fallback);
-  fallbackRef.current = fallback;
+  fallbackTasks?: CareCalendarAppointmentTask[],
+): {
+  attendees: CareCalendarAttendee[] | undefined;
+  appointmentTasks: CareCalendarAppointmentTask[] | undefined;
+} {
+  const [attendees, setAttendees] = useState(fallbackAttendees);
+  const [appointmentTasks, setAppointmentTasks] = useState(fallbackTasks);
+  const fallbackRef = useRef(fallbackAttendees);
+  fallbackRef.current = fallbackAttendees;
   const inviteeUidMapRef = useRef(inviteeMemberUidByContactId);
   inviteeUidMapRef.current = inviteeMemberUidByContactId;
-  const attendeesSigRef = useRef(attendeesSignature(fallback));
+  const fallbackTasksRef = useRef(fallbackTasks);
+  fallbackTasksRef.current = fallbackTasks;
+  const attendeesSigRef = useRef(attendeesSignature(fallbackAttendees));
   const inviteeUidMapSigRef = useRef(inviteeUidMapSignature(inviteeMemberUidByContactId));
+  const tasksSigRef = useRef(appointmentTasksSignature(fallbackTasks));
 
   useEffect(() => {
     setAttendees(fallbackRef.current);
+    setAppointmentTasks(fallbackTasksRef.current);
     attendeesSigRef.current = attendeesSignature(fallbackRef.current);
     inviteeUidMapSigRef.current = inviteeUidMapSignature(inviteeUidMapRef.current);
+    tasksSigRef.current = appointmentTasksSignature(fallbackTasksRef.current);
   }, [entryId]);
 
   useEffect(() => {
@@ -154,14 +178,21 @@ function useLiveMergedAttendees(
         const mergedSig = attendeesSignature(merged);
         const uidMapSig = inviteeUidMapSignature(uidMap);
         if (
-          mergedSig === attendeesSigRef.current &&
-          uidMapSig === inviteeUidMapSigRef.current
+          mergedSig !== attendeesSigRef.current ||
+          uidMapSig !== inviteeUidMapSigRef.current
         ) {
-          return;
+          attendeesSigRef.current = mergedSig;
+          inviteeUidMapSigRef.current = uidMapSig;
+          setAttendees(merged);
         }
-        attendeesSigRef.current = mergedSig;
-        inviteeUidMapSigRef.current = uidMapSig;
-        setAttendees(merged);
+
+        const liveTasks =
+          parseCareCalendarAppointmentTasks(data.appointmentTasks) ?? fallbackTasksRef.current;
+        const tasksSig = appointmentTasksSignature(liveTasks);
+        if (tasksSig !== tasksSigRef.current) {
+          tasksSigRef.current = tasksSig;
+          setAppointmentTasks(liveTasks);
+        }
       },
       () => {
         /* read may be denied for legacy entries */
@@ -169,7 +200,10 @@ function useLiveMergedAttendees(
     );
   }, [db, entryId, patientId]);
 
-  return attendees ?? fallback;
+  return {
+    attendees: attendees ?? fallbackAttendees,
+    appointmentTasks: appointmentTasks ?? fallbackTasks,
+  };
 }
 
 export function CircleScheduleWeekView({
@@ -200,6 +234,13 @@ export function CircleScheduleWeekView({
   const [selection, setSelection] = useState<CircleScheduleAppointmentSelection | null>(null);
   const ct = (key: string, params?: Record<string, unknown>) =>
     t(`dashboard.careCalendar.${key}`, params);
+  const resolvedSelection = useMemo(() => {
+    if (!selection) return null;
+    return resolveCircleScheduleAppointmentSelection(
+      selection,
+      careByDay.get(selection.dateKey) ?? [],
+    );
+  }, [careByDay, selection]);
 
   return (
     <>
@@ -223,16 +264,16 @@ export function CircleScheduleWeekView({
         memberDisplayName={memberDisplayName}
         memberRole={memberRole}
       />
-      {selection ? (
+      {resolvedSelection ? (
         <CircleScheduleAppointmentDetailSheet
-          selection={selection}
+          selection={resolvedSelection}
           ct={ct}
           t={t}
           onClose={() => setSelection(null)}
           onEdit={
             onEditAppointment
               ? () => {
-                  const entryId = selection.event.entryId;
+                  const entryId = resolvedSelection.event.entryId;
                   setSelection(null);
                   onEditAppointment(entryId);
                 }
@@ -448,12 +489,21 @@ function WeekAppointmentDetail({
       event.inviteeMemberUidByContactId,
     ],
   );
-  const liveAttendees = useLiveMergedAttendees(
-    db,
-    patientId,
-    event.entryId,
-    fallbackAttendees,
-    event.inviteeMemberUidByContactId,
+  const { attendees: liveAttendees, appointmentTasks: liveAppointmentTasks } =
+    useLiveCareCalendarSheetFields(
+      db,
+      patientId,
+      event.entryId,
+      fallbackAttendees,
+      event.inviteeMemberUidByContactId,
+      event.appointmentTasks,
+    );
+  const liveEvent = useMemo<CareCalendarDayEvent>(
+    () => ({
+      ...event,
+      appointmentTasks: liveAppointmentTasks ?? event.appointmentTasks,
+    }),
+    [event, liveAppointmentTasks],
   );
   const displayAttendees = useMemo(
     () =>
@@ -595,7 +645,7 @@ function WeekAppointmentDetail({
       </div>
       <div className="mt-6">
         <CircleCareCalendarAppointmentEpisodePanel
-          event={event}
+          event={liveEvent}
           appointmentDateKey={dateKey}
           ct={ct}
           t={t}
