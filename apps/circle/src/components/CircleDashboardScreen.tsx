@@ -1907,6 +1907,7 @@ export function CircleDashboardScreen({
         urgentItems={urgentAlertAttention}
         subduedItems={subduedAlertAttention}
         onOpenMessages={() => onGoToTab('messages')}
+        firstName={circleDisplayFirstName(patient.displayName, patient.firstName)}
       />
 
       {onOpenVisitCapture ? (

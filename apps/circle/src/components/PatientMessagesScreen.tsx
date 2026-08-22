@@ -106,16 +106,19 @@ import {
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import { resolveStoredMessageText } from '../lib/messageTranslationDisplay';
 import {
-  countUnreadAlertsInInbox,
-  countUnreadAttentionsInInbox,
-  countAlertsInInbox,
-  countAttentionsInInbox,
+  countUnreadAlertsAttentionInInbox,
+  countAlertsAttentionInInbox,
   countDirectMessagesForInboxView,
   filterDirectMessagesForInboxView,
+  isAlertsAttentionInboxView,
   messageMatchesInboxView,
+  normalizeMessagesInboxView,
   type CircleMessagesInboxView,
 } from '../lib/circleMessageInboxViews';
 import { splitInboxMessagesByRecency } from '../lib/circleMessageInboxRecency';
+import { useCircleAnalyticsSummaries } from '../hooks/useCircleAnalyticsSummaries';
+import { analyticsWindowDaysLabel } from '../lib/circleAnalyticsI18n';
+import { CircleAlertAttentionAnalyticsDetail } from './CircleAlertAttentionAnalyticsDetail';
 import {
   circleUrgencyInboxRowClass,
   circleUrgencyLeftAccentClass,
@@ -402,6 +405,12 @@ export function PatientMessagesScreen({
     user.uid,
   ]);
   const patientFirstName = circleDisplayFirstName(patient.displayName, patient.firstName);
+  const { byMetricId: analyticsByMetricId } = useCircleAnalyticsSummaries(db, patient);
+  const alertAttentionDetail = useMemo(() => {
+    const summary = analyticsByMetricId.get('alert-attention');
+    if (summary?.detail?.kind !== 'alert_attention') return null;
+    return { summary, detail: summary.detail };
+  }, [analyticsByMetricId]);
   const patientRecipient = useMemo(
     () => ({ key: patient.patientId, name: patientFirstName }),
     [patient.patientId, patientFirstName],
@@ -459,7 +468,7 @@ export function PatientMessagesScreen({
       onMessagesInboxIntentConsumed?.();
       return;
     }
-    setInboxView(messagesInboxIntent);
+    setInboxView(normalizeMessagesInboxView(messagesInboxIntent));
     onMessagesInboxIntentConsumed?.();
   }, [messagesInboxIntent, onMessagesInboxIntentConsumed, showCommunicationLogTab]);
 
@@ -534,21 +543,13 @@ export function PatientMessagesScreen({
         unread: countUnreadInView('deleted'),
         total: countTotalInView('deleted'),
       },
-      alert: {
-        unread: countUnreadAlertsInInbox(
+      alerts_attention: {
+        unread: countUnreadAlertsAttentionInInbox(
           inboxDirectMessages,
           repliesByMessageId,
           patient.patientId,
         ),
-        total: countAlertsInInbox(inboxDirectMessages),
-      },
-      attention: {
-        unread: countUnreadAttentionsInInbox(
-          inboxDirectMessages,
-          repliesByMessageId,
-          patient.patientId,
-        ),
-        total: countAttentionsInInbox(inboxDirectMessages),
+        total: countAlertsAttentionInInbox(inboxDirectMessages),
       },
     };
   }, [
@@ -1004,13 +1005,15 @@ export function PatientMessagesScreen({
     });
   }, [bucketDirectMessages, patient.patientId, repliesByMessageId, readTick]);
 
-  const inboxUsesRecencySections = inboxView === 'alert' || inboxView === 'attention';
+  const inboxUsesRecencySections = isAlertsAttentionInboxView(inboxView);
 
   const inboxRecencySplit = useMemo(() => {
     if (!inboxUsesRecencySections) {
       return { recent: sortedDirectMessages, older: [] as CircleThreadMessage[] };
     }
-    return splitInboxMessagesByRecency(sortedDirectMessages);
+    const split = splitInboxMessagesByRecency(sortedDirectMessages);
+    const older = [...split.older].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    return { recent: split.recent, older };
   }, [inboxUsesRecencySections, sortedDirectMessages]);
 
   const olderInboxUnreadCount = useMemo(() => {
@@ -1151,7 +1154,7 @@ export function PatientMessagesScreen({
       .find((reply) => reply.isPatient);
     const title = summaryRow
       ? summaryDateLabel(msg)
-      : messagesThreadHeaderTitle(t, msg, language, 'inbox');
+      : messagesThreadHeaderTitle(t, msg, language, 'inbox', patientFirstName);
     const alertKind = summaryRow ? null : circleMessageAlertAttentionKind(msg);
     const urgentAlertAttention =
       alertKind &&
@@ -1166,6 +1169,7 @@ export function PatientMessagesScreen({
       : messagesThreadInboxSnippet(msg, threadReplies, language, replySort, {
           resurrected,
           latestVisiblePatientReply,
+          firstName: patientFirstName,
         });
     const recipients = summaryRow || alertKind
       ? []
@@ -1377,41 +1381,24 @@ export function PatientMessagesScreen({
             <button
               type="button"
               role="tab"
-              aria-selected={inboxView === 'alert'}
-              aria-label={t('messages.tabAlerts')}
-              onClick={() => setInboxView('alert')}
+              aria-selected={isAlertsAttentionInboxView(inboxView)}
+              aria-label={t('messages.tabAlertsAttention')}
+              onClick={() => setInboxView('alerts_attention')}
               className={circleTabButtonClass(
-                inboxView === 'alert',
+                isAlertsAttentionInboxView(inboxView),
                 circleInboxIconTabExtraClass,
               )}
             >
               <span className="relative inline-flex items-center justify-center pr-1 pt-0.5">
                 <AlertCircle
                   size={CIRCLE_INBOX_TAB_ICON_SIZE}
-                  className={inboxView === 'alert' ? 'text-red-600' : 'text-slate-500'}
+                  className={isAlertsAttentionInboxView(inboxView) ? 'text-red-600' : 'text-slate-500'}
                   aria-hidden
                 />
-                <CircleFolderCountBadge {...inboxTabCounts.alert} placement="overlay" />
-              </span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={inboxView === 'attention'}
-              aria-label={t('messages.tabAttention')}
-              onClick={() => setInboxView('attention')}
-              className={circleTabButtonClass(
-                inboxView === 'attention',
-                circleInboxIconTabExtraClass,
-              )}
-            >
-              <span className="relative inline-flex items-center justify-center pr-1 pt-0.5">
-                <Bell
-                  size={CIRCLE_INBOX_TAB_ICON_SIZE}
-                  className={inboxView === 'attention' ? 'text-blue-600' : 'text-slate-500'}
-                  aria-hidden
+                <CircleFolderCountBadge
+                  {...inboxTabCounts.alerts_attention}
+                  placement="overlay"
                 />
-                <CircleFolderCountBadge {...inboxTabCounts.attention} placement="overlay" />
               </span>
             </button>
             <span className="w-px h-7 bg-slate-200/90 shrink-0 mx-0.5 self-center" aria-hidden />
@@ -1511,14 +1498,12 @@ export function PatientMessagesScreen({
             )
           ) : bucketDirectMessages.length > 0 ? (
             <>
-              {inboxView === 'alert' || inboxView === 'attention' || inboxView === 'in_out' ? (
+              {isAlertsAttentionInboxView(inboxView) || inboxView === 'in_out' ? (
                 <div className="px-3 py-1.5 bg-white border-b border-slate-100">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    {inboxView === 'alert'
-                      ? t('messages.sectionAlerts')
-                      : inboxView === 'attention'
-                        ? t('messages.sectionAttention')
-                        : t('messages.sectionDirectMessages')}
+                    {isAlertsAttentionInboxView(inboxView)
+                      ? t('messages.sectionAlertsAttention')
+                      : t('messages.sectionDirectMessages')}
                   </p>
                 </div>
               ) : null}
@@ -1546,19 +1531,12 @@ export function PatientMessagesScreen({
                         aria-expanded={olderInboxExpanded}
                       >
                         <span className="text-sm font-semibold text-slate-600">
-                          {inboxView === 'alert'
-                            ? messagesCountLabel(
-                                t,
-                                inboxRecencySplit.older.length,
-                                'messages.inboxOlderAlert_one',
-                                'messages.inboxOlderAlert_other',
-                              )
-                            : messagesCountLabel(
-                                t,
-                                inboxRecencySplit.older.length,
-                                'messages.inboxOlderAttention_one',
-                                'messages.inboxOlderAttention_other',
-                              )}
+                          {messagesCountLabel(
+                            t,
+                            inboxRecencySplit.older.length,
+                            'messages.inboxOlderAlertAttention_one',
+                            'messages.inboxOlderAlertAttention_other',
+                          )}
                           {olderInboxUnreadCount > 0
                             ? ` (${t('messages.inboxOlderUnread', { count: olderInboxUnreadCount })})`
                             : ''}
@@ -1739,6 +1717,23 @@ export function PatientMessagesScreen({
       ? messagesPatientStatusHint(t, selectedMessage.status)
       : '';
   const selectedAlertKind = circleMessageAlertAttentionKind(selectedMessage);
+  const selectedAlertHistory =
+    selectedAlertKind && alertAttentionDetail ? (
+      <div className="space-y-2">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          {t('messages.alertAttentionHistory')}
+        </p>
+        <CircleAlertAttentionAnalyticsDetail
+          alerts={alertAttentionDetail.detail.alerts}
+          attentions={alertAttentionDetail.detail.attentions}
+          trend={alertAttentionDetail.detail.trend}
+          timeline={alertAttentionDetail.detail.timeline}
+          windowLabel={analyticsWindowDaysLabel(t, alertAttentionDetail.summary.windowDays || 30)}
+          embed
+          highlight={selectedAlertKind}
+        />
+      </div>
+    ) : null;
   const canReplyToThread =
     canCircleMemberReplyToPatientMessage(selectedMessage.status) && !selectedAlertKind;
   const replyActionButton = canReplyToThread ? (
@@ -1762,9 +1757,13 @@ export function PatientMessagesScreen({
       <div
         className={cn(
           'shrink-0 border-b',
-          selectedInitialMessageUnread
-            ? 'bg-red-50/40 border-red-200'
-            : 'bg-white/90 border-slate-100',
+          selectedAlertKind === 'alert'
+            ? 'bg-red-50/80 border-red-200'
+            : selectedAlertKind === 'attention'
+              ? 'bg-sky-50/80 border-sky-200'
+              : selectedInitialMessageUnread
+                ? 'bg-red-50/40 border-red-200'
+                : 'bg-white/90 border-slate-100',
         )}
       >
         <div className="flex items-start gap-2 px-4 pt-4 pb-3">
@@ -1778,8 +1777,30 @@ export function PatientMessagesScreen({
           </button>
           <div className="min-w-0 flex-1 pb-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="font-bold text-slate-800 line-clamp-2 leading-snug min-w-0 flex-1">
-                {messagesThreadHeaderTitle(t, selectedMessage, language)}
+              {selectedAlertKind ? (
+                <span
+                  className={cn(
+                    'w-8 h-8 rounded-xl border flex items-center justify-center shrink-0',
+                    selectedAlertKind === 'alert'
+                      ? 'bg-white border-red-100 text-red-600'
+                      : 'bg-white border-sky-100 text-sky-600',
+                  )}
+                  aria-hidden
+                >
+                  {selectedAlertKind === 'alert' ? <AlertCircle size={16} /> : <Bell size={16} />}
+                </span>
+              ) : null}
+              <p
+                className={cn(
+                  'font-bold line-clamp-2 leading-snug min-w-0 flex-1',
+                  selectedAlertKind === 'alert'
+                    ? 'text-red-900'
+                    : selectedAlertKind === 'attention'
+                      ? 'text-sky-900'
+                      : 'text-slate-800',
+                )}
+              >
+                {messagesThreadHeaderTitle(t, selectedMessage, language, 'thread', patientFirstName)}
               </p>
               <CirclePatientLanguagePill
                 language={patientLanguage}
@@ -1839,20 +1860,34 @@ export function PatientMessagesScreen({
           <div className="px-4 pt-3">{renderNewDivider('new-initial')}</div>
         ) : null}
         {showSelectedInitialMessage ? (
-          <div className="px-4 pb-2 pt-3 pl-14">
+          <div className="px-4 pb-2 pt-3">
             {selectedAlertKind ? (
-              <CircleMessageBodyPreview
-                text={messagesThreadBodyText(selectedMessage, language)}
-              />
+              <div
+                className={cn(
+                  'rounded-2xl border px-4 py-3',
+                  selectedAlertKind === 'alert'
+                    ? 'border-red-200 bg-red-50/70'
+                    : 'border-sky-200 bg-sky-50/70',
+                )}
+              >
+                <CircleMessageBodyPreview
+                  text={messagesThreadBodyText(selectedMessage, language, patientFirstName)}
+                  className={
+                    selectedAlertKind === 'alert' ? 'text-red-950' : 'text-sky-950'
+                  }
+                />
+              </div>
             ) : (
-              <CircleStoredTranslationMessage
-                text={selectedMessage.text}
-                translations={selectedMessage.translations}
-                viewerLanguage={language}
-                className="text-slate-700 text-base font-medium"
-                t={t}
-                translateIfMissing
-              />
+              <div className="pl-10">
+                <CircleStoredTranslationMessage
+                  text={selectedMessage.text}
+                  translations={selectedMessage.translations}
+                  viewerLanguage={language}
+                  className="text-slate-700 text-base font-medium"
+                  t={t}
+                  translateIfMissing
+                />
+              </div>
             )}
           </div>
         ) : selectedThreadResurrected ? (
@@ -1862,6 +1897,7 @@ export function PatientMessagesScreen({
         ) : null}
 
         <div className="px-4 pt-4 pb-6 space-y-4">
+        {selectedAlertHistory}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         {totalReplies > 0 && (
@@ -1952,7 +1988,7 @@ export function PatientMessagesScreen({
     </div>
     <CircleMessageExpandOverlay
       open={threadExpandedOpen}
-      title={messagesThreadHeaderTitle(t, selectedMessage, language)}
+      title={messagesThreadHeaderTitle(t, selectedMessage, language, 'thread', patientFirstName)}
       subtitle={formatMessagesThreadTime(
         t,
         selectedMessage.updatedAt || selectedMessage.createdAt,
@@ -1979,11 +2015,25 @@ export function PatientMessagesScreen({
             disableTruncate
           />
         ) : selectedAlertKind ? (
-          <CircleMessageBodyPreview
-            text={messagesThreadBodyText(selectedMessage, language)}
-            className="text-base"
-            disableTruncate
-          />
+          <div className="space-y-4">
+            <div
+              className={cn(
+                'rounded-2xl border px-4 py-3',
+                selectedAlertKind === 'alert'
+                  ? 'border-red-200 bg-red-50/70'
+                  : 'border-sky-200 bg-sky-50/70',
+              )}
+            >
+              <CircleMessageBodyPreview
+                text={messagesThreadBodyText(selectedMessage, language, patientFirstName)}
+                className={
+                  selectedAlertKind === 'alert' ? 'text-red-950 text-base' : 'text-sky-950 text-base'
+                }
+                disableTruncate
+              />
+            </div>
+            {selectedAlertHistory}
+          </div>
         ) : null}
         {[...orderedReplies].map(renderReply)}
       </div>

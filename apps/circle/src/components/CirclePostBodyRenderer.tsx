@@ -1,5 +1,6 @@
 import {
   circleThreadPostBoldTitleLine,
+  isAnnouncementThreadPost,
   isAppointmentInviteThreadPost,
   isDropInThreadPost,
   isPollThreadPost,
@@ -10,6 +11,7 @@ import {
 import type { Firestore } from 'firebase/firestore';
 import type { CircleUiLanguage } from '../lib/circleLanguages';
 import type { CircleTranslator } from '../lib/circleI18nContext';
+import { CircleAnnouncementPost } from './CircleAnnouncementPost';
 import { CircleAppointmentInvitePost } from './CircleAppointmentInvitePost';
 import { CircleDropInTranscriptMessage } from './CircleDropInTranscriptMessage';
 import { CircleMessageBodyPreview } from './CircleMessageBodyPreview';
@@ -55,6 +57,17 @@ export function CirclePostBodyRenderer({
   translationTargetLanguages?: CircleUiLanguage[];
 }) {
   const resolvedBoldFirstLine = boldFirstLine ?? circleThreadPostBoldTitleLine(post);
+
+  if (isAnnouncementThreadPost(post)) {
+    return (
+      <CircleAnnouncementPost
+        post={post}
+        isOwn={isOwn}
+        viewerLanguage={viewerLanguage}
+        t={t}
+      />
+    );
+  }
 
   if (isPollThreadPost(post) && db && patientId && memberUid) {
     return (

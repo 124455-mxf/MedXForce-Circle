@@ -30,6 +30,9 @@ type CircleAlertAttentionAnalyticsDetailProps = {
   trend?: AnalyticsTrendDirection;
   timeline?: AlertAttentionTimelinePoint[];
   windowLabel?: string;
+  /** Compact history cards for the Messages thread (not email). */
+  embed?: boolean;
+  highlight?: 'alert' | 'attention' | null;
 };
 
 const ALERT_COLOR = '#dc2626';
@@ -151,6 +154,7 @@ function AlertAttentionCard({
   valueClass,
   chartType,
   chartData,
+  dimmed = false,
 }: {
   icon: LucideIcon;
   title: string;
@@ -163,9 +167,10 @@ function AlertAttentionCard({
   valueClass: string;
   chartType: 'line' | 'bar';
   chartData: { date: string; value: number }[];
+  dimmed?: boolean;
 }) {
   return (
-    <div className={cn('rounded-xl border p-3 space-y-1.5', cardClass)}>
+    <div className={cn('rounded-xl border p-3 space-y-1.5', cardClass, dimmed && 'opacity-70')}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className={cn('w-8 h-8 rounded-lg bg-white flex items-center justify-center shrink-0', iconWrapClass)}>
@@ -201,14 +206,53 @@ export function CircleAlertAttentionAnalyticsDetail({
   trend = 'stable',
   timeline,
   windowLabel,
+  embed = false,
+  highlight = null,
 }: CircleAlertAttentionAnalyticsDetailProps) {
   const t = useCircleT();
-  const [chartType, setChartType] = useState<'line' | 'bar'>('bar');
+  const [chartType, setChartType] = useState<'line' | 'bar'>(embed ? 'line' : 'bar');
   const rangeLabel = windowLabel ?? analyticsWindowDaysLabel(t, 30);
   const alertLabel = t('analytics.alertAttention.alert');
   const attentionLabel = t('analytics.alertAttention.attention');
   const alertChartData = seriesFromTimeline(timeline, 'alert');
   const attentionChartData = seriesFromTimeline(timeline, 'attention');
+
+  const cards = (
+    <>
+      <AlertAttentionCard
+        icon={Siren}
+        title={alertLabel}
+        value={alerts}
+        hint={t('analytics.alertAttention.alertHint', { window: rangeLabel })}
+        color={ALERT_COLOR}
+        iconWrapClass="text-red-600"
+        cardClass="border-red-200 bg-red-50/50"
+        titleClass="text-red-700"
+        valueClass="text-red-700"
+        chartType={chartType}
+        chartData={alertChartData}
+        dimmed={highlight === 'attention'}
+      />
+      <AlertAttentionCard
+        icon={Bell}
+        title={attentionLabel}
+        value={attentions}
+        hint={t('analytics.alertAttention.attentionHint', { window: rangeLabel })}
+        color={ATTENTION_COLOR}
+        iconWrapClass="text-blue-600"
+        cardClass="border-blue-200 bg-blue-50/50"
+        titleClass="text-blue-700"
+        valueClass="text-blue-700"
+        chartType={chartType}
+        chartData={attentionChartData}
+        dimmed={highlight === 'alert'}
+      />
+    </>
+  );
+
+  if (embed) {
+    return <div className="space-y-2">{cards}</div>;
+  }
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -252,32 +296,7 @@ export function CircleAlertAttentionAnalyticsDetail({
           </div>
         </div>
 
-        <AlertAttentionCard
-          icon={Siren}
-          title={alertLabel}
-          value={alerts}
-          hint={t('analytics.alertAttention.alertHint', { window: rangeLabel })}
-          color={ALERT_COLOR}
-          iconWrapClass="text-red-600"
-          cardClass="border-red-200 bg-red-50/50"
-          titleClass="text-red-700"
-          valueClass="text-red-700"
-          chartType={chartType}
-          chartData={alertChartData}
-        />
-        <AlertAttentionCard
-          icon={Bell}
-          title={attentionLabel}
-          value={attentions}
-          hint={t('analytics.alertAttention.attentionHint', { window: rangeLabel })}
-          color={ATTENTION_COLOR}
-          iconWrapClass="text-blue-600"
-          cardClass="border-blue-200 bg-blue-50/50"
-          titleClass="text-blue-700"
-          valueClass="text-blue-700"
-          chartType={chartType}
-          chartData={attentionChartData}
-        />
+        {cards}
       </div>
     </div>
   );

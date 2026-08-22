@@ -135,6 +135,43 @@ export function formatCirclePollResultsTally(options: string[], counts: number[]
     .join(' · ');
 }
 
+const POLL_RESULTS_REPLY_PREFIXES = [/^Results:\s*/i, /^Ergebnis:\s*/i, /^Resultados:\s*/i, /^Wyniki:\s*/i];
+const POLL_RESULTS_REPLY_NONE = new Set(['no votes', 'keine stimmen', 'sin votos', 'brak głosów']);
+
+export type CirclePollResultsReplyParse = {
+  none: boolean;
+  parts: Array<{ label: string; count: number }>;
+};
+
+/** Detect the auto-posted poll-close note (EN/DE/ES/PL). */
+export function parseCirclePollResultsReply(text: string): CirclePollResultsReplyParse | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  let rest: string | null = null;
+  for (const prefix of POLL_RESULTS_REPLY_PREFIXES) {
+    if (prefix.test(trimmed)) {
+      rest = trimmed.replace(prefix, '').trim();
+      break;
+    }
+  }
+  if (rest == null) return null;
+  if (!rest || POLL_RESULTS_REPLY_NONE.has(rest.toLowerCase())) {
+    return { none: true, parts: [] };
+  }
+  const parts: Array<{ label: string; count: number }> = [];
+  for (const chunk of rest.split(/\s*·\s*/)) {
+    const piece = chunk.trim();
+    if (!piece) continue;
+    const match = piece.match(/^(.*)\s+(\d+)$/);
+    if (!match) {
+      parts.push({ label: piece, count: 0 });
+      continue;
+    }
+    parts.push({ label: match[1].trim() || piece, count: Number(match[2]) });
+  }
+  return { none: parts.length === 0, parts };
+}
+
 export function subscribeCirclePollVotes(
   db: Firestore,
   patientId: string,

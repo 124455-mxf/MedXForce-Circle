@@ -14,16 +14,19 @@ interface CircleAlertAttentionBannerProps {
   urgentItems: CircleAlertAttentionItem[];
   subduedItems: CircleAlertAttentionItem[];
   onOpenMessages: () => void;
+  firstName?: string | null;
 }
 
 function BannerRow({
   item,
   urgent,
   onOpenMessages,
+  firstName,
 }: {
   item: CircleAlertAttentionItem;
   urgent: boolean;
   onOpenMessages: () => void;
+  firstName?: string | null;
 }) {
   const t = useCircleT();
   const { language } = useCircleI18nContext();
@@ -78,6 +81,7 @@ function BannerRow({
                 translations: item.translations,
               },
               language,
+              firstName,
             );
             const preview = localized?.text || item.text || '';
             const trimmed = preview.length > 120 ? `${preview.slice(0, 120).trimEnd()}…` : preview;
@@ -94,16 +98,29 @@ export function CircleAlertAttentionBanner({
   urgentItems,
   subduedItems,
   onOpenMessages,
+  firstName,
 }: CircleAlertAttentionBannerProps) {
   if (urgentItems.length === 0 && subduedItems.length === 0) return null;
 
   return (
     <div className="space-y-2">
       {urgentItems.map((item) => (
-        <BannerRow key={item.id} item={item} urgent onOpenMessages={onOpenMessages} />
+        <BannerRow
+          key={item.id}
+          item={item}
+          urgent
+          onOpenMessages={onOpenMessages}
+          firstName={firstName}
+        />
       ))}
       {subduedItems.map((item) => (
-        <BannerRow key={item.id} item={item} urgent={false} onOpenMessages={onOpenMessages} />
+        <BannerRow
+          key={item.id}
+          item={item}
+          urgent={false}
+          onOpenMessages={onOpenMessages}
+          firstName={firstName}
+        />
       ))}
     </div>
   );

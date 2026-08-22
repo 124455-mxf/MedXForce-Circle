@@ -49,12 +49,13 @@ export function messagesThreadHeaderTitle(
   msg: CircleThreadMessage,
   viewerLanguage?: CircleUiLanguage,
   context: 'inbox' | 'thread' = 'thread',
+  firstName?: string | null,
 ): string {
   if (isIcuDailySummary(msg)) {
     return t('messages.communicationLogTitle', { date: summaryDateLabel(msg) });
   }
   const localized = viewerLanguage
-    ? resolveAlertAttentionMessageDisplay(msg, viewerLanguage)
+    ? resolveAlertAttentionMessageDisplay(msg, viewerLanguage, firstName)
     : null;
   if (localized?.subject) return localized.subject;
   const subject = msg.subject?.trim();
@@ -86,6 +87,7 @@ export function messagesThreadInboxSnippet(
   options?: {
     resurrected?: boolean;
     latestVisiblePatientReply?: CircleThreadReply | null;
+    firstName?: string | null;
   },
 ): string {
   if (isIcuDailySummary(msg)) return '';
@@ -105,15 +107,19 @@ export function messagesThreadInboxSnippet(
     }
   }
 
-  return trimInboxPreview(messagesThreadBodyText(msg, viewerLanguage), INBOX_SNIPPET_MAX);
+  return trimInboxPreview(
+    messagesThreadBodyText(msg, viewerLanguage, options?.firstName),
+    INBOX_SNIPPET_MAX,
+  );
 }
 
 export function messagesThreadBodyText(
   msg: CircleThreadMessage,
   viewerLanguage?: CircleUiLanguage,
+  firstName?: string | null,
 ): string {
   const localized = viewerLanguage
-    ? resolveAlertAttentionMessageDisplay(msg, viewerLanguage)
+    ? resolveAlertAttentionMessageDisplay(msg, viewerLanguage, firstName)
     : null;
   if (localized?.text) return localized.text;
   if (viewerLanguage) {
@@ -191,10 +197,10 @@ export function messagesInboxSubtitle(
       return t('messages.subtitleArchived');
     case 'deleted':
       return t('messages.subtitleDeleted');
+    case 'alerts_attention':
     case 'alert':
-      return t('messages.subtitleAlert');
     case 'attention':
-      return t('messages.subtitleAttention');
+      return t('messages.subtitleAlertsAttention');
     default:
       return t('messages.subtitleInOut');
   }
@@ -206,10 +212,10 @@ export function messagesInboxEmptyMessage(t: CircleTranslator, inboxView: string
       return t('messages.emptyArchived');
     case 'deleted':
       return t('messages.emptyDeleted');
+    case 'alerts_attention':
     case 'alert':
-      return t('messages.emptyAlert');
     case 'attention':
-      return t('messages.emptyAttention');
+      return t('messages.emptyAlertsAttention');
     default:
       return t('messages.emptyInOut');
   }

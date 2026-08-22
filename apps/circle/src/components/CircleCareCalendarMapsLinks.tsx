@@ -99,12 +99,14 @@ export function CircleCareCalendarMapsLinks({
           {sectionHeader}
         </p>
       ) : null}
-      {addressLines.map((line) => (
-        <p key={line} className="text-sm text-slate-600">
-          {line}
-        </p>
-      ))}
-      {mapsLinks}
+      <div className={sectionHeader ? 'space-y-1.5 pl-5' : 'space-y-1.5'}>
+        {addressLines.map((line) => (
+          <p key={line} className="text-sm text-slate-600">
+            {line}
+          </p>
+        ))}
+        {mapsLinks}
+      </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, Languages } from 'lucide-react';
+import { BarChart3, Check, Languages } from 'lucide-react';
 import type { Firestore } from 'firebase/firestore';
 import {
   canCloseCirclePoll,
@@ -257,7 +257,22 @@ export function CirclePollPost({
       {descriptionText ? (
         <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{descriptionText}</p>
       ) : null}
-      <div className="space-y-2">
+      <div
+        className={cn(
+          'space-y-2',
+          closed ? 'rounded-2xl border border-sky-200 bg-sky-50/70 p-3' : null,
+        )}
+      >
+        {closed ? (
+          <div className="flex items-center gap-2 px-0.5 pb-1">
+            <span className="w-7 h-7 rounded-lg border border-sky-100 bg-white text-sky-700 inline-flex items-center justify-center shrink-0">
+              <BarChart3 size={14} aria-hidden />
+            </span>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-sky-800">
+              {t('circle.pollResultsHeading')}
+            </p>
+          </div>
+        ) : null}
         {options.map((option, index) => {
           const count = counts[index] ?? 0;
           const selected = myVote?.optionIndex === index;
@@ -270,7 +285,7 @@ export function CirclePollPost({
               onClick={() => void handleVote(index)}
               className={cn(
                 'relative w-full text-left rounded-xl border overflow-hidden',
-                selected ? 'border-sky-500 ring-1 ring-sky-400/70' : 'border-slate-200',
+                selected ? 'border-sky-500 ring-1 ring-sky-400/70' : closed ? 'border-sky-200 bg-white' : 'border-slate-200',
                 !closed && !selected ? 'hover:border-sky-300' : null,
                 closed || saving ? 'cursor-default' : null,
               )}

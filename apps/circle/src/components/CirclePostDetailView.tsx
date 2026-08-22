@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Firestore } from 'firebase/firestore';
-import { Check, ChevronLeft, Copy, Loader2, Maximize2, MessageSquare, Trash2 } from 'lucide-react';
+import { BarChart3, Check, ChevronLeft, ClipboardList, Copy, Loader2, Maximize2, Megaphone, MessageSquare, Mic, Trash2 } from 'lucide-react';
 import {
+  isAnnouncementThreadPost,
   isDropInThreadPost,
+  isPollThreadPost,
   isVisitCaptureThreadPost,
   type CircleMemberThreadPost,
   type CircleMemberThreadPostReply,
@@ -16,6 +18,7 @@ import {
   circlePostInboxTitle,
 } from '../lib/circlePostInboxI18n';
 import { writeCircleThreadPostToClipboard } from '../lib/circleThreadClipboard';
+import { careTransitionPackIdFromAnnouncementPost } from '../lib/careTransitionAnnouncementUnread';
 import { CircleExpandableMessageComposer } from './CircleExpandableMessageComposer';
 import { CircleMemberReplyCard } from './CircleMemberReplyCard';
 import { CircleMessageExpandOverlay } from './CircleMessageExpandOverlay';
@@ -110,6 +113,9 @@ export function CirclePostDetailView({
   const [replyComposerOpen, setReplyComposerOpen] = useState(false);
   const isVisitCapture = isVisitCaptureThreadPost(post);
   const isDropIn = isDropInThreadPost(post);
+  const isPoll = isPollThreadPost(post);
+  const isPackAnnouncement = Boolean(careTransitionPackIdFromAnnouncementPost(post));
+  const isAnnouncement = isAnnouncementThreadPost(post) || readOnlyAnnouncement;
   const showPatientLanguagePill = isDropIn || isVisitCapture;
   const title = circlePostInboxTitle(t, post, viewerLanguage, currentUserUid);
   const showReplies = canReply || replies.length > 0;
@@ -153,7 +159,17 @@ export function CirclePostDetailView({
         <div
           className={cn(
             'shrink-0 border-b',
-            highlightAsUnread ? 'bg-red-50/40 border-red-200' : 'bg-white/90 border-slate-100',
+            isPackAnnouncement
+              ? 'bg-teal-50/80 border-teal-200'
+              : isAnnouncement
+                ? 'bg-amber-50/80 border-amber-200'
+                : isVisitCapture
+                  ? 'bg-indigo-50/80 border-indigo-200'
+                  : isPoll
+                    ? 'bg-sky-50/70 border-sky-200'
+                    : highlightAsUnread
+                      ? 'bg-red-50/40 border-red-200'
+                      : 'bg-white/90 border-slate-100',
           )}
         >
           <div className="flex items-start gap-2 px-4 pt-4 pb-3">
@@ -167,7 +183,43 @@ export function CirclePostDetailView({
             </button>
             <div className="min-w-0 flex-1 pb-1">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="font-bold text-slate-800 line-clamp-2 leading-snug min-w-0 flex-1">
+                {isPackAnnouncement || isAnnouncement || isVisitCapture || isPoll ? (
+                  <span
+                    className={cn(
+                      'w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 bg-white',
+                      isPackAnnouncement
+                        ? 'border-teal-100 text-teal-700'
+                        : isAnnouncement
+                          ? 'border-amber-100 text-amber-700'
+                          : isVisitCapture
+                            ? 'border-indigo-100 text-indigo-700'
+                            : 'border-sky-100 text-sky-700',
+                    )}
+                    aria-hidden
+                  >
+                    {isPackAnnouncement ? (
+                      <ClipboardList size={16} />
+                    ) : isAnnouncement ? (
+                      <Megaphone size={16} />
+                    ) : isVisitCapture ? (
+                      <Mic size={16} />
+                    ) : (
+                      <BarChart3 size={16} />
+                    )}
+                  </span>
+                ) : null}
+                <p
+                  className={cn(
+                    'font-bold line-clamp-2 leading-snug min-w-0 flex-1',
+                    isPackAnnouncement
+                      ? 'text-teal-950'
+                      : isAnnouncement
+                        ? 'text-amber-950'
+                        : isVisitCapture
+                          ? 'text-indigo-950'
+                          : 'text-slate-800',
+                  )}
+                >
                   {title}
                 </p>
                 {showPatientLanguagePill && patientLanguage ? (
@@ -220,11 +272,6 @@ export function CirclePostDetailView({
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4">
-          {readOnlyAnnouncement ? (
-            <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
-              {t('circle.announcementReadOnlyHint')}
-            </p>
-          ) : null}
           <CirclePostBodyRenderer
             post={post}
             isOwn={isOwn}
@@ -243,6 +290,18 @@ export function CirclePostDetailView({
             authorDisplayName={authorDisplayName}
             translationTargetLanguages={translationTargetLanguages}
           />
+          {readOnlyAnnouncement ? (
+            <p
+              className={cn(
+                'mt-4 rounded-xl border px-3 py-2.5 text-xs leading-relaxed',
+                isPackAnnouncement
+                  ? 'border-teal-100 bg-white text-teal-900'
+                  : 'border-amber-100 bg-white text-amber-900',
+              )}
+            >
+              {t('circle.announcementReadOnlyHint')}
+            </p>
+          ) : null}
           <div className="mt-6 flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -289,6 +348,7 @@ export function CirclePostDetailView({
                         highlightAsUnread={replyUnread}
                         viewerLanguage={viewerLanguage}
                         t={t}
+                        pollThread={isPoll}
                       />
                     );
                   })}
@@ -363,6 +423,18 @@ export function CirclePostDetailView({
             authorDisplayName={authorDisplayName}
             translationTargetLanguages={translationTargetLanguages}
           />
+          {readOnlyAnnouncement ? (
+            <p
+              className={cn(
+                'rounded-xl border px-3 py-2.5 text-xs leading-relaxed',
+                isPackAnnouncement
+                  ? 'border-teal-100 bg-white text-teal-900'
+                  : 'border-amber-100 bg-white text-amber-900',
+              )}
+            >
+              {t('circle.announcementReadOnlyHint')}
+            </p>
+          ) : null}
           {replies.length > 0 ? (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
@@ -386,6 +458,7 @@ export function CirclePostDetailView({
                     highlightAsUnread={replyUnread}
                     viewerLanguage={viewerLanguage}
                     t={t}
+                    pollThread={isPoll}
                   />
                 );
               })}

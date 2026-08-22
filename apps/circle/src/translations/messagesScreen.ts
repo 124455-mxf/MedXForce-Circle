@@ -11,11 +11,14 @@ export const messagesScreenEnglish = {
   subtitleDeleted: 'Deleted on the patient tablet — read only, no replies.',
   subtitleAlert: 'Unread alerts also appear in In/Out until you acknowledge them.',
   subtitleAttention: 'Unread attention requests also appear in In/Out until you acknowledge them.',
+  subtitleAlertsAttention:
+    'Unread alerts and attention requests also appear in In/Out until you acknowledge them.',
   subtitleInOut: 'Tap a conversation to read and reply.',
   tabBucketsAria: 'Message buckets',
   tabCommunicationLog: 'Communication log',
   tabAlerts: 'Alerts',
   tabAttention: 'Attention',
+  tabAlertsAttention: 'Alerts & attention',
   tabInOut: 'In/Out',
   tabArchived: 'Archived',
   tabDeleted: 'Deleted',
@@ -23,6 +26,7 @@ export const messagesScreenEnglish = {
   markAllRead: 'Mark all read',
   sectionAlerts: 'Alerts',
   sectionAttention: 'Attention',
+  sectionAlertsAttention: 'Alerts & attention',
   sectionDirectMessages: 'Direct messages',
   emptyCommunicationLog:
     'No communication summaries yet. These appear when your loved one uses ICU mode with auto-send enabled and speaks or saves notes during the day.',
@@ -31,6 +35,8 @@ export const messagesScreenEnglish = {
   emptyAlert: 'No alerts yet. New alerts appear in In/Out until you acknowledge them.',
   emptyAttention:
     'No attention requests yet. New ones appear in In/Out until you acknowledge them.',
+  emptyAlertsAttention:
+    'No alerts or attention requests yet. New ones appear in In/Out until you acknowledge them.',
   emptyInOut: 'No messages in In/Out.',
   backToInbox: 'Back to inbox',
   patientMessage: 'Patient message',
@@ -68,6 +74,7 @@ export const messagesScreenEnglish = {
   hiddenFromInbox: 'Earlier messages in this conversation are hidden from your inbox.',
   repliesClosed: 'Replies are closed — the patient deleted this conversation on their tablet.',
   readOnlyAlertHint: 'This is a one-way alert — use Messages to reply to your loved one.',
+  alertAttentionHistory: 'Recent alerts & attention',
   showEarlierReplies: 'Show {{count}} earlier replies',
   showOlderReplies: 'Show {{count}} older replies',
   replyPlaceholder: 'Type your reply…',
@@ -117,6 +124,8 @@ export const messagesScreenEnglish = {
   inboxOlderAlert_other: '{{count}} older alerts',
   inboxOlderAttention_one: '{{count}} older attention request',
   inboxOlderAttention_other: '{{count}} older attention requests',
+  inboxOlderAlertAttention_one: '{{count}} older item',
+  inboxOlderAlertAttention_other: '{{count}} older items',
   inboxHideOlder: 'Hide',
 };
 
@@ -136,11 +145,14 @@ export const messagesScreenGerman = {
     'Ungelesene Alarme erscheinen auch unter Ein/Aus, bis Sie sie bestätigen.',
   subtitleAttention:
     'Ungelesene Aufmerksamkeitsanfragen erscheinen auch unter Ein/Aus, bis Sie sie bestätigen.',
+  subtitleAlertsAttention:
+    'Ungelesene Alarme und Aufmerksamkeitsanfragen erscheinen auch unter Ein/Aus, bis Sie sie bestätigen.',
   subtitleInOut: 'Tippen Sie auf eine Unterhaltung zum Lesen und Antworten.',
   tabBucketsAria: 'Nachrichtenordner',
   tabCommunicationLog: 'Kommunikationsprotokoll',
   tabAlerts: 'Alarme',
   tabAttention: 'Aufmerksamkeit',
+  tabAlertsAttention: 'Alarme & Aufmerksamkeit',
   tabInOut: 'Ein/Aus',
   tabArchived: 'Archiviert',
   tabDeleted: 'Gelöscht',
@@ -148,6 +160,7 @@ export const messagesScreenGerman = {
   markAllRead: 'Alle gelesen',
   sectionAlerts: 'Alarme',
   sectionAttention: 'Aufmerksamkeit',
+  sectionAlertsAttention: 'Alarme & Aufmerksamkeit',
   sectionDirectMessages: 'Direktnachrichten',
   emptyCommunicationLog:
     'Noch keine Kommunikationszusammenfassungen. Diese erscheinen, wenn Ihr Angehöriger den ICU-Modus mit Auto-Senden nutzt und tagsüber spricht oder Notizen speichert.',
@@ -157,6 +170,8 @@ export const messagesScreenGerman = {
     'Noch keine Alarme. Neue Alarme erscheinen unter Ein/Aus, bis Sie sie bestätigen.',
   emptyAttention:
     'Noch keine Aufmerksamkeitsanfragen. Neue erscheinen unter Ein/Aus, bis Sie sie bestätigen.',
+  emptyAlertsAttention:
+    'Noch keine Alarme oder Aufmerksamkeitsanfragen. Neue erscheinen unter Ein/Aus, bis Sie sie bestätigen.',
   emptyInOut: 'Keine Nachrichten unter Ein/Aus.',
   backToInbox: 'Zurück zum Posteingang',
   patientMessage: 'Patientennachricht',
@@ -197,6 +212,7 @@ export const messagesScreenGerman = {
     'Antworten geschlossen — der Patient hat diese Unterhaltung auf dem Tablet gelöscht.',
   readOnlyAlertHint:
     'Dies ist ein Einweg-Alarm — antworten Sie über Nachrichten an Ihren Angehörigen.',
+  alertAttentionHistory: 'Aktuelle Alarme & Aufmerksamkeit',
   showEarlierReplies: '{{count}} frühere Antworten anzeigen',
   showOlderReplies: '{{count}} ältere Antworten anzeigen',
   replyPlaceholder: 'Antwort eingeben…',
@@ -247,6 +263,8 @@ export const messagesScreenGerman = {
   inboxOlderAlert_other: '{{count}} ältere Alarme',
   inboxOlderAttention_one: '{{count}} ältere Aufmerksamkeitsanfrage',
   inboxOlderAttention_other: '{{count}} ältere Aufmerksamkeitsanfragen',
+  inboxOlderAlertAttention_one: '{{count}} älterer Eintrag',
+  inboxOlderAlertAttention_other: '{{count}} ältere Einträge',
   inboxHideOlder: 'Ausblenden',
 };
 
@@ -265,11 +283,14 @@ export const messagesScreenSpanish = {
     'Las alertas no leídas también aparecen en Entrada/Salida hasta que las confirme.',
   subtitleAttention:
     'Las solicitudes de atención no leídas también aparecen en Entrada/Salida hasta que las confirme.',
+  subtitleAlertsAttention:
+    'Las alertas y solicitudes de atención no leídas también aparecen en Entrada/Salida hasta que las confirme.',
   subtitleInOut: 'Toque una conversación para leer y responder.',
   tabBucketsAria: 'Carpetas de mensajes',
   tabCommunicationLog: 'Registro de comunicación',
   tabAlerts: 'Alertas',
   tabAttention: 'Atención',
+  tabAlertsAttention: 'Alertas y atención',
   tabInOut: 'Entrada/Salida',
   tabArchived: 'Archivados',
   tabDeleted: 'Eliminados',
@@ -277,6 +298,7 @@ export const messagesScreenSpanish = {
   markAllRead: 'Marcar todo leído',
   sectionAlerts: 'Alertas',
   sectionAttention: 'Atención',
+  sectionAlertsAttention: 'Alertas y atención',
   sectionDirectMessages: 'Mensajes directos',
   emptyCommunicationLog:
     'Aún no hay resúmenes de comunicación. Aparecen cuando su ser querido usa el modo UCI con envío automático y habla o guarda notas durante el día.',
@@ -286,6 +308,8 @@ export const messagesScreenSpanish = {
     'Aún no hay alertas. Las nuevas aparecen en Entrada/Salida hasta que las confirme.',
   emptyAttention:
     'Aún no hay solicitudes de atención. Las nuevas aparecen en Entrada/Salida hasta que las confirme.',
+  emptyAlertsAttention:
+    'Aún no hay alertas ni solicitudes de atención. Las nuevas aparecen en Entrada/Salida hasta que las confirme.',
   emptyInOut: 'No hay mensajes en Entrada/Salida.',
   backToInbox: 'Volver a la bandeja',
   patientMessage: 'Mensaje del paciente',
@@ -326,6 +350,7 @@ export const messagesScreenSpanish = {
     'Respuestas cerradas — el paciente eliminó esta conversación en su tableta.',
   readOnlyAlertHint:
     'Esta es una alerta unidireccional — use Mensajes para responder a su ser querido.',
+  alertAttentionHistory: 'Alertas y atención recientes',
   showEarlierReplies: 'Mostrar {{count}} respuestas anteriores',
   showOlderReplies: 'Mostrar {{count}} respuestas más antiguas',
   replyPlaceholder: 'Escriba su respuesta…',
@@ -376,6 +401,8 @@ export const messagesScreenSpanish = {
   inboxOlderAlert_other: '{{count}} alertas anteriores',
   inboxOlderAttention_one: '{{count}} solicitud de atención anterior',
   inboxOlderAttention_other: '{{count}} solicitudes de atención anteriores',
+  inboxOlderAlertAttention_one: '{{count}} más antiguo',
+  inboxOlderAlertAttention_other: '{{count}} más antiguos',
   inboxHideOlder: 'Ocultar',
 };
 
@@ -394,11 +421,14 @@ export const messagesScreenPolish = {
     'Nieprzeczytane alarmy pojawiają się też w Przych./Wych., dopóki ich nie potwierdzisz.',
   subtitleAttention:
     'Nieprzeczytane prośby o uwagę pojawiają się też w Przych./Wych., dopóki ich nie potwierdzisz.',
+  subtitleAlertsAttention:
+    'Nieprzeczytane alarmy i prośby o uwagę pojawiają się też w Przych./Wych., dopóki ich nie potwierdzisz.',
   subtitleInOut: 'Dotknij rozmowy, aby czytać i odpowiadać.',
   tabBucketsAria: 'Foldery wiadomości',
   tabCommunicationLog: 'Dziennik komunikacji',
   tabAlerts: 'Alarmy',
   tabAttention: 'Uwaga',
+  tabAlertsAttention: 'Alarmy i uwaga',
   tabInOut: 'Przych./Wych.',
   tabArchived: 'Zarchiwizowane',
   tabDeleted: 'Usunięte',
@@ -406,6 +436,7 @@ export const messagesScreenPolish = {
   markAllRead: 'Oznacz wszystkie jako przeczytane',
   sectionAlerts: 'Alarmy',
   sectionAttention: 'Uwaga',
+  sectionAlertsAttention: 'Alarmy i uwaga',
   sectionDirectMessages: 'Wiadomości bezpośrednie',
   emptyCommunicationLog:
     'Brak podsumowań komunikacji. Pojawiają się, gdy bliska osoba używa trybu OIOM z auto-wysyłką i mówi lub zapisuje notatki w ciągu dnia.',
@@ -415,6 +446,8 @@ export const messagesScreenPolish = {
     'Brak alarmów. Nowe pojawiają się w Przych./Wych., dopóki ich nie potwierdzisz.',
   emptyAttention:
     'Brak próśb o uwagę. Nowe pojawiają się w Przych./Wych., dopóki ich nie potwierdzisz.',
+  emptyAlertsAttention:
+    'Brak alarmów i próśb o uwagę. Nowe pojawiają się w Przych./Wych., dopóki ich nie potwierdzisz.',
   emptyInOut: 'Brak wiadomości w Przych./Wych.',
   backToInbox: 'Wróć do skrzynki',
   patientMessage: 'Wiadomość pacjenta',
@@ -454,6 +487,7 @@ export const messagesScreenPolish = {
     'Odpowiedzi zamknięte — pacient usunął tę rozmowę na tablecie.',
   readOnlyAlertHint:
     'To jednokierunkowy alarm — odpowiedz przez Wiadomości do bliskiej osoby.',
+  alertAttentionHistory: 'Ostatnie alarmy i uwaga',
   showEarlierReplies: 'Pokaż {{count}} wcześniejszych odpowiedzi',
   showOlderReplies: 'Pokaż {{count}} starszych odpowiedzi',
   replyPlaceholder: 'Wpisz odpowiedź…',
@@ -504,5 +538,7 @@ export const messagesScreenPolish = {
   inboxOlderAlert_other: '{{count}} starszych alarmów',
   inboxOlderAttention_one: '{{count}} starsza prośba o uwagę',
   inboxOlderAttention_other: '{{count}} starszych próśb o uwagę',
+  inboxOlderAlertAttention_one: '{{count}} starszy wpis',
+  inboxOlderAlertAttention_other: '{{count}} starszych wpisów',
   inboxHideOlder: 'Ukryj',
 };

@@ -416,7 +416,7 @@ function AppointmentDetailSection({
         {Icon ? <Icon size={14} className="shrink-0 text-violet-600" aria-hidden /> : null}
         {label}
       </p>
-      {children}
+      <div className="pl-5">{children}</div>
     </section>
   );
 }

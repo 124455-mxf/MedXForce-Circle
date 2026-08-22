@@ -591,8 +591,8 @@ export const appShellEnglish = {
       dayAssessments: 'Assessments',
       fromCircle: 'Circle',
       viewDetails: 'View full details',
-      openMaps: 'Open in Apple Maps',
-      openGoogleMaps: 'Open in Google Maps',
+      openMaps: 'Apple Maps',
+      openGoogleMaps: 'Google Maps',
       kinds: {
         doctor: 'Doctor',
         wellness: 'Internal',
@@ -1887,8 +1887,8 @@ export const appShellGerman = {
       dayAssessments: 'Assessments',
       fromCircle: 'Circle',
       viewDetails: 'Alle Details anzeigen',
-      openMaps: 'In Apple Karten öffnen',
-      openGoogleMaps: 'In Google Maps öffnen',
+      openMaps: 'Apple Karten',
+      openGoogleMaps: 'Google Maps',
       kinds: {
         doctor: 'Arzt',
         wellness: 'Intern',
@@ -3183,8 +3183,8 @@ export const appShellSpanish = {
       dayAssessments: 'Evaluaciones',
       fromCircle: 'Circle',
       viewDetails: 'Ver detalles completos',
-      openMaps: 'Abrir en Apple Maps',
-      openGoogleMaps: 'Abrir en Google Maps',
+      openMaps: 'Apple Maps',
+      openGoogleMaps: 'Google Maps',
       kinds: {
         doctor: 'Médico',
         wellness: 'Interno',
@@ -4479,8 +4479,8 @@ export const appShellPolish = {
       dayAssessments: 'Oceny',
       fromCircle: 'Circle',
       viewDetails: 'Zobacz pełne szczegóły',
-      openMaps: 'Otwórz w Apple Maps',
-      openGoogleMaps: 'Otwórz w Google Maps',
+      openMaps: 'Apple Maps',
+      openGoogleMaps: 'Google Maps',
       kinds: {
         doctor: 'Lekarz',
         wellness: 'Wewnętrzne',

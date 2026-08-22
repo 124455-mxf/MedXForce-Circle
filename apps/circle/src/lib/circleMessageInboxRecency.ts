@@ -1,6 +1,6 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 
-/** Rolling recent window for Alert / Attention inbox lists (matches dashboard “last 7 days”). */
+/** Rolling recent window for Alerts & attention inbox lists (matches dashboard “last 7 days”). */
 export const INBOX_RECENT_DAYS = 7;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
