@@ -9,6 +9,7 @@ import {
   canPostCircleAnnouncement,
   canRecordVisitCaptureInCircleFolder,
   canReplyToCircleMemberThreadPost,
+  canStartDropInFromOpenThread,
   canSeeCircleRestrictedThread,
   canViewCircleAppointmentInvites,
   careTransitionFolderCounts,
@@ -583,7 +584,10 @@ export function CircleCircleScreen({
   const showInboxTabDivider = inboxIconViews.length > 0 && inboxTextViews.length > 0;
 
   const dropInFolderVariant = useMemo((): CirclePostFolderActionVariant | null => {
-    if (inboxView !== 'drop_ins' || activeThread !== 'restricted' || !canInitiateDropIn) {
+    const startOnThisThread =
+      (activeThread === 'restricted' && !canStartDropInFromOpenThread(memberRole)) ||
+      (activeThread === 'open' && canStartDropInFromOpenThread(memberRole));
+    if (inboxView !== 'drop_ins' || !startOnThisThread || !canInitiateDropIn) {
       return null;
     }
     if (dropInActive && !dropInChatOpen) return 'drop_in_resume';
@@ -598,6 +602,7 @@ export function CircleCircleScreen({
     dropInActive,
     dropInChatOpen,
     inboxView,
+    memberRole,
     onStartDropIn,
     patientDoNotDisturb,
     patientDropInFeatureEnabled,

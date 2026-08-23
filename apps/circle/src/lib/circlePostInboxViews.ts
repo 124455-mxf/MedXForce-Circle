@@ -72,6 +72,7 @@ export function circlePostInboxViewsForThread(
     if (canParticipateInCircleOpenThread(memberRole)) {
       views.push('visit_captures');
     }
+    views.push('drop_ins');
     views.push('hidden');
     return views;
   }

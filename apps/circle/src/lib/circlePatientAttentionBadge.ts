@@ -1,4 +1,4 @@
-import { canSeeCircleRestrictedThread } from '@medxforce/shared';
+import { canParticipateInCircleOpenThread, canSeeCircleRestrictedThread } from '@medxforce/shared';
 
 export type CirclePatientAttentionBadge = {
   totalUnread: number;
@@ -15,7 +15,9 @@ export function computePatientDashboardAttentionTotal(params: {
   visitCapturesUnreadCount: number;
   acceptedAppointmentsTodayCount?: number;
 }): number {
-  const canSeeDropIns = canSeeCircleRestrictedThread(params.memberRole);
+  const canSeeDropIns =
+    canSeeCircleRestrictedThread(params.memberRole) ||
+    canParticipateInCircleOpenThread(params.memberRole);
   return (
     (params.messagingEnabled ? params.messageUnreadCount : 0) +
     params.discussionsUnreadCount +

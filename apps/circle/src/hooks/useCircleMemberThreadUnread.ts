@@ -264,7 +264,29 @@ export function useCircleMemberThreadUnread(
     [discussionsOpenUnreadCount, discussionsRestrictedUnreadCount],
   );
 
-  const dropInsUnreadCount = useMemo(
+  const dropInsOpenUnreadCount = useMemo(
+    () =>
+      canOpen
+        ? countUnreadPostsForInboxView(
+            openPostsWithInvites,
+            'drop_ins',
+            hiddenByPostId,
+            'open',
+            userId,
+            getOpenPostLastRead,
+          )
+        : 0,
+    [
+      canOpen,
+      getOpenPostLastRead,
+      hiddenByPostId,
+      openPostsWithInvites,
+      postReadTick,
+      userId,
+    ],
+  );
+
+  const dropInsRestrictedUnreadCount = useMemo(
     () =>
       canRestricted
         ? countUnreadPostsForInboxView(
@@ -284,6 +306,11 @@ export function useCircleMemberThreadUnread(
       restrictedPosts,
       userId,
     ],
+  );
+
+  const dropInsUnreadCount = useMemo(
+    () => dropInsOpenUnreadCount + dropInsRestrictedUnreadCount,
+    [dropInsOpenUnreadCount, dropInsRestrictedUnreadCount],
   );
 
   const visitCapturesUnreadCount = useMemo(() => {
@@ -428,6 +455,8 @@ export function useCircleMemberThreadUnread(
     discussionsOpenUnreadCount,
     discussionsRestrictedUnreadCount,
     dropInsUnreadCount,
+    dropInsOpenUnreadCount,
+    dropInsRestrictedUnreadCount,
     visitCapturesUnreadCount,
     visitCapturesOpenUnreadCount,
     visitCapturesRestrictedUnreadCount,

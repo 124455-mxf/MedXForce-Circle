@@ -22,6 +22,7 @@ export * from './provisionContactManagement';
 export * from './circleMemberNotifyPreferences';
 export * from './circleMemberOnboarding';
 export * from './circleInitiateMessages';
+export * from './circleDropInAccess';
 export * from './circleTeamCoverage';
 export * from './circleCareReminders';
 export * from './circleParticipationReminders';

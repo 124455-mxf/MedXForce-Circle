@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
+  canParticipateInCircleOpenThread,
   canSeeCircleRestrictedThread,
   type CircleMemberThreadKind,
 } from '@medxforce/shared';
@@ -84,6 +85,8 @@ export function CircleDashboardAttentionTiles({
   discussionsOpenUnreadCount,
   discussionsRestrictedUnreadCount,
   dropInsUnreadCount,
+  dropInsOpenUnreadCount = 0,
+  dropInsRestrictedUnreadCount = 0,
   visitCapturesUnreadCount,
   visitCapturesOpenUnreadCount,
   visitCapturesRestrictedUnreadCount,
@@ -108,6 +111,8 @@ export function CircleDashboardAttentionTiles({
   discussionsOpenUnreadCount: number;
   discussionsRestrictedUnreadCount: number;
   dropInsUnreadCount: number;
+  dropInsOpenUnreadCount?: number;
+  dropInsRestrictedUnreadCount?: number;
   visitCapturesUnreadCount: number;
   visitCapturesOpenUnreadCount: number;
   visitCapturesRestrictedUnreadCount: number;
@@ -120,7 +125,8 @@ export function CircleDashboardAttentionTiles({
   onOpenSchedule?: (view?: CircleScheduleViewIntent) => void;
 }) {
   const t = useCircleT();
-  const canSeeDropIns = canSeeCircleRestrictedThread(memberRole);
+  const canSeeDropIns =
+    canSeeCircleRestrictedThread(memberRole) || canParticipateInCircleOpenThread(memberRole);
 
   const directMessageUnread = showIcuDailyNotesTile
     ? Math.max(0, messageUnreadCount - icuDailySummaryUnreadCount)
@@ -204,8 +210,8 @@ export function CircleDashboardAttentionTiles({
             onOpenCircleFolder(
               circleFolderThreadForRole(
                 memberRole,
-                0,
-                dropInsUnreadCount,
+                dropInsOpenUnreadCount,
+                dropInsRestrictedUnreadCount,
                 'restricted',
               ),
               'drop_ins',

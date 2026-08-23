@@ -88,6 +88,19 @@ const remoteSettingsEnglish = {
     groupFamily: 'Family',
     groupFriends: 'Friends',
   },
+  circleDropIn: {
+    groups: 'Who can drop in',
+    groupsDesc:
+      'Only Circle app users in these groups. Proxy and caregivers stay on whenever drop-in is enabled.',
+    people: 'Also allow these people',
+    peopleDesc:
+      'Optional extras. People in a selected group are already included and cannot be turned off here.',
+    icu: 'Family and friends cannot drop in during Intensive Care. Switch to Hospital or Daily Life to include them.',
+    groupProxy: 'Proxy',
+    groupCaregiver: 'Caregivers',
+    groupFamily: 'Family',
+    groupFriends: 'Friends',
+  },
   modes: {
     intensiveCare: 'ICU',
     intensiveCareDesc: 'Critical care — communication-first, minimal distractions, caregiver-controlled.',
@@ -173,7 +186,8 @@ const remoteSettingsEnglish = {
       'Let Circle see city, local time, and weather from the tablet while the app is open.',
     showUserInSidebar: 'User profile in the left sidebar.',
     dashboard: 'Dashboard tab in the sidebar.',
-    dropIn: 'Allow Circle members to start a live drop-in session with the patient.',
+    dropIn:
+      'Allow a live drop-in with the patient. Proxy and caregivers can always use it when this is on; family and friends are optional below.',
     schedule: 'Patient tablet care calendar tab. Circle Schedule stays available for proxies and caregivers.',
     communicationTab: 'Primary communication interface.',
     messagingTab: 'Caregiver messaging features.',
@@ -374,6 +388,19 @@ const remoteSettingsGerman = {
     groupFamily: 'Familie',
     groupFriends: 'Freundinnen und Freunde',
   },
+  circleDropIn: {
+    groups: 'Wer drop-in nutzen darf',
+    groupsDesc:
+      'Nur Circle-App-Nutzer in diesen Gruppen. Proxy und Betreuende bleiben eingeschaltet, solange Drop-in aktiv ist.',
+    people: 'Diese Personen zusätzlich erlauben',
+    peopleDesc:
+      'Optionale Ergänzung. Personen in einer gewählten Gruppe sind bereits enthalten und hier nicht abwählbar.',
+    icu: 'Familie und Freunde können in der Intensivpflege kein Drop-in nutzen. Wechseln Sie zu Krankenhaus oder Alltag, um sie einzuschließen.',
+    groupProxy: 'Proxy',
+    groupCaregiver: 'Betreuende',
+    groupFamily: 'Familie',
+    groupFriends: 'Freundinnen und Freunde',
+  },
   modes: {
     intensiveCare: 'Intensivstation (ICU)',
     intensiveCareDesc: 'Intensivpflege — kommunikationsorientiert, wenig Ablenkung, betreuergesteuert.',
@@ -460,7 +487,8 @@ const remoteSettingsGerman = {
       'Circle sieht Stadt, Ortszeit und Wetter vom Tablet, solange die App geöffnet ist.',
     showUserInSidebar: 'Benutzerprofil in der linken Seitenleiste.',
     dashboard: 'Dashboard-Tab in der Seitenleiste.',
-    dropIn: 'Circle-Mitglieder dürfen eine Live-Drop-in-Sitzung mit dem Patienten starten.',
+    dropIn:
+      'Live-Drop-in mit dem Patienten. Proxy und Betreuende können es immer nutzen, wenn dies an ist; Familie und Freunde sind optional darunter.',
     schedule:
       'Kalender-Tab auf dem Patiententablet. Circle-Terminplan bleibt für Stellvertreter und Betreuungspersonen verfügbar.',
     communicationTab: 'Primäre Kommunikationsoberfläche.',
@@ -661,6 +689,19 @@ const remoteSettingsSpanish = {
     groupFamily: 'Familia',
     groupFriends: 'Amigos',
   },
+  circleDropIn: {
+    groups: 'Quién puede hacer drop-in',
+    groupsDesc:
+      'Solo usuarios de la app Circle en estos grupos. Proxy y cuidadores permanecen activados mientras el drop-in esté encendido.',
+    people: 'Permitir también a estas personas',
+    peopleDesc:
+      'Extras opcionales. Quienes están en un grupo seleccionado ya están incluidos y no se pueden desmarcar aquí.',
+    icu: 'Familia y amigos no pueden hacer drop-in en cuidados intensivos. Cambia a Hospital o Vida diaria para incluirlos.',
+    groupProxy: 'Proxy',
+    groupCaregiver: 'Cuidadores',
+    groupFamily: 'Familia',
+    groupFriends: 'Amigos',
+  },
   modes: {
     intensiveCare: 'UCI',
     intensiveCareDesc: 'Cuidados críticos — comunicación primero, mínimas distracciones, control del cuidador.',
@@ -747,7 +788,8 @@ const remoteSettingsSpanish = {
       'Circle ve ciudad, hora local y clima de la tableta mientras la app está abierta.',
     showUserInSidebar: 'Perfil de usuario en la barra lateral izquierda.',
     dashboard: 'Pestaña Panel en la barra lateral.',
-    dropIn: 'Permitir que miembros de Circle inicien una sesión drop-in en vivo con el paciente.',
+    dropIn:
+      'Permitir un drop-in en vivo con el paciente. Proxy y cuidadores siempre pueden usarlo cuando esto está activo; familia y amigos son opcionales debajo.',
     schedule:
       'Pestaña de calendario en la tableta del paciente. El calendario de Circle sigue disponible para apoderados y cuidadores.',
     communicationTab: 'Interfaz principal de comunicación.',
@@ -947,6 +989,19 @@ const remoteSettingsPolish = {
     groupFamily: 'Rodzina',
     groupFriends: 'Przyjaciele',
   },
+  circleDropIn: {
+    groups: 'Kto może korzystać z drop-in',
+    groupsDesc:
+      'Tylko użytkownicy aplikacji Circle w tych grupach. Pełnomocnik i opiekunowie pozostają włączeni, gdy drop-in jest aktywny.',
+    people: 'Dodatkowo pozwól tym osobom',
+    peopleDesc:
+      'Opcjonalni dodatkowi. Osoby z wybranej grupy są już uwzględnione i nie da się ich tu odznaczyć.',
+    icu: 'Rodzina i przyjaciele nie mogą korzystać z drop-in w intensywnej opiece. Przełącz na Szpital lub Życie codzienne, aby ich dodać.',
+    groupProxy: 'Pełnomocnik',
+    groupCaregiver: 'Opiekunowie',
+    groupFamily: 'Rodzina',
+    groupFriends: 'Przyjaciele',
+  },
   modes: {
     intensiveCare: 'OIOM',
     intensiveCareDesc: 'Opieka krytyczna — komunikacja na pierwszym miejscu, minimum rozproszeń, kontrola opiekuna.',
@@ -1033,7 +1088,8 @@ const remoteSettingsPolish = {
       'Circle widzi miasto, czas lokalny i pogodę z tabletu, gdy aplikacja jest otwarta.',
     showUserInSidebar: 'Profil użytkownika w lewym panelu.',
     dashboard: 'Zakładka Panel w bocznym menu.',
-    dropIn: 'Zezwól członkom Circle na rozpoczęcie sesji drop-in na żywo z pacjentem.',
+    dropIn:
+      'Pozwól na drop-in na żywo z pacjentem. Pełnomocnik i opiekunowie zawsze mogą z niego korzystać, gdy to jest włączone; rodzina i przyjaciele są opcjonalni poniżej.',
     schedule:
       'Zakładka kalendarza na tablecie pacjenta. Harmonogram Circle pozostaje dostępny dla pełnomocników i opiekunów.',
     communicationTab: 'Główny interfejs komunikacji.',

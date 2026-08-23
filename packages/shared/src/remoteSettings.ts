@@ -20,6 +20,10 @@ import {
   parseCircleInitiateMessagesConfig,
   type CircleInitiateMessageGroup,
 } from './circleInitiateMessages';
+import {
+  extractCircleDropInAccessForRemote,
+  parseCircleDropInAccessConfig,
+} from './circleDropInAccess';
 
 /** Single live doc: patients/{patientId}/remote_settings/live */
 export const REMOTE_SETTINGS_DOC_ID = 'live';
@@ -205,6 +209,9 @@ export type RemoteSettingsPayload = {
   circleInitiateMessageGroups?: CircleInitiateMessageGroup[];
   circleInitiateMessageMemberUids?: string[];
   circleInitiateMessagesEnabledAt?: number;
+  /** Who may use live drop-in. Proxy and caregivers stay on whenever drop-in is enabled. */
+  circleDropInGroups?: CircleInitiateMessageGroup[];
+  circleDropInMemberUids?: string[];
   showUserInSidebar?: boolean;
   showQuickSettings?: boolean;
   showSettingsInSidebar?: boolean;
@@ -268,7 +275,8 @@ export const REMOTE_FEATURE_TOGGLES: RemoteFeatureToggleDef[] = [
   {
     path: 'featuresVisibility.dropIn',
     label: 'Drop-in',
-    description: 'Allow Circle members to start a live drop-in session with the patient.',
+    description:
+      'Allow a live drop-in with the patient. Proxy and caregivers can always use it when this is on; family and friends are optional below.',
   },
   { path: 'featuresVisibility.communication', label: 'Communication', description: 'Primary communication interface.' },
   { path: 'featuresVisibility.messaging', label: 'Messaging', description: 'Caregiver messaging features.' },
@@ -830,6 +838,7 @@ export function parsePatientRemoteSettings(
     allowSendMessages: asBool(data.allowSendMessages),
     autoSendMessage: asBool(data.autoSendMessage),
     ...parseCircleInitiateMessagesConfig(data),
+    ...parseCircleDropInAccessConfig(data),
     showUserInSidebar: asBool(data.showUserInSidebar),
     showQuickSettings: asBool(data.showQuickSettings),
     showSettingsInSidebar: asBool(data.showSettingsInSidebar),
@@ -915,6 +924,7 @@ export function extractRemoteSettingsFromPreferences(
     allowSendMessages: preferences.allowSendMessages !== false,
     autoSendMessage: !!preferences.autoSendMessage,
     ...extractCircleInitiateMessagesForRemote(preferences, preferences.appMode as string | undefined),
+    ...extractCircleDropInAccessForRemote(preferences),
     showUserInSidebar: !!preferences.showUserInSidebar,
     showQuickSettings: preferences.showQuickSettings !== false,
     showSettingsInSidebar: preferences.showSettingsInSidebar !== false,

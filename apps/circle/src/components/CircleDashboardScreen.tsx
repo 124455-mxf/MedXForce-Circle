@@ -190,6 +190,8 @@ interface CircleDashboardScreenProps {
   circleDiscussionsOpenUnreadCount: number;
   circleDiscussionsRestrictedUnreadCount: number;
   circleDropInsUnreadCount: number;
+  circleDropInsOpenUnreadCount: number;
+  circleDropInsRestrictedUnreadCount: number;
   circleVisitCapturesUnreadCount: number;
   circleVisitCapturesOpenUnreadCount: number;
   circleVisitCapturesRestrictedUnreadCount: number;
@@ -666,19 +668,49 @@ function LivePatientWidget({
 
   if (compact) {
     return (
-      <div
-        className={cn(
-          'w-full rounded-2xl border border-slate-100 bg-white text-left',
-          'flex items-start gap-3 px-4 py-3.5 sm:px-5 sm:py-4',
-        )}
-      >
-        <LivePresenceDot className="mt-1.5" />
-        <div className="min-w-0 flex-1">
-          {liveTitle}
-          <p className="mt-1 text-xs text-slate-500 leading-snug">
-            {t('dashboard.currently', { section: activeSectionLabel })}
-          </p>
+      <div className="relative w-full">
+        <div
+          className={cn(
+            'w-full rounded-2xl border border-slate-100 bg-white text-left',
+            'flex items-start gap-3 px-4 py-3.5 sm:px-5 sm:py-4',
+          )}
+        >
+          <LivePresenceDot className="mt-1.5" />
+          <div className="min-w-0 flex-1">
+            {liveTitle}
+            <p className="mt-1 text-xs text-slate-500 leading-snug">
+              {t('dashboard.currently', { section: activeSectionLabel })}
+            </p>
+            {onDropIn || dropInFeatureEnabled === false ? (
+              <div className="mt-3 max-w-[11rem]">
+                {onDropIn ? (
+                  <LiveRemotePromptChip
+                    label={t('dashboard.dropIn')}
+                    icon={MessageCircle}
+                    tone="dropIn"
+                    onClick={onDropIn}
+                  />
+                ) : (
+                  <LiveRemotePromptChip
+                    label={t('dashboard.dropIn')}
+                    icon={MessageCircle}
+                    disabled
+                    disabledHint={t('dashboard.dropInDisabledHint')}
+                  />
+                )}
+              </div>
+            ) : null}
+          </div>
         </div>
+        {showResumeDropIn ? (
+          <button
+            type="button"
+            onClick={onResumeDropIn}
+            className="absolute left-1/2 bottom-0 z-10 -translate-x-1/2 translate-y-1/2 inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-indigo-600 text-white text-xs font-bold shadow-md hover:bg-indigo-700 whitespace-nowrap"
+          >
+            {t('dashboard.resumeDropIn')}
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -767,6 +799,26 @@ function LivePatientWidget({
                 />
               </div>
             ) : null}
+          </div>
+        ) : onDropIn || dropInFeatureEnabled === false ? (
+          <div className="mt-4 pt-3 border-t border-slate-100">
+            <div className="max-w-[11rem]">
+              {onDropIn ? (
+                <LiveRemotePromptChip
+                  label={t('dashboard.dropIn')}
+                  icon={MessageCircle}
+                  tone="dropIn"
+                  onClick={onDropIn}
+                />
+              ) : (
+                <LiveRemotePromptChip
+                  label={t('dashboard.dropIn')}
+                  icon={MessageCircle}
+                  disabled
+                  disabledHint={t('dashboard.dropInDisabledHint')}
+                />
+              )}
+            </div>
           </div>
         ) : null}
       </div>
@@ -931,6 +983,8 @@ export function CircleDashboardScreen({
   circleDiscussionsOpenUnreadCount,
   circleDiscussionsRestrictedUnreadCount,
   circleDropInsUnreadCount,
+  circleDropInsOpenUnreadCount,
+  circleDropInsRestrictedUnreadCount,
   circleVisitCapturesUnreadCount,
   circleVisitCapturesOpenUnreadCount,
   circleVisitCapturesRestrictedUnreadCount,
@@ -1009,7 +1063,7 @@ export function CircleDashboardScreen({
   }, [careTransitionOpen, careTransitionState, memberRole]);
   const showEngagementStats = caps.viewEngagementTrends !== false;
   const showRemoteSettings = canViewRemoteSettingsTab(caps);
-  const showLiveTile = memberRole !== 'friend';
+  const showLiveTile = memberRole !== 'friend' || !!onRequestDropIn;
   const showGetToKnow = isWidgetVisible('patient-insights');
   const showCircleMap = isWidgetVisible('circle-map');
   const showCircleCompact = isWidgetVisible('circle-compact');
@@ -1971,7 +2025,7 @@ export function CircleDashboardScreen({
                 memberUid={user.uid}
                 patientContextLines={livePatientContextLines}
                 showRemotePrompts={showRemotePrompts}
-                compact={memberRole === 'family'}
+                compact={memberRole === 'family' || memberRole === 'friend'}
                 t={t}
                 onPromptCheckIn={() => {
                   setSentCommandThisOpen(false);
@@ -1985,7 +2039,7 @@ export function CircleDashboardScreen({
                   setSentCommandThisOpen(false);
                   setConfirmCommandType('open_quick_answers');
                 }}
-                onDropIn={showRemotePrompts ? onRequestDropIn : undefined}
+                onDropIn={onRequestDropIn}
                 dropInFeatureEnabled={dropInFeatureEnabled}
                 onResumeDropIn={onResumeDropIn}
                 dropInActive={dropInActive}
@@ -2033,6 +2087,8 @@ export function CircleDashboardScreen({
           discussionsOpenUnreadCount={circleDiscussionsOpenUnreadCount}
           discussionsRestrictedUnreadCount={circleDiscussionsRestrictedUnreadCount}
           dropInsUnreadCount={circleDropInsUnreadCount}
+          dropInsOpenUnreadCount={circleDropInsOpenUnreadCount}
+          dropInsRestrictedUnreadCount={circleDropInsRestrictedUnreadCount}
           visitCapturesUnreadCount={circleVisitCapturesUnreadCount}
           visitCapturesOpenUnreadCount={circleVisitCapturesOpenUnreadCount}
           visitCapturesRestrictedUnreadCount={circleVisitCapturesRestrictedUnreadCount}

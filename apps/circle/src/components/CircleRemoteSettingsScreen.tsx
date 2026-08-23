@@ -44,14 +44,21 @@ import {
   type RemotePrimaryLanguage,
   recordCareDiaryMilestones,
   CIRCLE_INITIATE_MESSAGE_GROUPS,
+  CIRCLE_DROP_IN_GROUPS,
+  isCircleDropInFamilyFriendsLockedOff,
+  isCircleDropInGroupLocked,
+  isCircleDropInPersonCoveredByGroups,
   isCircleInitiateGroupLocked,
   isCircleInitiatePersonCoveredByGroups,
   isCircleInitiateMessagesLockedOff,
   normalizeInviteEmail,
+  parseCircleDropInAccessConfig,
   parseCircleInitiateMessagesConfig,
+  sanitizeCircleDropInGroups,
   sanitizeCircleInitiateMessageGroups,
   uniqueCircleInitiateAllowlistPeople,
   withCircleInitiateMessagesTurnedOn,
+  type CircleDropInGroup,
   type CircleInitiateAllowlistPerson,
   type CircleInitiateMessageGroup,
 } from '@medxforce/shared';
@@ -278,6 +285,177 @@ function CircleInitiateMessagesRemoteBlock({
               </div>
             </div>
           ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CircleDropInAccessRemoteBlock({
+  settings,
+  patch,
+  db,
+  patientId,
+  t,
+}: {
+  settings: PatientRemoteSettingsDoc;
+  patch: (next: PatientRemoteSettingsDoc) => void;
+  db: Firestore;
+  patientId: string;
+  t: ReturnType<typeof useCircleT>;
+}) {
+  const names = useCirclePatientMemberDisplayNames(db, patientId);
+  const [memberRows, setMemberRows] = useState<CircleInitiateAllowlistPerson[]>([]);
+  const dropInOn = settings.featuresVisibility?.dropIn !== false;
+  const icuLocked = isCircleDropInFamilyFriendsLockedOff(settings.appMode);
+  const config = parseCircleDropInAccessConfig(settings);
+  const people = useMemo(
+    () =>
+      uniqueCircleInitiateAllowlistPeople(
+        memberRows.map((row) => ({
+          ...row,
+          name: names.byUid[row.uid] || row.name,
+        })),
+      ),
+    [memberRows, names.byUid],
+  );
+  const groupLabel: Record<CircleDropInGroup, string> = {
+    proxy: t('remoteSettings.circleDropIn.groupProxy'),
+    caregiver: t('remoteSettings.circleDropIn.groupCaregiver'),
+    family: t('remoteSettings.circleDropIn.groupFamily'),
+    friends: t('remoteSettings.circleDropIn.groupFriends'),
+  };
+
+  useEffect(() => {
+    if (!patientId) {
+      setMemberRows([]);
+      return;
+    }
+    return onSnapshot(
+      collection(db, 'patients', patientId, 'members'),
+      (snap) => {
+        const next: CircleInitiateAllowlistPerson[] = [];
+        snap.forEach((memberDoc) => {
+          const data = memberDoc.data();
+          next.push({
+            uid: memberDoc.id,
+            name: typeof data.displayName === 'string' ? data.displayName : '',
+            email: normalizeInviteEmail(String(data.invitedEmail ?? '')),
+            status: typeof data.status === 'string' ? data.status : 'active',
+            role: typeof data.role === 'string' ? data.role : '',
+          });
+        });
+        setMemberRows(next);
+      },
+      () => setMemberRows([]),
+    );
+  }, [db, patientId]);
+
+  if (!dropInOn) return null;
+
+  return (
+    <div className="mt-2 mb-2 pl-1 space-y-3">
+      {icuLocked ? (
+        <p className="text-[11px] text-slate-400">{t('remoteSettings.circleDropIn.icu')}</p>
+      ) : null}
+      <div>
+        <p className="text-xs font-semibold text-slate-700">
+          {t('remoteSettings.circleDropIn.groups')}
+        </p>
+        <p className="text-[11px] text-slate-400 mt-0.5">
+          {t('remoteSettings.circleDropIn.groupsDesc')}
+        </p>
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {CIRCLE_DROP_IN_GROUPS.map((group) => {
+            const locked = isCircleDropInGroupLocked(group, dropInOn, settings.appMode);
+            const active =
+              locked && (group === 'proxy' || group === 'caregiver')
+                ? true
+                : !icuLocked && config.circleDropInGroups.includes(group);
+            return (
+              <button
+                key={group}
+                type="button"
+                disabled={locked}
+                onClick={() => {
+                  if (locked) return;
+                  const nextGroups = sanitizeCircleDropInGroups(
+                    active
+                      ? config.circleDropInGroups.filter((item) => item !== group)
+                      : [...config.circleDropInGroups, group],
+                    { requireCareTeam: true },
+                  );
+                  const coveredUids = new Set(
+                    people
+                      .filter((person) =>
+                        isCircleDropInPersonCoveredByGroups(person.role, nextGroups),
+                      )
+                      .map((person) => person.uid),
+                  );
+                  patch({
+                    ...settings,
+                    circleDropInGroups: nextGroups,
+                    circleDropInMemberUids: config.circleDropInMemberUids.filter(
+                      (uid) => !coveredUids.has(uid),
+                    ),
+                  });
+                }}
+                className={cn(
+                  'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border',
+                  active
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-slate-500 border-slate-200',
+                  locked && 'cursor-not-allowed',
+                )}
+              >
+                {groupLabel[group]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {!icuLocked && people.length > 0 ? (
+        <div>
+          <p className="text-xs font-semibold text-slate-700">
+            {t('remoteSettings.circleDropIn.people')}
+          </p>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            {t('remoteSettings.circleDropIn.peopleDesc')}
+          </p>
+          <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+            {people.map((person) => {
+              const covered = isCircleDropInPersonCoveredByGroups(
+                person.role,
+                config.circleDropInGroups,
+              );
+              const checked =
+                covered || config.circleDropInMemberUids.includes(person.uid);
+              return (
+                <label
+                  key={person.uid}
+                  className={cn(
+                    'flex items-center gap-2 px-2 py-1.5 rounded-xl bg-white border border-slate-100',
+                    covered && 'opacity-70 cursor-not-allowed',
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={covered}
+                    onChange={() => {
+                      if (covered) return;
+                      const nextUids = checked
+                        ? config.circleDropInMemberUids.filter((id) => id !== person.uid)
+                        : [...config.circleDropInMemberUids, person.uid];
+                      patch({ ...settings, circleDropInMemberUids: nextUids });
+                    }}
+                    className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 disabled:opacity-100"
+                  />
+                  <span className="text-xs text-slate-700">{person.name}</span>
+                </label>
+              );
+            })}
+          </div>
         </div>
       ) : null}
     </div>
@@ -890,12 +1068,42 @@ export function CircleRemoteSettingsScreen({
 
             <CircleCollapsibleSection title={t('remoteSettings.sections.featuresVisibility')}>
               <div className="p-4 space-y-4">
-                <ProxyToggleList
-                  settings={settings}
-                  paths={REMOTE_FEATURE_TOGGLES}
-                  patch={patch}
-                  t={t}
-                />
+                {(() => {
+                  const dropInIndex = REMOTE_FEATURE_TOGGLES.findIndex(
+                    (item) => item.path === 'featuresVisibility.dropIn',
+                  );
+                  const beforeDropIn =
+                    dropInIndex >= 0
+                      ? REMOTE_FEATURE_TOGGLES.slice(0, dropInIndex + 1)
+                      : REMOTE_FEATURE_TOGGLES;
+                  const afterDropIn =
+                    dropInIndex >= 0 ? REMOTE_FEATURE_TOGGLES.slice(dropInIndex + 1) : [];
+                  return (
+                    <>
+                      <ProxyToggleList
+                        settings={settings}
+                        paths={beforeDropIn}
+                        patch={patch}
+                        t={t}
+                      />
+                      <CircleDropInAccessRemoteBlock
+                        settings={settings}
+                        patch={patch}
+                        db={db}
+                        patientId={patient.patientId}
+                        t={t}
+                      />
+                      {afterDropIn.length > 0 ? (
+                        <ProxyToggleList
+                          settings={settings}
+                          paths={afterDropIn}
+                          patch={patch}
+                          t={t}
+                        />
+                      ) : null}
+                    </>
+                  );
+                })()}
                 <SectionLabel>{t('remoteSettings.sections.individualAssessments')}</SectionLabel>
                 <ProxyToggleList
                   settings={settings}

@@ -5,11 +5,13 @@ import type { FirebaseStorage } from 'firebase/storage';
 import type { AnalyticsMetricId, CircleMemberThreadKind, CirclePatientSummary } from '@medxforce/shared';
 import type { CircleMessagesAnalyticsFocus } from './CircleMessagesAnalyticsDetail';
 import {
+  canCircleMemberUseDropIn,
   canSendPatientRemoteCommands,
   canStartVisitCapture,
   canViewRemoteSettingsTab,
   circleDisplayFirstName,
   normalizeMemberRole,
+  parseCircleDropInAccessConfig,
   repairInactiveAcceptedMemberDocsForUser,
   repairOrphanAcceptedInvitesForUser,
   visitCapturePublishThreadKind,
@@ -330,7 +332,6 @@ export function CircleMainShell({
   const showVisitCapture = !!selectedPatient && canStartVisitCapture(memberRole);
   const canReceiveRemoteCommandResponses =
     !!selectedPatient && canSendPatientRemoteCommands(selectedPatient.role);
-  const circleDropInEnabled = !!selectedPatient?.capabilities.remoteSettings;
 
   const handleVisitCapturePublished = useCallback(() => {
     setVisitCaptureEntryId(null);
@@ -387,9 +388,17 @@ export function CircleMainShell({
   // Match patient tablet: wait for settings, then follow featuresVisibility.dropIn.
   const patientDropInFeatureEnabled =
     remoteSettings != null && remoteSettings.featuresVisibility?.dropIn !== false;
+  const canUseDropIn =
+    !!selectedPatient &&
+    canCircleMemberUseDropIn(
+      patientDropInFeatureEnabled,
+      parseCircleDropInAccessConfig(remoteSettings ?? {}),
+      remoteSettings?.appMode,
+      { uid: user.uid, role: memberRole },
+    );
+  const circleDropInEnabled = canUseDropIn;
   const canStartDropInRequest =
-    canReceiveRemoteCommandResponses &&
-    patientDropInFeatureEnabled &&
+    canUseDropIn &&
     patientPresence.online &&
     !isPatientDoNotDisturbSection(patientPresence.activeSection);
 
@@ -406,14 +415,14 @@ export function CircleMainShell({
     t,
     memberLanguages.byUid,
     patientLanguage,
-    canReceiveRemoteCommandResponses,
+    canUseDropIn,
   );
 
   const openDropInConfirmModal = useCallback(() => {
-    if (!patientDropInFeatureEnabled) return;
+    if (!canUseDropIn) return;
     setDropInSentThisOpen(false);
     setDropInConfirmOpen(true);
-  }, [patientDropInFeatureEnabled]);
+  }, [canUseDropIn]);
 
   const closeDropInConfirmModal = useCallback(() => {
     setDropInConfirmOpen(false);
@@ -728,6 +737,8 @@ export function CircleMainShell({
                 circleThreadUnread.discussionsRestrictedUnreadCount
               }
               circleDropInsUnreadCount={circleThreadUnread.dropInsUnreadCount}
+              circleDropInsOpenUnreadCount={circleThreadUnread.dropInsOpenUnreadCount}
+              circleDropInsRestrictedUnreadCount={circleThreadUnread.dropInsRestrictedUnreadCount}
               circleVisitCapturesUnreadCount={circleThreadUnread.visitCapturesUnreadCount}
               circleVisitCapturesOpenUnreadCount={circleThreadUnread.visitCapturesOpenUnreadCount}
               circleVisitCapturesRestrictedUnreadCount={
@@ -823,7 +834,7 @@ export function CircleMainShell({
                 unreadCount={circleThreadUnread.unreadCount}
                 openUnreadCount={circleThreadUnread.openUnreadCount}
                 restrictedUnreadCount={circleThreadUnread.restrictedUnreadCount}
-                canInitiateDropIn={canReceiveRemoteCommandResponses}
+                canInitiateDropIn={canUseDropIn}
                 patientDropInFeatureEnabled={patientDropInFeatureEnabled}
                 patientOnline={patientPresence.online}
                 patientDoNotDisturb={isPatientDoNotDisturbSection(patientPresence.activeSection)}

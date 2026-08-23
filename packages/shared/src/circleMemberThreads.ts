@@ -138,6 +138,11 @@ const PERSONAL_CIRCLE_DROP_IN_ROLES = new Set<CircleMemberRole>([
   'facility_staff',
 ]);
 
+/** Family, friends, and facility staff start drop-in from Everybody, not Care team. */
+export function canStartDropInFromOpenThread(role: string): boolean {
+  return PERSONAL_CIRCLE_DROP_IN_ROLES.has(role as CircleMemberRole);
+}
+
 /** Where a drop-in transcript belongs based on who joined the live chat. */
 export function circleMemberThreadKindsForDropInShare(
   participantRole: string | undefined,
