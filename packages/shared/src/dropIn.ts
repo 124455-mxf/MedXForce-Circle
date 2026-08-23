@@ -526,8 +526,17 @@ export async function startDropInSession(
   },
 ): Promise<DropInSession> {
   const ref = dropInSessionDocRef(db, params.patientId);
-  const existing = await getDoc(ref);
-  if (existing.exists()) {
+  let existing: Awaited<ReturnType<typeof getDoc>> | null = null;
+  try {
+    existing = await getDoc(ref);
+  } catch (err) {
+    const code =
+      err && typeof err === 'object' && 'code' in err
+        ? String((err as { code: string }).code)
+        : '';
+    if (code !== 'permission-denied') throw err;
+  }
+  if (existing?.exists()) {
     const parsed = parseDropInSession(params.patientId, existing.data() as Record<string, unknown>);
     if (isDropInSessionBlocking(parsed)) {
       throw new Error('A drop-in is already in progress or waiting for a response.');
@@ -545,7 +554,11 @@ export async function startDropInSession(
     requestedByName: params.requestedByName.trim() || 'Care team',
     requestedByRole: params.requestedByRole,
   };
-  await setDoc(ref, session);
+  try {
+    await setDoc(ref, session);
+  } catch (err) {
+    throw new Error(formatDropInWriteError(err));
+  }
   return session;
 }
 

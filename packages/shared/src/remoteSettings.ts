@@ -21,8 +21,8 @@ import {
   type CircleInitiateMessageGroup,
 } from './circleInitiateMessages';
 import {
+  circleDropInAccessFieldsFromData,
   extractCircleDropInAccessForRemote,
-  parseCircleDropInAccessConfig,
 } from './circleDropInAccess';
 
 /** Single live doc: patients/{patientId}/remote_settings/live */
@@ -838,7 +838,7 @@ export function parsePatientRemoteSettings(
     allowSendMessages: asBool(data.allowSendMessages),
     autoSendMessage: asBool(data.autoSendMessage),
     ...parseCircleInitiateMessagesConfig(data),
-    ...parseCircleDropInAccessConfig(data),
+    ...circleDropInAccessFieldsFromData(data),
     showUserInSidebar: asBool(data.showUserInSidebar),
     showQuickSettings: asBool(data.showQuickSettings),
     showSettingsInSidebar: asBool(data.showSettingsInSidebar),

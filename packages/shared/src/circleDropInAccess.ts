@@ -100,10 +100,26 @@ export function canCircleMemberUseDropIn(
   return group != null && effectiveCircleDropInGroups(config, appMode).includes(group);
 }
 
+/** Copy drop-in allowlist fields only when they already exist — never invent defaults. */
+export function circleDropInAccessFieldsFromData(
+  data: unknown,
+): Partial<CircleDropInAccessConfig> {
+  const rec = data && typeof data === 'object' ? (data as Record<string, unknown>) : undefined;
+  if (!rec) return {};
+  const hasGroupsField = Array.isArray(rec.circleDropInGroups);
+  const hasUidsField = Array.isArray(rec.circleDropInMemberUids);
+  if (!hasGroupsField && !hasUidsField) return {};
+  const parsed = parseCircleDropInAccessConfig(rec);
+  const next: Partial<CircleDropInAccessConfig> = {};
+  if (hasGroupsField) next.circleDropInGroups = parsed.circleDropInGroups;
+  if (hasUidsField) next.circleDropInMemberUids = parsed.circleDropInMemberUids;
+  return next;
+}
+
 export function extractCircleDropInAccessForRemote(
   preferences: Record<string, unknown>,
-): CircleDropInAccessConfig {
-  return parseCircleDropInAccessConfig(preferences);
+): Partial<CircleDropInAccessConfig> {
+  return circleDropInAccessFieldsFromData(preferences);
 }
 
 export { isCircleInitiatePersonCoveredByGroups as isCircleDropInPersonCoveredByGroups };
