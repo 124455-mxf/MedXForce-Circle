@@ -9,7 +9,6 @@ import {
   Mic,
   Shield,
   Square,
-  Stethoscope,
   Trash2,
   X,
 } from 'lucide-react';
@@ -297,7 +296,7 @@ export function VisitCaptureFlow({
             <div className="p-6 sm:p-8 space-y-5">
               <div className="flex items-start justify-between gap-3">
                 <span className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                  <Stethoscope size={22} />
+                  <Mic size={22} />
                 </span>
                 <button
                   type="button"

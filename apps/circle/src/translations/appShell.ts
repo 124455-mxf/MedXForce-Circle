@@ -281,6 +281,8 @@ export const appShellEnglish = {
     mediaHint: 'Thumbnail size in gallery',
     localeDisplay: 'Display',
     localeDisplayHint: 'Text size, clock, temperature, and application language',
+    onlineStatus: 'Online status',
+    onlineStatusHint: 'Appear as online in the patient app',
     schedule: 'Schedule',
     scheduleHint: 'Appointment card detail on Day, Week, and Month',
     notificationsHint: 'Alert, attention, and message delivery',
@@ -402,6 +404,16 @@ export const appShellEnglish = {
     careRelationshipPanelSubtitle:
       'Your role and access for the person you are supporting in MedXForce Circle.',
     careRelationshipYourRole: 'Your role',
+    careRelationshipRolesTitle: 'Circle roles',
+    careRelationshipRolesIntro: 'Members of this circle have one of these roles:',
+    careRelationshipChangeContactNamed:
+      'You cannot change your role here. Contact {{name}} to request a change.',
+    careRelationshipChangeContactGeneric:
+      'You cannot change your role here. Contact a proxy to request a change.',
+    careRelationshipChangeViaUserManagement:
+      'Change circle roles in {{settings}} → {{userManagement}}.',
+    onlineStatusPanelSubtitle:
+      'Choose whether the patient tablet can see that you are using Circle right now.',
     careRelationshipHideOnlineDesc:
       "When on, you won't appear as online in the patient app (sidebar dot and Circle online list).",
     careRelationshipLeaveHint:
@@ -817,7 +829,7 @@ export const appShellEnglish = {
     attentionCareCoordination: 'care team',
     attentionDropInsClear: 'No new drop-ins',
     attentionCareTeamOnly: 'Care team only',
-    attentionVisitCaptures: 'Doctor visits',
+    attentionVisitCaptures: 'Meeting recordings',
     attentionCheckInsCompleted: 'in the last 7 days',
     attentionAssessments: 'Assessments',
     attentionAssessmentsDueNow: 'Due now',
@@ -828,7 +840,7 @@ export const appShellEnglish = {
     attentionAppointmentsStartingSoon: 'Starting soon',
     attentionAppointmentsVisitTasks: 'Visit tasks',
     attentionScheduleNudgeHint: 'Tap to open Schedule',
-    attentionVisitCapturesUnread: 'unread visit captures',
+    attentionVisitCapturesUnread: 'unread meeting recordings',
     attentionTotalUnread: '{{count}} unread',
     localeLocalTime: 'Local time',
     localeWeather: 'Weather',
@@ -859,7 +871,7 @@ export const appShellEnglish = {
     remotePromptsExpandAria: 'Show remote prompts',
     remotePromptsCollapseAria: 'Hide remote prompts',
     checkIn: 'Check-in',
-    doctorVisit: 'Doctor visit',
+    doctorVisit: 'Record a meeting',
     quickAnswers: 'Quick Answers',
     dropIn: 'Drop in',
     dropInDisabledHint: 'Enable in Remote Settings',
@@ -1157,7 +1169,7 @@ export const appShellEnglish = {
       quickAnswers: 'Quick Answers',
       quickSettings: 'Quick Settings',
       dailyCheckIn: 'Daily check-in',
-      visitCapture: 'Doctor visit capture',
+      visitCapture: 'Record a meeting',
       dropInChat: 'Drop-in chat',
       communication: 'Communication',
       messages: 'Messages',
@@ -1577,6 +1589,8 @@ export const appShellGerman = {
     mediaHint: 'Miniaturgröße in der Galerie',
     localeDisplay: 'Anzeige',
     localeDisplayHint: 'Textgröße, Uhr, Temperatur und Anwendungssprache',
+    onlineStatus: 'Online-Status',
+    onlineStatusHint: 'In der Patienten-App als online erscheinen',
     schedule: 'Terminplan',
     scheduleHint: 'Terminkarten-Details in Tag, Woche und Monat',
     notificationsHint: 'Alarm, Aufmerksamkeit und Nachrichtenzustellung',
@@ -1702,6 +1716,16 @@ export const appShellGerman = {
     careRelationshipPanelSubtitle:
       'Ihre Rolle und Ihr Zugriff für die Person, die Sie in MedXForce Circle unterstützen.',
     careRelationshipYourRole: 'Ihre Rolle',
+    careRelationshipRolesTitle: 'Circle-Rollen',
+    careRelationshipRolesIntro: 'Mitglieder dieses Circles haben eine dieser Rollen:',
+    careRelationshipChangeContactNamed:
+      'Sie können Ihre Rolle hier nicht ändern. Wenden Sie sich an {{name}}, um eine Änderung zu erbitten.',
+    careRelationshipChangeContactGeneric:
+      'Sie können Ihre Rolle hier nicht ändern. Wenden Sie sich an einen Vertreter, um eine Änderung zu erbitten.',
+    careRelationshipChangeViaUserManagement:
+      'Rollen ändern Sie unter {{settings}} → {{userManagement}}.',
+    onlineStatusPanelSubtitle:
+      'Legen Sie fest, ob das Patiententablet sehen kann, dass Sie Circle gerade nutzen.',
     careRelationshipHideOnlineDesc:
       'Wenn aktiv, erscheinen Sie in der Patienten-App nicht als online (Seitenleiste und Circle-Online-Liste).',
     careRelationshipLeaveHint:
@@ -2113,7 +2137,7 @@ export const appShellGerman = {
     attentionCareCoordination: 'Pflegeteam',
     attentionDropInsClear: 'Keine neuen Drop-ins',
     attentionCareTeamOnly: 'Nur Pflegeteam',
-    attentionVisitCaptures: 'Arztbesuche',
+    attentionVisitCaptures: 'Meeting-Aufnahmen',
     attentionCheckInsCompleted: 'in den letzten 7 Tagen',
     attentionAssessments: 'Beurteilungen',
     attentionAssessmentsDueNow: 'Jetzt fällig',
@@ -2124,7 +2148,7 @@ export const appShellGerman = {
     attentionAppointmentsStartingSoon: 'Beginnt bald',
     attentionAppointmentsVisitTasks: 'Terminaufgaben',
     attentionScheduleNudgeHint: 'Tippen für Zeitplan',
-    attentionVisitCapturesUnread: 'ungelesene Besuchsaufzeichnungen',
+    attentionVisitCapturesUnread: 'ungelesene Meeting-Aufnahmen',
     attentionTotalUnread: '{{count}} ungelesen',
     localeLocalTime: 'Ortszeit',
     localeWeather: 'Wetter',
@@ -2155,7 +2179,7 @@ export const appShellGerman = {
     remotePromptsExpandAria: 'Fernaufforderungen anzeigen',
     remotePromptsCollapseAria: 'Fernaufforderungen ausblenden',
     checkIn: 'Täglicher Check-in',
-    doctorVisit: 'Arztbesuch',
+    doctorVisit: 'Meeting aufnehmen',
     quickAnswers: 'Schnellantworten',
     dropIn: 'Spontan melden',
     dropInDisabledHint: 'In Remote-Einstellungen aktivieren',
@@ -2453,7 +2477,7 @@ export const appShellGerman = {
       quickAnswers: 'Schnellantworten',
       quickSettings: 'Schnelleinstellungen',
       dailyCheckIn: 'Täglicher Check-in',
-      visitCapture: 'Arztbesuch aufzeichnen',
+      visitCapture: 'Meeting aufnehmen',
       dropInChat: 'Drop-in-Chat',
       communication: 'Kommunikation',
       messages: 'Nachrichten',
@@ -2873,6 +2897,8 @@ export const appShellSpanish = {
     mediaHint: 'Tamaño de miniatura en la galería',
     localeDisplay: 'Pantalla',
     localeDisplayHint: 'Tamaño de texto, reloj, temperatura e idioma de la aplicación',
+    onlineStatus: 'Estado en línea',
+    onlineStatusHint: 'Aparecer como en línea en la app del paciente',
     schedule: 'Agenda',
     scheduleHint: 'Detalle de citas en Día, Semana y Mes',
     notificationsHint: 'Alerta, atención y entrega de mensajes',
@@ -2998,6 +3024,16 @@ export const appShellSpanish = {
     careRelationshipPanelSubtitle:
       'Su rol y acceso para la persona a la que apoya en MedXForce Circle.',
     careRelationshipYourRole: 'Su rol',
+    careRelationshipRolesTitle: 'Roles de Circle',
+    careRelationshipRolesIntro: 'Los miembros de este Circle tienen uno de estos roles:',
+    careRelationshipChangeContactNamed:
+      'No puede cambiar su rol aquí. Contacte a {{name}} para solicitar un cambio.',
+    careRelationshipChangeContactGeneric:
+      'No puede cambiar su rol aquí. Contacte a un representante para solicitar un cambio.',
+    careRelationshipChangeViaUserManagement:
+      'Cambie los roles en {{settings}} → {{userManagement}}.',
+    onlineStatusPanelSubtitle:
+      'Elija si la tableta del paciente puede ver que está usando Circle ahora.',
     careRelationshipHideOnlineDesc:
       'Si está activo, no aparecerá como en línea en la app del paciente (punto lateral y lista en línea de Circle).',
     careRelationshipLeaveHint:
@@ -3409,7 +3445,7 @@ export const appShellSpanish = {
     attentionCareCoordination: 'equipo de cuidado',
     attentionDropInsClear: 'Sin entradas nuevas',
     attentionCareTeamOnly: 'Solo equipo de cuidados',
-    attentionVisitCaptures: 'Visitas médicas',
+    attentionVisitCaptures: 'Grabaciones de reuniones',
     attentionCheckInsCompleted: 'en los últimos 7 días',
     attentionAssessments: 'Evaluaciones',
     attentionAssessmentsDueNow: 'Vencen ahora',
@@ -3420,7 +3456,7 @@ export const appShellSpanish = {
     attentionAppointmentsStartingSoon: 'Empieza pronto',
     attentionAppointmentsVisitTasks: 'Tareas de la visita',
     attentionScheduleNudgeHint: 'Toca para abrir Agenda',
-    attentionVisitCapturesUnread: 'capturas de visita sin leer',
+    attentionVisitCapturesUnread: 'grabaciones de reuniones sin leer',
     attentionTotalUnread: '{{count}} sin leer',
     localeLocalTime: 'Hora local',
     localeWeather: 'Clima',
@@ -3451,7 +3487,7 @@ export const appShellSpanish = {
     remotePromptsExpandAria: 'Mostrar indicaciones remotas',
     remotePromptsCollapseAria: 'Ocultar indicaciones remotas',
     checkIn: 'Check-in diario',
-    doctorVisit: 'Visita médica',
+    doctorVisit: 'Grabar una reunión',
     quickAnswers: 'Respuestas rápidas',
     dropIn: 'Entrar',
     dropInDisabledHint: 'Activar en Ajustes remotos',
@@ -3749,7 +3785,7 @@ export const appShellSpanish = {
       quickAnswers: 'Respuestas rápidas',
       quickSettings: 'Ajustes rápidos',
       dailyCheckIn: 'Check-in diario',
-      visitCapture: 'Captura de visita médica',
+      visitCapture: 'Grabar una reunión',
       dropInChat: 'Chat de entrada',
       communication: 'Comunicación',
       messages: 'Mensajes',
@@ -4169,6 +4205,8 @@ export const appShellPolish = {
     mediaHint: 'Rozmiar miniaturek w galerii',
     localeDisplay: 'Wyświetlanie',
     localeDisplayHint: 'Rozmiar tekstu, zegar, temperatura i język aplikacji',
+    onlineStatus: 'Status online',
+    onlineStatusHint: 'Pokazuj się jako online w aplikacji pacjenta',
     schedule: 'Harmonogram',
     scheduleHint: 'Szczegóły kart wizyt w Dzień, Tydzień i Miesiąc',
     notificationsHint: 'Alarm, uwaga i dostarczanie wiadomości',
@@ -4294,6 +4332,16 @@ export const appShellPolish = {
     careRelationshipPanelSubtitle:
       'Twoja rola i dostęp do osoby, którą wspierasz w MedXForce Circle.',
     careRelationshipYourRole: 'Twoja rola',
+    careRelationshipRolesTitle: 'Role Circle',
+    careRelationshipRolesIntro: 'Członkowie tego Circle mają jedną z tych ról:',
+    careRelationshipChangeContactNamed:
+      'Nie możesz zmienić swojej roli tutaj. Skontaktuj się z {{name}}, aby poprosić o zmianę.',
+    careRelationshipChangeContactGeneric:
+      'Nie możesz zmienić swojej roli tutaj. Skontaktuj się z pełnomocnikiem, aby poprosić o zmianę.',
+    careRelationshipChangeViaUserManagement:
+      'Zmień role w {{settings}} → {{userManagement}}.',
+    onlineStatusPanelSubtitle:
+      'Wybierz, czy tablet pacjenta ma widzieć, że korzystasz teraz z Circle.',
     careRelationshipHideOnlineDesc:
       'Po włączeniu nie będziesz widoczny jako online w aplikacji pacjenta (kropka w pasku bocznym i lista online Circle).',
     careRelationshipLeaveHint:
@@ -4705,7 +4753,7 @@ export const appShellPolish = {
     attentionCareCoordination: 'zespół opieki',
     attentionDropInsClear: 'Brak nowych drop-inów',
     attentionCareTeamOnly: 'Tylko zespół opieki',
-    attentionVisitCaptures: 'Wizyty u lekarza',
+    attentionVisitCaptures: 'Nagrania spotkań',
     attentionCheckInsCompleted: 'w ostatnich 7 dniach',
     attentionAssessments: 'Oceny',
     attentionAssessmentsDueNow: 'Do zrobienia teraz',
@@ -4716,7 +4764,7 @@ export const appShellPolish = {
     attentionAppointmentsStartingSoon: 'Wkrótce się zacznie',
     attentionAppointmentsVisitTasks: 'Zadania wizyty',
     attentionScheduleNudgeHint: 'Dotknij, aby otworzyć harmonogram',
-    attentionVisitCapturesUnread: 'nieprzeczytane nagrania wizyt',
+    attentionVisitCapturesUnread: 'nieprzeczytane nagrania spotkań',
     attentionTotalUnread: '{{count}} nieprzeczytanych',
     localeLocalTime: 'Czas lokalny',
     localeWeather: 'Pogoda',
@@ -4747,7 +4795,7 @@ export const appShellPolish = {
     remotePromptsExpandAria: 'Pokaż zdalne podpowiedzi',
     remotePromptsCollapseAria: 'Ukryj zdalne podpowiedzi',
     checkIn: 'Codzienny check-in',
-    doctorVisit: 'Wizyta u lekarza',
+    doctorVisit: 'Nagraj spotkanie',
     quickAnswers: 'Szybkie odpowiedzi',
     dropIn: 'Dołącz na czat',
     dropInDisabledHint: 'Włącz w Ustawieniach zdalnych',
@@ -5045,7 +5093,7 @@ export const appShellPolish = {
       quickAnswers: 'Szybkie odpowiedzi',
       quickSettings: 'Szybkie ustawienia',
       dailyCheckIn: 'Codzienny check-in',
-      visitCapture: 'Nagranie wizyty u lekarza',
+      visitCapture: 'Nagraj spotkanie',
       dropInChat: 'Czat na żądanie',
       communication: 'Komunikacja',
       messages: 'Wiadomości',

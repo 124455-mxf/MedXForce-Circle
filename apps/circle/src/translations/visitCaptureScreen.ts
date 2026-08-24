@@ -1,14 +1,14 @@
-/** Local doctor visit capture flow (Circle caregiver device) — merged into CIRCLE_TRANSLATIONS. */
+/** Local meeting recording flow (Circle caregiver device) — merged into CIRCLE_TRANSLATIONS. */
 
 export const visitCaptureScreenEnglish = {
-  title: 'Doctor visit capture',
+  title: 'Record a meeting',
   subtitle:
-    'Record the visit for your Care Coordination team only — not the wider circle.',
+    'Record this meeting for your Care Coordination team only — not the wider circle.',
   apiNotConfigured:
-    'Set VITE_MEDXFORCE_API_URL in the Circle app env (patient server URL) to enable visit capture.',
+    'Set VITE_MEDXFORCE_API_URL in the Circle app env (patient server URL) to enable meeting recording.',
   consentLabel:
     'Everyone in the room has been informed that this conversation will be recorded and shared with the Care Coordination team.',
-  startCapture: 'Start visit capture',
+  startCapture: 'Start recording',
   segmentsLabel: 'Segments',
   segmentsSaved: '{{count}} saved',
   statusRecording: 'Recording',
@@ -16,7 +16,7 @@ export const visitCaptureScreenEnglish = {
   startRecording: 'Start recording',
   addSegment: 'Add segment',
   stopSegment: 'Stop segment',
-  finishAnalyze: 'Finish visit & analyze',
+  finishAnalyze: 'Finish meeting & analyze',
   processingTitle: 'Transcribing, analyzing, and translating…',
   processingHint: 'This may take a minute.',
   summaryHeading: 'Summary',
@@ -34,10 +34,10 @@ export const visitCaptureScreenEnglish = {
   doneHiddenHint: "You won't see this in Care team — only the care team can.",
   doneButton: 'Done',
   failedBody:
-    "We couldn't process this visit. Your recordings are still saved locally until you delete them.",
+    "We couldn't process this recording. Your audio is still saved locally until you delete it.",
   retry: 'Retry',
-  errorStartFailed: 'Could not start visit capture.',
-  errorMicRequired: 'Microphone access is required to record the visit.',
+  errorStartFailed: 'Could not start recording.',
+  errorMicRequired: 'Microphone access is required to record the meeting.',
   errorNoAudio: 'No audio captured. Try again.',
   errorSaveLocalFailed: 'Could not save recording locally.',
   errorProcessingFailed: 'Processing failed.',
@@ -45,14 +45,14 @@ export const visitCaptureScreenEnglish = {
 };
 
 export const visitCaptureScreenGerman = {
-  title: 'Arztbesuch aufzeichnen',
+  title: 'Meeting aufnehmen',
   subtitle:
-    'Nur für Ihr Pflegekoordinationsteam — nicht für den weiteren Circle sichtbar.',
+    'Nehmen Sie dieses Meeting nur für Ihr Pflegekoordinationsteam auf — nicht für den weiteren Circle.',
   apiNotConfigured:
-    'Setzen Sie VITE_MEDXFORCE_API_URL in der Circle-App-Umgebung (Patienten-Server-URL), um die Besuchsaufzeichnung zu aktivieren.',
+    'Setzen Sie VITE_MEDXFORCE_API_URL in der Circle-App-Umgebung (Patienten-Server-URL), um Meeting-Aufnahmen zu aktivieren.',
   consentLabel:
     'Alle Anwesenden wurden informiert, dass dieses Gespräch aufgezeichnet und mit dem Pflegekoordinationsteam geteilt wird.',
-  startCapture: 'Besuchsaufzeichnung starten',
+  startCapture: 'Aufnahme starten',
   segmentsLabel: 'Segmente',
   segmentsSaved: '{{count}} gespeichert',
   statusRecording: 'Aufnahme',
@@ -60,7 +60,7 @@ export const visitCaptureScreenGerman = {
   startRecording: 'Aufnahme starten',
   addSegment: 'Segment hinzufügen',
   stopSegment: 'Segment stoppen',
-  finishAnalyze: 'Besuch abschließen & analysieren',
+  finishAnalyze: 'Meeting beenden & analysieren',
   processingTitle: 'Transkribieren, analysieren und übersetzen…',
   processingHint: 'Das kann etwa eine Minute dauern.',
   summaryHeading: 'Zusammenfassung',
@@ -79,10 +79,10 @@ export const visitCaptureScreenGerman = {
     'Sie sehen dies nicht unter Pflegeteam — nur das Pflegeteam kann.',
   doneButton: 'Fertig',
   failedBody:
-    'Dieser Besuch konnte nicht verarbeitet werden. Ihre Aufnahmen bleiben lokal gespeichert, bis Sie sie löschen.',
+    'Diese Aufnahme konnte nicht verarbeitet werden. Ihre Audiodateien bleiben lokal gespeichert, bis Sie sie löschen.',
   retry: 'Erneut versuchen',
-  errorStartFailed: 'Besuchsaufzeichnung konnte nicht gestartet werden.',
-  errorMicRequired: 'Mikrofonzugriff ist für die Aufnahme erforderlich.',
+  errorStartFailed: 'Aufnahme konnte nicht gestartet werden.',
+  errorMicRequired: 'Mikrofonzugriff ist erforderlich, um das Meeting aufzunehmen.',
   errorNoAudio: 'Kein Audio aufgezeichnet. Bitte erneut versuchen.',
   errorSaveLocalFailed: 'Aufnahme konnte lokal nicht gespeichert werden.',
   errorProcessingFailed: 'Verarbeitung fehlgeschlagen.',
@@ -90,14 +90,14 @@ export const visitCaptureScreenGerman = {
 };
 
 export const visitCaptureScreenSpanish = {
-  title: 'Captura de visita médica',
+  title: 'Grabar una reunión',
   subtitle:
-    'Grabe la visita solo para su equipo de coordinación de cuidados — no para todo el círculo.',
+    'Grabe esta reunión solo para su equipo de coordinación de cuidados — no para todo el círculo.',
   apiNotConfigured:
-    'Configure VITE_MEDXFORCE_API_URL en el entorno de la app Circle (URL del servidor del paciente) para habilitar la captura de visitas.',
+    'Configure VITE_MEDXFORCE_API_URL en el entorno de la app Circle (URL del servidor del paciente) para habilitar la grabación de reuniones.',
   consentLabel:
     'Se ha informado a todos en la sala de que esta conversación será grabada y compartida con el equipo de coordinación de cuidados.',
-  startCapture: 'Iniciar captura de visita',
+  startCapture: 'Iniciar grabación',
   segmentsLabel: 'Segmentos',
   segmentsSaved: '{{count}} guardados',
   statusRecording: 'Grabando',
@@ -105,7 +105,7 @@ export const visitCaptureScreenSpanish = {
   startRecording: 'Iniciar grabación',
   addSegment: 'Añadir segmento',
   stopSegment: 'Detener segmento',
-  finishAnalyze: 'Finalizar visita y analizar',
+  finishAnalyze: 'Finalizar reunión y analizar',
   processingTitle: 'Transcribiendo, analizando y traduciendo…',
   processingHint: 'Puede tardar un minuto.',
   summaryHeading: 'Resumen',
@@ -124,10 +124,10 @@ export const visitCaptureScreenSpanish = {
     'No verá esto en coordinación de cuidados — solo el equipo de cuidados puede.',
   doneButton: 'Listo',
   failedBody:
-    'No pudimos procesar esta visita. Sus grabaciones siguen guardadas localmente hasta que las elimine.',
+    'No pudimos procesar esta grabación. El audio sigue guardado localmente hasta que lo elimine.',
   retry: 'Reintentar',
-  errorStartFailed: 'No se pudo iniciar la captura de visita.',
-  errorMicRequired: 'Se requiere acceso al micrófono para grabar la visita.',
+  errorStartFailed: 'No se pudo iniciar la grabación.',
+  errorMicRequired: 'Se requiere acceso al micrófono para grabar la reunión.',
   errorNoAudio: 'No se capturó audio. Inténtelo de nuevo.',
   errorSaveLocalFailed: 'No se pudo guardar la grabación localmente.',
   errorProcessingFailed: 'Error en el procesamiento.',
@@ -135,14 +135,14 @@ export const visitCaptureScreenSpanish = {
 };
 
 export const visitCaptureScreenPolish = {
-  title: 'Nagranie wizyty u lekarza',
+  title: 'Nagraj spotkanie',
   subtitle:
-    'Nagraj wizytę tylko dla zespołu koordynacji opieki — nie dla całego kręgu.',
+    'Nagraj to spotkanie tylko dla zespołu koordynacji opieki — nie dla całego kręgu.',
   apiNotConfigured:
-    'Ustaw VITE_MEDXFORCE_API_URL w środowisku aplikacji Circle (URL serwera pacjenta), aby włączyć nagrywanie wizyt.',
+    'Ustaw VITE_MEDXFORCE_API_URL w środowisku aplikacji Circle (URL serwera pacjenta), aby włączyć nagrywanie spotkań.',
   consentLabel:
     'Wszyscy obecni zostali poinformowani, że ta rozmowa będzie nagrywana i udostępniona zespołowi koordynacji opieki.',
-  startCapture: 'Rozpocznij nagrywanie wizyty',
+  startCapture: 'Rozpocznij nagrywanie',
   segmentsLabel: 'Segmenty',
   segmentsSaved: 'Zapisano: {{count}}',
   statusRecording: 'Nagrywanie',
@@ -150,7 +150,7 @@ export const visitCaptureScreenPolish = {
   startRecording: 'Rozpocznij nagrywanie',
   addSegment: 'Dodaj segment',
   stopSegment: 'Zatrzymaj segment',
-  finishAnalyze: 'Zakończ wizytę i analizuj',
+  finishAnalyze: 'Zakończ spotkanie i analizuj',
   processingTitle: 'Transkrypcja, analiza i tłumaczenie…',
   processingHint: 'To może potrwać około minuty.',
   summaryHeading: 'Podsumowanie',
@@ -169,10 +169,10 @@ export const visitCaptureScreenPolish = {
     'Nie zobaczysz tego w koordynacji opieki — tylko zespół opieki ma dostęp.',
   doneButton: 'Gotowe',
   failedBody:
-    'Nie udało się przetworzyć tej wizyty. Nagrania pozostają zapisane lokalnie, dopóki ich nie usuniesz.',
+    'Nie udało się przetworzyć tego nagrania. Audio pozostaje zapisane lokalnie, dopóki go nie usuniesz.',
   retry: 'Spróbuj ponownie',
-  errorStartFailed: 'Nie udało się rozpocząć nagrywania wizyty.',
-  errorMicRequired: 'Do nagrania wizyty wymagany jest dostęp do mikrofonu.',
+  errorStartFailed: 'Nie udało się rozpocząć nagrywania.',
+  errorMicRequired: 'Do nagrania spotkania wymagany jest dostęp do mikrofonu.',
   errorNoAudio: 'Nie nagrano dźwięku. Spróbuj ponownie.',
   errorSaveLocalFailed: 'Nie udało się zapisać nagrania lokalnie.',
   errorProcessingFailed: 'Przetwarzanie nie powiodło się.',

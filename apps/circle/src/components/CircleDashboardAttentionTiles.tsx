@@ -3,7 +3,7 @@ import {
   Megaphone,
   MessageCircle,
   MessageSquare,
-  Stethoscope,
+  Mic,
   Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -226,7 +226,7 @@ export function CircleDashboardAttentionTiles({
       label: t('dashboard.attentionVisitCaptures'),
       count: visitCapturesUnreadCount,
       detail: t('dashboard.attentionVisitCapturesUnread'),
-      icon: Stethoscope,
+      icon: Mic,
       onClick: onOpenCircleFolder
         ? () =>
             onOpenCircleFolder(

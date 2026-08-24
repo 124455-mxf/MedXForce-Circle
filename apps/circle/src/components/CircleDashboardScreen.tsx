@@ -16,7 +16,7 @@ import {
   Keyboard,
   SlidersHorizontal,
   Sparkles,
-  Stethoscope,
+  Mic,
   UserRound,
   Users,
 } from 'lucide-react';
@@ -794,7 +794,7 @@ function LivePatientWidget({
                 ) : null}
                 <LiveRemotePromptChip
                   label={t('dashboard.doctorVisit')}
-                  icon={Stethoscope}
+                  icon={Mic}
                   onClick={onPromptDoctorVisit}
                 />
               </div>

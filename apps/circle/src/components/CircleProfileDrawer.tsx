@@ -14,6 +14,7 @@ import {
   LogOut,
   Image as ImageIcon,
   MessageSquare,
+  Radio,
   Settings,
   User as UserIcon,
   UserPlus,
@@ -23,6 +24,7 @@ import {
 import { CircleSettingsMessagingPanel } from './CircleSettingsMessagingPanel';
 import { CircleSettingsMediaPanel } from './CircleSettingsMediaPanel';
 import { CircleSettingsLocalePanel } from './CircleSettingsLocalePanel';
+import { CircleSettingsOnlineStatusPanel } from './CircleSettingsOnlineStatusPanel';
 import { CircleSettingsSchedulePanel } from './CircleSettingsSchedulePanel';
 import { CircleSettingsCareRelationshipPanel } from './CircleSettingsCareRelationshipPanel';
 import { CircleSettingsUserManagementPanel } from './CircleSettingsUserManagementPanel';
@@ -100,6 +102,7 @@ export function CircleProfileDrawer({
     | 'messaging'
     | 'media'
     | 'localeDisplay'
+    | 'onlineStatus'
     | 'schedule'
     | 'careRelationship'
     | 'userManagement'
@@ -217,6 +220,7 @@ export function CircleProfileDrawer({
       drawerView === 'messaging' ||
       drawerView === 'media' ||
       drawerView === 'localeDisplay' ||
+      drawerView === 'onlineStatus' ||
       drawerView === 'schedule' ||
       drawerView === 'careRelationship' ||
       drawerView === 'userManagement' ||
@@ -286,6 +290,7 @@ export function CircleProfileDrawer({
             {drawerView === 'messaging' && t('drawer.messaging')}
             {drawerView === 'media' && t('drawer.media')}
             {drawerView === 'localeDisplay' && t('drawer.localeDisplay')}
+            {drawerView === 'onlineStatus' && t('drawer.onlineStatus')}
             {drawerView === 'schedule' && t('drawer.schedule')}
             {drawerView === 'careRelationship' && t('drawer.careRelationship')}
             {drawerView === 'userManagement' && t('drawer.userManagement')}
@@ -409,6 +414,18 @@ export function CircleProfileDrawer({
             </button>
             <button
               type="button"
+              onClick={() => setDrawerView('onlineStatus')}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+            >
+              <Radio size={20} className="text-emerald-600" />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-800 text-sm">{t('drawer.onlineStatus')}</p>
+                <p className="text-xs text-slate-400">{t('drawer.onlineStatusHint')}</p>
+              </div>
+              <ChevronRight size={16} className="text-slate-300 shrink-0" />
+            </button>
+            <button
+              type="button"
               onClick={() => setDrawerView('schedule')}
               className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
             >
@@ -441,6 +458,12 @@ export function CircleProfileDrawer({
               db={db}
               patientId={patient?.patientId}
             />
+          </div>
+        )}
+
+        {drawerView === 'onlineStatus' && (
+          <div className="flex-1 overflow-y-auto">
+            <CircleSettingsOnlineStatusPanel user={user} db={db} patient={patient} />
           </div>
         )}
 

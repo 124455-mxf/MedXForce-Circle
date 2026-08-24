@@ -71,22 +71,22 @@ export const remotePromptsModalEnglish = {
     'The patient will see a prompt on their tablet to open the daily check-in. They can accept or dismiss it.',
   remoteCheckInAwaitingBody:
     'The patient will see a prompt to open daily check-in. This request closes automatically if there is no response.',
-  remoteDoctorVisitConfirmTitle: 'Open doctor visit capture on patient tablet?',
+  remoteDoctorVisitConfirmTitle: 'Start meeting recording on the patient tablet?',
   remoteDoctorVisitConfirmBody:
-    'The patient will see a prompt to start doctor visit recording on their tablet. They can accept or dismiss it.',
+    'The patient will see a prompt to start recording a meeting on their tablet. They can accept or dismiss it.',
   remoteDoctorVisitAwaitingBody:
-    'The patient will see a prompt to start doctor visit capture. This request closes automatically if there is no response.',
+    'The patient will see a prompt to start recording a meeting. This request closes automatically if there is no response.',
   remoteSendToTablet: 'Send to tablet',
   remoteLabelDailyCheckIn: 'Daily check-in',
-  remoteLabelDoctorVisit: 'Doctor visit capture',
+  remoteLabelDoctorVisit: 'Record a meeting',
   remoteAcceptedCheckIn:
     '{{name}} accepted your request to open daily check-in on their tablet.',
   remoteDeclinedCheckIn:
     '{{name}} declined your request to open daily check-in on their tablet.',
   remoteAcceptedDoctorVisit:
-    '{{name}} accepted your request to open doctor visit capture on their tablet.',
+    '{{name}} accepted your request to start meeting recording on their tablet.',
   remoteDeclinedDoctorVisit:
-    '{{name}} declined your request to open doctor visit capture on their tablet.',
+    '{{name}} declined your request to start meeting recording on their tablet.',
   remoteQuickAnswersConfirmTitle: 'Open Quick Answers on patient tablet?',
   remoteQuickAnswersConfirmBody:
     'The patient will see a prompt to open Quick Answers on their tablet. They can accept or dismiss it.',
@@ -170,22 +170,22 @@ export const remotePromptsModalGerman = {
     'Der Patient sieht auf seinem Tablet eine Aufforderung, den täglichen Check-in zu öffnen. Er kann annehmen oder ablehnen.',
   remoteCheckInAwaitingBody:
     'Der Patient sieht eine Aufforderung zum Öffnen des täglichen Check-ins. Diese Anfrage schließt sich automatisch, wenn keine Antwort erfolgt.',
-  remoteDoctorVisitConfirmTitle: 'Arztbesuch-Aufzeichnung auf dem Patienten-Tablet öffnen?',
+  remoteDoctorVisitConfirmTitle: 'Meeting-Aufnahme auf dem Patienten-Tablet starten?',
   remoteDoctorVisitConfirmBody:
-    'Der Patient sieht eine Aufforderung, die Aufzeichnung des Arztbesuchs auf seinem Tablet zu starten. Er kann annehmen oder ablehnen.',
+    'Der Patient sieht eine Aufforderung, eine Meeting-Aufnahme auf seinem Tablet zu starten. Er kann annehmen oder ablehnen.',
   remoteDoctorVisitAwaitingBody:
-    'Der Patient sieht eine Aufforderung zum Starten der Arztbesuch-Aufzeichnung. Diese Anfrage schließt sich automatisch, wenn keine Antwort erfolgt.',
+    'Der Patient sieht eine Aufforderung zum Starten einer Meeting-Aufnahme. Diese Anfrage schließt sich automatisch, wenn keine Antwort erfolgt.',
   remoteSendToTablet: 'An Tablet senden',
   remoteLabelDailyCheckIn: 'Täglicher Check-in',
-  remoteLabelDoctorVisit: 'Arztbesuch aufzeichnen',
+  remoteLabelDoctorVisit: 'Meeting aufnehmen',
   remoteAcceptedCheckIn:
     '{{name}} hat Ihre Anfrage angenommen, den täglichen Check-in auf dem Tablet zu öffnen.',
   remoteDeclinedCheckIn:
     '{{name}} hat Ihre Anfrage abgelehnt, den täglichen Check-in auf dem Tablet zu öffnen.',
   remoteAcceptedDoctorVisit:
-    '{{name}} hat Ihre Anfrage angenommen, die Arztbesuch-Aufzeichnung auf dem Tablet zu öffnen.',
+    '{{name}} hat Ihre Anfrage angenommen, eine Meeting-Aufnahme auf dem Tablet zu starten.',
   remoteDeclinedDoctorVisit:
-    '{{name}} hat Ihre Anfrage abgelehnt, die Arztbesuch-Aufzeichnung auf dem Tablet zu öffnen.',
+    '{{name}} hat Ihre Anfrage abgelehnt, eine Meeting-Aufnahme auf dem Tablet zu starten.',
   remoteQuickAnswersConfirmTitle: 'Schnellantworten auf dem Patienten-Tablet öffnen?',
   remoteQuickAnswersConfirmBody:
     'Der Patient sieht eine Aufforderung, Schnellantworten auf seinem Tablet zu öffnen. Er kann annehmen oder ablehnen.',
@@ -269,22 +269,22 @@ export const remotePromptsModalSpanish = {
     'El paciente verá un aviso en su tableta para abrir el check-in diario. Puede aceptar o descartarlo.',
   remoteCheckInAwaitingBody:
     'El paciente verá un aviso para abrir el check-in diario. Esta solicitud se cierra automáticamente si no hay respuesta.',
-  remoteDoctorVisitConfirmTitle: '¿Abrir captura de visita médica en la tableta del paciente?',
+  remoteDoctorVisitConfirmTitle: '¿Iniciar la grabación de una reunión en la tableta del paciente?',
   remoteDoctorVisitConfirmBody:
-    'El paciente verá un aviso para iniciar la grabación de la visita médica en su tableta. Puede aceptar o descartarlo.',
+    'El paciente verá un aviso para empezar a grabar una reunión en su tableta. Puede aceptar o descartarlo.',
   remoteDoctorVisitAwaitingBody:
-    'El paciente verá un aviso para iniciar la captura de la visita médica. Esta solicitud se cierra automáticamente si no hay respuesta.',
+    'El paciente verá un aviso para empezar a grabar una reunión. Esta solicitud se cierra automáticamente si no hay respuesta.',
   remoteSendToTablet: 'Enviar a la tableta',
   remoteLabelDailyCheckIn: 'Check-in diario',
-  remoteLabelDoctorVisit: 'Captura de visita médica',
+  remoteLabelDoctorVisit: 'Grabar una reunión',
   remoteAcceptedCheckIn:
     '{{name}} aceptó su solicitud para abrir el check-in diario en su tableta.',
   remoteDeclinedCheckIn:
     '{{name}} rechazó su solicitud para abrir el check-in diario en su tableta.',
   remoteAcceptedDoctorVisit:
-    '{{name}} aceptó su solicitud para abrir la captura de visita médica en su tableta.',
+    '{{name}} aceptó su solicitud para iniciar la grabación de una reunión en su tableta.',
   remoteDeclinedDoctorVisit:
-    '{{name}} rechazó su solicitud para abrir la captura de visita médica en su tableta.',
+    '{{name}} rechazó su solicitud para iniciar la grabación de una reunión en su tableta.',
   remoteQuickAnswersConfirmTitle: '¿Abrir Respuestas rápidas en la tableta del paciente?',
   remoteQuickAnswersConfirmBody:
     'El paciente verá un aviso para abrir Respuestas rápidas en su tableta. Puede aceptar o descartarlo.',
@@ -368,22 +368,22 @@ export const remotePromptsModalPolish = {
     'Pacjent zobaczy na tablecie prośbę o otwarcie codziennego check-inu. Może zaakceptować lub odrzucić.',
   remoteCheckInAwaitingBody:
     'Pacjent zobaczy prośbę o otwarcie codziennego check-inu. Prośba zamknie się automatycznie, jeśli nie będzie odpowiedzi.',
-  remoteDoctorVisitConfirmTitle: 'Otworzyć nagranie wizyty u lekarza na tablecie pacjenta?',
+  remoteDoctorVisitConfirmTitle: 'Rozpocząć nagrywanie spotkania na tablecie pacjenta?',
   remoteDoctorVisitConfirmBody:
-    'Pacjent zobaczy prośbę o rozpoczęcie nagrywania wizyty u lekarza na tablecie. Może zaakceptować lub odrzucić.',
+    'Pacjent zobaczy prośbę o rozpoczęcie nagrywania spotkania na tablecie. Może zaakceptować lub odrzucić.',
   remoteDoctorVisitAwaitingBody:
-    'Pacjent zobaczy prośbę o rozpoczęcie nagrania wizyty u lekarza. Prośba zamknie się automatycznie, jeśli nie będzie odpowiedzi.',
+    'Pacjent zobaczy prośbę o rozpoczęcie nagrywania spotkania. Prośba zamknie się automatycznie, jeśli nie będzie odpowiedzi.',
   remoteSendToTablet: 'Wyślij na tablet',
   remoteLabelDailyCheckIn: 'Codzienny check-in',
-  remoteLabelDoctorVisit: 'Nagranie wizyty u lekarza',
+  remoteLabelDoctorVisit: 'Nagraj spotkanie',
   remoteAcceptedCheckIn:
     '{{name}} zaakceptował(a) Twoją prośbę o otwarcie codziennego check-inu na tablecie.',
   remoteDeclinedCheckIn:
     '{{name}} odrzucił(a) Twoją prośbę o otwarcie codziennego check-inu na tablecie.',
   remoteAcceptedDoctorVisit:
-    '{{name}} zaakceptował(a) Twoją prośbę o otwarcie nagrania wizyty u lekarza na tablecie.',
+    '{{name}} zaakceptował(a) Twoją prośbę o rozpoczęcie nagrywania spotkania na tablecie.',
   remoteDeclinedDoctorVisit:
-    '{{name}} odrzucił(a) Twoją prośbę o otwarcie nagrania wizyty u lekarza na tablecie.',
+    '{{name}} odrzucił(a) Twoją prośbę o rozpoczęcie nagrywania spotkania na tablecie.',
   remoteQuickAnswersConfirmTitle: 'Otworzyć Szybkie odpowiedzi na tablecie pacjenta?',
   remoteQuickAnswersConfirmBody:
     'Pacjent zobaczy prośbę o otwarcie Szybkich odpowiedzi na tablecie. Może zaakceptować lub odrzucić.',
