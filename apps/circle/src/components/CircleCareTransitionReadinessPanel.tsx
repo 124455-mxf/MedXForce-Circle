@@ -64,9 +64,16 @@ type CircleCareTransitionReadinessPanelProps = {
    * Defaults to collapsed; remembers expand/collapse per patient.
    */
   collapsible?: boolean;
+  /**
+   * Patient Profile: status cards only. Working lists stay on Home / Circle Tasks.
+   * Pack tap uses onExpand (overlay). Circle help tap uses onOpenCircleHelp.
+   */
+  profileSummary?: boolean;
   onClose?: () => void;
   /** Open the full-screen checklist modal */
   onExpand?: () => void;
+  /** Profile status card: open Circle Tasks (everyday help list). */
+  onOpenCircleHelp?: () => void;
   /** When false, hide everyday Circle help (e.g. expanded pack overlay). */
   showCircleHelp?: boolean;
   /**
@@ -107,8 +114,10 @@ export function CircleCareTransitionReadinessPanel({
   compact = false,
   hideHeader = false,
   collapsible = false,
+  profileSummary = false,
   onClose,
   onExpand,
+  onOpenCircleHelp,
   showCircleHelp = true,
   composeInHeader = false,
   helpComposerOpen: helpComposerOpenProp,
@@ -333,16 +342,24 @@ export function CircleCareTransitionReadinessPanel({
     collapsible ? (
       <button
         type="button"
-        onClick={toggleCollapsed}
+        onClick={() => {
+          if (profileSummary) {
+            onExpand?.();
+            return;
+          }
+          toggleCollapsed();
+        }}
         className={cn(
           'flex-1 min-w-0 flex items-start gap-3 text-left',
           compact ? 'p-4' : 'p-5',
         )}
-        aria-expanded={!collapsed}
+        aria-expanded={profileSummary ? undefined : !collapsed}
         aria-label={
-          collapsed
-            ? t('careTransition.showSectionAria')
-            : t('careTransition.hideSectionAria')
+          profileSummary
+            ? t('careTransition.expand')
+            : collapsed
+              ? t('careTransition.showSectionAria')
+              : t('careTransition.hideSectionAria')
         }
       >
         <div className="w-11 h-11 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
@@ -362,7 +379,7 @@ export function CircleCareTransitionReadinessPanel({
           size={18}
           className={cn(
             'shrink-0 text-slate-400 transition-transform mt-1',
-            collapsed && '-rotate-90',
+            (profileSummary || collapsed) && '-rotate-90',
           )}
           aria-hidden
         />
@@ -686,19 +703,57 @@ export function CircleCareTransitionReadinessPanel({
     );
   };
 
+  const circleHelpStatusLine =
+    openHelpTasks.length === 0 && completedHelpTasks.length === 0
+      ? t('careTransition.circleHelpHint')
+      : openHelpTasks.length > 0 && completedHelpTasks.length > 0
+        ? t('careTransition.circleHelpStatusOpenAndDone', {
+            open: openHelpTasks.length,
+            done: completedHelpTasks.length,
+          })
+        : openHelpTasks.length > 0
+          ? t('careTransition.circleHelpStatusOpen', { count: openHelpTasks.length })
+          : t('careTransition.circleHelpStatusDone', { count: completedHelpTasks.length });
+
   const circleHelpCard =
     canViewTasks && showCircleHelp ? (
-      <section className={cn(cardClass, 'space-y-3')}>
+      <section className={cn(cardClass, !profileSummary && 'space-y-3')}>
         <div className="flex items-start gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-sky-100 text-sky-800 flex items-center justify-center shrink-0">
-            <HeartHandshake size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="font-bold text-slate-800">{t('careTransition.circleHelpTitle')}</h3>
-            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-              {t('careTransition.circleHelpHint')}
-            </p>
-          </div>
+          {profileSummary && onOpenCircleHelp ? (
+            <button
+              type="button"
+              onClick={onOpenCircleHelp}
+              className="flex-1 min-w-0 flex items-start gap-3 text-left"
+              aria-label={t('careTransition.circleHelpOpenAria')}
+            >
+              <div className="w-11 h-11 rounded-2xl bg-sky-100 text-sky-800 flex items-center justify-center shrink-0">
+                <HeartHandshake size={20} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-bold text-slate-800">{t('careTransition.circleHelpTitle')}</h3>
+                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                  {circleHelpStatusLine}
+                </p>
+              </div>
+              <ChevronDown
+                size={18}
+                className="shrink-0 text-slate-400 -rotate-90 mt-1"
+                aria-hidden
+              />
+            </button>
+          ) : (
+            <>
+              <div className="w-11 h-11 rounded-2xl bg-sky-100 text-sky-800 flex items-center justify-center shrink-0">
+                <HeartHandshake size={20} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-bold text-slate-800">{t('careTransition.circleHelpTitle')}</h3>
+                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                  {profileSummary ? circleHelpStatusLine : t('careTransition.circleHelpHint')}
+                </p>
+              </div>
+            </>
+          )}
           {canAddHelp && !composeInHeader ? (
             <button
               type="button"
@@ -712,12 +767,13 @@ export function CircleCareTransitionReadinessPanel({
             </button>
           ) : null}
         </div>
-        {openHelpTasks.length === 0 && completedHelpTasks.length === 0 ? (
+        {profileSummary || openHelpTasks.length > 0 || completedHelpTasks.length > 0 ? null : (
           <p className="text-sm text-slate-500">{t('careTransition.circleHelpEmpty')}</p>
-        ) : openHelpTasks.length > 0 ? (
+        )}
+        {!profileSummary && openHelpTasks.length > 0 ? (
           <div className="space-y-2">{openHelpTasks.map(renderHelpTask)}</div>
         ) : null}
-        {completedHelpTasks.length > 0 ? (
+        {!profileSummary && completedHelpTasks.length > 0 ? (
           <div className="border-t border-slate-100 pt-2">
             <button
               type="button"
@@ -760,7 +816,7 @@ export function CircleCareTransitionReadinessPanel({
           {packStartButton}
         </div>
       ) : null}
-      {collapsible && collapsed ? null : (
+      {profileSummary || (collapsible && collapsed) ? null : (
       <div className={cn('space-y-4', collapsible && 'border-t border-slate-100', collapsible && cardPad)}>
       {hideHeader || collapsible ? null : (
       <div className="flex items-start gap-3">

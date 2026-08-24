@@ -860,6 +860,7 @@ export function CircleMainShell({
                 db={db}
                 storage={storage}
                 patient={selectedPatient}
+                onOpenCircleHelp={() => handleOpenCircleFolder('open', 'care_transition')}
               />
             </div>
           )}

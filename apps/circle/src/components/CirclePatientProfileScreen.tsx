@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
 import { UserRound } from 'lucide-react';
-import type { CirclePatientSummary } from '@medxforce/shared';
+import { circleDisplayFirstName, type CirclePatientSummary } from '@medxforce/shared';
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
 import { useCircleT } from '../lib/circleI18nContext';
 import {
@@ -13,6 +14,8 @@ import {
   circleWorkTabPanelClass,
 } from '../lib/circleSectionStyles';
 import { cn } from '../lib/utils';
+import { CircleCareTransitionReadinessPanel } from './CircleCareTransitionReadinessPanel';
+import { CircleMessageExpandOverlay } from './CircleMessageExpandOverlay';
 import { CirclePatientProfilePanel } from './CirclePatientProfilePanel';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 
@@ -21,6 +24,7 @@ interface CirclePatientProfileScreenProps {
   db: Firestore;
   storage: FirebaseStorage;
   patient: CirclePatientSummary;
+  onOpenCircleHelp?: () => void;
 }
 
 export function CirclePatientProfileScreen({
@@ -28,9 +32,11 @@ export function CirclePatientProfileScreen({
   db,
   storage,
   patient,
+  onOpenCircleHelp,
 }: CirclePatientProfileScreenProps) {
   const compactChrome = useCircleCompactChrome();
   const t = useCircleT();
+  const [careTransitionOpen, setCareTransitionOpen] = useState(false);
 
   return (
     <div className="flex flex-col flex-1 min-h-0 max-h-full overflow-hidden">
@@ -51,9 +57,29 @@ export function CirclePatientProfileScreen({
             storage={storage}
             patient={patient}
             embedded
+            onOpenCircleHelp={onOpenCircleHelp}
+            onOpenCareTransition={() => setCareTransitionOpen(true)}
           />
         </div>
       </div>
+
+      <CircleMessageExpandOverlay
+        open={careTransitionOpen}
+        title={t('careTransition.title')}
+        subtitle={t('careTransition.subtitle', {
+          name: circleDisplayFirstName(patient.displayName, patient.firstName),
+        })}
+        onClose={() => setCareTransitionOpen(false)}
+        t={t}
+      >
+        <CircleCareTransitionReadinessPanel
+          user={user}
+          db={db}
+          patient={patient}
+          hideHeader
+          showCircleHelp={false}
+        />
+      </CircleMessageExpandOverlay>
     </div>
   );
 }

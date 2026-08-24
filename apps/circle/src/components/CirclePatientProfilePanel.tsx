@@ -98,6 +98,8 @@ interface CirclePatientProfilePanelProps {
   compact?: boolean;
   /** Work-tab embed: chrome/header provided by CirclePatientProfileScreen. */
   embedded?: boolean;
+  onOpenCircleHelp?: () => void;
+  onOpenCareTransition?: () => void;
 }
 
 function buildInitialProfileSnapshot(patient: CirclePatientSummary): CirclePatientProfileSnapshot {
@@ -121,6 +123,8 @@ export function CirclePatientProfilePanel({
   patient,
   compact = false,
   embedded = false,
+  onOpenCircleHelp,
+  onOpenCareTransition,
 }: CirclePatientProfilePanelProps) {
   const t = useCircleT();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -634,6 +638,9 @@ export function CirclePatientProfilePanel({
             patient={patient}
             compact
             collapsible
+            profileSummary
+            onExpand={onOpenCareTransition}
+            onOpenCircleHelp={onOpenCircleHelp}
           />
         </>
       )}
