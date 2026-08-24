@@ -1,7 +1,7 @@
 import { Loader2, Pencil, X } from 'lucide-react';
 import type { CircleContactKind, CircleManagedContact } from '@medxforce/shared';
 import { composeContactDisplayName } from '@medxforce/shared';
-import { CIRCLE_UI_LANGUAGES } from '../lib/circleLanguages';
+import { CIRCLE_UI_LANGUAGES, circleUiLanguageLabel } from '../lib/circleLanguages';
 import { cn } from '../lib/utils';
 import { useCircleT, type CircleTranslator } from '../lib/circleI18nContext';
 import { contactKindLabelI18n, relationshipLabelI18n } from '../lib/adminScreenI18n';
@@ -430,7 +430,11 @@ export function CircleContactEditorModal({
                     empty={empty}
                   />
                 )}
-                <ReadOnlyField label={t('admin.contact.fieldLanguage')} value={draft.language || 'English'} empty={empty} />
+                <ReadOnlyField
+                  label={t('admin.contact.fieldLanguage')}
+                  value={circleUiLanguageLabel(t, draft.language || 'English')}
+                  empty={empty}
+                />
               </>
             ) : (
               <>
@@ -533,7 +537,7 @@ export function CircleContactEditorModal({
                   >
                     {CONTACT_LANGUAGE_OPTIONS.map((lang) => (
                       <option key={lang} value={lang}>
-                        {lang}
+                        {circleUiLanguageLabel(t, lang)}
                       </option>
                     ))}
                   </select>

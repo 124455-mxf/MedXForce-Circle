@@ -63,6 +63,7 @@ import {
   type CircleInitiateMessageGroup,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
+import { circleUiLanguageLabel } from '../lib/circleLanguages';
 import {
   remoteAppModeCardClass,
   remoteAppModeCurrentBadgeClass,
@@ -1031,7 +1032,7 @@ export function CircleRemoteSettingsScreen({
                 >
                   {REMOTE_PRIMARY_LANGUAGE_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
-                      {option.label}
+                      {circleUiLanguageLabel(t, option.value)}
                     </option>
                   ))}
                 </select>

@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useCircleT } from '../lib/circleI18nContext';
 import {
   circleHorizontalScrollClass,
   circleHorizontalScrollInnerClass,
@@ -36,6 +37,7 @@ export function CirclePatientProfileSectionNav({
   onNext,
   stepOfLabel,
 }: CirclePatientProfileSectionNavProps) {
+  const t = useCircleT();
   const sliderRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     pointerId: number;
@@ -145,7 +147,7 @@ export function CirclePatientProfileSectionNav({
                 ? 'text-slate-200 cursor-not-allowed'
                 : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600',
             )}
-            aria-label="Previous section"
+            aria-label={t('admin.profile.previousSectionAria')}
           >
             <ChevronLeft size={18} />
           </button>
@@ -159,7 +161,7 @@ export function CirclePatientProfileSectionNav({
                 ? 'bg-slate-100 text-slate-300 shadow-none cursor-not-allowed'
                 : 'bg-blue-600 text-white shadow-blue-100 hover:bg-blue-700',
             )}
-            aria-label="Next section"
+            aria-label={t('admin.profile.nextSectionAria')}
           >
             <ChevronRight size={18} />
           </button>

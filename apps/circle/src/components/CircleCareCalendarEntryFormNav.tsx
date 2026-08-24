@@ -5,6 +5,7 @@ import type { LucideIcon } from 'lucide-react';
 import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { RESPONSIVE_FORM_MODAL_NAV_CLASS } from '../lib/responsiveModalClasses';
 import { cn } from '../lib/utils';
+import { useCircleT } from '../lib/circleI18nContext';
 
 export type CircleCareCalendarFormSectionId =
   | 'general'
@@ -41,6 +42,7 @@ export function CircleCareCalendarEntryFormNav({
   busy = false,
   stepOfLabel,
 }: CircleCareCalendarEntryFormNavProps) {
+  const t = useCircleT();
   const sliderRef = useRef<HTMLDivElement>(null);
   const isLastStep = currentIndex >= sections.length - 1;
   const current = sections[currentIndex];
@@ -83,7 +85,7 @@ export function CircleCareCalendarEntryFormNav({
                 ? 'text-slate-200 cursor-not-allowed'
                 : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600',
             )}
-            aria-label="Previous section"
+            aria-label={t('dashboard.careCalendar.formSections.previousSection')}
           >
             <ChevronLeft size={18} />
           </button>
@@ -92,7 +94,11 @@ export function CircleCareCalendarEntryFormNav({
             onClick={isLastStep ? onFinish : onNext}
             disabled={busy}
             className="p-2.5 rounded-2xl transition-all disabled:opacity-50 bg-blue-600 text-white hover:bg-blue-700"
-            aria-label={isLastStep ? 'Save appointment' : 'Next section'}
+            aria-label={
+              isLastStep
+                ? t('dashboard.careCalendar.formSections.saveAppointment')
+                : t('dashboard.careCalendar.formSections.nextSection')
+            }
           >
             {isLastStep ? <Check size={18} /> : <ChevronRight size={18} />}
           </button>

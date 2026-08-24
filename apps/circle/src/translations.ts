@@ -133,6 +133,10 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     brand: {
       startupTagline: 'MedXForce Circle — Family & Friends',
+      motto: 'Communication made possible',
+      startupBoot: 'Starting MedXForce Circle',
+      startupAccess: 'Checking your access',
+      startupWorkspace: 'Preparing your workspace',
     },
     ...appShellEnglish,
     messages: messagesScreenEnglish,
@@ -198,6 +202,10 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     brand: {
       startupTagline: 'MedXForce Circle — Familie & Freunde',
+      motto: 'Kommunikation, die verbindet',
+      startupBoot: 'MedXForce Circle wird gestartet',
+      startupAccess: 'Zugang wird geprüft',
+      startupWorkspace: 'Arbeitsbereich wird vorbereitet',
     },
     ...appShellGerman,
     messages: messagesScreenGerman,
@@ -263,6 +271,10 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     brand: {
       startupTagline: 'MedXForce Circle — Familia y amigos',
+      motto: 'Comunicación hecha posible',
+      startupBoot: 'Iniciando MedXForce Circle',
+      startupAccess: 'Comprobando su acceso',
+      startupWorkspace: 'Preparando su espacio de trabajo',
     },
     ...appShellSpanish,
     messages: messagesScreenSpanish,
@@ -328,6 +340,10 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     brand: {
       startupTagline: 'MedXForce Circle — Rodzina i przyjaciele',
+      motto: 'Komunikacja staje się możliwa',
+      startupBoot: 'Uruchamianie MedXForce Circle',
+      startupAccess: 'Sprawdzanie dostępu',
+      startupWorkspace: 'Przygotowywanie obszaru roboczego',
     },
     ...appShellPolish,
     messages: messagesScreenPolish,

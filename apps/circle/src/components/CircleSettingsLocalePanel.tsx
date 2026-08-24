@@ -12,7 +12,7 @@ import {
   CIRCLE_TEXT_SIZE_OPTIONS,
   type CircleTextSize,
 } from '../lib/circleTextSizePreferences';
-import { CIRCLE_UI_LANGUAGES, type CircleUiLanguage } from '../lib/circleLanguages';
+import { CIRCLE_UI_LANGUAGES, circleUiLanguageLabel, type CircleUiLanguage } from '../lib/circleLanguages';
 import { persistCircleApplicationLanguage } from '../lib/circleUiLanguageHydration';
 import { useCircleLocaleTemperatureUnit } from '../hooks/useCircleLocaleTemperatureUnit';
 import { useCircleLocaleTimeFormat } from '../hooks/useCircleLocaleTimeFormat';
@@ -111,7 +111,7 @@ export function CircleSettingsLocalePanel({
         >
           {CIRCLE_UI_LANGUAGES.map((option) => (
             <option key={option.value} value={option.value}>
-              {option.label}
+              {circleUiLanguageLabel(t, option.value)}
             </option>
           ))}
         </select>

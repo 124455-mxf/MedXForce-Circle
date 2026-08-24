@@ -436,6 +436,7 @@ export default function App() {
       phase={startup.phase}
       exiting={startup.exiting}
       tagline={t('brand.startupTagline')}
+      t={t}
     />
   ) : !user ? (
     <div className="min-h-screen flex items-center justify-center p-6">

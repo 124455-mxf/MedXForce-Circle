@@ -116,6 +116,43 @@ export function fitnessLevelLabelI18n(t: CircleTranslator, value: string): strin
   return key ? t(key) : value.trim() || t('admin.profile.emptyValue');
 }
 
+const SEX_KEYS: Record<string, string> = {
+  male: 'admin.profile.sexMale',
+  female: 'admin.profile.sexFemale',
+  other: 'admin.profile.sexOther',
+};
+
+const HANDEDNESS_KEYS: Record<string, string> = {
+  left: 'admin.profile.handednessLeft',
+  right: 'admin.profile.handednessRight',
+  ambidextrous: 'admin.profile.handednessAmbidextrous',
+};
+
+const RACE_KEYS: Record<string, string> = {
+  white: 'admin.profile.raceWhite',
+  hispanic: 'admin.profile.raceHispanic',
+  black: 'admin.profile.raceBlack',
+  mena: 'admin.profile.raceMena',
+  asian: 'admin.profile.raceAsian',
+  native_american: 'admin.profile.raceNativeAmerican',
+  native_hawaiian: 'admin.profile.raceNativeHawaiian',
+};
+
+export function sexLabelI18n(t: CircleTranslator, value: string): string {
+  const key = SEX_KEYS[value.trim()];
+  return key ? t(key) : value.trim();
+}
+
+export function handednessLabelI18n(t: CircleTranslator, value: string): string {
+  const key = HANDEDNESS_KEYS[value.trim()];
+  return key ? t(key) : value.trim();
+}
+
+export function raceLabelI18n(t: CircleTranslator, value: string): string {
+  const key = RACE_KEYS[value.trim()];
+  return key ? t(key) : value.trim() || t('admin.profile.notProvided');
+}
+
 export function alcoholFreqLabelI18n(t: CircleTranslator, value: string): string {
   const raw = value.trim();
   if (!raw) return t('admin.profile.emptyValue');

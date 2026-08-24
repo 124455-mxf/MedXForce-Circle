@@ -72,11 +72,11 @@ export function CircleExpandableMessageComposer({
   sending = false,
   onClear,
   onSend,
-  clearLabel = 'Clear',
-  sendLabel = 'Send',
-  sendingLabel = 'Sending…',
+  clearLabel,
+  sendLabel,
+  sendingLabel,
   maxLength,
-  expandTitle = 'Write message',
+  expandTitle,
   expandSubtitle,
   textareaClassName,
   wrapperClassName,
@@ -93,6 +93,10 @@ export function CircleExpandableMessageComposer({
   subjectMaxLength = 256,
 }: CircleExpandableMessageComposerProps) {
   const t = useCircleT();
+  const resolvedClearLabel = clearLabel ?? t('common.clear');
+  const resolvedSendLabel = sendLabel ?? t('common.send');
+  const resolvedSendingLabel = sendingLabel ?? t('common.sending');
+  const resolvedExpandTitle = expandTitle ?? t('common.writeMessage');
   const [uncontrolledExpanded, setUncontrolledExpanded] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const inlineRef = useRef<HTMLTextAreaElement>(null);
@@ -255,7 +259,7 @@ export function CircleExpandableMessageComposer({
           className="font-semibold text-slate-600 hover:bg-slate-50 rounded-2xl border border-slate-200 disabled:opacity-50 px-4 py-2 text-sm [@media(max-height:740px)]:px-3 [@media(max-height:740px)]:py-1.5 [@media(max-height:740px)]:text-xs"
           disabled={inputDisabled}
         >
-          {clearLabel}
+          {resolvedClearLabel}
         </button>
         <button
           type="button"
@@ -263,7 +267,7 @@ export function CircleExpandableMessageComposer({
           className="bg-blue-600 text-white rounded-2xl font-bold disabled:opacity-50 px-5 py-2 text-sm [@media(max-height:740px)]:px-4 [@media(max-height:740px)]:py-1.5 [@media(max-height:740px)]:text-xs"
           disabled={!canSend}
         >
-          {sending ? sendingLabel : sendLabel}
+          {sending ? resolvedSendingLabel : resolvedSendLabel}
         </button>
       </div>
     </div>
@@ -332,7 +336,7 @@ export function CircleExpandableMessageComposer({
                     id="circle-expanded-composer-title"
                     className="font-bold text-slate-800 text-base truncate"
                   >
-                    {expandTitle}
+                    {resolvedExpandTitle}
                   </h3>
                   {expandSubtitle ? (
                     <p className="text-xs text-slate-500 mt-0.5 truncate">{expandSubtitle}</p>
@@ -454,7 +458,7 @@ export function CircleExpandableMessageComposer({
                 disabled={inputDisabled}
                 className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 disabled:opacity-50"
               >
-                {clearLabel}
+                {resolvedClearLabel}
               </button>
               <button
                 type="button"
@@ -462,7 +466,7 @@ export function CircleExpandableMessageComposer({
                 disabled={!canSend}
                 className="flex-1 py-3 rounded-2xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 disabled:opacity-50"
               >
-                {sending ? sendingLabel : sendLabel}
+                {sending ? resolvedSendingLabel : resolvedSendLabel}
               </button>
             </div>
           </div>

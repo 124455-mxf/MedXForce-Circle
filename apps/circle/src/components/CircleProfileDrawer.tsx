@@ -735,8 +735,9 @@ export function CircleProfileDrawer({
         />
       )}
 
-      <CircleDiscardChangesModal
+        <CircleDiscardChangesModal
         open={discardPrompt !== null}
+        title={t('drawer.discardTitle')}
         message={t('drawer.discardMessage')}
         onDiscard={confirmDiscardChanges}
         onKeepEditing={() => setDiscardPrompt(null)}

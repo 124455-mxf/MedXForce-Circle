@@ -1,23 +1,26 @@
 import type { CircleStartupPhase } from '../hooks/useCircleStartupSequence';
+import type { CircleTranslator } from '../lib/circleI18nContext';
 import { formatCircleBuildDetail, formatCircleBuildLabel } from '../lib/circleBuildId';
 
 /** Circle app brand splash color */
 export const STARTUP_BRAND_COLOR = '#F9A142';
 
-const STEPS = [
-  'Starting MedXForce Circle',
-  'Checking your access',
-  'Preparing your workspace',
+const STEP_KEYS = [
+  'brand.startupBoot',
+  'brand.startupAccess',
+  'brand.startupWorkspace',
 ] as const;
 
 type CircleStartupSequenceProps = {
   phase: CircleStartupPhase;
   exiting: boolean;
   tagline: string;
+  t: CircleTranslator;
 };
 
-export function CircleStartupSequence({ phase, exiting, tagline }: CircleStartupSequenceProps) {
-  const progress = ((phase + 1) / STEPS.length) * 100;
+export function CircleStartupSequence({ phase, exiting, tagline, t }: CircleStartupSequenceProps) {
+  const progress = ((phase + 1) / STEP_KEYS.length) * 100;
+  const stepLabel = t(STEP_KEYS[phase] ?? STEP_KEYS[0]);
 
   return (
     <div
@@ -57,7 +60,7 @@ export function CircleStartupSequence({ phase, exiting, tagline }: CircleStartup
               className="mx-auto mt-[clamp(0.75rem,2.5vh,1.5rem)] max-w-xl font-semibold uppercase tracking-[0.28em] text-white/95 landscape:mt-[clamp(0.5rem,1.5vh,1rem)]"
               style={{ fontSize: 'clamp(0.6875rem, 2vw, 1.0625rem)' }}
             >
-              Communication made possible
+              {t('brand.motto')}
             </p>
           </div>
         </main>
@@ -65,10 +68,10 @@ export function CircleStartupSequence({ phase, exiting, tagline }: CircleStartup
         <footer className="mx-auto w-full max-w-[min(100%,22rem)] shrink-0 pb-[clamp(0.5rem,2vh,1.25rem)] landscape:max-w-[min(100%,28rem)]">
           <div className="mb-3 h-[1.125rem] landscape:mb-2">
             <p
-              key={STEPS[phase]}
+              key={STEP_KEYS[phase]}
               className="text-center text-[clamp(0.625rem,1.6vw,0.8125rem)] font-bold uppercase tracking-[0.22em] text-white/90 transition-opacity duration-300"
             >
-              {STEPS[phase]}
+              {stepLabel}
             </p>
           </div>
 

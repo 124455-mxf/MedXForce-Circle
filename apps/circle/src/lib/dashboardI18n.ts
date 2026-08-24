@@ -12,7 +12,7 @@ import { formatPatientOnlineDurationMinutes } from '../hooks/usePatientOnlinePre
 import type { CircleTranslator } from './circleI18nContext';
 import {
   circleUiLanguageToLocale,
-  identityLanguageLabel,
+  circleUiLanguageLabel,
   resolveIdentityPrimaryLanguage,
   type CircleUiLanguage,
 } from './circleLanguages';
@@ -209,7 +209,7 @@ export function formatLiveTileLanguageLineT(
     remoteSettings?.primaryLanguage ??
     resolveIdentityPrimaryLanguage(profileLanguage);
   return t('dashboard.liveLanguage', {
-    label: identityLanguageLabel(primary),
+    label: circleUiLanguageLabel(t, primary),
   });
 }
 

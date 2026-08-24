@@ -30,7 +30,7 @@ import {
   primaryNavItemsForPatient,
   type CircleMainTab,
 } from './CircleBottomNav';
-import { useCircleI18nContext } from '../lib/circleI18nContext';
+import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import { CircleDiaryScreen } from './CircleDiaryScreen';
 import { CircleScheduleScreen } from './CircleScheduleScreen';
 import { CircleKnowScreen } from './CircleKnowScreen';
@@ -87,7 +87,12 @@ import type { CircleGalleryIntent } from '../lib/circleGalleryIntent';
 import type { CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
 
 function TabLoadingFallback() {
-  return <div className="flex flex-1 items-center justify-center p-6 text-sm text-slate-500">Loading…</div>;
+  const t = useCircleT();
+  return (
+    <div className="flex flex-1 items-center justify-center p-6 text-sm text-slate-500">
+      {t('common.loading')}
+    </div>
+  );
 }
 
 interface CircleMainShellProps {
