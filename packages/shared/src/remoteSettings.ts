@@ -200,6 +200,9 @@ export type RemoteSettingsPayload = {
   showAttentionButton?: boolean;
   detectEngagementNeed?: boolean;
   showSaveButton?: boolean;
+  enableAudioInput?: boolean;
+  showTranslateButton?: boolean;
+  minimizeTextWindowHeight?: boolean;
   useAiAssistant?: boolean;
   aiConversation?: boolean;
   allowSendMessages?: boolean;
@@ -319,26 +322,6 @@ export const REMOTE_FEATURE_TOGGLES: RemoteFeatureToggleDef[] = [
     description: 'Care calendar tab for appointments and scheduled assessments.',
   },
   { path: 'featuresVisibility.analytics', label: 'Analytics', description: 'Statistics and analytics tab.' },
-  {
-    path: 'featuresVisibility.intensiveCareSoulMusic',
-    label: 'ICU Soul Music',
-    description: 'Optional Intensive Care: Vitality with Apple Music (launcher needs Apple connected).',
-  },
-  {
-    path: 'featuresVisibility.intensiveCareSoulMediaLibrary',
-    label: 'ICU Soul Media Library',
-    description: 'Optional Intensive Care: Vitality with Media Library (launcher needs shared media).',
-  },
-  {
-    path: 'featuresVisibility.intensiveCarePainAssessment',
-    label: 'ICU Pain Assessment',
-    description: 'Optional Intensive Care: Pain Assessment board shortcut.',
-  },
-  {
-    path: 'featuresVisibility.intensiveCareDoctorQuickAnswers',
-    label: 'ICU Doctor Quick Answers',
-    description: 'Optional Intensive Care: Doctor Quick Answers board shortcut.',
-  },
   { path: 'showQuickSettings', label: 'Quick Settings', description: 'Quick Settings gear in the sidebar.' },
   { path: 'showSettingsInSidebar', label: 'Settings', description: 'Settings tab in the sidebar.' },
 ];
@@ -434,7 +417,6 @@ export const REMOTE_QUICK_SETTING_TOGGLES: { path: string; label: string; descri
   { path: 'betterVisibleCursor', label: 'High visibility cursor', description: 'Easier-to-see pointer on the tablet.' },
   { path: 'showAiSuggestions', label: 'AI suggestions', description: 'Suggested phrases while composing.' },
   { path: 'speakOnSelection', label: 'Speak on selection', description: 'Read aloud when an item is chosen.' },
-  { path: 'showFrequentlyUsed', label: 'Frequently used', description: 'Show frequently used communication items.' },
   { path: 'hideRightSidebar', label: 'Show right sidebar', description: 'Toggle the right-hand panel (inverted: hideRightSidebar).' },
 ];
 
@@ -487,6 +469,27 @@ export const REMOTE_PROXY_SECTIONS: {
         path: 'detectEngagementNeed',
         label: 'Detect engagement need',
         description: 'Automatically detect when the patient may need engagement support.',
+      },
+      {
+        path: 'minimizeTextWindowHeight',
+        label: 'Minimize Text Window Height',
+        description:
+          'Shorten the text box and the Speak Out Loud / Smart Translate row so more board content fits below',
+      },
+      {
+        path: 'enableAudioInput',
+        label: 'Use Audio Input',
+        description: 'Enable microphone input for composing messages.',
+      },
+      {
+        path: 'showFrequentlyUsed',
+        label: 'Frequently Used items',
+        description: 'Show a list of frequently used items based on your history',
+      },
+      {
+        path: 'showTranslateButton',
+        label: 'Show Smart Translate',
+        description: 'Display the button to translate text',
       },
       {
         path: 'showSaveButton',
@@ -833,6 +836,9 @@ export function parsePatientRemoteSettings(
     showAttentionButton: asBool(data.showAttentionButton),
     detectEngagementNeed: asBool(data.detectEngagementNeed),
     showSaveButton: asBool(data.showSaveButton),
+    enableAudioInput: asBool(data.enableAudioInput),
+    showTranslateButton: asBool(data.showTranslateButton),
+    minimizeTextWindowHeight: asBool(data.minimizeTextWindowHeight),
     useAiAssistant: asBool(data.useAiAssistant),
     aiConversation: asBool(data.aiConversation),
     allowSendMessages: asBool(data.allowSendMessages),
@@ -919,6 +925,9 @@ export function extractRemoteSettingsFromPreferences(
     showAttentionButton: preferences.showAttentionButton !== false,
     detectEngagementNeed: !!preferences.detectEngagementNeed,
     showSaveButton: preferences.showSaveButton !== false,
+    enableAudioInput: preferences.enableAudioInput !== false,
+    showTranslateButton: preferences.showTranslateButton !== false,
+    minimizeTextWindowHeight: !!preferences.minimizeTextWindowHeight,
     useAiAssistant: preferences.useAiAssistant !== false,
     aiConversation: !!preferences.aiConversation,
     allowSendMessages: preferences.allowSendMessages !== false,
@@ -999,6 +1008,9 @@ export function getRemoteSettingValue(
   if (path === 'showAttentionButton') return doc.showAttentionButton;
   if (path === 'detectEngagementNeed') return doc.detectEngagementNeed;
   if (path === 'showSaveButton') return doc.showSaveButton;
+  if (path === 'enableAudioInput') return doc.enableAudioInput;
+  if (path === 'showTranslateButton') return doc.showTranslateButton;
+  if (path === 'minimizeTextWindowHeight') return doc.minimizeTextWindowHeight;
   if (path === 'useAiAssistant') return doc.useAiAssistant;
   if (path === 'aiConversation') return doc.aiConversation;
   if (path === 'allowSendMessages') return doc.allowSendMessages;
@@ -1037,6 +1049,9 @@ export function setRemoteSettingValue(
   else if (path === 'showAttentionButton') next.showAttentionButton = value;
   else if (path === 'detectEngagementNeed') next.detectEngagementNeed = value;
   else if (path === 'showSaveButton') next.showSaveButton = value;
+  else if (path === 'enableAudioInput') next.enableAudioInput = value;
+  else if (path === 'showTranslateButton') next.showTranslateButton = value;
+  else if (path === 'minimizeTextWindowHeight') next.minimizeTextWindowHeight = value;
   else if (path === 'useAiAssistant') next.useAiAssistant = value;
   else if (path === 'aiConversation') next.aiConversation = value;
   else if (path === 'allowSendMessages') next.allowSendMessages = value;
@@ -1183,6 +1198,9 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
       showAiSuggestions: false,
       speakOnSelection: true,
       showFrequentlyUsed: false,
+      enableAudioInput: false,
+      showTranslateButton: false,
+      minimizeTextWindowHeight: false,
       featuresVisibility: remoteFeaturesVisibilityPresetForMode('intensive_care'),
       journeyDiary: { allowViewSharedEntries: false },
       dailyCheckIn: { enabled: true, quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS } },
@@ -1203,6 +1221,9 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
       showAiSuggestions: true,
       speakOnSelection: true,
       showFrequentlyUsed: true,
+      enableAudioInput: true,
+      showTranslateButton: true,
+      minimizeTextWindowHeight: false,
       featuresVisibility: remoteFeaturesVisibilityPresetForMode('user'),
       journeyDiary: { allowViewSharedEntries: false },
       dailyCheckIn: {
@@ -1225,6 +1246,9 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
     showAiSuggestions: true,
     speakOnSelection: false,
     showFrequentlyUsed: true,
+    enableAudioInput: true,
+    showTranslateButton: true,
+    minimizeTextWindowHeight: false,
     featuresVisibility: remoteFeaturesVisibilityPresetForMode('hospital'),
     journeyDiary: { allowViewSharedEntries: false },
     dailyCheckIn: { enabled: true, quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS } },
