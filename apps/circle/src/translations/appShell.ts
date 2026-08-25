@@ -1119,7 +1119,7 @@ export const appShellEnglish = {
       modeStepUpTurnOnHospital: 'Switch to Hospital',
       icuSoulMusicHeadline: 'Add Soul Music?',
       icuSoulMusicBody:
-        'Enable Vitality with Apple Music for Intensive Care. The Music launcher appears when Apple Music is connected.',
+        'Enable Vitality with Apple Music for Intensive Care, including MedXForce picks.',
       icuSoulMediaLibraryHeadline: 'Add Soul Media Library?',
       icuSoulMediaLibraryBody:
         'Enable Vitality with Media Library for Intensive Care. The launcher appears when shared media is available.',
@@ -2462,7 +2462,7 @@ export const appShellGerman = {
       modeStepUpTurnOnHospital: 'Zu Krankenhaus wechseln',
       icuSoulMusicHeadline: 'Soul-Musik hinzufügen?',
       icuSoulMusicBody:
-        'Vitalität mit Apple Music für Intensivpflege einschalten. Der Musik-Starter erscheint bei verbundener Apple Music.',
+        'Vitalität mit Apple Music für Intensivpflege einschalten, einschließlich MedXForce-Auswahl.',
       icuSoulMediaLibraryHeadline: 'Soul-Medienbibliothek hinzufügen?',
       icuSoulMediaLibraryBody:
         'Vitalität mit Medienbibliothek für Intensivpflege einschalten. Der Starter erscheint, wenn geteilte Medien verfügbar sind.',
@@ -3805,7 +3805,7 @@ export const appShellSpanish = {
       modeStepUpTurnOnHospital: 'Cambiar a Hospital',
       icuSoulMusicHeadline: '¿Añadir Música Soul?',
       icuSoulMusicBody:
-        'Active Vitalidad con Apple Music en cuidados intensivos. El acceso a Música aparece cuando Apple Music está conectado.',
+        'Active Vitalidad con Apple Music en cuidados intensivos, incluidas las selecciones MedXForce.',
       icuSoulMediaLibraryHeadline: '¿Añadir Biblioteca de medios Soul?',
       icuSoulMediaLibraryBody:
         'Active Vitalidad con Biblioteca de medios en cuidados intensivos. El acceso aparece cuando hay medios compartidos.',
@@ -5148,7 +5148,7 @@ export const appShellPolish = {
       modeStepUpTurnOnHospital: 'Przełącz na Szpital',
       icuSoulMusicHeadline: 'Dodać Muzykę Soul?',
       icuSoulMusicBody:
-        'Włącz Witalność z Apple Music w opiece intensywnej. Launcher muzyki pojawia się przy połączonym Apple Music.',
+        'Włącz Witalność z Apple Music w opiece intensywnej, w tym wybór MedXForce.',
       icuSoulMediaLibraryHeadline: 'Dodać Bibliotekę mediów Soul?',
       icuSoulMediaLibraryBody:
         'Włącz Witalność z Biblioteką mediów w opiece intensywnej. Launcher pojawia się, gdy są udostępnione media.',
