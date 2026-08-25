@@ -600,10 +600,14 @@ export function CircleRemoteSettingsScreen({
   db,
   user,
   patient,
+  focusSection = null,
+  onFocusConsumed,
 }: {
   db: Firestore;
   user: User;
   patient: CirclePatientSummary;
+  focusSection?: 'circle-initiate' | 'circle-drop-in' | null;
+  onFocusConsumed?: () => void;
 }) {
   const { settings, loading, saving, error, savedAt, persist } = useCircleRemoteSettingsFromShell();
   const compactChrome = useCircleCompactChrome();
@@ -617,6 +621,8 @@ export function CircleRemoteSettingsScreen({
   const [pendingHospitalFeatures, setPendingHospitalFeatures] =
     useState<RemoteHospitalOptionalFeatures>(REMOTE_HOSPITAL_OPTIONAL_FEATURES_DEFAULTS);
   const [overviewOpen, setOverviewOpen] = useState(false);
+  const [highlightCircleInitiate, setHighlightCircleInitiate] = useState(false);
+  const [highlightCircleDropIn, setHighlightCircleDropIn] = useState(false);
   const { snapshot: profileSnapshot } = useCirclePatientProfileSnapshot(db, patient.patientId);
   const { overview, loading: overviewLoading } = useCircleApplicationOverview(db, patient.patientId);
   const treatmentPhase = profileSnapshot?.clinical?.treatmentPhase;
@@ -705,6 +711,42 @@ export function CircleRemoteSettingsScreen({
   const storedDashboardPreset =
     dashboardTabEnabled && effectiveDashboardPreset !== 'custom' ? effectiveDashboardPreset : null;
   const patientSetDashboardLayout = settings?.source === 'patient';
+
+  useEffect(() => {
+    if (
+      (focusSection !== 'circle-initiate' && focusSection !== 'circle-drop-in') ||
+      loading ||
+      !settings
+    ) {
+      return;
+    }
+    const targetId =
+      focusSection === 'circle-drop-in'
+        ? 'remote-settings-circle-drop-in'
+        : 'remote-settings-circle-initiate';
+    if (focusSection === 'circle-drop-in') setHighlightCircleDropIn(true);
+    else setHighlightCircleInitiate(true);
+    const timer = window.setTimeout(() => {
+      document.getElementById(targetId)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+      onFocusConsumed?.();
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [focusSection, loading, settings, onFocusConsumed]);
+
+  useEffect(() => {
+    if (!highlightCircleInitiate) return;
+    const timer = window.setTimeout(() => setHighlightCircleInitiate(false), 2400);
+    return () => window.clearTimeout(timer);
+  }, [highlightCircleInitiate]);
+
+  useEffect(() => {
+    if (!highlightCircleDropIn) return;
+    const timer = window.setTimeout(() => setHighlightCircleDropIn(false), 2400);
+    return () => window.clearTimeout(timer);
+  }, [highlightCircleDropIn]);
 
   const handleCopyOverview = async () => {
     const text = overview?.text ?? '';
@@ -1046,6 +1088,7 @@ export function CircleRemoteSettingsScreen({
               <CircleCollapsibleSection
                 key={section.id}
                 title={remoteSettingsProxySectionTitle(t, section.id, section.title)}
+                forceOpen={highlightCircleInitiate && section.id === 'messaging'}
               >
                 <div className="p-4">
                   <ProxyToggleList
@@ -1055,45 +1098,74 @@ export function CircleRemoteSettingsScreen({
                     t={t}
                   />
                   {section.id === 'messaging' ? (
-                    <CircleInitiateMessagesRemoteBlock
-                      settings={settings}
-                      patch={patch}
-                      db={db}
-                      patientId={patient.patientId}
-                      t={t}
-                    />
-                  ) : null}
-                </div>
-              </CircleCollapsibleSection>
-            ))}
-
-            <CircleCollapsibleSection title={t('remoteSettings.sections.featuresVisibility')}>
-              <div className="p-4 space-y-4">
-                {(() => {
-                  const dropInIndex = REMOTE_FEATURE_TOGGLES.findIndex(
-                    (item) => item.path === 'featuresVisibility.dropIn',
-                  );
-                  const beforeDropIn =
-                    dropInIndex >= 0
-                      ? REMOTE_FEATURE_TOGGLES.slice(0, dropInIndex + 1)
-                      : REMOTE_FEATURE_TOGGLES;
-                  const afterDropIn =
-                    dropInIndex >= 0 ? REMOTE_FEATURE_TOGGLES.slice(dropInIndex + 1) : [];
-                  return (
-                    <>
-                      <ProxyToggleList
-                        settings={settings}
-                        paths={beforeDropIn}
-                        patch={patch}
-                        t={t}
-                      />
-                      <CircleDropInAccessRemoteBlock
+                    <div
+                      id="remote-settings-circle-initiate"
+                      className={cn(
+                        highlightCircleInitiate && 'rounded-2xl ring-2 ring-blue-400 ring-offset-2',
+                      )}
+                    >
+                      <CircleInitiateMessagesRemoteBlock
                         settings={settings}
                         patch={patch}
                         db={db}
                         patientId={patient.patientId}
                         t={t}
                       />
+                    </div>
+                  ) : null}
+                </div>
+              </CircleCollapsibleSection>
+            ))}
+
+            <CircleCollapsibleSection
+              title={t('remoteSettings.sections.featuresVisibility')}
+              forceOpen={highlightCircleDropIn}
+            >
+              <div className="p-4 space-y-4">
+                {(() => {
+                  const dropInIndex = REMOTE_FEATURE_TOGGLES.findIndex(
+                    (item) => item.path === 'featuresVisibility.dropIn',
+                  );
+                  const dropInToggle =
+                    dropInIndex >= 0 ? REMOTE_FEATURE_TOGGLES[dropInIndex] : null;
+                  const beforeDropIn =
+                    dropInIndex >= 0
+                      ? REMOTE_FEATURE_TOGGLES.slice(0, dropInIndex)
+                      : REMOTE_FEATURE_TOGGLES;
+                  const afterDropIn =
+                    dropInIndex >= 0 ? REMOTE_FEATURE_TOGGLES.slice(dropInIndex + 1) : [];
+                  return (
+                    <>
+                      {beforeDropIn.length > 0 ? (
+                        <ProxyToggleList
+                          settings={settings}
+                          paths={beforeDropIn}
+                          patch={patch}
+                          t={t}
+                        />
+                      ) : null}
+                      <div
+                        id="remote-settings-circle-drop-in"
+                        className={cn(
+                          highlightCircleDropIn && 'rounded-2xl ring-2 ring-blue-400 ring-offset-2',
+                        )}
+                      >
+                        {dropInToggle ? (
+                          <ProxyToggleList
+                            settings={settings}
+                            paths={[dropInToggle]}
+                            patch={patch}
+                            t={t}
+                          />
+                        ) : null}
+                        <CircleDropInAccessRemoteBlock
+                          settings={settings}
+                          patch={patch}
+                          db={db}
+                          patientId={patient.patientId}
+                          t={t}
+                        />
+                      </div>
                       {afterDropIn.length > 0 ? (
                         <ProxyToggleList
                           settings={settings}

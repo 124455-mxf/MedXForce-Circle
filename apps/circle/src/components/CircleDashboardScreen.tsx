@@ -200,6 +200,8 @@ interface CircleDashboardScreenProps {
   subduedAlertAttention: CircleAlertAttentionItem[];
   onGoToTab: (tab: CircleMainTab) => void;
   onOpenAdminAccess?: () => void;
+  onOpenRemoteSettingsCircleInitiate?: () => void;
+  onOpenRemoteSettingsDropIn?: () => void;
   onOpenCircleFolder?: (thread: CircleMemberThreadKind, folder: CircleInboxFolder) => void;
   /** Open Messages on a specific inbox folder (e.g. ICU communication log). */
   onOpenMessagesInbox?: (view: 'communication_log' | 'in_out') => void;
@@ -993,6 +995,8 @@ export function CircleDashboardScreen({
   subduedAlertAttention,
   onGoToTab,
   onOpenAdminAccess,
+  onOpenRemoteSettingsCircleInitiate,
+  onOpenRemoteSettingsDropIn,
   onOpenCircleFolder,
   onOpenMessagesInbox,
   onOpenAnalyticsDetail,
@@ -2135,6 +2139,8 @@ export function CircleDashboardScreen({
           onPersistRemoteSettings={persistRemoteSettings}
           onGoToTab={onGoToTab}
           onOpenAdminAccess={onOpenAdminAccess}
+          onOpenRemoteSettingsCircleInitiate={onOpenRemoteSettingsCircleInitiate}
+          onOpenRemoteSettingsDropIn={onOpenRemoteSettingsDropIn}
         />
 
         {showPatientLocale && !showPatientLocaleUnderLive ? (

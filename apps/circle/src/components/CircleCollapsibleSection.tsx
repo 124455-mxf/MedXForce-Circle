@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -7,6 +7,8 @@ type CircleCollapsibleSectionProps = {
   children: ReactNode;
   className?: string;
   defaultOpen?: boolean;
+  /** Keep this section expanded (e.g. when deep-linking from a Home reminder). */
+  forceOpen?: boolean;
   trailing?: ReactNode;
 };
 
@@ -15,10 +17,18 @@ export function CircleCollapsibleSection({
   children,
   className,
   defaultOpen = false,
+  forceOpen = false,
   trailing,
 }: CircleCollapsibleSectionProps) {
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    if (forceOpen && detailsRef.current) detailsRef.current.open = true;
+  }, [forceOpen]);
+
   return (
     <details
+      ref={detailsRef}
       open={defaultOpen || undefined}
       className={cn(
         'rounded-2xl border border-slate-100 bg-white shadow-sm group',

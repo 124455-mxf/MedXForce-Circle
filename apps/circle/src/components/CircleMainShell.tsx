@@ -135,6 +135,9 @@ export function CircleMainShell({
   const [initialAdminUsersTab, setInitialAdminUsersTab] = useState<'people' | 'access' | null>(
     null,
   );
+  const [remoteSettingsFocus, setRemoteSettingsFocus] = useState<
+    'circle-initiate' | 'circle-drop-in' | null
+  >(null);
   const { language, t } = useCircleI18nContext();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [visitCaptureOpen, setVisitCaptureOpen] = useState(false);
@@ -197,6 +200,7 @@ export function CircleMainShell({
       setInitialAssessmentsOverview(false);
       setInitialPeriodOverviewDays(null);
       setScheduleViewIntent(null);
+      setRemoteSettingsFocus(null);
       guardedNavigate(() => setActiveTab(tab));
     },
     [activeTab, guardedNavigate],
@@ -276,6 +280,32 @@ export function CircleMainShell({
     setInitialAdminUsersTab('access');
     guardedNavigate(() => setActiveTab('admin'));
   }, [guardedNavigate]);
+
+  const handleOpenRemoteSettingsCircleInitiate = useCallback(() => {
+    analyticsOriginTabRef.current = null;
+    setInitialAssessmentsOverview(false);
+    setInitialPeriodOverviewDays(null);
+    setScheduleViewIntent(null);
+    guardedNavigate(() => {
+      setRemoteSettingsFocus('circle-initiate');
+      setActiveTab('remote-settings');
+    });
+  }, [guardedNavigate]);
+
+  const handleOpenRemoteSettingsDropIn = useCallback(() => {
+    analyticsOriginTabRef.current = null;
+    setInitialAssessmentsOverview(false);
+    setInitialPeriodOverviewDays(null);
+    setScheduleViewIntent(null);
+    guardedNavigate(() => {
+      setRemoteSettingsFocus('circle-drop-in');
+      setActiveTab('remote-settings');
+    });
+  }, [guardedNavigate]);
+
+  const handleRemoteSettingsFocusConsumed = useCallback(() => {
+    setRemoteSettingsFocus(null);
+  }, []);
 
   const handleAdminInitialUsersTabConsumed = useCallback(() => {
     setInitialAdminUsersTab(null);
@@ -754,6 +784,8 @@ export function CircleMainShell({
               subduedAlertAttention={alertAttention.subduedItems}
               onGoToTab={handleGoToTab}
               onOpenAdminAccess={handleOpenAdminAccess}
+              onOpenRemoteSettingsCircleInitiate={handleOpenRemoteSettingsCircleInitiate}
+              onOpenRemoteSettingsDropIn={handleOpenRemoteSettingsDropIn}
               onOpenCircleFolder={handleOpenCircleFolder}
               onOpenMessagesInbox={handleOpenMessagesInbox}
               onOpenAnalyticsDetail={handleOpenAnalyticsDetail}
@@ -903,7 +935,13 @@ export function CircleMainShell({
           {activeTab === 'remote-settings' && (
             <div className="flex flex-col flex-1 min-h-0">
               <Suspense fallback={<TabLoadingFallback />}>
-                <CircleRemoteSettingsScreen db={db} user={user} patient={selectedPatient} />
+                <CircleRemoteSettingsScreen
+                  db={db}
+                  user={user}
+                  patient={selectedPatient}
+                  focusSection={remoteSettingsFocus}
+                  onFocusConsumed={handleRemoteSettingsFocusConsumed}
+                />
               </Suspense>
             </div>
           )}

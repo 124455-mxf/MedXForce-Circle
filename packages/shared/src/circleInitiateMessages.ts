@@ -162,7 +162,8 @@ export function effectiveCircleInitiateMessagesEnabled(
 
 /**
  * Proxy Home nudge: messaging is on, Circle-started messages are still off,
- * and the patient is not in Intensive Care.
+ * and the patient is not in Intensive Care. The action opens Remote Settings
+ * so the proxy can choose who may start a message before turning it on.
  */
 export function shouldShowCircleInitiateMessagesReminder(input: {
   enabled: boolean;

@@ -11,12 +11,12 @@ const remoteSettingsEnglish = {
   resetTogglesTo: 'Reset all toggles to {{mode}}',
   preset: 'preset',
   current: 'Current',
-  icuExperienceHeading: 'Intensive Care layout',
+  icuExperienceHeading: 'ICU Layout',
   icuExperienceDesc:
     'Choose how the communication board balances alerts and sizing. You can change this anytime.',
   icuVariantMinimal: 'Minimal distraction',
   icuVariantStandard: 'Standard',
-  icuOptionalHeading: 'Optional Intensive Care features',
+  icuOptionalHeading: 'ICU Features',
   icuOptionalDesc: 'Turn on only what the patient is ready for. Soul launchers need Apple Music or shared media.',
   icuOptPain: 'Pain Assessment',
   icuOptDoctor: 'Doctor Quick Answers',
@@ -103,7 +103,7 @@ const remoteSettingsEnglish = {
   },
   modes: {
     intensiveCare: 'ICU',
-    intensiveCareDesc: 'Critical care — communication-first, minimal distractions, caregiver-controlled.',
+    intensiveCareDesc: 'Intensive Care / Critical care — communication-first, minimal distractions, caregiver-controlled.',
     intensiveCareDashboardHint: 'Dashboard tab off by default (turn on under Features if needed).',
     hospital: 'Hospital',
     hospitalDesc: 'Acute care and active recovery — structured support in hospital or rehab.',
@@ -305,12 +305,12 @@ const remoteSettingsGerman = {
   resetTogglesTo: 'Alle Schalter auf {{mode}} zurücksetzen',
   preset: 'Voreinstellung',
   current: 'Aktiv',
-  icuExperienceHeading: 'Intensivpflege-Layout',
+  icuExperienceHeading: 'ICU-Layout',
   icuExperienceDesc:
     'Legen Sie fest, wie Tafel und Hinweise gewichtet werden. Änderbar jederzeit.',
   icuVariantMinimal: 'Minimale Ablenkung',
   icuVariantStandard: 'Standard',
-  icuOptionalHeading: 'Optionale Intensivpflege-Funktionen',
+  icuOptionalHeading: 'ICU-Funktionen',
   icuOptionalDesc:
     'Schalten Sie nur ein, wofür der Patient bereit ist. Soul-Starter brauchen Apple Music oder geteilte Medien.',
   icuOptPain: 'Schmerz-Einschätzung',
@@ -400,7 +400,7 @@ const remoteSettingsGerman = {
   },
   modes: {
     intensiveCare: 'Intensivstation (ICU)',
-    intensiveCareDesc: 'Intensivpflege — kommunikationsorientiert, wenig Ablenkung, betreuergesteuert.',
+    intensiveCareDesc: 'Intensivpflege / Critical Care — kommunikationsorientiert, wenig Ablenkung, betreuergesteuert.',
     intensiveCareDashboardHint:
       'Dashboard-Tab standardmäßig aus (bei Bedarf unter Funktionen einschalten).',
     hospital: 'Krankenhaus',
@@ -604,12 +604,12 @@ const remoteSettingsSpanish = {
   resetTogglesTo: 'Restablecer todos los interruptores a {{mode}}',
   preset: 'preajuste',
   current: 'Actual',
-  icuExperienceHeading: 'Diseño de cuidados intensivos',
+  icuExperienceHeading: 'Diseño de UCI',
   icuExperienceDesc:
     'Elija el equilibrio entre alertas y tamaño en el tablero. Puede cambiarlo en cualquier momento.',
   icuVariantMinimal: 'Distracción mínima',
   icuVariantStandard: 'Estándar',
-  icuOptionalHeading: 'Funciones opcionales de UCI',
+  icuOptionalHeading: 'Funciones de UCI',
   icuOptionalDesc:
     'Active solo lo que el paciente esté listo. Los accesos Soul requieren Apple Music o medios compartidos.',
   icuOptPain: 'Evaluación del dolor',
@@ -698,7 +698,7 @@ const remoteSettingsSpanish = {
   },
   modes: {
     intensiveCare: 'UCI',
-    intensiveCareDesc: 'Cuidados críticos — comunicación primero, mínimas distracciones, control del cuidador.',
+    intensiveCareDesc: 'Cuidados intensivos / Cuidados críticos — comunicación primero, mínimas distracciones, control del cuidador.',
     intensiveCareDashboardHint:
       'Pestaña Panel desactivada por defecto (actívela en Funciones si hace falta).',
     hospital: 'Hospital',
@@ -902,11 +902,11 @@ const remoteSettingsPolish = {
   resetTogglesTo: 'Resetuj wszystkie przełączniki do {{mode}}',
   preset: 'ustawienie wstępne',
   current: 'Aktywny',
-  icuExperienceHeading: 'Układ intensywnej opieki',
+  icuExperienceHeading: 'Układ OIOM',
   icuExperienceDesc: 'Wybierz balans alertów i rozmiarów na tablicy. Zmiana w dowolnym momencie.',
   icuVariantMinimal: 'Minimalne rozproszenie',
   icuVariantStandard: 'Standard',
-  icuOptionalHeading: 'Opcjonalne funkcje OIOM',
+  icuOptionalHeading: 'Funkcje OIOM',
   icuOptionalDesc:
     'Włącz tylko to, na co pacjent jest gotowy. Launchery Soul wymagają Apple Music lub udostępnionych mediów.',
   icuOptPain: 'Ocena bólu',
@@ -995,7 +995,7 @@ const remoteSettingsPolish = {
   },
   modes: {
     intensiveCare: 'OIOM',
-    intensiveCareDesc: 'Opieka krytyczna — komunikacja na pierwszym miejscu, minimum rozproszeń, kontrola opiekuna.',
+    intensiveCareDesc: 'Opieka intensywna / Opieka krytyczna — komunikacja na pierwszym miejscu, minimum rozproszeń, kontrola opiekuna.',
     intensiveCareDashboardHint:
       'Zakładka Panel domyślnie wyłączona (włącz w Funkcjach, jeśli potrzeba).',
     hospital: 'Szpital',

@@ -9,6 +9,7 @@ import {
   Flag,
   LayoutDashboard,
   Loader2,
+  MessageCircle,
   MessageSquare,
   Music,
   PartyPopper,
@@ -44,6 +45,7 @@ import {
   setRemoteIntensiveCareExperience,
   setRemoteSettingValue,
   shouldShowAssessmentAfterFirstCommReminder,
+  shouldShowCircleDropInReminder,
   shouldShowCircleInitiateMessagesReminder,
   shouldShowDiaryEntryReminder,
   shouldShowGalleryUploadReminder,
@@ -52,7 +54,6 @@ import {
   shouldShowProfileIncompleteReminder,
   shouldShowScheduledAssessmentMissedReminder,
   shouldShowTeamCoverageReminder,
-  withCircleInitiateMessagesTurnedOn,
   type CircleParticipationReminderKind,
   type CirclePatientProfileSnapshot,
   type CirclePatientSummary,
@@ -158,7 +159,8 @@ function isCareStyleDismissKind(kind: CircleParticipationReminderKind): boolean 
     kind === 'scheduledAssessmentMissed' ||
     isHospitalFeatureReminderKind(kind) ||
     isIcuProgressionReminderKind(kind) ||
-    kind === 'circleInitiateMessages'
+    kind === 'circleInitiateMessages' ||
+    kind === 'circleDropIn'
   );
 }
 
@@ -324,6 +326,8 @@ export function CircleDashboardCelebrationSection({
   onPersistRemoteSettings,
   onGoToTab,
   onOpenAdminAccess,
+  onOpenRemoteSettingsCircleInitiate,
+  onOpenRemoteSettingsDropIn,
 }: {
   db: Firestore;
   user: User;
@@ -347,6 +351,10 @@ export function CircleDashboardCelebrationSection({
   onGoToTab: (tab: CircleMainTab) => void;
   /** Opens Admin → Circle access (pending invites). */
   onOpenAdminAccess?: () => void;
+  /** Opens Remote Settings on Circle can message the patient. */
+  onOpenRemoteSettingsCircleInitiate?: () => void;
+  /** Opens Remote Settings on Drop-in who can drop in. */
+  onOpenRemoteSettingsDropIn?: () => void;
 }) {
   const t = useCircleT();
   const { language } = useCircleI18nContext();
@@ -363,7 +371,7 @@ export function CircleDashboardCelebrationSection({
   } = useCircleTeamCoverageFromDashboard();
   const canManageTeam = patient.capabilities.inviteMembers === true;
   const [enablingKind, setEnablingKind] = useState<
-    HospitalFeatureReminderKind | IcuProgressionReminderKind | 'icuDailyCheckIn' | 'circleInitiateMessages' | null
+    HospitalFeatureReminderKind | IcuProgressionReminderKind | 'icuDailyCheckIn' | null
   >(null);
 
   const friendlyName = patientFriendlyDisplayName(snapshot, patient.displayName);
@@ -505,6 +513,17 @@ export function CircleDashboardCelebrationSection({
     snoozes,
     snoozeLoading,
   });
+  const showCircleDropInReminder = shouldShowCircleDropInReminder({
+    enabled: careRemindersEnabled && remoteSettingsReady,
+    canManageRemoteSettings: canOpenRemoteSettings,
+    dropInEnabled: remoteSettings
+      ? getRemoteSettingValue(remoteSettings, 'featuresVisibility.dropIn') === true
+      : false,
+    firstEngagementAt,
+    snoozes,
+    snoozeLoading,
+    firstEngagementLoading,
+  });
 
   const hospitalFeatureKinds = listHospitalFeatureRemindersToShow({
     enabled: careRemindersEnabled,
@@ -542,23 +561,6 @@ export function CircleDashboardCelebrationSection({
         patientId: patient.patientId,
       });
       void dismissReminder(kind).catch((err) => {
-        console.warn('[Circle] Reminder dismiss after enable failed:', err);
-      });
-    } finally {
-      window.setTimeout(() => setEnablingKind(null), 600);
-    }
-  };
-
-  const enableCircleInitiateMessages = () => {
-    if (!remoteSettings || !canOpenRemoteSettings || enablingKind) return;
-    setEnablingKind('circleInitiateMessages');
-    try {
-      onPersistRemoteSettings({
-        ...remoteSettings,
-        ...withCircleInitiateMessagesTurnedOn(circleInitiateConfig),
-        patientId: patient.patientId,
-      });
-      void dismissReminder('circleInitiateMessages').catch((err) => {
         console.warn('[Circle] Reminder dismiss after enable failed:', err);
       });
     } finally {
@@ -925,9 +927,33 @@ export function CircleDashboardCelebrationSection({
       body: t('dashboard.reminders.circleInitiateBody'),
       dismissKind: 'circleInitiateMessages',
       actionLabel: t('dashboard.reminders.circleInitiateTurnOn'),
-      onAction: () => enableCircleInitiateMessages(),
-      actionUpdating: enablingKind === 'circleInitiateMessages',
-      actionDisabled: !canOpenRemoteSettings || !remoteSettings,
+      onAction: onOpenRemoteSettingsCircleInitiate,
+      actionDisabled: !canOpenRemoteSettings || !onOpenRemoteSettingsCircleInitiate,
+    });
+  }
+
+  if (showCircleDropInReminder) {
+    tiles.push({
+      key: 'circle-drop-in',
+      tone: 'care',
+      icon: MessageCircle,
+      headline: t('dashboard.reminders.circleDropInHeadline'),
+      body: t('dashboard.reminders.circleDropInBody'),
+      dismissKind: 'circleDropIn',
+      actionLabel: t('dashboard.reminders.circleDropInChooseWho'),
+      onAction: onOpenRemoteSettingsDropIn,
+      actionDisabled: !canOpenRemoteSettings || !onOpenRemoteSettingsDropIn,
+    });
+  } else if (previewReminders && careRemindersEnabled) {
+    tiles.push({
+      key: 'preview-circle-drop-in',
+      tone: 'care',
+      icon: MessageCircle,
+      headline: t('dashboard.reminders.previewCircleDropInHeadline'),
+      body: t('dashboard.reminders.previewCircleDropInBody'),
+      isPreview: true,
+      actionLabel: t('dashboard.reminders.circleDropInChooseWho'),
+      actionDisabled: true,
     });
   }
 

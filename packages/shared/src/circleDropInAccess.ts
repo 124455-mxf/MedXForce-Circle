@@ -6,6 +6,10 @@ import {
   sanitizeCircleInitiateMessageMemberUids,
   type CircleInitiateMessageGroup,
 } from './circleInitiateMessages';
+import {
+  isParticipationReminderSnoozed,
+  type CircleParticipationReminderSnoozes,
+} from './circleParticipationReminders';
 
 /** Same groups as Circle-started patient messages. Email-only Contacts are never included. */
 export const CIRCLE_DROP_IN_GROUPS = CIRCLE_INITIATE_MESSAGE_GROUPS;
@@ -120,6 +124,29 @@ export function extractCircleDropInAccessForRemote(
   preferences: Record<string, unknown>,
 ): Partial<CircleDropInAccessConfig> {
   return circleDropInAccessFieldsFromData(preferences);
+}
+
+/**
+ * Proxy Home nudge: drop-in is still off, the patient has engaged at least once,
+ * and the care-team member can open Remote Settings. The action opens the Drop-in
+ * allowlist so the proxy can choose who may drop in before turning it on.
+ */
+export function shouldShowCircleDropInReminder(input: {
+  enabled: boolean;
+  canManageRemoteSettings: boolean;
+  dropInEnabled: boolean;
+  firstEngagementAt: number | null;
+  snoozes: CircleParticipationReminderSnoozes;
+  snoozeLoading?: boolean;
+  firstEngagementLoading?: boolean;
+  now?: number;
+}): boolean {
+  if (!input.enabled || !input.canManageRemoteSettings) return false;
+  if (input.snoozeLoading || input.firstEngagementLoading) return false;
+  if (input.dropInEnabled) return false;
+  if (input.firstEngagementAt == null || input.firstEngagementAt <= 0) return false;
+  const now = input.now ?? Date.now();
+  return !isParticipationReminderSnoozed('circleDropIn', input.snoozes, now);
 }
 
 export { isCircleInitiatePersonCoveredByGroups as isCircleDropInPersonCoveredByGroups };

@@ -258,7 +258,7 @@ export const REMOTE_APP_MODES: { key: RemoteAppMode; label: string; description:
   {
     key: 'intensive_care',
     label: 'ICU',
-    description: 'Critical care — communication-first, minimal distractions, caregiver-controlled.',
+    description: 'Intensive Care / Critical care — communication-first, minimal distractions, caregiver-controlled.',
   },
   {
     key: 'hospital',

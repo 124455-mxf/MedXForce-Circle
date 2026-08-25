@@ -1095,8 +1095,15 @@ export const appShellEnglish = {
       hospitalFeatureUpdating: 'Updating…',
       circleInitiateHeadline: 'Let Circle send a message?',
       circleInitiateBody:
-        'Messaging is on. Allow selected Circle members to start a new conversation with the patient.',
-      circleInitiateTurnOn: 'Turn on Circle messages',
+        'Messaging is on. Choose which Circle members can start a new conversation with the patient.',
+      circleInitiateTurnOn: 'Choose who can message',
+      circleDropInHeadline: 'Enable Drop-in?',
+      circleDropInBody:
+        'Choose which Circle members can start a live drop-in with the patient.',
+      circleDropInChooseWho: 'Choose who can drop in',
+      previewCircleDropInHeadline: 'Enable Drop-in?',
+      previewCircleDropInBody:
+        'Sample suggestion — use Choose who can drop in from Home.',
       previewHospitalFeatureMessagingHeadline: 'Messaging may help now',
       previewHospitalFeatureMessagingBody:
         'Sample progression nudge — use Turn on Messaging to enable it from Home.',
@@ -2438,8 +2445,15 @@ export const appShellGerman = {
       hospitalFeatureUpdating: 'Wird aktualisiert…',
       circleInitiateHeadline: 'Circle darf eine Nachricht senden?',
       circleInitiateBody:
-        'Nachrichten sind eingeschaltet. Erlauben Sie ausgewählten Circle-Mitgliedern, ein neues Gespräch mit dem Patienten zu beginnen.',
-      circleInitiateTurnOn: 'Circle-Nachrichten einschalten',
+        'Nachrichten sind eingeschaltet. Legen Sie fest, welche Circle-Mitglieder ein neues Gespräch mit dem Patienten beginnen dürfen.',
+      circleInitiateTurnOn: 'Festlegen, wer schreiben darf',
+      circleDropInHeadline: 'Drop-in einschalten?',
+      circleDropInBody:
+        'Legen Sie fest, welche Circle-Mitglieder eine Live-Verbindung mit dem Patienten starten dürfen.',
+      circleDropInChooseWho: 'Festlegen, wer drop-in nutzen darf',
+      previewCircleDropInHeadline: 'Drop-in einschalten?',
+      previewCircleDropInBody:
+        'Beispiel-Vorschlag — nutzen Sie „Festlegen, wer drop-in nutzen darf“ auf der Startseite.',
       previewHospitalFeatureMessagingHeadline: 'Nachrichten könnten jetzt helfen',
       previewHospitalFeatureMessagingBody:
         'Beispiel-Fortschritts-Erinnerung — nutzen Sie „Nachrichten einschalten“ auf der Startseite.',
@@ -3781,8 +3795,15 @@ export const appShellSpanish = {
       hospitalFeatureUpdating: 'Actualizando…',
       circleInitiateHeadline: '¿Permitir que el Circle envíe un mensaje?',
       circleInitiateBody:
-        'Los mensajes están activados. Permita que miembros seleccionados del Circle inicien una conversación con el paciente.',
-      circleInitiateTurnOn: 'Activar mensajes del Circle',
+        'Los mensajes están activados. Elija qué miembros del Circle pueden iniciar una conversación con el paciente.',
+      circleInitiateTurnOn: 'Elegir quién puede escribir',
+      circleDropInHeadline: '¿Activar Drop-in?',
+      circleDropInBody:
+        'Elija qué miembros del Circle pueden iniciar una conexión en vivo con el paciente.',
+      circleDropInChooseWho: 'Elegir quién puede entrar',
+      previewCircleDropInHeadline: '¿Activar Drop-in?',
+      previewCircleDropInBody:
+        'Sugerencia de ejemplo — usa Elegir quién puede entrar desde Inicio.',
       previewHospitalFeatureMessagingHeadline: 'Los mensajes pueden ayudar ahora',
       previewHospitalFeatureMessagingBody:
         'Recordatorio de progreso de ejemplo — usa Activar Mensajes desde Inicio.',
@@ -5124,8 +5145,15 @@ export const appShellPolish = {
       hospitalFeatureUpdating: 'Aktualizowanie…',
       circleInitiateHeadline: 'Pozwolić Circle wysłać wiadomość?',
       circleInitiateBody:
-        'Wiadomości są włączone. Pozwól wybranym członkom Circle rozpocząć nową rozmowę z pacjentem.',
-      circleInitiateTurnOn: 'Włącz wiadomości Circle',
+        'Wiadomości są włączone. Wybierz, którzy członkowie Circle mogą rozpocząć nową rozmowę z pacjentem.',
+      circleInitiateTurnOn: 'Wybierz, kto może pisać',
+      circleDropInHeadline: 'Włączyć Drop-in?',
+      circleDropInBody:
+        'Wybierz, którzy członkowie Circle mogą rozpocząć połączenie na żywo z pacjentem.',
+      circleDropInChooseWho: 'Wybierz, kto może dołączyć',
+      previewCircleDropInHeadline: 'Włączyć Drop-in?',
+      previewCircleDropInBody:
+        'Przykładowa sugestia — użyj Wybierz, kto może dołączyć na stronie głównej.',
       previewHospitalFeatureMessagingHeadline: 'Wiadomości mogą teraz pomóc',
       previewHospitalFeatureMessagingBody:
         'Przykładowe przypomnienie postępu — użyj Włącz Wiadomości na stronie głównej.',
