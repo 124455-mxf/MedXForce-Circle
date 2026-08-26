@@ -653,11 +653,9 @@ export function PatientMessagesScreen({
   const selectedIsMultiRecipient = selectedRecipients.length > 1;
 
   useEffect(() => {
-    if (!selectedMessageId || !selectedMessage) return;
-    if (circleMessageAlertAttentionKind(selectedMessage)) {
-      markThreadRead(patient.patientId, selectedMessageId);
-    }
-  }, [patient.patientId, selectedMessage, selectedMessageId]);
+    if (!selectedMessageId) return;
+    markThreadRead(patient.patientId, selectedMessageId);
+  }, [patient.patientId, selectedMessageId]);
 
   const replies = selectedMessageId ? repliesByMessageId[selectedMessageId] || [] : [];
   const selectedHiddenAt = selectedMessageId ? hiddenAtByMessageId[selectedMessageId] : undefined;

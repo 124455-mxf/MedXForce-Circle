@@ -57,6 +57,7 @@ import { startCircleMemberLastOpenHeartbeat, startCircleMemberPresenceHeartbeat 
 import { useCircleAlertAttentionState } from '../hooks/useCircleAlertAttentionState';
 import { useFamilyGalleryDashboard } from '../hooks/useFamilyGalleryDashboard';
 import { DASHBOARD_STATS_DAYS } from '../lib/circleDashboardStats';
+import { useCircleInboxReadSync } from '../hooks/useCircleInboxReadSync';
 import { useCircleMemberThreadUnread } from '../hooks/useCircleMemberThreadUnread';
 import { useScheduleActionBadgeCount } from '../hooks/useScheduleActionBadgeCount';
 import { useCirclePatientThreads } from '../hooks/useCirclePatientThreads';
@@ -542,6 +543,12 @@ export function CircleMainShell({
     if (!selectedPatient) return [];
     return allNavItemsForPatient(selectedPatient.capabilities, navBuildOptions);
   }, [selectedPatient, navBuildOptions]);
+
+  useCircleInboxReadSync(
+    db,
+    selectedPatient?.isPendingProvision === true ? undefined : selectedPatient?.patientId,
+    user.uid,
+  );
 
   const threadState = useCirclePatientThreads(
     db,
