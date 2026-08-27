@@ -425,52 +425,100 @@ export function getNextEarlyCompletionTimestamp(
   return getPeriodCreditStart(recurrence, new Date(nextPeriodStart));
 }
 
+const DAILY: AssessmentRecurrence = { kind: 'daily' };
+const MON_THU: AssessmentRecurrence = { kind: 'weekdays', daysOfWeek: [1, 4] };
+const TUE_FRI: AssessmentRecurrence = { kind: 'weekdays', daysOfWeek: [2, 5] };
+const WEEKLY_MON: AssessmentRecurrence = { kind: 'weekly', dayOfWeek: 1 };
+const WEEKLY_WED: AssessmentRecurrence = { kind: 'weekly', dayOfWeek: 3 };
+const MONTHLY_1: AssessmentRecurrence = { kind: 'monthly', dayOfMonth: 1 };
+const MONTHLY_15: AssessmentRecurrence = { kind: 'monthly', dayOfMonth: 15 };
+
+type PhaseScheduleCell = { on: boolean; recurrence: AssessmentRecurrence };
+
+/** Bump when the recovery-stage default table changes so existing unlocked rules refresh once. */
+export const ASSESSMENT_SCHEDULE_PHASE_DEFAULTS_VERSION = 2;
+
+const PHASE_SCHEDULE_DEFAULTS: Record<
+  TreatmentPhaseValue,
+  Record<AssessmentScheduleId, PhaseScheduleCell>
+> = {
+  icu: {
+    impact: { on: true, recurrence: DAILY },
+    physical: { on: true, recurrence: DAILY },
+    'strength-reflex': { on: true, recurrence: WEEKLY_WED },
+    mobility: { on: true, recurrence: MON_THU },
+    numbness: { on: true, recurrence: MON_THU },
+    temperature: { on: true, recurrence: MON_THU },
+    balance: { on: true, recurrence: WEEKLY_MON },
+    vision: { on: true, recurrence: MON_THU },
+    speech: { on: true, recurrence: TUE_FRI },
+    neurological: { on: true, recurrence: WEEKLY_MON },
+    physiological: { on: true, recurrence: WEEKLY_MON },
+    psychological: { on: true, recurrence: DAILY },
+  },
+  acute: {
+    impact: { on: true, recurrence: MON_THU },
+    physical: { on: true, recurrence: MON_THU },
+    'strength-reflex': { on: true, recurrence: WEEKLY_WED },
+    mobility: { on: true, recurrence: WEEKLY_WED },
+    numbness: { on: true, recurrence: WEEKLY_WED },
+    temperature: { on: true, recurrence: WEEKLY_WED },
+    balance: { on: true, recurrence: WEEKLY_MON },
+    vision: { on: true, recurrence: WEEKLY_MON },
+    speech: { on: true, recurrence: WEEKLY_WED },
+    neurological: { on: true, recurrence: WEEKLY_MON },
+    physiological: { on: true, recurrence: WEEKLY_MON },
+    psychological: { on: true, recurrence: WEEKLY_WED },
+  },
+  rehab: {
+    impact: { on: true, recurrence: WEEKLY_MON },
+    physical: { on: true, recurrence: WEEKLY_MON },
+    'strength-reflex': { on: true, recurrence: WEEKLY_WED },
+    mobility: { on: true, recurrence: WEEKLY_WED },
+    numbness: { on: false, recurrence: WEEKLY_WED },
+    temperature: { on: false, recurrence: WEEKLY_WED },
+    balance: { on: true, recurrence: WEEKLY_WED },
+    vision: { on: true, recurrence: WEEKLY_MON },
+    speech: { on: true, recurrence: WEEKLY_WED },
+    neurological: { on: true, recurrence: WEEKLY_MON },
+    physiological: { on: true, recurrence: WEEKLY_WED },
+    psychological: { on: true, recurrence: WEEKLY_WED },
+  },
+  maintenance: {
+    impact: { on: true, recurrence: MONTHLY_15 },
+    physical: { on: true, recurrence: MONTHLY_15 },
+    'strength-reflex': { on: false, recurrence: MONTHLY_15 },
+    mobility: { on: true, recurrence: MONTHLY_15 },
+    numbness: { on: false, recurrence: MONTHLY_15 },
+    temperature: { on: false, recurrence: MONTHLY_15 },
+    balance: { on: true, recurrence: MONTHLY_15 },
+    vision: { on: true, recurrence: MONTHLY_1 },
+    speech: { on: true, recurrence: MONTHLY_1 },
+    neurological: { on: true, recurrence: MONTHLY_1 },
+    physiological: { on: true, recurrence: MONTHLY_1 },
+    psychological: { on: true, recurrence: MONTHLY_1 },
+  },
+  palliative: {
+    impact: { on: true, recurrence: MONTHLY_15 },
+    physical: { on: true, recurrence: MONTHLY_15 },
+    'strength-reflex': { on: true, recurrence: MONTHLY_15 },
+    mobility: { on: true, recurrence: MONTHLY_15 },
+    numbness: { on: true, recurrence: MONTHLY_15 },
+    temperature: { on: true, recurrence: MONTHLY_15 },
+    balance: { on: true, recurrence: MONTHLY_15 },
+    vision: { on: true, recurrence: MONTHLY_1 },
+    speech: { on: true, recurrence: MONTHLY_1 },
+    neurological: { on: true, recurrence: MONTHLY_1 },
+    physiological: { on: true, recurrence: MONTHLY_1 },
+    psychological: { on: true, recurrence: MONTHLY_1 },
+  },
+};
+
 function defaultRecurrenceFor(
   assessmentId: AssessmentScheduleId,
-  phase: TreatmentPhase | undefined,
+  phase: TreatmentPhaseValue,
 ): AssessmentRecurrence {
-  const dailyPhysical: AssessmentScheduleId[] = [
-    'impact',
-    'physical',
-    'mobility',
-    'numbness',
-    'temperature',
-  ];
-  if (phase === 'icu' || phase === 'acute') {
-    if (dailyPhysical.includes(assessmentId)) return { kind: 'daily' };
-    if (assessmentId === 'neurological' || assessmentId === 'psychological') return { kind: 'daily' };
-    if (assessmentId === 'speech') return { kind: 'daily' };
-    if (assessmentId === 'vision') return { kind: 'weekdays', daysOfWeek: [1, 3, 5] };
-    return { kind: 'weekly', dayOfWeek: 1 };
-  }
-  if (phase === 'rehab') {
-    if (assessmentId === 'impact' || assessmentId === 'physical') return { kind: 'daily' };
-    if (assessmentId === 'mobility' || assessmentId === 'strength-reflex') {
-      return { kind: 'weekdays', daysOfWeek: [1, 3, 5] };
-    }
-    if (assessmentId === 'neurological' || assessmentId === 'vision') {
-      return { kind: 'weekly', dayOfWeek: 1 };
-    }
-    if (assessmentId === 'psychological') return { kind: 'weekdays', daysOfWeek: [2, 5] };
-    if (assessmentId === 'speech') return { kind: 'weekdays', daysOfWeek: [1, 4] };
-    return { kind: 'weekly', dayOfWeek: 3 };
-  }
-  if (phase === 'maintenance' || phase === 'palliative') {
-    if (assessmentId === 'impact' || assessmentId === 'physical') {
-      return { kind: 'weekdays', daysOfWeek: [1, 4] };
-    }
-    if (assessmentId === 'mobility') return { kind: 'weekly', dayOfWeek: 1 };
-    if (assessmentId === 'neurological' || assessmentId === 'vision') {
-      return { kind: 'monthly', dayOfMonth: 1 };
-    }
-    if (assessmentId === 'psychological') return { kind: 'weekly', dayOfWeek: 5 };
-    if (assessmentId === 'speech') return { kind: 'weekly', dayOfWeek: 2 };
-    return { kind: 'monthly', dayOfMonth: 15 };
-  }
-  if (dailyPhysical.includes(assessmentId)) return { kind: 'daily' };
-  if (assessmentId === 'neurological') return { kind: 'weekly', dayOfWeek: 1 };
-  if (assessmentId === 'speech') return { kind: 'weekly', dayOfWeek: 2 };
-  return { kind: 'weekly', dayOfWeek: 3 };
+  return PHASE_SCHEDULE_DEFAULTS[phase][assessmentId].recurrence;
 }
 
 export function buildDefaultAssessmentScheduleRules(
@@ -480,9 +528,10 @@ export function buildDefaultAssessmentScheduleRules(
     normalizeTreatmentPhaseForSchedule(phase) ?? 'rehab';
   const rules = {} as Record<AssessmentScheduleId, AssessmentScheduleRule>;
   for (const meta of SCHEDULABLE_ASSESSMENTS) {
+    const cell = PHASE_SCHEDULE_DEFAULTS[normalizedPhase][meta.id];
     rules[meta.id] = {
       assessmentId: meta.id,
-      enabled: meta.released,
+      enabled: meta.released && cell.on,
       recurrence: defaultRecurrenceFor(meta.id, normalizedPhase),
     };
   }
@@ -502,22 +551,34 @@ export function assessmentScheduleLooksFullyDisabled(
   return released.every((item) => rules[item.id]?.enabled === false);
 }
 
-/** Restore phase defaults for Daily Life (and clear stale all-off rules from ICU/Hospital). */
-export function withDailyLifeAssessmentScheduleDefaults<T extends Record<string, unknown>>(
+/** Apply recovery-stage defaults. Circle-locked assessments keep their current rule. */
+export function withPhaseAssessmentScheduleDefaults<T extends Record<string, unknown>>(
   preferences: T,
 ): T {
   const phase =
     (preferences.fullUserDetails as { clinical?: { treatmentPhase?: string } } | null | undefined)
       ?.clinical?.treatmentPhase ?? null;
   const current = sanitizeAssessmentSchedulePreferences(preferences.assessmentSchedule);
+  const nextRules = buildDefaultAssessmentScheduleRules(phase);
+  for (const id of current.lockedIds ?? []) {
+    const existing = current.rules?.[id];
+    if (existing) nextRules[id] = existing;
+  }
   return {
     ...preferences,
     assessmentSchedule: {
       ...current,
-      rules: buildDefaultAssessmentScheduleRules(phase),
+      rules: nextRules,
       updatedAt: Date.now(),
     },
   };
+}
+
+/** Restore phase defaults for Daily Life (and clear stale all-off rules from ICU/Hospital). */
+export function withDailyLifeAssessmentScheduleDefaults<T extends Record<string, unknown>>(
+  preferences: T,
+): T {
+  return withPhaseAssessmentScheduleDefaults(preferences);
 }
 
 function isFeatureEnabled(
