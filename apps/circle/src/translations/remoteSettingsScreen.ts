@@ -237,6 +237,11 @@ const remoteSettingsEnglish = {
       'Set how often each assessment should be done on the patient tablet. Lock a schedule to prevent the patient from changing it.',
     lock: 'Lock',
     unlock: 'Unlock',
+    lockHint:
+      'Lock keeps this cadence on the tablet. The patient cannot change a locked assessment in Settings.',
+    resetToStageDefaults: 'Reset to {{stage}} defaults',
+    resetToStageDefaultsHint:
+      'Replace saved frequencies with this recovery stage’s table. Locked assessments stay locked, but their cadence updates. Changes sync when the patient app is online.',
     lockedForPatient: 'Locked for patient',
     sectionSummary: '{{enabled}} of {{total}} enabled',
     dayOfMonth: 'Day of month',
@@ -536,6 +541,11 @@ const remoteSettingsGerman = {
       'Legen Sie fest, wie oft jedes Assessment auf dem Patienten-Tablet durchgeführt werden soll. Sperren Sie einen Zeitplan, damit der Patient ihn nicht ändern kann.',
     lock: 'Sperren',
     unlock: 'Entsperren',
+    lockHint:
+      'Sperren hält diesen Rhythmus auf dem Tablet. Der Patient kann ein gesperrtes Assessment in den Einstellungen nicht ändern.',
+    resetToStageDefaults: 'Auf {{stage}}-Standard zurücksetzen',
+    resetToStageDefaultsHint:
+      'Ersetzt gespeicherte Häufigkeiten durch die Tabelle dieser Genesungsphase. Gesperrte Assessments bleiben gesperrt, ihr Rhythmus wird aber aktualisiert. Änderungen synchronisieren sich, wenn die Patienten-App online ist.',
     lockedForPatient: 'Für Patient gesperrt',
     sectionSummary: '{{enabled}} von {{total}} aktiviert',
     dayOfMonth: 'Tag im Monat',
@@ -834,6 +844,11 @@ const remoteSettingsSpanish = {
       'Defina la frecuencia de cada evaluación en la tableta del paciente. Bloquee un calendario para impedir cambios del paciente.',
     lock: 'Bloquear',
     unlock: 'Desbloquear',
+    lockHint:
+      'Bloquear mantiene esta cadencia en la tableta. El paciente no puede cambiar una evaluación bloqueada en Ajustes.',
+    resetToStageDefaults: 'Restablecer valores de {{stage}}',
+    resetToStageDefaultsHint:
+      'Sustituye las frecuencias guardadas por la tabla de esta etapa. Las evaluaciones bloqueadas siguen bloqueadas, pero su cadencia se actualiza. Los cambios se sincronizan cuando la app del paciente está en línea.',
     lockedForPatient: 'Bloqueado para el paciente',
     sectionSummary: '{{enabled}} de {{total}} activadas',
     dayOfMonth: 'Día del mes',
@@ -1131,6 +1146,11 @@ const remoteSettingsPolish = {
       'Ustaw, jak często każda ocena ma być wykonywana na tablecie pacjenta. Zablokuj harmonogram, aby pacjent nie mógł go zmienić.',
     lock: 'Zablokuj',
     unlock: 'Odblokuj',
+    lockHint:
+      'Blokada utrzymuje ten rytm na tablecie. Pacjent nie może zmienić zablokowanej oceny w Ustawieniach.',
+    resetToStageDefaults: 'Przywróć domyślne dla {{stage}}',
+    resetToStageDefaultsHint:
+      'Zastępuje zapisane częstotliwości tabelą tego etapu rekonwalescencji. Zablokowane oceny pozostają zablokowane, ale ich rytm się aktualizuje. Zmiany synchronizują się, gdy aplikacja pacjenta jest online.',
     lockedForPatient: 'Zablokowane dla pacjenta',
     sectionSummary: '{{enabled}} z {{total}} włączonych',
     dayOfMonth: 'Dzień miesiąca',

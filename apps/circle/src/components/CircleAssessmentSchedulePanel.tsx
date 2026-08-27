@@ -1,7 +1,8 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { CalendarClock, Lock } from 'lucide-react';
+import { CalendarClock, Lock, RotateCcw } from 'lucide-react';
 import {
   SCHEDULABLE_ASSESSMENTS,
+  assessmentScheduleForRecoveryStage,
   buildDefaultAssessmentScheduleRules,
   formatRecurrenceLabel,
   resolveEffectiveAssessmentScheduleRules,
@@ -15,6 +16,7 @@ import {
   type RemoteAssessmentSchedule,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
+import { treatmentPhaseLabelT } from '../lib/dashboardI18n';
 import { CircleCollapsibleSection } from './CircleCollapsibleSection';
 
 type CircleAssessmentSchedulePanelProps = {
@@ -122,16 +124,41 @@ export function CircleAssessmentSchedulePanel({
     });
   };
 
+  const resetToStageDefaults = () => {
+    persistRemoteSchedule(
+      settings,
+      treatmentPhase,
+      patch,
+      assessmentScheduleForRecoveryStage(treatmentPhase, remote.lockedIds ?? []),
+    );
+  };
+
+  const stageLabel = treatmentPhaseLabelT(t, treatmentPhase || 'rehab');
+
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3 px-1">
         <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
           <CalendarClock size={20} />
         </div>
-        <div className="space-y-1">
+        <div className="space-y-2 min-w-0 flex-1">
           <p className="text-sm font-normal text-slate-800">{t('remoteSettings.assessmentSchedule.title')}</p>
           <p className="text-xs text-slate-400 leading-relaxed">
             {t('remoteSettings.assessmentSchedule.description')}
+          </p>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            {t('remoteSettings.assessmentSchedule.lockHint')}
+          </p>
+          <button
+            type="button"
+            onClick={resetToStageDefaults}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-blue-200 hover:text-blue-700"
+          >
+            <RotateCcw size={14} />
+            {t('remoteSettings.assessmentSchedule.resetToStageDefaults', { stage: stageLabel })}
+          </button>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            {t('remoteSettings.assessmentSchedule.resetToStageDefaultsHint')}
           </p>
         </div>
       </div>

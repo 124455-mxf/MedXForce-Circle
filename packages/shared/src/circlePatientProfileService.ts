@@ -21,12 +21,14 @@ import {
   type CirclePatientProfileSnapshot,
   type CircleProfileNotification,
 } from './circlePatientProfile';
+import { assessmentScheduleForRecoveryStage } from './assessmentSchedule';
 import {
   createDefaultRemoteSettings,
   parsePatientRemoteSettings,
   REMOTE_PRIMARY_LANGUAGE_OPTIONS,
   remoteSettingsDocRef,
   setRemoteAppMode,
+  setRemoteAssessmentSchedule,
   setRemoteDashboardPreset,
   writeRemoteSettings,
   type RemotePrimaryLanguage,
@@ -46,25 +48,29 @@ async function syncRemoteSettingsForTreatmentPhase(
   actorUid: string,
   actorDisplayName: string,
   updatedAt: number,
+  updateTabletLayout = true,
 ): Promise<void> {
   const recommendation = recommendRemoteSettingsForTreatmentPhase(treatmentPhase);
-  if (!recommendation) return;
-
   const rsSnap = await getDoc(remoteSettingsDocRef(db, patientId));
   const base = rsSnap.exists()
     ? parsePatientRemoteSettings(patientId, rsSnap.data() as Record<string, unknown>)
     : createDefaultRemoteSettings(patientId);
   if (!base) return;
 
-  const next = setRemoteDashboardPreset(
-    setRemoteAppMode(base, recommendation.appMode),
-    recommendation.dashboardPreset,
+  let next = base;
+  if (updateTabletLayout && recommendation) {
+    next = setRemoteDashboardPreset(
+      setRemoteAppMode(next, recommendation.appMode),
+      recommendation.dashboardPreset,
+    );
+  }
+  next = setRemoteAssessmentSchedule(
+    next,
+    assessmentScheduleForRecoveryStage(
+      treatmentPhase,
+      next.assessmentSchedule?.lockedIds ?? [],
+    ),
   );
-
-  const currentMode = base.appMode ?? 'hospital';
-  const currentPreset = base.dashboardLayout?.preset ?? 'balanced';
-  const nextPreset = next.dashboardLayout?.preset ?? 'balanced';
-  if (currentMode === next.appMode && currentPreset === nextPreset) return;
 
   await writeRemoteSettings(db, {
     ...next,
@@ -256,19 +262,18 @@ export async function updateCirclePatientProfileFromProxy(
         },
         { merge: true },
       );
-      if (shouldApplyRecommendedTabletLayout(options)) {
-        try {
-          await syncRemoteSettingsForTreatmentPhase(
-            db,
-            patientId,
-            snapshot.clinical.treatmentPhase,
-            actorUid,
-            actorDisplayName || patientDisplayName,
-            updatedAt,
-          );
-        } catch (err) {
-          console.warn('[updateCirclePatientProfileFromProxy] remote settings treatment phase', err);
-        }
+      try {
+        await syncRemoteSettingsForTreatmentPhase(
+          db,
+          patientId,
+          snapshot.clinical.treatmentPhase,
+          actorUid,
+          actorDisplayName || patientDisplayName,
+          updatedAt,
+          shouldApplyRecommendedTabletLayout(options),
+        );
+      } catch (err) {
+        console.warn('[updateCirclePatientProfileFromProxy] remote settings treatment phase', err);
       }
       return;
     }
@@ -319,10 +324,7 @@ export async function updateCirclePatientProfileFromProxy(
     }
   }
 
-  if (
-    changedLabels.includes('Where I am in recovery') &&
-    shouldApplyRecommendedTabletLayout(options)
-  ) {
+  if (changedLabels.includes('Where I am in recovery')) {
     try {
       await syncRemoteSettingsForTreatmentPhase(
         db,
@@ -331,6 +333,7 @@ export async function updateCirclePatientProfileFromProxy(
         actorUid,
         actorDisplayName || patientDisplayName,
         meta.updatedAt,
+        shouldApplyRecommendedTabletLayout(options),
       );
     } catch (err) {
       console.warn('[updateCirclePatientProfileFromProxy] remote settings treatment phase', err);

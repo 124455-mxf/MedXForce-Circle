@@ -538,6 +538,17 @@ export function buildDefaultAssessmentScheduleRules(
   return rules;
 }
 
+/** Full stage table for Circle remote settings. Lock flags stay; cadences are replaced. */
+export function assessmentScheduleForRecoveryStage(
+  phase?: string | null,
+  lockedIds: AssessmentScheduleId[] = [],
+): RemoteAssessmentSchedule {
+  return {
+    rules: buildDefaultAssessmentScheduleRules(phase),
+    lockedIds: [...lockedIds],
+  };
+}
+
 /** True when stored rules look like ICU/Hospital force-off leftovers (all released items off). */
 export function assessmentScheduleLooksFullyDisabled(
   schedule: unknown,
@@ -579,6 +590,42 @@ export function withDailyLifeAssessmentScheduleDefaults<T extends Record<string,
   preferences: T,
 ): T {
   return withPhaseAssessmentScheduleDefaults(preferences);
+}
+
+/** Replace every cadence with the recovery-stage table. Locked rows stay locked. */
+export function withRecoveryStageAssessmentSchedule<T extends Record<string, unknown>>(
+  preferences: T,
+  phase?: string | null,
+): T {
+  const current = sanitizeAssessmentSchedulePreferences(preferences.assessmentSchedule);
+  const resolvedPhase =
+    phase ??
+    (preferences.fullUserDetails as { clinical?: { treatmentPhase?: string } } | null | undefined)
+      ?.clinical?.treatmentPhase ??
+    null;
+  const next = assessmentScheduleForRecoveryStage(resolvedPhase, current.lockedIds ?? []);
+  return {
+    ...preferences,
+    assessmentSchedule: {
+      ...current,
+      rules: next.rules,
+      lockedIds: next.lockedIds,
+      updatedAt: Date.now(),
+    },
+  };
+}
+
+/** One-time refresh of unlocked stored rules after the default table changes. */
+export function applyAssessmentSchedulePhaseDefaultsVersion<T extends Record<string, unknown>>(
+  preferences: T,
+): T {
+  if (preferences.assessmentSchedulePhaseDefaultsVersion === ASSESSMENT_SCHEDULE_PHASE_DEFAULTS_VERSION) {
+    return preferences;
+  }
+  return {
+    ...withPhaseAssessmentScheduleDefaults(preferences),
+    assessmentSchedulePhaseDefaultsVersion: ASSESSMENT_SCHEDULE_PHASE_DEFAULTS_VERSION,
+  };
 }
 
 function isFeatureEnabled(
