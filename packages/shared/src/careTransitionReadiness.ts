@@ -1265,11 +1265,14 @@ export function careTransitionPackRemainingCount(
   state: CareTransitionReadinessState,
   role: CircleMemberRole,
 ): number {
+  // Draft packs stay on the proxy review UI, but must not badge as open tasks.
+  if (!isCareTransitionPackLive(state)) return 0;
   const items = careTransitionVisiblePackItems(state, role);
   const done = new Set(state.doneIds);
   return items.filter((item) => !done.has(item.id)).length;
 }
 
+/** Pack checklist the viewer may work. Proxy still sees a draft for review. */
 export function careTransitionVisiblePackItems(
   state: CareTransitionReadinessState,
   role: CircleMemberRole,
@@ -1293,7 +1296,8 @@ export function careTransitionOpenItemCount(
 }
 
 /**
- * Tasks folder: open Circle-help plus pack items still to do.
+ * Tasks folder: open Circle-help plus remaining items on a live pack.
+ * Draft pack items stay off the badge until the proxy shares the pack.
  * Completed Circle-help and completed pack items stay on the list, not on the badge.
  */
 export function careTransitionFolderCounts(
