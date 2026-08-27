@@ -14,6 +14,8 @@ import {
   type CareCalendarDayEvent,
   type CareCalendarEntry,
 } from './careCalendar';
+import { careCalendarWallTimeToUtcMs } from './careCalendarTimeZone';
+import { getZonedDateKeyAndMinutes, isValidIanaTimeZone } from './timeZones';
 import {
   attendeeNeedsAppointmentInvite,
   findCareCalendarAttendeeForMember,
@@ -45,8 +47,9 @@ export function resolvePrepNudgeTier(
   startTimeMinutes: number | undefined,
   endTimeMinutes: number | undefined,
   now = new Date(),
+  timeZoneId?: string | null,
 ): PrepNudgeTier {
-  if (isCareCalendarAppointmentPast(dateKey, startTimeMinutes, endTimeMinutes, now)) {
+  if (isCareCalendarAppointmentPast(dateKey, startTimeMinutes, endTimeMinutes, now, timeZoneId)) {
     return 'none';
   }
   const todayKey = careCalendarDateKey(now);
@@ -77,6 +80,7 @@ export function partitionCareDayEventsByPast(
         event.startTimeMinutes,
         event.endTimeMinutes,
         now,
+        event.timezoneId,
       )
     ) {
       past.push(event);
@@ -94,17 +98,22 @@ export function careCalendarDayEventTiming(
   startTimeMinutes?: number,
   endTimeMinutes?: number,
   now = new Date(),
+  timeZoneId?: string | null,
 ): CareCalendarDayEventTiming {
   if (
-    isCareCalendarAppointmentPast(dateKey, startTimeMinutes, endTimeMinutes, now)
+    isCareCalendarAppointmentPast(dateKey, startTimeMinutes, endTimeMinutes, now, timeZoneId)
   ) {
     return 'past';
   }
   if (startTimeMinutes == null) return 'unscheduled';
-  const todayKey = careCalendarDateKey(now);
-  if (dateKey !== todayKey) return 'upcoming';
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  if (nowMinutes >= startTimeMinutes) return 'in_progress';
+  const zoned = isValidIanaTimeZone(timeZoneId)
+    ? getZonedDateKeyAndMinutes(now, timeZoneId)
+    : {
+        dateKey: careCalendarDateKey(now),
+        minutes: now.getHours() * 60 + now.getMinutes(),
+      };
+  if (dateKey !== zoned.dateKey) return 'upcoming';
+  if (zoned.minutes >= startTimeMinutes) return 'in_progress';
   return 'upcoming';
 }
 
@@ -119,12 +128,14 @@ export function sortCareDayEventsForTodayView(
       a.startTimeMinutes,
       a.endTimeMinutes,
       now,
+      a.timezoneId,
     );
     const timingB = careCalendarDayEventTiming(
       dateKey,
       b.startTimeMinutes,
       b.endTimeMinutes,
       now,
+      b.timezoneId,
     );
     const rank = (timing: CareCalendarDayEventTiming) =>
       timing === 'in_progress' ? 0 : timing === 'upcoming' || timing === 'unscheduled' ? 1 : 2;
@@ -171,6 +182,7 @@ export function entryOccurrencesInHorizon(
         entry.startTimeMinutes,
         entry.endTimeMinutes,
         now,
+        entry.timezoneId,
       ),
   );
 }
@@ -223,6 +235,7 @@ export function countAcceptedAppointmentsTodayForMember(
         entry.startTimeMinutes,
         entry.endTimeMinutes,
         now,
+        entry.timezoneId,
       )
     ) {
       continue;
@@ -307,6 +320,7 @@ function countPatientAppointmentOccurrencesInRange(
           entry.startTimeMinutes,
           entry.endTimeMinutes,
           now,
+          entry.timezoneId,
         )
       ) {
         continue;
@@ -357,13 +371,23 @@ export type ImminentCareCalendarAppointment = {
   dateKey: string;
   startTimeMinutes?: number;
   endTimeMinutes?: number;
+  timezoneId?: string;
   minutesUntilStart: number;
 };
 
-function appointmentStartMs(dateKey: string, startTimeMinutes: number): number {
-  const start = parseCareCalendarDateKey(dateKey);
-  start.setHours(Math.floor(startTimeMinutes / 60), startTimeMinutes % 60, 0, 0);
-  return start.getTime();
+function appointmentStartMs(
+  dateKey: string,
+  startTimeMinutes: number,
+  timeZoneId?: string | null,
+): number {
+  return (
+    careCalendarWallTimeToUtcMs(dateKey, startTimeMinutes, timeZoneId) ??
+    (() => {
+      const start = parseCareCalendarDateKey(dateKey);
+      start.setHours(Math.floor(startTimeMinutes / 60), startTimeMinutes % 60, 0, 0);
+      return start.getTime();
+    })()
+  );
 }
 
 export function findImminentCareCalendarAppointments(
@@ -391,13 +415,14 @@ export function findImminentCareCalendarAppointments(
         entry.startTimeMinutes,
         entry.endTimeMinutes,
         now,
+        entry.timezoneId,
       )
     ) {
       continue;
     }
     if (entry.startTimeMinutes == null) continue;
 
-    const startMs = appointmentStartMs(targetDateKey, entry.startTimeMinutes);
+    const startMs = appointmentStartMs(targetDateKey, entry.startTimeMinutes, entry.timezoneId);
     const minutesUntil = (startMs - nowMs) / 60_000;
     if (minutesUntil > 0 && minutesUntil <= withinMinutes) {
       results.push({
@@ -406,6 +431,7 @@ export function findImminentCareCalendarAppointments(
         dateKey: targetDateKey,
         startTimeMinutes: entry.startTimeMinutes,
         endTimeMinutes: entry.endTimeMinutes,
+        timezoneId: entry.timezoneId,
         minutesUntilStart: Math.max(1, Math.ceil(minutesUntil)),
       });
     }
@@ -434,13 +460,14 @@ export function findImminentCareCalendarDayEvents(
         event.startTimeMinutes,
         event.endTimeMinutes,
         now,
+        event.timezoneId,
       )
     ) {
       continue;
     }
     if (event.startTimeMinutes == null) continue;
 
-    const startMs = appointmentStartMs(dateKey, event.startTimeMinutes);
+    const startMs = appointmentStartMs(dateKey, event.startTimeMinutes, event.timezoneId);
     const minutesUntil = (startMs - nowMs) / 60_000;
     if (minutesUntil > 0 && minutesUntil <= withinMinutes) {
       results.push({
@@ -449,6 +476,7 @@ export function findImminentCareCalendarDayEvents(
         dateKey,
         startTimeMinutes: event.startTimeMinutes,
         endTimeMinutes: event.endTimeMinutes,
+        timezoneId: event.timezoneId,
         minutesUntilStart: Math.max(1, Math.ceil(minutesUntil)),
       });
     }

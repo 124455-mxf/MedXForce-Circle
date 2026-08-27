@@ -182,11 +182,16 @@ export function formatAppointmentInvitePostText(params: {
   startDateKey: string;
   startTimeMinutes?: number;
   endTimeMinutes?: number;
+  timezoneId?: string;
   kind: CareCalendarEntryKind;
   visitSubtype?: string;
   inviteeNames: string[];
 }): string {
-  const timeLabel = formatCareCalendarTimeRange(params.startTimeMinutes, params.endTimeMinutes);
+  const timeLabel = formatCareCalendarTimeRange(
+    params.startTimeMinutes,
+    params.endTimeMinutes,
+    params.timezoneId,
+  );
   const dateLabel = new Date(`${params.startDateKey}T12:00:00`).toLocaleDateString(undefined, {
     weekday: 'short',
     month: 'short',
@@ -839,6 +844,7 @@ export async function publishCareCalendarInvitePosts(
       | 'startDateKey'
       | 'startTimeMinutes'
       | 'endTimeMinutes'
+      | 'timezoneId'
       | 'kind'
       | 'visitSubtype'
       | 'attendees'
@@ -882,9 +888,10 @@ export async function publishCareCalendarInvitePosts(
       entryId: params.entry.id,
       title: params.entry.title,
       startDateKey: params.entry.startDateKey,
-      startTimeMinutes: params.entry.startTimeMinutes,
-      endTimeMinutes: params.entry.endTimeMinutes,
-      kind: params.entry.kind,
+    startTimeMinutes: params.entry.startTimeMinutes,
+    endTimeMinutes: params.entry.endTimeMinutes,
+    timezoneId: params.entry.timezoneId,
+    kind: params.entry.kind,
       visitSubtype: params.entry.visitSubtype,
       inviteeNames: invitees.map((attendee) => attendee.name),
     });
@@ -1301,6 +1308,7 @@ export function pendingAppointmentInviteEntriesForMember(
           entry.startTimeMinutes,
           entry.endTimeMinutes,
           now,
+          entry.timezoneId,
         ),
     );
     if (!upcomingDateKeys.length) continue;
@@ -1358,6 +1366,7 @@ export function buildSyntheticAppointmentInvitePost(
     startDateKey: entry.startDateKey,
     startTimeMinutes: entry.startTimeMinutes,
     endTimeMinutes: entry.endTimeMinutes,
+    timezoneId: entry.timezoneId,
     kind: entry.kind,
     visitSubtype: entry.visitSubtype,
     inviteeNames: invitees.map((attendee) => attendee.name),

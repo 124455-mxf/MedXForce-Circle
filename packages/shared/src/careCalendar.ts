@@ -5,6 +5,8 @@ import type {
   CareCalendarVisitSubtype,
 } from './careCalendarAppointment';
 import type { CareCalendarVisitBrief, CareCalendarVisitDebrief } from './visitBrief';
+import { isCareCalendarOccurrencePast } from './careCalendarTimeZone';
+import { formatTimeZoneAbbreviation, isValidIanaTimeZone } from './timeZones';
 
 export type CareCalendarEntryKind = 'doctor' | 'wellness' | 'rehab' | 'other';
 
@@ -60,6 +62,8 @@ export type CareCalendarEntry = {
   startDateKey: string;
   startTimeMinutes?: number;
   endTimeMinutes?: number;
+  /** IANA zone the wall-clock start/end minutes are in (e.g. America/Los_Angeles). */
+  timezoneId?: string;
   recurrence: CareCalendarRecurrence;
   address?: CareCalendarAddress;
   attendees?: CareCalendarAttendee[];
@@ -90,6 +94,7 @@ export type CareCalendarDayEvent = {
   details?: string;
   startTimeMinutes?: number;
   endTimeMinutes?: number;
+  timezoneId?: string;
   address?: CareCalendarAddress;
   attendees?: CareCalendarAttendee[];
   attendeeResponseSummary?: CareCalendarAttendeeResponseSummary;
@@ -133,14 +138,15 @@ export function isCareCalendarAppointmentPast(
   startTimeMinutes?: number,
   endTimeMinutes?: number,
   now = new Date(),
+  timeZoneId?: string | null,
 ): boolean {
-  const todayKey = careCalendarDateKey(now);
-  if (startDateKey < todayKey) return true;
-  if (startDateKey > todayKey) return false;
-  const slotEndMinutes = endTimeMinutes ?? startTimeMinutes;
-  if (slotEndMinutes == null) return false;
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  return slotEndMinutes <= nowMinutes;
+  return isCareCalendarOccurrencePast({
+    startDateKey,
+    startTimeMinutes,
+    endTimeMinutes,
+    now,
+    timeZoneId,
+  });
 }
 
 /** Pending/declined RSVP badges are hidden once the appointment is in the past. */
@@ -151,6 +157,7 @@ export function shouldShowAttendeeInviteResponseBadge(
     startDateKey?: string;
     startTimeMinutes?: number;
     endTimeMinutes?: number;
+    timezoneId?: string | null;
     now?: Date;
   },
 ): boolean {
@@ -163,6 +170,7 @@ export function shouldShowAttendeeInviteResponseBadge(
           options.startTimeMinutes,
           options.endTimeMinutes,
           options.now,
+          options.timezoneId,
         )
       : false);
   return !isPast;
@@ -172,8 +180,7 @@ function compareDateKeys(a: string, b: string): number {
   return a.localeCompare(b);
 }
 
-export function formatCareCalendarTime(minutes?: number): string | null {
-  if (minutes == null || Number.isNaN(minutes)) return null;
+function formatCareCalendarWallClock(minutes: number): string {
   const h = Math.floor(minutes / 60) % 24;
   const m = minutes % 60;
   const d = new Date();
@@ -181,14 +188,32 @@ export function formatCareCalendarTime(minutes?: number): string | null {
   return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
+export function formatCareCalendarTime(
+  minutes?: number,
+  timeZoneId?: string | null,
+  atDate = new Date(),
+): string | null {
+  if (minutes == null || Number.isNaN(minutes)) return null;
+  const clock = formatCareCalendarWallClock(minutes);
+  if (!isValidIanaTimeZone(timeZoneId)) return clock;
+  return `${clock} ${formatTimeZoneAbbreviation(timeZoneId, atDate)}`;
+}
+
 export function formatCareCalendarTimeRange(
   startMinutes?: number,
   endMinutes?: number,
+  timeZoneId?: string | null,
+  atDate = new Date(),
 ): string | null {
-  const start = formatCareCalendarTime(startMinutes);
-  if (!start) return null;
-  const end = formatCareCalendarTime(endMinutes);
-  return end ? `${start} – ${end}` : start;
+  if (startMinutes == null || Number.isNaN(startMinutes)) return null;
+  const start = formatCareCalendarWallClock(startMinutes);
+  const end =
+    endMinutes != null && !Number.isNaN(endMinutes)
+      ? formatCareCalendarWallClock(endMinutes)
+      : null;
+  const range = end ? `${start} – ${end}` : start;
+  if (!isValidIanaTimeZone(timeZoneId)) return range;
+  return `${range} ${formatTimeZoneAbbreviation(timeZoneId, atDate)}`;
 }
 
 export function buildAppleMapsUrl(address: CareCalendarAddress): string {
@@ -399,8 +424,20 @@ export function getCareCalendarByDay(
 
   for (const entry of entries) {
     for (const dateKey of expandCareEntryDateKeys(entry, rangeStart, rangeEnd)) {
-      const status: CareCalendarDayEvent['status'] =
-        dateKey < todayKey ? 'past' : dateKey === todayKey ? 'today' : 'upcoming';
+      const occurrencePast = isCareCalendarAppointmentPast(
+        dateKey,
+        entry.startTimeMinutes,
+        entry.endTimeMinutes,
+        new Date(),
+        entry.timezoneId,
+      );
+      const status: CareCalendarDayEvent['status'] = occurrencePast
+        ? 'past'
+        : dateKey < todayKey
+          ? 'past'
+          : dateKey === todayKey
+            ? 'today'
+            : 'upcoming';
       const event: CareCalendarDayEvent = {
         entryId: entry.id,
         kind: entry.kind,
@@ -408,6 +445,7 @@ export function getCareCalendarByDay(
         details: entry.details,
         startTimeMinutes: entry.startTimeMinutes,
         endTimeMinutes: entry.endTimeMinutes,
+        timezoneId: entry.timezoneId,
         address: entry.address,
         attendees: entry.attendees,
         attendeeResponseSummary: entry.attendeeResponseSummary,

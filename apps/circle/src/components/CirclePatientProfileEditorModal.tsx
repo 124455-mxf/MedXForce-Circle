@@ -8,6 +8,8 @@ import {
   listProfileCountryOptions,
   normalizeCountryCode,
   recommendRemoteSettingsForTreatmentPhase,
+  getBrowserTimeZone,
+  normalizeTimeZoneId,
   suggestedPackForPhaseTransition,
   type CirclePatientProfileSnapshot,
   type CircleProfileMedItem,
@@ -22,6 +24,7 @@ import {
 import { CirclePatientLanguageConfirmModal } from './CirclePatientLanguageConfirmModal';
 import { CirclePatientRecoveryPhaseConfirmModal } from './CirclePatientRecoveryPhaseConfirmModal';
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
+import { CircleTimeZoneSelect } from './CircleTimeZoneSelect';
 import { treatmentPhaseLabelT } from '../lib/dashboardI18n';
 import {
   profileEditorSectionTitleI18n,
@@ -299,11 +302,18 @@ export function CirclePatientProfileEditorModal({
     t('admin.profile.thePatient');
 
   const buildDraftToSave = (): CirclePatientProfileSnapshot => {
-    if (!pendingLanguage) return draft;
-    return {
+    const withTimezone: CirclePatientProfileSnapshot = {
       ...draft,
       identity: {
         ...draft.identity,
+        timezoneId: normalizeTimeZoneId(draft.identity.timezoneId, getBrowserTimeZone()),
+      },
+    };
+    if (!pendingLanguage) return withTimezone;
+    return {
+      ...withTimezone,
+      identity: {
+        ...withTimezone.identity,
         language: identityLanguageLabel(pendingLanguage),
       },
     };
@@ -506,6 +516,25 @@ export function CirclePatientProfileEditorModal({
                   </select>
                 </label>
               </div>
+              <label className="block space-y-1">
+                <span className="text-xs font-bold text-slate-500 uppercase">
+                  {t('admin.profile.fieldTimeZone')}
+                </span>
+                <CircleTimeZoneSelect
+                  value={draft.identity.timezoneId}
+                  onChange={(next) =>
+                    setDraft({
+                      ...draft,
+                      identity: { ...draft.identity, timezoneId: next },
+                    })
+                  }
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
+                  aria-label={t('admin.profile.fieldTimeZone')}
+                />
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {t('admin.profile.fieldTimeZoneHint')}
+                </p>
+              </label>
             </>
           )}
 

@@ -569,6 +569,7 @@ export function buildPreferencesFromProvision(
         language: draft.language || '',
         city: '',
         country: '',
+        timezoneId: '',
         dob: draft.dob || '',
       },
       extended: {

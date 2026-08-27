@@ -15,6 +15,7 @@ import {
 import { CareCalendarDiscardConfirmModal } from './CareCalendarDiscardConfirmModal';
 import { CircleCareCalendarDurationSelect } from './CircleCareCalendarDurationSelect';
 import { CircleCareCalendarTimeSelect } from './CircleCareCalendarTimeSelect';
+import { CircleTimeZoneSelect } from './CircleTimeZoneSelect';
 import {
   CircleCareCalendarEntryFormNav,
   type CircleCareCalendarFormSection,
@@ -51,6 +52,8 @@ import {
   type CareCalendarAppointmentTask,
   type CareCalendarVisitSubtype,
   type CircleMemberRole,
+  defaultCareCalendarTimezoneId,
+  getBrowserTimeZone,
 } from '@medxforce/shared';
 import {
   cancelCareCalendarEntry,
@@ -78,6 +81,8 @@ type CircleCareCalendarEntryModalProps = {
   authorRole: CircleMemberRole;
   organizerContactId?: string;
   organizerContactReady?: boolean;
+  patientTimezoneId?: string | null;
+  organizerTimezoneId?: string | null;
   initialDateKey?: string;
   editingEntry?: CareCalendarEntry | null;
   t: (path: string, params?: Record<string, unknown>) => string;
@@ -114,6 +119,8 @@ function CircleCareCalendarEntryModalContent({
   authorRole,
   organizerContactId,
   organizerContactReady = true,
+  patientTimezoneId,
+  organizerTimezoneId,
   initialDateKey,
   editingEntry,
   t,
@@ -129,6 +136,15 @@ function CircleCareCalendarEntryModalContent({
   const [details, setDetails] = useState('');
   const [startDateKey, setStartDateKey] = useState(todayKey);
   const [startTime, setStartTime] = useState(() => defaultCareCalendarStartTimeForDate(todayKey));
+  const [timezoneId, setTimezoneId] = useState(() =>
+    defaultCareCalendarTimezoneId({
+      kind: 'doctor',
+      patientTimezoneId,
+      organizerTimezoneId,
+      fallbackTimezoneId: getBrowserTimeZone(),
+    }),
+  );
+  const timezoneTouchedRef = useRef(false);
   const [durationMinutes, setDurationMinutes] = useState(CARE_CALENDAR_MIN_DURATION_MINUTES);
   const [recurrenceMode, setRecurrenceMode] = useState<RecurrenceMode>('once');
   const [weeklyDays, setWeeklyDays] = useState<number[]>([new Date().getDay()]);
@@ -162,6 +178,16 @@ function CircleCareCalendarEntryModalContent({
       setDetails(editingEntry.details || '');
       setStartDateKey(editingEntry.startDateKey);
       setStartTime(careCalendarTimeInputValue(editingEntry.startTimeMinutes) || '09:00');
+      setTimezoneId(
+        editingEntry.timezoneId ||
+          defaultCareCalendarTimezoneId({
+            kind: editingEntry.kind,
+            patientTimezoneId,
+            organizerTimezoneId,
+            fallbackTimezoneId: getBrowserTimeZone(),
+          }),
+      );
+      timezoneTouchedRef.current = true;
       setDurationMinutes(
         careCalendarDurationFromRange(editingEntry.startTimeMinutes, editingEntry.endTimeMinutes),
       );
@@ -193,6 +219,15 @@ function CircleCareCalendarEntryModalContent({
       const dateKey = initialDateKey || todayKey;
       setStartDateKey(dateKey);
       setStartTime(defaultCareCalendarStartTimeForDate(dateKey));
+      timezoneTouchedRef.current = false;
+      setTimezoneId(
+        defaultCareCalendarTimezoneId({
+          kind: 'doctor',
+          patientTimezoneId,
+          organizerTimezoneId,
+          fallbackTimezoneId: getBrowserTimeZone(),
+        }),
+      );
       setDurationMinutes(CARE_CALENDAR_MIN_DURATION_MINUTES);
       setRecurrenceMode('once');
       setWeeklyDays(defaultWeeklyRecurrenceDays(dateKey));
@@ -305,6 +340,16 @@ function CircleCareCalendarEntryModalContent({
 
   const handleKindChange = (nextKind: CareCalendarEntryKind) => {
     setKind(nextKind);
+    if (!editingEntry && !timezoneTouchedRef.current) {
+      setTimezoneId(
+        defaultCareCalendarTimezoneId({
+          kind: nextKind,
+          patientTimezoneId,
+          organizerTimezoneId,
+          fallbackTimezoneId: getBrowserTimeZone(),
+        }),
+      );
+    }
     if (!editingEntry && supportsCareCalendarAppointmentEpisode(nextKind)) {
       const subtype = defaultVisitSubtypeForKind(nextKind);
       setVisitSubtype(subtype);
@@ -390,6 +435,7 @@ function CircleCareCalendarEntryModalContent({
       startTimeMinutes: startM,
       endTimeMinutes:
         startM != null ? careCalendarEndMinutesFromDuration(startM, durationMinutes) : undefined,
+      timezoneId,
       recurrence,
       address: hasCareCalendarAddress(address)
         ? {
@@ -734,6 +780,24 @@ function CircleCareCalendarEntryModalContent({
                         aria-label={ct('fields.duration')}
                       />
                     </label>
+                    <label className="block space-y-1.5 min-w-0 sm:col-span-2">
+                      <span className="text-sm font-bold text-slate-700">{ct('fields.timeZone')}</span>
+                      <CircleTimeZoneSelect
+                        value={timezoneId}
+                        onChange={(next) => {
+                          timezoneTouchedRef.current = true;
+                          setTimezoneId(next);
+                        }}
+                        preferredIds={[patientTimezoneId, organizerTimezoneId]}
+                        className="w-full min-w-0 max-w-full box-border px-3 py-3 rounded-xl border border-slate-200"
+                        aria-label={ct('fields.timeZone')}
+                      />
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        {isCareCalendarInternalMeeting(kind)
+                          ? ct('fields.timeZoneHintInternal')
+                          : ct('fields.timeZoneHintPatient')}
+                      </p>
+                    </label>
                   </div>
                 </div>
 
@@ -810,6 +874,7 @@ function CircleCareCalendarEntryModalContent({
                               ? careCalendarEndMinutesFromDuration(startM, durationMinutes)
                               : undefined;
                           })(),
+                          timezoneId,
                         ),
                       ]
                         .filter(Boolean)

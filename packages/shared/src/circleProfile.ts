@@ -8,6 +8,8 @@ export interface CircleUserProfile {
   email?: string;
   /** Preferred language for Circle UI and patient-app contact labeling. */
   language?: string;
+  /** Preferred IANA time zone for appointments (home zone, not live GPS). */
+  timezoneId?: string;
   /** Who last set `language`: member in Circle app vs patient/proxy in patient app. */
   languageSource?: 'circle' | 'patient';
   /** Patient circle for proxy/patient-managed language writes (rules validation only). */
@@ -34,6 +36,10 @@ export async function getCircleUserProfile(
     photoUrl: data.photoUrl,
     email: data.email,
     language: typeof data.language === 'string' ? data.language : undefined,
+    timezoneId:
+      typeof data.timezoneId === 'string' && data.timezoneId.trim()
+        ? data.timezoneId.trim()
+        : undefined,
     languageSource:
       data.languageSource === 'circle' || data.languageSource === 'patient'
         ? data.languageSource
@@ -67,6 +73,7 @@ export async function saveCircleUserProfile(
       | 'email'
       | 'language'
       | 'languageSource'
+      | 'timezoneId'
       | 'managedPatientId'
       | 'hideOnlineStatusFromPatient'
       | 'textSize'

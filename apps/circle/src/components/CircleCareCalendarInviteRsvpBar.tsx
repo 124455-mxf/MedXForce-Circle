@@ -30,8 +30,9 @@ function entryTimingSignature(timing: {
   startDateKey: string;
   startTimeMinutes?: number;
   endTimeMinutes?: number;
+  timezoneId?: string;
 }): string {
-  return `${timing.startDateKey}|${timing.startTimeMinutes ?? ''}|${timing.endTimeMinutes ?? ''}`;
+  return `${timing.startDateKey}|${timing.startTimeMinutes ?? ''}|${timing.endTimeMinutes ?? ''}|${timing.timezoneId ?? ''}`;
 }
 
 export function CircleCareCalendarInviteRsvpBar({
@@ -50,6 +51,7 @@ export function CircleCareCalendarInviteRsvpBar({
   startDateKey,
   startTimeMinutes,
   endTimeMinutes,
+  timezoneId,
   eventStatus,
   t,
   className,
@@ -70,6 +72,7 @@ export function CircleCareCalendarInviteRsvpBar({
   startDateKey?: string;
   startTimeMinutes?: number;
   endTimeMinutes?: number;
+  timezoneId?: string | null;
   eventStatus?: 'past' | 'today' | 'upcoming';
   t: (path: string, params?: Record<string, unknown>) => string;
   className?: string;
@@ -95,6 +98,7 @@ export function CircleCareCalendarInviteRsvpBar({
     startDateKey: startDateKey ?? '',
     startTimeMinutes,
     endTimeMinutes,
+    timezoneId: timezoneId ?? undefined,
   });
 
   const inviteContextRef = useRef(inviteContext);
@@ -103,8 +107,8 @@ export function CircleCareCalendarInviteRsvpBar({
   attendeesFallbackRef.current = attendees;
   const inviteeUidMapRef = useRef(inviteeMemberUidByContactId);
   inviteeUidMapRef.current = inviteeMemberUidByContactId;
-  const timingPropsRef = useRef({ startDateKey, startTimeMinutes, endTimeMinutes });
-  timingPropsRef.current = { startDateKey, startTimeMinutes, endTimeMinutes };
+  const timingPropsRef = useRef({ startDateKey, startTimeMinutes, endTimeMinutes, timezoneId });
+  timingPropsRef.current = { startDateKey, startTimeMinutes, endTimeMinutes, timezoneId };
   const liveAttendeesSigRef = useRef(attendeesSignature(attendees));
   const entryTimingSigRef = useRef(entryTimingSignature(entryTiming));
   const responseRef = useRef<CareCalendarAttendeeResponse>('pending');
@@ -177,6 +181,10 @@ export function CircleCareCalendarInviteRsvpBar({
             data.startTimeMinutes != null ? Number(data.startTimeMinutes) : timingProps.startTimeMinutes,
           endTimeMinutes:
             data.endTimeMinutes != null ? Number(data.endTimeMinutes) : timingProps.endTimeMinutes,
+          timezoneId:
+            typeof data.timezoneId === 'string' && data.timezoneId.trim()
+              ? data.timezoneId.trim()
+              : timingProps.timezoneId ?? undefined,
         };
         const nextTimingSig = entryTimingSignature(nextTiming);
         if (nextTimingSig !== entryTimingSigRef.current) {
@@ -197,6 +205,8 @@ export function CircleCareCalendarInviteRsvpBar({
           entryTiming.startDateKey,
           entryTiming.startTimeMinutes,
           entryTiming.endTimeMinutes,
+          undefined,
+          entryTiming.timezoneId,
         )
       : false);
 

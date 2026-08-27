@@ -16,6 +16,8 @@ import { CIRCLE_UI_LANGUAGES, circleUiLanguageLabel, type CircleUiLanguage } fro
 import { persistCircleApplicationLanguage } from '../lib/circleUiLanguageHydration';
 import { useCircleLocaleTemperatureUnit } from '../hooks/useCircleLocaleTemperatureUnit';
 import { useCircleLocaleTimeFormat } from '../hooks/useCircleLocaleTimeFormat';
+import { useCircleMemberTimeZone } from '../hooks/useCircleMemberTimeZone';
+import { CircleTimeZoneSelect } from './CircleTimeZoneSelect';
 import { useCircleTextSizeFromContext } from '../lib/circleTextSizeContext';
 import { cn } from '../lib/utils';
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
@@ -55,6 +57,7 @@ export function CircleSettingsLocalePanel({
   const { language, setLanguage } = useCircleI18nContext();
   const timeFormat = useCircleLocaleTimeFormat();
   const temperatureUnit = useCircleLocaleTemperatureUnit();
+  const { timezoneId, setTimezoneId } = useCircleMemberTimeZone(db, user);
   const { textSize, setTextSize } = useCircleTextSizeFromContext();
   const [savingLanguage, setSavingLanguage] = useState(false);
 
@@ -154,6 +157,21 @@ export function CircleSettingsLocalePanel({
         <p className="text-sm text-slate-600 leading-relaxed pt-1">
           {t('settings.textSizePreview')}
         </p>
+      </div>
+
+      <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
+        <div className="space-y-1">
+          <p className="font-bold text-slate-800">{t('settings.localeTimeZoneTitle')}</p>
+          <p className="text-sm text-slate-400">{t('settings.localeTimeZoneDesc')}</p>
+        </div>
+        <CircleTimeZoneSelect
+          value={timezoneId}
+          onChange={(next) => {
+            void setTimezoneId(next);
+          }}
+          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+          aria-label={t('settings.localeTimeZoneTitle')}
+        />
       </div>
 
       <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">

@@ -44,6 +44,7 @@ export function resolveCareCalendarAppointmentTiming(
       event.startTimeMinutes,
       event.endTimeMinutes,
       options.now,
+      event.timezoneId,
     );
   }
   return 'upcoming';
@@ -100,7 +101,7 @@ export function countAppointmentPrepRemaining(
   const now = options.now ?? new Date();
   const tier =
     options.tier ??
-    resolvePrepNudgeTier(dateKey, event.startTimeMinutes, event.endTimeMinutes, now);
+    resolvePrepNudgeTier(dateKey, event.startTimeMinutes, event.endTimeMinutes, now, event.timezoneId);
   const taskScope = options.taskScope ?? 'all';
   const openTasks =
     taskScope === 'viewer'
@@ -196,6 +197,7 @@ export function resolveAppointmentPrepHighlight(
     event.startTimeMinutes,
     event.endTimeMinutes,
     now,
+    event.timezoneId,
   );
   if (tier === 'none') return 'none';
 

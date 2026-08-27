@@ -74,6 +74,7 @@ type CircleAssessmentScheduleCalendarProps = {
   inviteContactId?: string;
   memberDisplayName?: string;
   memberRole?: string;
+  viewerTimezoneId?: string;
   compact?: boolean;
   hideHeader?: boolean;
   enableViewModes?: boolean;
@@ -144,6 +145,7 @@ export function CircleAssessmentScheduleCalendar({
   inviteContactId,
   memberDisplayName,
   memberRole,
+  viewerTimezoneId,
   compact = false,
   hideHeader = false,
   enableViewModes = false,
@@ -595,6 +597,7 @@ export function CircleAssessmentScheduleCalendar({
             memberDisplayName={memberDisplayName}
             memberRole={memberRole}
             currentUserUid={currentUserUid}
+            viewerTimezoneId={viewerTimezoneId}
           />
         )}
 
@@ -629,6 +632,7 @@ export function CircleAssessmentScheduleCalendar({
             assessmentSchedule={schedule}
             onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
             onRecordVisit={onRecordVisit}
+            viewerTimezoneId={viewerTimezoneId}
           />
         ) : null}
       </div>
@@ -696,6 +700,7 @@ export function CircleAssessmentScheduleCalendar({
           currentUserName={currentUserName}
           assessmentSchedule={schedule}
           onRecordVisit={onRecordVisit}
+          viewerTimezoneId={viewerTimezoneId}
         />
       )}
 
@@ -718,6 +723,7 @@ export function CircleAssessmentScheduleCalendar({
           }
           t={t}
           compact={compact}
+          viewerTimezoneId={viewerTimezoneId}
           onOpenAppointment={(dateKey, event) => {
             setSelectedDateKey(dateKey);
             setAppointmentSelection({ dateKey, event });
@@ -754,6 +760,7 @@ export function CircleAssessmentScheduleCalendar({
           assessmentSchedule={schedule}
           onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
           onRecordVisit={onRecordVisit}
+          viewerTimezoneId={viewerTimezoneId}
         />
       )}
 
@@ -798,6 +805,7 @@ export function CircleAssessmentScheduleCalendar({
           memberDisplayName={memberDisplayName}
           memberRole={memberRole}
           currentUserUid={currentUserUid}
+          viewerTimezoneId={viewerTimezoneId}
           fullSize
         />
       ) : null}
@@ -829,6 +837,7 @@ export function CircleAssessmentScheduleCalendar({
           assessmentSchedule={schedule}
           onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
           onRecordVisit={onRecordVisit}
+          viewerTimezoneId={viewerTimezoneId}
         />
       ) : null}
     </div>
@@ -860,6 +869,7 @@ function MonthCalendarBody({
   memberDisplayName,
   memberRole,
   currentUserUid,
+  viewerTimezoneId,
 }: {
   compact: boolean;
   fullSize?: boolean;
@@ -885,6 +895,7 @@ function MonthCalendarBody({
   memberDisplayName?: string;
   memberRole?: string;
   currentUserUid?: string;
+  viewerTimezoneId?: string;
 }) {
   const { language } = useCircleI18nContext();
   const ct = (key: string, params?: Record<string, unknown>) =>
@@ -1057,6 +1068,7 @@ function MonthCalendarBody({
                   memberRole={memberRole}
                   currentUserUid={currentUserUid}
                   onRecordVisit={onRecordVisit}
+                  viewerTimezoneId={viewerTimezoneId}
                 />
               ))}
             </ul>

@@ -415,7 +415,7 @@ export const appShellEnglish = {
       'Choose which view opens first on Schedule. You can still switch to Day, Week, Month, or Tasks anytime.',
     localeSettingsTitle: 'Display preferences',
     localeSettingsSubtitle:
-      'Application language, text size, and how local time and temperature appear on Home.',
+      'Application language, text size, time zone, and how local time and temperature appear on Home.',
     applicationLanguageTitle: 'Application language',
     applicationLanguageDesc:
       'Menus and screens in Circle. Same choice as in My contact details.',
@@ -429,6 +429,9 @@ export const appShellEnglish = {
     localeTimeFormatDesc: 'Choose 12-hour or 24-hour time on the dashboard.',
     localeTimeFormat12h: '12-hour',
     localeTimeFormat24h: '24-hour',
+    localeTimeZoneTitle: 'Time zone',
+    localeTimeZoneDesc:
+      'Your home time zone for internal meetings you create. Appointments with the patient use the patient’s home time zone unless you choose another.',
     localeTemperatureTitle: 'Temperature unit',
     localeTemperatureDesc: 'Choose Fahrenheit or Celsius for weather on the dashboard.',
     localeTemperatureFahrenheit: 'Fahrenheit',
@@ -660,6 +663,12 @@ export const appShellEnglish = {
         date: 'Date',
         dateTime: 'Date / Time',
         startTime: 'Start',
+        timeZone: 'Time zone',
+        timeZoneHintPatient:
+          'Defaults to the patient’s home time zone. Change it if this visit is in another city.',
+        timeZoneHintInternal:
+          'Defaults to your time zone. The patient is not invited to internal meetings.',
+        timeZoneForYou: 'for you',
         endTime: 'End',
         duration: 'Duration',
         durationMinutes: '{{count}} min',
@@ -1283,6 +1292,7 @@ export const appShellEnglish = {
       identity_language: 'Primary language',
       identity_dob: 'Date of birth',
       identity_city: 'City',
+      identity_timezoneId: 'Home time zone',
       identity_country: 'Country',
       identity_email: 'Email',
       identity_profilePicture: 'Profile photo',
@@ -1769,7 +1779,7 @@ export const appShellGerman = {
       'Wählen Sie, welche Ansicht sich zuerst im Terminplan öffnet. Sie können jederzeit zwischen Tag, Woche, Monat und Aufgaben wechseln.',
     localeSettingsTitle: 'Anzeigeeinstellungen',
     localeSettingsSubtitle:
-      'Anwendungssprache, Textgröße sowie lokale Uhrzeit und Temperatur auf der Startseite.',
+      'Anwendungssprache, Textgröße, Zeitzone sowie lokale Uhrzeit und Temperatur auf der Startseite.',
     applicationLanguageTitle: 'Anwendungssprache',
     applicationLanguageDesc:
       'Menüs und Bildschirme in Circle. Dieselbe Auswahl wie unter Meine Kontaktdaten.',
@@ -1783,6 +1793,9 @@ export const appShellGerman = {
     localeTimeFormatDesc: '12- oder 24-Stunden-Uhr auf dem Dashboard.',
     localeTimeFormat12h: '12-Stunden',
     localeTimeFormat24h: '24-Stunden',
+    localeTimeZoneTitle: 'Zeitzone',
+    localeTimeZoneDesc:
+      'Ihre Heimatzeitzone für interne Meetings, die Sie anlegen. Termine mit dem Patienten nutzen die Heimatzeitzone des Patienten, sofern Sie keine andere wählen.',
     localeTemperatureTitle: 'Temperatureinheit',
     localeTemperatureDesc: 'Fahrenheit oder Celsius für Wetter auf dem Dashboard.',
     localeTemperatureFahrenheit: 'Fahrenheit',
@@ -2010,6 +2023,12 @@ export const appShellGerman = {
         date: 'Datum',
         dateTime: 'Datum / Uhrzeit',
         startTime: 'Beginn',
+        timeZone: 'Zeitzone',
+        timeZoneHintPatient:
+          'Standard ist die Heimatzeitzone des Patienten. Ändern Sie sie, wenn der Termin in einer anderen Stadt stattfindet.',
+        timeZoneHintInternal:
+          'Standard ist Ihre Zeitzone. Der Patient wird zu internen Meetings nicht eingeladen.',
+        timeZoneForYou: 'für Sie',
         endTime: 'Ende',
         duration: 'Dauer',
         durationMinutes: '{{count}} Min',
@@ -2617,6 +2636,7 @@ export const appShellGerman = {
       identity_language: 'Primärsprache',
       identity_dob: 'Geburtsdatum',
       identity_city: 'Stadt',
+      identity_timezoneId: 'Heimatzeitzone',
       identity_country: 'Land',
       identity_email: 'E-Mail',
       identity_profilePicture: 'Profilfoto',
@@ -3119,7 +3139,7 @@ export const appShellSpanish = {
       'Elija qué vista se abre primero en Agenda. Puede cambiar a Día, Semana, Mes o Tareas en cualquier momento.',
     localeSettingsTitle: 'Preferencias de pantalla',
     localeSettingsSubtitle:
-      'Idioma de la aplicación, tamaño de texto, y la hora local y temperatura en Inicio.',
+      'Idioma de la aplicación, tamaño de texto, zona horaria, y la hora local y temperatura en Inicio.',
     applicationLanguageTitle: 'Idioma de la aplicación',
     applicationLanguageDesc:
       'Menús y pantallas de Circle. La misma opción que en Mis datos de contacto.',
@@ -3133,6 +3153,9 @@ export const appShellSpanish = {
     localeTimeFormatDesc: 'Reloj de 12 o 24 horas en el panel.',
     localeTimeFormat12h: '12 horas',
     localeTimeFormat24h: '24 horas',
+    localeTimeZoneTitle: 'Zona horaria',
+    localeTimeZoneDesc:
+      'Su zona horaria de casa para las reuniones internas que cree. Las citas con el paciente usan la zona horaria de casa del paciente, salvo que elija otra.',
     localeTemperatureTitle: 'Unidad de temperatura',
     localeTemperatureDesc: 'Fahrenheit o Celsius para el clima en el panel.',
     localeTemperatureFahrenheit: 'Fahrenheit',
@@ -3360,6 +3383,12 @@ export const appShellSpanish = {
         date: 'Fecha',
         dateTime: 'Fecha / hora',
         startTime: 'Inicio',
+        timeZone: 'Zona horaria',
+        timeZoneHintPatient:
+          'Por defecto es la zona horaria de casa del paciente. Cámbiela si esta visita es en otra ciudad.',
+        timeZoneHintInternal:
+          'Por defecto es su zona horaria. El paciente no se invita a reuniones internas.',
+        timeZoneForYou: 'para usted',
         endTime: 'Fin',
         duration: 'Duración',
         durationMinutes: '{{count}} min',
@@ -3967,6 +3996,7 @@ export const appShellSpanish = {
       identity_language: 'Idioma principal',
       identity_dob: 'Fecha de nacimiento',
       identity_city: 'Ciudad',
+      identity_timezoneId: 'Zona horaria de casa',
       identity_country: 'País',
       identity_email: 'Correo',
       identity_profilePicture: 'Foto de perfil',
@@ -4469,7 +4499,7 @@ export const appShellPolish = {
       'Wybierz, który widok otwiera się najpierw w Harmonogramie. W każdej chwili możesz przełączyć na Dzień, Tydzień, Miesiąc lub Zadania.',
     localeSettingsTitle: 'Ustawienia wyświetlania',
     localeSettingsSubtitle:
-      'Język aplikacji, rozmiar tekstu oraz lokalny czas i temperatura na ekranie głównym.',
+      'Język aplikacji, rozmiar tekstu, strefa czasowa oraz lokalny czas i temperatura na ekranie głównym.',
     applicationLanguageTitle: 'Język aplikacji',
     applicationLanguageDesc:
       'Menu i ekrany w Circle. Ten sam wybór co w Moich danych kontaktowych.',
@@ -4483,6 +4513,9 @@ export const appShellPolish = {
     localeTimeFormatDesc: 'Zegar 12- lub 24-godzinny na pulpicie.',
     localeTimeFormat12h: '12-godzinny',
     localeTimeFormat24h: '24-godzinny',
+    localeTimeZoneTitle: 'Strefa czasowa',
+    localeTimeZoneDesc:
+      'Twoja domowa strefa czasowa dla spotkań wewnętrznych, które tworzysz. Wizyty z pacjentem używają domowej strefy pacjenta, chyba że wybierzesz inną.',
     localeTemperatureTitle: 'Jednostka temperatury',
     localeTemperatureDesc: 'Fahrenheit lub Celsius dla pogody na pulpicie.',
     localeTemperatureFahrenheit: 'Fahrenheit',
@@ -4710,6 +4743,12 @@ export const appShellPolish = {
         date: 'Data',
         dateTime: 'Data / godzina',
         startTime: 'Początek',
+        timeZone: 'Strefa czasowa',
+        timeZoneHintPatient:
+          'Domyślnie strefa domowa pacjenta. Zmień, jeśli wizyta jest w innym mieście.',
+        timeZoneHintInternal:
+          'Domyślnie Twoja strefa. Pacjent nie jest zapraszany na spotkania wewnętrzne.',
+        timeZoneForYou: 'dla Ciebie',
         endTime: 'Koniec',
         duration: 'Czas trwania',
         durationMinutes: '{{count}} min',
@@ -5317,6 +5356,7 @@ export const appShellPolish = {
       identity_language: 'Język główny',
       identity_dob: 'Data urodzenia',
       identity_city: 'Miasto',
+      identity_timezoneId: 'Domowa strefa czasowa',
       identity_country: 'Kraj',
       identity_email: 'E-mail',
       identity_profilePicture: 'Zdjęcie profilowe',

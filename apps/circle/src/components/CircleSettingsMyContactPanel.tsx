@@ -16,6 +16,8 @@ import {
   parsePatientManagedContacts,
   readMemberContactProfile,
   saveCircleUserProfile,
+  getBrowserTimeZone,
+  normalizeTimeZoneId,
   updateOwnCircleContactProfile,
   type CircleManagedContact,
   type CirclePatientSummary,
@@ -28,6 +30,8 @@ import {
 } from './CircleContactEditorModal';
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import { normalizeCircleUiLanguage } from '../lib/circleLanguages';
+import { useCircleMemberTimeZone } from '../hooks/useCircleMemberTimeZone';
+import { CircleTimeZoneSelect } from './CircleTimeZoneSelect';
 import {
   relationshipLabelI18n,
   translateCircleMemberAccessLabel,
@@ -142,12 +146,17 @@ export function CircleSettingsMyContactPanel({
 }: CircleSettingsMyContactPanelProps) {
   const t = useCircleT();
   const { setLanguage: setUiLanguage } = useCircleI18nContext();
+  const { timezoneId: savedTimezoneId, setTimezoneId: persistTimezoneId } = useCircleMemberTimeZone(
+    db,
+    user,
+  );
   const [contact, setContact] = useState<CircleManagedContact | null>(null);
   const [name, setName] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [language, setLanguage] = useState('English');
+  const [timezoneId, setTimezoneId] = useState(savedTimezoneId);
   const [relationship, setRelationship] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -275,6 +284,10 @@ export function CircleSettingsMyContactPanel({
   }, [db, isDirty, patient?.patientId, syncFormFromMerged, user.email, user.uid]);
 
   useEffect(() => {
+    if (!isDirty) setTimezoneId(savedTimezoneId);
+  }, [isDirty, savedTimezoneId]);
+
+  useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
@@ -337,12 +350,15 @@ export function CircleSettingsMyContactPanel({
         },
       );
 
+      const nextTimezoneId = normalizeTimeZoneId(timezoneId, getBrowserTimeZone());
       await saveCircleUserProfile(db, user.uid, {
         displayName: trimmedName,
         language,
         languageSource: 'circle',
+        timezoneId: nextTimezoneId,
         email: user.email || undefined,
       });
+      await persistTimezoneId(nextTimezoneId);
       await updateProfile(user, { displayName: trimmedName });
 
       applyMergedContactToForm(
@@ -547,6 +563,23 @@ export function CircleSettingsMyContactPanel({
                   </option>
                 ))}
               </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-blue-800 uppercase tracking-wider block">
+                {t('admin.myContactPanel.fieldTimeZone')}
+              </label>
+              <CircleTimeZoneSelect
+                value={timezoneId}
+                onChange={(next) => {
+                  setTimezoneId(next);
+                  markDirty();
+                }}
+                className={editableFieldClass}
+                aria-label={t('admin.myContactPanel.fieldTimeZone')}
+              />
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                {t('admin.myContactPanel.fieldTimeZoneHint')}
+              </p>
             </div>
           </section>
 

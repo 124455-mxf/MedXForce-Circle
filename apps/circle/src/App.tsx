@@ -44,6 +44,7 @@ import { CircleAppToast } from './components/CircleAppToast';
 import { useCircleI18n } from './hooks/useCircleI18n';
 import { CircleI18nProvider } from './lib/circleI18nContext';
 import { hydrateCircleUiLanguageFromContacts } from './lib/circleUiLanguageHydration';
+import { hydrateCircleMemberTimeZone } from './lib/circleMemberTimeZoneHydration';
 import { useCircleTextSize } from './hooks/useCircleTextSize';
 import { CircleTextSizeProvider } from './lib/circleTextSizeContext';
 import { CirclePatientSwitcher } from './components/CirclePatientSwitcher';
@@ -209,6 +210,7 @@ export default function App() {
         list.map((patient) => patient.patientId),
         setLanguage,
       );
+      void hydrateCircleMemberTimeZone(firebase.db, currentUser);
       for (const invite of accepted) {
         const demotionMessage = proxySlotDemotionToastMessage(invite);
         if (demotionMessage) {

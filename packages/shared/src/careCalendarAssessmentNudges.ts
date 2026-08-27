@@ -69,8 +69,9 @@ export function isAppointmentInPreVisitNudgeWindow(
   endTimeMinutes: number | undefined,
   now = new Date(),
   horizonDays = SCHEDULE_PREP_TASK_HORIZON_DAYS,
+  timeZoneId?: string | null,
 ): boolean {
-  if (isCareCalendarAppointmentPast(dateKey, startTimeMinutes, endTimeMinutes, now)) {
+  if (isCareCalendarAppointmentPast(dateKey, startTimeMinutes, endTimeMinutes, now, timeZoneId)) {
     return false;
   }
   const todayKey = careCalendarDateKey(now);
@@ -84,8 +85,9 @@ export function isAppointmentInPostVisitNudgeWindow(
   endTimeMinutes: number | undefined,
   now = new Date(),
   horizonDays = SCHEDULE_PREP_TASK_HORIZON_DAYS,
+  timeZoneId?: string | null,
 ): boolean {
-  if (!isCareCalendarAppointmentPast(dateKey, startTimeMinutes, endTimeMinutes, now)) {
+  if (!isCareCalendarAppointmentPast(dateKey, startTimeMinutes, endTimeMinutes, now, timeZoneId)) {
     return false;
   }
   const todayKey = careCalendarDateKey(now);
@@ -140,12 +142,16 @@ export function getCareCalendarAssessmentNudges(
           event.startTimeMinutes,
           event.endTimeMinutes,
           now,
+          SCHEDULE_PREP_TASK_HORIZON_DAYS,
+          event.timezoneId,
         )
       : isAppointmentInPostVisitNudgeWindow(
           dateKey,
           event.startTimeMinutes,
           event.endTimeMinutes,
           now,
+          SCHEDULE_PREP_TASK_HORIZON_DAYS,
+          event.timezoneId,
         );
   if (!inWindow) return [];
 

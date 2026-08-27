@@ -30,6 +30,7 @@ import { CircleCareCalendarMapsLinks } from './CircleCareCalendarMapsLinks';
 import { CircleCareCalendarInviteRsvpBar } from './CircleCareCalendarInviteRsvpBar';
 import { CircleCareCalendarSelfRsvpStatusBadge } from './CircleCareCalendarSelfRsvpStatusBadge';
 import { CircleScheduleImminentBanner } from './CircleScheduleImminentBanner';
+import { CircleCareCalendarForYouLine } from './CircleCareCalendarForYouLine';
 import { CircleCareCalendarAssessmentNudgeHint } from './CircleCareCalendarAssessmentNudgesList';
 import { CircleCareCalendarPrepStatusBadge } from './CircleCareCalendarPrepStatusBadge';
 import { CircleExpandableTextPreview } from './CircleExpandableTextPreview';
@@ -82,6 +83,7 @@ type CircleScheduleTodayViewProps = {
   currentUserName?: string;
   assessmentSchedule?: CircleAssessmentScheduleContext;
   onRecordVisit?: (entryId: string) => void;
+  viewerTimezoneId?: string;
 };
 
 export function CircleScheduleTodayView({
@@ -108,6 +110,7 @@ export function CircleScheduleTodayView({
   currentUserName,
   assessmentSchedule,
   onRecordVisit,
+  viewerTimezoneId,
 }: CircleScheduleTodayViewProps) {
   const [selection, setSelection] = useState<CircleScheduleAppointmentSelection | null>(null);
   const [pastExpanded, setPastExpanded] = useState(false);
@@ -180,6 +183,7 @@ export function CircleScheduleTodayView({
           items={imminentItems}
           t={t}
           onSelect={openImminentAppointment}
+          viewerTimezoneId={viewerTimezoneId}
         />
       ) : null}
 
@@ -223,6 +227,7 @@ export function CircleScheduleTodayView({
                       assessmentSchedule={assessmentSchedule}
                       dateKey={dateKey}
                       onRecordVisit={onRecordVisit}
+                      viewerTimezoneId={viewerTimezoneId}
                     />
                   ))}
                 </ul>
@@ -269,6 +274,7 @@ export function CircleScheduleTodayView({
                           currentUserUid={currentUserUid}
                           dateKey={dateKey}
                           muted
+                          viewerTimezoneId={viewerTimezoneId}
                         />
                       ))}
                     </ul>
@@ -360,6 +366,7 @@ export function CircleScheduleTodayView({
           assessmentSchedule={assessmentSchedule}
           onOpenAssessment={onOpenAssessment}
           onRecordVisit={onRecordVisit}
+          viewerTimezoneId={viewerTimezoneId}
         />
       ) : null}
     </div>
@@ -388,6 +395,7 @@ export function CircleScheduleDayAppointmentCard({
   showPrepBorder = true,
   compact = false,
   onRecordVisit,
+  viewerTimezoneId,
 }: {
   event: CareCalendarDayEvent;
   ct: (key: string, params?: Record<string, unknown>) => string;
@@ -411,9 +419,10 @@ export function CircleScheduleDayAppointmentCard({
   /** Week view day list — title and badges only; tap opens detail sheet. */
   compact?: boolean;
   onRecordVisit?: (entryId: string) => void;
+  viewerTimezoneId?: string;
 }) {
   const timeLabel =
-    formatCareCalendarTimeRange(event.startTimeMinutes, event.endTimeMinutes) ||
+    formatCareCalendarTimeRange(event.startTimeMinutes, event.endTimeMinutes, event.timezoneId) ||
     formatCareCalendarTime(event.startTimeMinutes) ||
     '';
 
@@ -551,6 +560,14 @@ export function CircleScheduleDayAppointmentCard({
               className="text-base font-bold text-slate-900"
               showToggle={!compact}
             />
+            <CircleCareCalendarForYouLine
+              dateKey={dateKey}
+              startMinutes={event.startTimeMinutes}
+              endMinutes={event.endTimeMinutes}
+              eventTimeZoneId={event.timezoneId}
+              viewerTimeZoneId={viewerTimezoneId}
+              t={t}
+            />
             <CircleCareCalendarKindMeta
               kind={event.kind}
               visitSubtype={event.visitSubtype}
@@ -641,6 +658,7 @@ export function CircleScheduleDayAppointmentCard({
               startDateKey={dateKey}
               startTimeMinutes={event.startTimeMinutes}
               endTimeMinutes={event.endTimeMinutes}
+              timezoneId={event.timezoneId}
               eventStatus={event.status}
               t={t}
               compact={compact}
@@ -706,6 +724,7 @@ function AppointmentAttendeeResponses({
     startDateKey: dateKey,
     startTimeMinutes: event.startTimeMinutes,
     endTimeMinutes: event.endTimeMinutes,
+    timezoneId: event.timezoneId,
   };
 
   return (

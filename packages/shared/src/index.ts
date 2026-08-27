@@ -68,6 +68,8 @@ export * from './activeTab';
 export * from './assessmentSchedule';
 export * from './careCalendarAppointment';
 export * from './careCalendarEpisodePatch';
+export * from './timeZones';
+export * from './careCalendarTimeZone';
 export * from './careCalendar';
 export * from './careCalendarScheduleActions';
 export * from './careCalendarAttendees';

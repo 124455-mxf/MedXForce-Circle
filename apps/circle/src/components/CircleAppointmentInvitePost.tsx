@@ -25,7 +25,9 @@ import { useCareCalendarAttendeeOptions } from '../hooks/useCareCalendarAttendee
 import { CircleCareCalendarInviteRsvpBar } from './CircleCareCalendarInviteRsvpBar';
 import { CircleCareCalendarMapsLinks } from './CircleCareCalendarMapsLinks';
 import { CircleTranslatedUserText } from './CircleTranslatedUserText';
+import { CircleCareCalendarForYouLine } from './CircleCareCalendarForYouLine';
 import { cn } from '../lib/utils';
+import { useCircleMemberTimeZone } from '../hooks/useCircleMemberTimeZone';
 
 type LoadedCareCalendarEntry = {
   title: string;
@@ -35,6 +37,7 @@ type LoadedCareCalendarEntry = {
   startDateKey: string;
   startTimeMinutes?: number;
   endTimeMinutes?: number;
+  timezoneId?: string;
   attendees?: CareCalendarAttendee[];
   attendeeResponseSummary?: ReturnType<typeof parseAttendeeResponseSummary>;
   inviteeContactIds?: string[];
@@ -79,6 +82,10 @@ function parseLoadedEntry(data: Record<string, unknown>): LoadedCareCalendarEntr
     startTimeMinutes:
       data.startTimeMinutes != null ? Number(data.startTimeMinutes) : undefined,
     endTimeMinutes: data.endTimeMinutes != null ? Number(data.endTimeMinutes) : undefined,
+    timezoneId:
+      typeof data.timezoneId === 'string' && data.timezoneId.trim()
+        ? data.timezoneId.trim()
+        : undefined,
     attendees: Array.isArray(data.attendees)
       ? (data.attendees as CareCalendarAttendee[])
       : undefined,
@@ -140,6 +147,7 @@ export function CircleAppointmentInvitePost({
   const [entryLoaded, setEntryLoaded] = useState(false);
 
   const { language } = useCircleI18nContext();
+  const { timezoneId: viewerTimezoneId } = useCircleMemberTimeZone(db, { uid: memberUid });
   const ct = (key: string, params?: Record<string, unknown>) =>
     t(`dashboard.careCalendar.${key}`, params);
   const attendeeOptions = useCareCalendarAttendeeOptions(db, patientId);
@@ -225,6 +233,7 @@ export function CircleAppointmentInvitePost({
     const timeLabel = formatCareCalendarTimeRange(
       entry.startTimeMinutes,
       entry.endTimeMinutes,
+      entry.timezoneId,
     );
     return `${dateLabel}${timeLabel ? ` · ${timeLabel}` : ''}`;
   }, [entry, language]);
@@ -322,7 +331,7 @@ export function CircleAppointmentInvitePost({
   }
 
   const timeRangeLabel =
-    formatCareCalendarTimeRange(entry?.startTimeMinutes, entry?.endTimeMinutes) ?? '';
+    formatCareCalendarTimeRange(entry?.startTimeMinutes, entry?.endTimeMinutes, entry?.timezoneId) ?? '';
 
   return (
     <div className="space-y-3">
@@ -372,6 +381,16 @@ export function CircleAppointmentInvitePost({
         )}
 
         <div className="px-3 py-3 space-y-2">
+          {entry?.startDateKey ? (
+            <CircleCareCalendarForYouLine
+              dateKey={entry.startDateKey}
+              startMinutes={entry.startTimeMinutes}
+              endMinutes={entry.endTimeMinutes}
+              eventTimeZoneId={entry.timezoneId}
+              viewerTimeZoneId={viewerTimezoneId}
+              t={t}
+            />
+          ) : null}
           {entry?.details ? (
             <CircleTranslatedUserText
               text={entry.details}
@@ -418,6 +437,7 @@ export function CircleAppointmentInvitePost({
           startDateKey={entry?.startDateKey}
           startTimeMinutes={entry?.startTimeMinutes}
           endTimeMinutes={entry?.endTimeMinutes}
+          timezoneId={entry?.timezoneId}
           t={t}
         />
       ) : null}

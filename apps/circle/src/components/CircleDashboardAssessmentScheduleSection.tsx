@@ -9,6 +9,8 @@ import { CircleAssessmentScheduleCalendar } from './CircleAssessmentScheduleCale
 import { CircleCareCalendarEntryModal } from './CircleCareCalendarEntryModal';
 import { useCareCalendarEntries, buildCareCalendarEntriesSubscription } from '../hooks/useCareCalendarEntries';
 import { useCircleMemberInviteContext } from '../hooks/useCircleMemberInviteContext';
+import { useCircleMemberTimeZone } from '../hooks/useCircleMemberTimeZone';
+import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfileSnapshot';
 import { updateCareCalendarEntry } from '../services/careCalendarService';
 import type { CareCalendarAppointmentTask, CareCalendarEntry, CareCalendarVisitDebrief } from '@medxforce/shared';
 import type { CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
@@ -62,6 +64,8 @@ export function CircleDashboardAssessmentScheduleSection({
 }: CircleDashboardAssessmentScheduleSectionProps) {
   const { inviteContext, memberContactId, contact: ownContact, loading: ownContactLoading, inviteContextReady } =
     useCircleMemberInviteContext(db, user, patient);
+  const { timezoneId: organizerTimezoneId } = useCircleMemberTimeZone(db, user);
+  const { snapshot: profileSnapshot } = useCirclePatientProfileSnapshot(db, patientId);
   const inviteMembershipRepairAttempted = useRef(false);
   const calendarSubscription = useMemo(
     () =>
@@ -212,6 +216,7 @@ export function CircleDashboardAssessmentScheduleSection({
           inviteContactId={inviteContext.inviteContactId}
           memberDisplayName={inviteContext.displayName}
           memberRole={memberRole}
+          viewerTimezoneId={organizerTimezoneId}
           compact={!fullPage}
           hideHeader={fullPage}
           enableViewModes={fullPage}
@@ -231,6 +236,8 @@ export function CircleDashboardAssessmentScheduleSection({
           authorRole={memberRole}
           organizerContactId={ownContact?.id}
           organizerContactReady={!ownContactLoading}
+          patientTimezoneId={profileSnapshot?.identity.timezoneId}
+          organizerTimezoneId={organizerTimezoneId}
           initialDateKey={initialDateKey}
           editingEntry={editingEntry}
           t={t}

@@ -14,6 +14,7 @@ import {
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 import { CircleTranslatedUserText } from './CircleTranslatedUserText';
+import { CircleCareCalendarForYouLine } from './CircleCareCalendarForYouLine';
 import { useCircleI18nContext } from '../lib/circleI18nContext';
 import { formatCircleDate, type CircleUiLanguage } from '../lib/circleLanguages';
 
@@ -26,6 +27,7 @@ type CircleScheduleTasksViewProps = {
   t: (path: string, params?: Record<string, unknown>) => string;
   onOpenAppointment: (dateKey: string, event: CareCalendarDayEvent) => void;
   compact?: boolean;
+  viewerTimezoneId?: string;
 };
 
 function formatAppointmentWhen(row: ScheduleTaskAppointmentRow, language: CircleUiLanguage): string {
@@ -34,7 +36,7 @@ function formatAppointmentWhen(row: ScheduleTaskAppointmentRow, language: Circle
     month: 'short',
     day: 'numeric',
   });
-  const time = formatCareCalendarTimeRange(row.event.startTimeMinutes, row.event.endTimeMinutes);
+  const time = formatCareCalendarTimeRange(row.event.startTimeMinutes, row.event.endTimeMinutes, row.event.timezoneId);
   return time ? `${dateLabel} · ${time}` : dateLabel;
 }
 
@@ -46,6 +48,8 @@ function TaskSection({
   onOpen,
   compact,
   accent = 'violet',
+  t,
+  viewerTimezoneId,
 }: {
   title: string;
   emptyLabel: string;
@@ -54,6 +58,8 @@ function TaskSection({
   onOpen: (row: ScheduleTaskAppointmentRow) => void;
   compact?: boolean;
   accent?: 'violet' | 'amber';
+  t: CircleScheduleTasksViewProps['t'];
+  viewerTimezoneId?: string;
 }) {
   const { language } = useCircleI18nContext();
   return (
@@ -92,6 +98,15 @@ function TaskSection({
                 <p className={cn('text-slate-500 mt-0.5', compact ? 'text-xs' : 'text-sm')}>
                   {formatAppointmentWhen(row, language)}
                 </p>
+                <CircleCareCalendarForYouLine
+                  dateKey={row.dateKey}
+                  startMinutes={row.event.startTimeMinutes}
+                  endMinutes={row.event.endTimeMinutes}
+                  eventTimeZoneId={row.event.timezoneId}
+                  viewerTimeZoneId={viewerTimezoneId}
+                  t={t}
+                  className="mt-0.5"
+                />
                 <p
                   className={cn(
                     'font-semibold mt-1.5',
@@ -119,6 +134,7 @@ export function CircleScheduleTasksView({
   t,
   onOpenAppointment,
   compact = false,
+  viewerTimezoneId,
 }: CircleScheduleTasksViewProps) {
   const { awaitingRows, preRows, postRows } = collectScheduleTaskBoard(careEntries, {
     preferences,
@@ -157,6 +173,8 @@ export function CircleScheduleTasksView({
           onOpen={(row) => onOpenAppointment(row.dateKey, row.event)}
           compact={compact}
           accent="amber"
+          t={t}
+          viewerTimezoneId={viewerTimezoneId}
         />
       ) : null}
       <TaskSection
@@ -166,6 +184,8 @@ export function CircleScheduleTasksView({
         countLabel={(count) => t('schedulePage.views.tasksOpenPre', { count })}
         onOpen={(row) => onOpenAppointment(row.dateKey, row.event)}
         compact={compact}
+        t={t}
+        viewerTimezoneId={viewerTimezoneId}
       />
       <TaskSection
         title={t('schedulePage.views.tasksFollowUp')}
@@ -174,6 +194,8 @@ export function CircleScheduleTasksView({
         countLabel={(count) => t('schedulePage.views.tasksOpenPost', { count })}
         onOpen={(row) => onOpenAppointment(row.dateKey, row.event)}
         compact={compact}
+        t={t}
+        viewerTimezoneId={viewerTimezoneId}
       />
     </div>
   );

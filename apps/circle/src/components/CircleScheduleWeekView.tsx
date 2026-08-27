@@ -21,6 +21,7 @@ import {
   type CareCalendarVisitDebrief,
 } from '@medxforce/shared';
 import { CircleCareCalendarKindMeta } from './CircleCareCalendarKindMeta';
+import { CircleCareCalendarForYouLine } from './CircleCareCalendarForYouLine';
 import { CircleCareCalendarMapsLinks } from './CircleCareCalendarMapsLinks';
 import { CircleCareCalendarAppointmentEpisodePanel } from './CircleCareCalendarAppointmentEpisodePanel';
 import { CircleExpandableTextPreview } from './CircleExpandableTextPreview';
@@ -91,6 +92,7 @@ type CircleScheduleWeekViewProps = {
   assessmentLabel: (event: AssessmentScheduleDayEvent) => string;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
   onRecordVisit?: (entryId: string) => void;
+  viewerTimezoneId?: string;
 };
 
 function attendeesSignature(attendees: CareCalendarAttendee[] | undefined): string {
@@ -230,6 +232,7 @@ export function CircleScheduleWeekView({
   assessmentSchedule,
   onOpenAssessment,
   onRecordVisit,
+  viewerTimezoneId,
 }: CircleScheduleWeekViewProps) {
   const [selection, setSelection] = useState<CircleScheduleAppointmentSelection | null>(null);
   const ct = (key: string, params?: Record<string, unknown>) =>
@@ -263,6 +266,7 @@ export function CircleScheduleWeekView({
         inviteContactId={inviteContactId}
         memberDisplayName={memberDisplayName}
         memberRole={memberRole}
+        viewerTimezoneId={viewerTimezoneId}
       />
       {resolvedSelection ? (
         <CircleScheduleAppointmentDetailSheet
@@ -295,6 +299,7 @@ export function CircleScheduleWeekView({
           assessmentSchedule={assessmentSchedule}
           onOpenAssessment={onOpenAssessment}
           onRecordVisit={onRecordVisit}
+          viewerTimezoneId={viewerTimezoneId}
         />
       ) : null}
     </>
@@ -323,6 +328,7 @@ export function CircleScheduleAppointmentDetailSheet({
   assessmentSchedule,
   onOpenAssessment,
   onRecordVisit,
+  viewerTimezoneId,
 }: {
   selection: CircleScheduleAppointmentSelection;
   ct: (key: string, params?: Record<string, unknown>) => string;
@@ -345,6 +351,7 @@ export function CircleScheduleAppointmentDetailSheet({
   assessmentSchedule?: CircleAssessmentScheduleContext;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
   onRecordVisit?: (entryId: string) => void;
+  viewerTimezoneId?: string;
 }) {
   useEffect(() => {
     const previous = document.body.style.overflow;
@@ -393,6 +400,7 @@ export function CircleScheduleAppointmentDetailSheet({
             assessmentSchedule={assessmentSchedule}
             onOpenAssessment={onOpenAssessment}
             onRecordVisit={onRecordVisit}
+            viewerTimezoneId={viewerTimezoneId}
           />
         </div>
       </div>
@@ -443,6 +451,7 @@ function WeekAppointmentDetail({
   assessmentSchedule,
   onOpenAssessment,
   onRecordVisit,
+  viewerTimezoneId,
 }: {
   selection: CircleScheduleAppointmentSelection;
   ct: (key: string, params?: Record<string, unknown>) => string;
@@ -465,6 +474,7 @@ function WeekAppointmentDetail({
   assessmentSchedule?: CircleAssessmentScheduleContext;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
   onRecordVisit?: (entryId: string) => void;
+  viewerTimezoneId?: string;
 }) {
   const { language } = useCircleI18nContext();
   const { event, dateKey } = selection;
@@ -523,7 +533,7 @@ function WeekAppointmentDetail({
       nameByContactId,
     ],
   );
-  const timeLabel = formatCareCalendarTimeRange(event.startTimeMinutes, event.endTimeMinutes);
+  const timeLabel = formatCareCalendarTimeRange(event.startTimeMinutes, event.endTimeMinutes, event.timezoneId);
   const dayLabel = formatCircleDate(new Date(dateKey + 'T12:00:00'), language, {
     weekday: 'long',
     month: 'short',
@@ -535,6 +545,7 @@ function WeekAppointmentDetail({
     startDateKey: dateKey,
     startTimeMinutes: event.startTimeMinutes,
     endTimeMinutes: event.endTimeMinutes,
+    timezoneId: event.timezoneId,
   };
   const titleTranslation = useCircleLiveTranslatedText(event.title);
   const detailsContent = event.details ? (
@@ -610,6 +621,15 @@ function WeekAppointmentDetail({
         ) : null}
         <AppointmentDetailSection label={ct('fields.dateTime')} icon={CalendarClock}>
           <p className="text-sm text-slate-600">{dateTimeLabel}</p>
+          <CircleCareCalendarForYouLine
+            dateKey={dateKey}
+            startMinutes={event.startTimeMinutes}
+            endMinutes={event.endTimeMinutes}
+            eventTimeZoneId={event.timezoneId}
+            viewerTimeZoneId={viewerTimezoneId}
+            t={t}
+            className="mt-1"
+          />
         </AppointmentDetailSection>
         {event.address ? (
           <CircleCareCalendarMapsLinks
@@ -638,6 +658,7 @@ function WeekAppointmentDetail({
             startDateKey={dateKey}
             startTimeMinutes={event.startTimeMinutes}
             endTimeMinutes={event.endTimeMinutes}
+            timezoneId={event.timezoneId}
             eventStatus={event.status}
             t={t}
           />

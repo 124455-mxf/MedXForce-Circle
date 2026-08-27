@@ -209,6 +209,10 @@ function parseEntry(id: string, data: Record<string, unknown>): CareCalendarEntr
     startTimeMinutes:
       data.startTimeMinutes != null ? Number(data.startTimeMinutes) : undefined,
     endTimeMinutes: data.endTimeMinutes != null ? Number(data.endTimeMinutes) : undefined,
+    timezoneId:
+      typeof data.timezoneId === 'string' && data.timezoneId.trim()
+        ? data.timezoneId.trim()
+        : undefined,
     recurrence: parseRecurrence(data.recurrence),
     address: parseAddress(data.address),
     attendees,
@@ -444,6 +448,7 @@ export type CareCalendarEntryInput = {
   startDateKey: string;
   startTimeMinutes?: number;
   endTimeMinutes?: number;
+  timezoneId?: string;
   recurrence: CareCalendarRecurrence;
   address?: CareCalendarAddress;
   attendees?: CareCalendarAttendee[];
@@ -545,6 +550,7 @@ export async function createCareCalendarEntry(
     startDateKey: input.startDateKey,
     startTimeMinutes: input.startTimeMinutes ?? null,
     endTimeMinutes: input.endTimeMinutes ?? null,
+    timezoneId: input.timezoneId?.trim() || null,
     recurrence: input.recurrence,
     address: sanitizeCareCalendarAddressForFirestore(input.address),
     attendees: attendeePayload.attendees,
@@ -573,6 +579,7 @@ export async function createCareCalendarEntry(
         startDateKey: input.startDateKey,
         startTimeMinutes: input.startTimeMinutes,
         endTimeMinutes: input.endTimeMinutes,
+        timezoneId: input.timezoneId,
         kind: input.kind,
         visitSubtype: input.visitSubtype,
         attendees: attendeePayload.attendees ?? undefined,
@@ -646,6 +653,9 @@ export async function updateCareCalendarEntry(
   if (input.endTimeMinutes !== undefined) {
     patch.endTimeMinutes = input.endTimeMinutes ?? null;
   }
+  if (input.timezoneId !== undefined) {
+    patch.timezoneId = input.timezoneId?.trim() || null;
+  }
   if (input.recurrence) patch.recurrence = input.recurrence;
   if (input.address !== undefined) {
     patch.address = sanitizeCareCalendarAddressForFirestore(input.address);
@@ -709,6 +719,7 @@ export async function updateCareCalendarEntry(
             startDateKey: input.startDateKey || '',
             startTimeMinutes: input.startTimeMinutes,
             endTimeMinutes: input.endTimeMinutes,
+            timezoneId: input.timezoneId,
             kind: input.kind || 'doctor',
             visitSubtype: input.visitSubtype,
             attendees: attendeePayload.attendees ?? undefined,

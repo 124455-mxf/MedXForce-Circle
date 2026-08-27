@@ -19,6 +19,8 @@ import {
   canManageCareTransitionPack,
   careTransitionRegionFromCountry,
   canonicalizeProfileCountry,
+  getBrowserTimeZone,
+  normalizeTimeZoneId,
   normalizeMemberRole,
   readCareTransitionReadinessState,
   writeCareTransitionReadinessState,
@@ -230,6 +232,7 @@ export function CirclePatientProfilePanel({
         identity: {
           ...next.identity,
           country: canonicalizeProfileCountry(next.identity.country),
+          timezoneId: normalizeTimeZoneId(next.identity.timezoneId, getBrowserTimeZone()),
         },
       };
       try {

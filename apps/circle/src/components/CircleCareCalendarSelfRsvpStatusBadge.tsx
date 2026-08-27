@@ -50,6 +50,8 @@ export function CircleCareCalendarSelfRsvpStatusBadge({
           dateKey,
           event.startTimeMinutes,
           event.endTimeMinutes,
+          undefined,
+          event.timezoneId,
         )
       : false);
   // Outstanding accept/decline is irrelevant once the appointment has ended.

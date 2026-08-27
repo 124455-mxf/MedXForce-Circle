@@ -145,6 +145,10 @@ function buildSections(
             empty,
           ),
         },
+        {
+          label: t('admin.profile.fieldTimeZone'),
+          value: textValue(snapshot.identity.timezoneId, empty),
+        },
       ],
     },
     {

@@ -125,6 +125,7 @@ export function collectSchedulePreTaskRows(
         row.event.startTimeMinutes,
         row.event.endTimeMinutes,
         now,
+        row.event.timezoneId,
       ),
   );
   return options.limit ? rows.slice(0, options.limit) : rows;
@@ -157,6 +158,7 @@ export function collectSchedulePostTaskRows(
         row.event.startTimeMinutes,
         row.event.endTimeMinutes,
         now,
+        row.event.timezoneId,
       ),
     )
     .sort((a, b) => b.dateKey.localeCompare(a.dateKey));
@@ -305,6 +307,7 @@ export function collectUpcomingAppointmentsInHorizon(
           event.startTimeMinutes,
           event.endTimeMinutes,
           now,
+          event.timezoneId,
         )
       ) {
         continue;
@@ -324,7 +327,7 @@ export function isPastAppointmentInvitePost(
   post: { postKind?: string; text: string; careCalendarEntryId?: string },
   entryById: ReadonlyMap<
     string,
-    Pick<CareCalendarEntry, 'startDateKey' | 'startTimeMinutes' | 'endTimeMinutes'>
+    Pick<CareCalendarEntry, 'startDateKey' | 'startTimeMinutes' | 'endTimeMinutes' | 'timezoneId'>
   >,
   now = new Date(),
 ): boolean {
@@ -338,5 +341,6 @@ export function isPastAppointmentInvitePost(
     entry.startTimeMinutes,
     entry.endTimeMinutes,
     now,
+    entry.timezoneId,
   );
 }

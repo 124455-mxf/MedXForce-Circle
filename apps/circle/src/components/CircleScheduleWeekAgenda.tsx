@@ -27,6 +27,7 @@ import { useCircleI18nContext } from '../lib/circleI18nContext';
 import { formatCircleDate } from '../lib/circleLanguages';
 import { cn } from '../lib/utils';
 import { CircleCareCalendarKindMeta } from './CircleCareCalendarKindMeta';
+import { CircleCareCalendarForYouLine } from './CircleCareCalendarForYouLine';
 import { CircleCareCalendarSelfRsvpStatusBadge } from './CircleCareCalendarSelfRsvpStatusBadge';
 import { CircleTranslatedUserText } from './CircleTranslatedUserText';
 import type { CircleScheduleAppointmentSelection } from './CircleScheduleWeekView';
@@ -50,6 +51,7 @@ type CircleScheduleWeekAgendaProps = {
   inviteContactId?: string;
   memberDisplayName?: string;
   memberRole?: string;
+  viewerTimezoneId?: string;
 };
 
 function sortCareEvents(events: CareCalendarDayEvent[]): CareCalendarDayEvent[] {
@@ -71,6 +73,7 @@ export function CircleScheduleWeekAgenda({
   memberDocContactId,
   inviteContactId,
   memberDisplayName,
+  viewerTimezoneId,
 }: CircleScheduleWeekAgendaProps) {
   const { language } = useCircleI18nContext();
   const ct = (key: string, params?: Record<string, unknown>) =>
@@ -128,7 +131,7 @@ export function CircleScheduleWeekAgenda({
                   {appointments.map((event) => {
                     const itemKey = `appt:${dateKey}:${event.entryId}`;
                     const timeLabel =
-                      formatCareCalendarTimeRange(event.startTimeMinutes, event.endTimeMinutes) ||
+                      formatCareCalendarTimeRange(event.startTimeMinutes, event.endTimeMinutes, event.timezoneId) ||
                       formatCareCalendarTime(event.startTimeMinutes) ||
                       t('schedulePage.views.allDay');
                     const timing = resolveCareCalendarAppointmentTiming(event, dateKey, {
@@ -182,6 +185,14 @@ export function CircleScheduleWeekAgenda({
                               text={event.title}
                               className="text-sm font-bold text-slate-900"
                               showToggle={false}
+                            />
+                            <CircleCareCalendarForYouLine
+                              dateKey={dateKey}
+                              startMinutes={event.startTimeMinutes}
+                              endMinutes={event.endTimeMinutes}
+                              eventTimeZoneId={event.timezoneId}
+                              viewerTimeZoneId={viewerTimezoneId}
+                              t={t}
                             />
                             <CircleCareCalendarKindMeta
                               kind={event.kind}

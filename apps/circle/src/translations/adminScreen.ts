@@ -130,6 +130,9 @@ const profileEnglish = {
   fieldFirstName: 'First name',
   fieldLastName: 'Last name',
   fieldCity: 'City',
+  fieldTimeZone: 'Home time zone',
+  fieldTimeZoneHint:
+    'Used as the default for appointments with the patient. Does not follow travel or live location.',
   fieldHeightUnit: 'Height unit',
   fieldWeightUnit: 'Weight unit',
   fieldSmoking: 'Smoking',
@@ -347,6 +350,9 @@ const myContactPanelEnglish = {
   saved: 'Saved. Your name and language are updated for this circle.',
   saveChanges: 'Save changes',
   fieldApplicationLanguage: 'Application language',
+  fieldTimeZone: 'Time zone',
+  fieldTimeZoneHint:
+    'Your home time zone. Used when you create internal meetings (the patient is not invited).',
   displayNameHint: 'Filled from first and last name when those are set. Edit here for a preferred display name.',
   managedByPatient: 'Managed by patient or proxy',
   readOnly: 'Read-only',
@@ -500,6 +506,9 @@ const profileGerman = {
   fieldFirstName: 'Vorname',
   fieldLastName: 'Nachname',
   fieldCity: 'Stadt',
+  fieldTimeZone: 'Heimatzeitzone',
+  fieldTimeZoneHint:
+    'Standard für Termine mit dem Patienten. Folgt nicht Reisen oder dem aktuellen Standort.',
   fieldHeightUnit: 'Größeneinheit',
   fieldWeightUnit: 'Gewichtseinheit',
   fieldSmoking: 'Rauchen',
@@ -723,6 +732,9 @@ const myContactPanelGerman = {
   saved: 'Gespeichert. Name und Sprache sind für diesen Circle aktualisiert.',
   saveChanges: 'Änderungen speichern',
   fieldApplicationLanguage: 'Anwendungssprache',
+  fieldTimeZone: 'Zeitzone',
+  fieldTimeZoneHint:
+    'Ihre Heimatzeitzone. Wird verwendet, wenn Sie interne Meetings anlegen (der Patient ist nicht eingeladen).',
   displayNameHint:
     'Wird aus Vor- und Nachname gefüllt, wenn diese gesetzt sind. Hier können Sie einen bevorzugten Anzeigenamen bearbeiten.',
   managedByPatient: 'Vom Patienten oder Vertreter verwaltet',
@@ -879,6 +891,9 @@ const profileSpanish = {
   fieldFirstName: 'Nombre',
   fieldLastName: 'Apellido',
   fieldCity: 'Ciudad',
+  fieldTimeZone: 'Zona horaria de casa',
+  fieldTimeZoneHint:
+    'Valor predeterminado para citas con el paciente. No sigue viajes ni la ubicación en vivo.',
   fieldHeightUnit: 'Unidad de altura',
   fieldWeightUnit: 'Unidad de peso',
   fieldSmoking: 'Tabaco',
@@ -1102,6 +1117,9 @@ const myContactPanelSpanish = {
   saved: 'Guardado. Su nombre e idioma se actualizaron para este círculo.',
   saveChanges: 'Guardar cambios',
   fieldApplicationLanguage: 'Idioma de la aplicación',
+  fieldTimeZone: 'Zona horaria',
+  fieldTimeZoneHint:
+    'Su zona horaria de casa. Se usa al crear reuniones internas (el paciente no está invitado).',
   displayNameHint:
     'Se rellena con nombre y apellido cuando están definidos. Edite aquí un nombre para mostrar preferido.',
   managedByPatient: 'Gestionado por el paciente o representante',
@@ -1258,6 +1276,9 @@ const profilePolish = {
   fieldFirstName: 'Imię',
   fieldLastName: 'Nazwisko',
   fieldCity: 'Miasto',
+  fieldTimeZone: 'Domowa strefa czasowa',
+  fieldTimeZoneHint:
+    'Domyślna dla wizyt z pacjentem. Nie podąża za podróżami ani lokalizacją na żywo.',
   fieldHeightUnit: 'Jednostka wzrostu',
   fieldWeightUnit: 'Jednostka wagi',
   fieldSmoking: 'Palenie',
@@ -1481,6 +1502,9 @@ const myContactPanelPolish = {
   saved: 'Zapisano. Imię i język zostały zaktualizowane dla tego Circle.',
   saveChanges: 'Zapisz zmiany',
   fieldApplicationLanguage: 'Język aplikacji',
+  fieldTimeZone: 'Strefa czasowa',
+  fieldTimeZoneHint:
+    'Twoja domowa strefa czasowa. Używana przy tworzeniu spotkań wewnętrznych (pacjent nie jest zapraszany).',
   displayNameHint:
     'Uzupełniane z imienia i nazwiska, gdy są ustawione. Tutaj możesz ustawić preferowaną nazwę wyświetlaną.',
   managedByPatient: 'Zarządzane przez pacjenta lub pełnomocnika',
