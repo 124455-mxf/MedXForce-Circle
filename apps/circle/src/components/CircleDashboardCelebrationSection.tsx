@@ -121,6 +121,9 @@ type CelebrationTile = {
   actionDisabled?: boolean;
   /** Non-interactive footer (e.g. caregiver: ask proxy) — matches action-button height. */
   footerNote?: string;
+  secondaryLabel?: string;
+  onSecondary?: () => void;
+  secondaryDisabled?: boolean;
 };
 
 function hospitalFeatureIcon(kind: HospitalFeatureReminderKind): LucideIcon {
@@ -187,13 +190,17 @@ function CelebrationCard({
   actionUpdating = false,
   actionDisabled = false,
   footerNote,
+  secondaryLabel,
+  onSecondary,
+  secondaryDisabled = false,
   t,
 }: Omit<CelebrationTile, 'key'> & {
   t: ReturnType<typeof useCircleT>;
   onDismiss?: (kind: CircleParticipationReminderKind) => void;
 }) {
   const hasAction = !!actionLabel;
-  const hasFooter = hasAction || !!footerNote;
+  const hasSecondary = !!secondaryLabel;
+  const hasFooter = hasAction || hasSecondary || !!footerNote;
   const interactive = !!onOpen && !hasAction;
 
   return (
@@ -283,18 +290,33 @@ function CelebrationCard({
         </div>
       </div>
       {hasAction ? (
-        <button
-          type="button"
-          disabled={actionDisabled || actionUpdating || !onAction}
-          onClick={(event) => {
-            event.stopPropagation();
-            onAction?.();
-          }}
-          className="mt-auto inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-[11px] sm:text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-60 shrink-0"
-        >
-          {actionUpdating ? <Loader2 size={14} className="animate-spin" /> : null}
-          {actionUpdating ? t('dashboard.reminders.hospitalFeatureUpdating') : actionLabel}
-        </button>
+        <div className="mt-auto flex flex-col gap-1.5 shrink-0">
+          <button
+            type="button"
+            disabled={actionDisabled || actionUpdating || !onAction}
+            onClick={(event) => {
+              event.stopPropagation();
+              onAction?.();
+            }}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-[11px] sm:text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-60"
+          >
+            {actionUpdating ? <Loader2 size={14} className="animate-spin" /> : null}
+            {actionUpdating ? t('dashboard.reminders.hospitalFeatureUpdating') : actionLabel}
+          </button>
+          {hasSecondary ? (
+            <button
+              type="button"
+              disabled={secondaryDisabled || !onSecondary}
+              onClick={(event) => {
+                event.stopPropagation();
+                onSecondary?.();
+              }}
+              className="inline-flex w-full items-center justify-center rounded-xl px-3 py-1.5 text-[11px] sm:text-xs font-semibold text-blue-700 hover:bg-white/70 disabled:opacity-60"
+            >
+              {secondaryLabel}
+            </button>
+          ) : null}
+        </div>
       ) : footerNote ? (
         <p className="mt-auto inline-flex w-full items-center justify-center rounded-xl border border-sky-200 bg-white/80 px-3 py-2 text-center text-[11px] sm:text-xs font-bold text-sky-800 shrink-0 leading-snug">
           {footerNote}
@@ -328,6 +350,7 @@ export function CircleDashboardCelebrationSection({
   onOpenAdminAccess,
   onOpenRemoteSettingsCircleInitiate,
   onOpenRemoteSettingsDropIn,
+  onOpenRemoteSettingsApplicationMode,
 }: {
   db: Firestore;
   user: User;
@@ -355,6 +378,8 @@ export function CircleDashboardCelebrationSection({
   onOpenRemoteSettingsCircleInitiate?: () => void;
   /** Opens Remote Settings on Drop-in who can drop in. */
   onOpenRemoteSettingsDropIn?: () => void;
+  /** Opens Remote Settings on Application mode. */
+  onOpenRemoteSettingsApplicationMode?: () => void;
 }) {
   const t = useCircleT();
   const { language } = useCircleI18nContext();
@@ -433,8 +458,9 @@ export function CircleDashboardCelebrationSection({
         treatmentPhase: snapshot?.clinical?.treatmentPhase,
         appMode: remoteSettings?.appMode,
         scheduleEnabled: remoteSettings?.featuresVisibility?.schedule !== false,
+        featuresVisibility: remoteSettings?.featuresVisibility,
       }),
-    [remoteSettings?.appMode, remoteSettings?.featuresVisibility?.schedule, snapshot?.clinical?.treatmentPhase],
+    [remoteSettings?.appMode, remoteSettings?.featuresVisibility, snapshot?.clinical?.treatmentPhase],
   );
   const scheduledAssessmentMissSummary = useMemo(() => {
     if (!careRemindersEnabled || analyticsLoading || !remoteSettingsReady) {
@@ -1011,6 +1037,9 @@ export function CircleDashboardCelebrationSection({
       onAction: toggleIcuDailyCheckIn,
       actionUpdating: enablingKind === 'icuDailyCheckIn',
       actionDisabled: !canOpenRemoteSettings || !remoteSettings,
+      secondaryLabel: t('dashboard.icuCheckInOpenApplicationSettings'),
+      onSecondary: onOpenRemoteSettingsApplicationMode,
+      secondaryDisabled: !canOpenRemoteSettings || !onOpenRemoteSettingsApplicationMode,
     });
   } else if (previewReminders && careRemindersEnabled) {
     tiles.push({
@@ -1022,6 +1051,8 @@ export function CircleDashboardCelebrationSection({
       isPreview: true,
       actionLabel: t('dashboard.icuCheckInTurnOn'),
       actionDisabled: true,
+      secondaryLabel: t('dashboard.icuCheckInOpenApplicationSettings'),
+      secondaryDisabled: true,
     });
   }
 
@@ -1043,7 +1074,7 @@ export function CircleDashboardCelebrationSection({
             key={tile.key}
             className={cn(
               'h-full',
-              tile.actionLabel || tile.footerNote
+              tile.actionLabel || tile.footerNote || tile.secondaryLabel
                 ? 'min-h-[12rem] sm:min-h-[12.5rem]'
                 : 'min-h-[10rem] sm:min-h-[10.5rem]',
             )}
@@ -1061,6 +1092,9 @@ export function CircleDashboardCelebrationSection({
               actionUpdating={tile.actionUpdating}
               actionDisabled={tile.actionDisabled}
               footerNote={tile.footerNote}
+              secondaryLabel={tile.secondaryLabel}
+              onSecondary={tile.onSecondary}
+              secondaryDisabled={tile.secondaryDisabled}
               t={t}
               onDismiss={(kind) => {
                 void dismissReminder(kind).catch((err) => {

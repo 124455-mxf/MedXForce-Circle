@@ -275,7 +275,8 @@ export function sanitizeScheduleRule(raw: unknown): AssessmentScheduleRule | nul
   if (!recurrence) return null;
   return {
     assessmentId,
-    enabled: value.enabled !== false,
+    enabled: SCHEDULABLE_ASSESSMENTS.find((item) => item.id === assessmentId)?.released !== false
+      && value.enabled !== false,
     recurrence,
   };
 }
@@ -318,6 +319,31 @@ export function sanitizeRemoteAssessmentSchedule(raw: unknown): RemoteAssessment
     ? value.lockedIds.filter((id): id is AssessmentScheduleId => typeof id === 'string' && isAssessmentScheduleId(id))
     : undefined;
   return { rules, lockedIds };
+}
+
+/** Copy Circle's saved schedule onto the tablet. Do not let stale local all-off rules win. */
+export function applyRemoteAssessmentScheduleToLocal(
+  local: unknown,
+  remote: RemoteAssessmentSchedule,
+  phase?: string | null,
+): AssessmentSchedulePreferences {
+  const current = sanitizeAssessmentSchedulePreferences(local);
+  const defaults = buildDefaultAssessmentScheduleRules(phase);
+  const rules = {
+    ...defaults,
+    ...remote.rules,
+  } as Record<AssessmentScheduleId, AssessmentScheduleRule>;
+  for (const meta of SCHEDULABLE_ASSESSMENTS) {
+    if (!meta.released) {
+      rules[meta.id] = { ...rules[meta.id], enabled: false };
+    }
+  }
+  return {
+    ...current,
+    rules,
+    lockedIds: remote.lockedIds ?? current.lockedIds,
+    updatedAt: Date.now(),
+  };
 }
 
 export function isRecurrenceActiveOnDate(recurrence: AssessmentRecurrence, date: Date): boolean {
@@ -662,6 +688,8 @@ export function resolveEffectiveAssessmentScheduleRules(params: {
     ...(remote?.lockedIds ?? []),
   ]);
 
+  const assessmentsMasterOn = params.preferences.featuresVisibility?.healthAssessments !== false;
+
   const merged = { ...defaults };
   for (const meta of SCHEDULABLE_ASSESSMENTS) {
     const remoteRule = remote?.rules?.[meta.id];
@@ -669,6 +697,12 @@ export function resolveEffectiveAssessmentScheduleRules(params: {
     if (remoteRule) merged[meta.id] = remoteRule;
     if (localRule && !locked.has(meta.id)) merged[meta.id] = localRule;
     if (appMode === 'intensive_care' || appMode === 'hospital') {
+      merged[meta.id] = { ...merged[meta.id], enabled: false };
+    }
+    if (!assessmentsMasterOn || !isFeatureEnabled(params.preferences, meta.featureKey)) {
+      merged[meta.id] = { ...merged[meta.id], enabled: false };
+    }
+    if (!meta.released) {
       merged[meta.id] = { ...merged[meta.id], enabled: false };
     }
   }

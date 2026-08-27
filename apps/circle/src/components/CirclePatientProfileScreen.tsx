@@ -25,6 +25,7 @@ interface CirclePatientProfileScreenProps {
   storage: FirebaseStorage;
   patient: CirclePatientSummary;
   onOpenCircleHelp?: () => void;
+  onOpenRemoteSettingsApplicationMode?: () => void;
 }
 
 export function CirclePatientProfileScreen({
@@ -33,6 +34,7 @@ export function CirclePatientProfileScreen({
   storage,
   patient,
   onOpenCircleHelp,
+  onOpenRemoteSettingsApplicationMode,
 }: CirclePatientProfileScreenProps) {
   const compactChrome = useCircleCompactChrome();
   const t = useCircleT();
@@ -59,6 +61,7 @@ export function CirclePatientProfileScreen({
             embedded
             onOpenCircleHelp={onOpenCircleHelp}
             onOpenCareTransition={() => setCareTransitionOpen(true)}
+            onOpenRemoteSettingsApplicationMode={onOpenRemoteSettingsApplicationMode}
           />
         </div>
       </div>

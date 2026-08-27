@@ -74,13 +74,16 @@ export function buildCircleAssessmentSchedulePreferences(params: {
   treatmentPhase?: string | null;
   appMode?: string | null;
   scheduleEnabled?: boolean;
+  featuresVisibility?: Record<string, unknown>;
 }): {
-  featuresVisibility: { schedule: boolean };
+  featuresVisibility: Record<string, unknown>;
   appMode?: string;
   fullUserDetails: { clinical: { treatmentPhase?: string } };
 } {
   return {
     featuresVisibility: {
+      ...(params.featuresVisibility ?? {}),
+      // Circle Schedule stays available to the care team even if the tablet Schedule tab is off.
       schedule: params.scheduleEnabled !== false,
     },
     appMode: params.appMode ?? undefined,
@@ -101,6 +104,7 @@ export function buildCircleAssessmentScheduleContext(params: {
   treatmentPhase?: string | null;
   appMode?: string | null;
   scheduleEnabled?: boolean;
+  featuresVisibility?: Record<string, unknown>;
   remoteAssessmentSchedule?: RemoteAssessmentSchedule;
 }): CircleAssessmentScheduleContext {
   return {
@@ -108,6 +112,7 @@ export function buildCircleAssessmentScheduleContext(params: {
       treatmentPhase: params.treatmentPhase,
       appMode: params.appMode,
       scheduleEnabled: params.scheduleEnabled,
+      featuresVisibility: params.featuresVisibility,
     }),
     remoteAssessmentSchedule: params.remoteAssessmentSchedule,
     histories: buildAssessmentHistoryMapFromAnalytics(params.byMetricId),

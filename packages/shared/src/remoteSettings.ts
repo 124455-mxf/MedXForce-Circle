@@ -7,6 +7,8 @@ import {
 } from 'firebase/firestore';
 import {
   sanitizeRemoteAssessmentSchedule,
+  assessmentScheduleLooksFullyDisabled,
+  assessmentScheduleForRecoveryStage,
   type RemoteAssessmentSchedule,
 } from './assessmentSchedule';
 import {
@@ -232,6 +234,12 @@ export type RemoteSettingsPayload = {
   shareLocationWithCircle?: boolean;
   dashboardLayout?: RemoteDashboardLayout;
   assessmentSchedule?: RemoteAssessmentSchedule;
+  /** One-time: Daily check-in on for Daily life / Hospital; ICU stays off. */
+  dailyCheckInDefaultOnAllStagesV1?: boolean;
+  /** One-time: ICU check-in off if an earlier default had turned it on. */
+  dailyCheckInIcuDefaultOffV1?: boolean;
+  /** One-time: Daily Life restores stage assessment cadences after ICU/Hospital all-off. */
+  assessmentScheduleDailyLifeRestoredV1?: boolean;
 };
 
 export type RemoteSettingsSource = 'patient' | 'circle';
@@ -252,6 +260,11 @@ export type RemoteFeatureToggleDef = {
   nested?: 'activity.enabled' | 'journeyDiary.allowViewSharedEntries';
   /** Parent toggle must be on before this toggle is editable. */
   requiresEnabledPath?: string;
+  /**
+   * When false, the tablet shows “To Be Released” and the proxy cannot turn this on.
+   * Keep in sync with Patient `SETTINGS_ASSESSMENT_SECTIONS.released`.
+   */
+  released?: boolean;
 };
 
 export const REMOTE_APP_MODES: { key: RemoteAppMode; label: string; description: string }[] = [
@@ -368,6 +381,7 @@ export const REMOTE_ASSESSMENT_VISIBILITY_TOGGLES: RemoteFeatureToggleDef[] = [
     label: 'Balance',
     description: 'Show the balance assessment on the tablet.',
     requiresEnabledPath: 'featuresVisibility.schedule',
+    released: false,
   },
   {
     path: 'featuresVisibility.visionAssessment',
@@ -392,6 +406,7 @@ export const REMOTE_ASSESSMENT_VISIBILITY_TOGGLES: RemoteFeatureToggleDef[] = [
     label: 'Physiological',
     description: 'Show the physiological assessment on the tablet.',
     requiresEnabledPath: 'featuresVisibility.schedule',
+    released: false,
   },
   {
     path: 'featuresVisibility.psychologicalAssessment',
@@ -404,14 +419,26 @@ export const REMOTE_ASSESSMENT_VISIBILITY_TOGGLES: RemoteFeatureToggleDef[] = [
     label: 'Stroke self-assessment',
     description: 'Show the stroke self-assessment on the tablet.',
     requiresEnabledPath: 'featuresVisibility.schedule',
+    released: false,
   },
   {
     path: 'featuresVisibility.diaryAssessment',
     label: 'Diary assessment',
     description: 'Show the diary-linked assessment on the tablet.',
     requiresEnabledPath: 'featuresVisibility.schedule',
+    released: false,
   },
 ];
+
+const UNRELEASED_ASSESSMENT_VISIBILITY_KEYS = new Set(
+  REMOTE_ASSESSMENT_VISIBILITY_TOGGLES.filter((item) => item.released === false).map((item) =>
+    item.path.replace('featuresVisibility.', ''),
+  ),
+);
+
+export function isUnreleasedAssessmentVisibilityKey(key: string): boolean {
+  return UNRELEASED_ASSESSMENT_VISIBILITY_KEYS.has(key);
+}
 
 export const REMOTE_QUICK_SETTING_TOGGLES: { path: string; label: string; description?: string }[] = [
   { path: 'betterVisibleCursor', label: 'High visibility cursor', description: 'Easier-to-see pointer on the tablet.' },
@@ -594,7 +621,7 @@ function parseDailyCheckIn(raw: unknown): RemoteDailyCheckInSettings | undefined
     ? sanitizeDailyCheckInQuestions(d.questions)
     : undefined;
   return {
-    enabled: asBool(d.enabled) ?? false,
+    enabled: asBool(d.enabled) ?? true,
     quietHours,
     ...(questions ? { questions } : {}),
   };
@@ -627,7 +654,8 @@ function parseRemoteAssessmentVisibility(
   const out: Partial<Record<RemoteAssessmentVisibilityKey, boolean>> = {};
   for (const key of REMOTE_ASSESSMENT_VISIBILITY_KEYS) {
     const value = asBool(fv[key]);
-    if (value !== undefined) out[key] = value;
+    if (value === undefined) continue;
+    out[key] = isUnreleasedAssessmentVisibilityKey(key) ? false : value;
   }
   return out;
 }
@@ -641,8 +669,9 @@ function buildRemoteFeaturesVisibilityFromPreferences(
   const assessmentVisibility = Object.fromEntries(
     REMOTE_ASSESSMENT_VISIBILITY_KEYS.map((key) => {
       const raw = fv[key];
-      const value =
-        raw === undefined
+      const value = isUnreleasedAssessmentVisibilityKey(key)
+        ? false
+        : raw === undefined
           ? REMOTE_ASSESSMENT_VISIBILITY_DEFAULTS[key]
           : !!raw;
       return [key, value];
@@ -699,7 +728,10 @@ function remoteAssessmentPresetForMode(
 ): Record<RemoteAssessmentVisibilityKey, boolean> {
   if (mode === 'user') {
     return Object.fromEntries(
-      REMOTE_ASSESSMENT_VISIBILITY_KEYS.map((key) => [key, true]),
+      REMOTE_ASSESSMENT_VISIBILITY_KEYS.map((key) => [
+        key,
+        !isUnreleasedAssessmentVisibilityKey(key),
+      ]),
     ) as Record<RemoteAssessmentVisibilityKey, boolean>;
   }
   return Object.fromEntries(
@@ -762,6 +794,7 @@ function readFeaturesVisibilityValue(
     return fv.schedule;
   }
   if ((REMOTE_ASSESSMENT_VISIBILITY_KEYS as readonly string[]).includes(key)) {
+    if (isUnreleasedAssessmentVisibilityKey(key)) return false;
     const assessmentKey = key as RemoteAssessmentVisibilityKey;
     const value = fv[assessmentKey];
     if (value === undefined) return REMOTE_ASSESSMENT_VISIBILITY_DEFAULTS[assessmentKey];
@@ -781,6 +814,7 @@ export function isRemoteFeatureToggleDisabled(
   doc: RemoteSettingsPayload,
   item: RemoteFeatureToggleDef,
 ): boolean {
+  if (item.released === false) return true;
   if (!item.requiresEnabledPath) return false;
   return !getRemoteFeatureToggleEnabled(doc, item.requiresEnabledPath);
 }
@@ -882,6 +916,11 @@ export function parsePatientRemoteSettings(
     shareLocationWithCircle: asBool(data.shareLocationWithCircle),
     dashboardLayout: parseRemoteDashboardLayout(data.dashboardLayout),
     assessmentSchedule: sanitizeRemoteAssessmentSchedule(data.assessmentSchedule),
+    dailyCheckInDefaultOnAllStagesV1:
+      data.dailyCheckInDefaultOnAllStagesV1 === true ? true : undefined,
+    dailyCheckInIcuDefaultOffV1: data.dailyCheckInIcuDefaultOffV1 === true ? true : undefined,
+    assessmentScheduleDailyLifeRestoredV1:
+      data.assessmentScheduleDailyLifeRestoredV1 === true ? true : undefined,
     updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : 0,
     updatedByUid: asString(data.updatedByUid) ?? '',
     updatedByName: asString(data.updatedByName) ?? '',
@@ -942,7 +981,7 @@ export function extractRemoteSettingsFromPreferences(
       allowViewSharedEntries: !!journeyDiary?.allowViewSharedEntries,
     },
     dailyCheckIn: {
-      enabled: !!(dailyRaw?.enabled ?? false),
+      enabled: !!(dailyRaw?.enabled ?? true),
       quietHours: {
         enabled: !!(quietRaw?.enabled ?? REMOTE_DAILY_CHECKIN_QUIET_HOURS.enabled),
         start: asString(quietRaw?.start) ?? REMOTE_DAILY_CHECKIN_QUIET_HOURS.start,
@@ -990,6 +1029,10 @@ export function extractRemoteSettingsFromPreferences(
           use24HourClock: dashboardLayoutRaw.use24HourClock === true ? true : undefined,
         }
       : undefined,
+    dailyCheckInDefaultOnAllStagesV1:
+      preferences.dailyCheckInDefaultOnAllStagesV1 === true ? true : undefined,
+    dailyCheckInIcuDefaultOffV1:
+      preferences.dailyCheckInIcuDefaultOffV1 === true ? true : undefined,
     updatedAt: Date.now(),
     updatedByUid: meta.uid,
     updatedByName: meta.displayName,
@@ -1065,37 +1108,38 @@ export function setRemoteSettingValue(
     next.journeyDiary = { ...next.journeyDiary, allowViewSharedEntries: value };
   } else if (path.startsWith('featuresVisibility.')) {
     const key = path.slice('featuresVisibility.'.length);
+    const nextValue = isUnreleasedAssessmentVisibilityKey(key) ? false : value;
     const current = next.featuresVisibility ?? {};
     if (key === 'activity.enabled') {
       next.featuresVisibility = {
         ...current,
-        activity: { ...(current.activity ?? {}), enabled: value },
+        activity: { ...(current.activity ?? {}), enabled: nextValue },
       };
     } else if (key === 'activity.mind') {
       next.featuresVisibility = {
         ...current,
-        activity: { ...(current.activity ?? {}), mind: value },
+        activity: { ...(current.activity ?? {}), mind: nextValue },
       };
     } else if (key === 'activity.soul') {
       next.featuresVisibility = {
         ...current,
-        activity: { ...(current.activity ?? {}), soul: value },
+        activity: { ...(current.activity ?? {}), soul: nextValue },
       };
     } else if (key === 'activity.body.enabled') {
       next.featuresVisibility = {
         ...current,
         activity: {
           ...(current.activity ?? {}),
-          body: { ...(current.activity?.body ?? {}), enabled: value },
+          body: { ...(current.activity?.body ?? {}), enabled: nextValue },
         },
       };
     } else if (key === 'healthAssessments') {
       next.featuresVisibility = {
         ...current,
-        healthAssessments: value,
+        healthAssessments: nextValue,
       };
     } else {
-      next.featuresVisibility = { ...current, [key]: value };
+      next.featuresVisibility = { ...current, [key]: nextValue };
     }
   }
   return next;
@@ -1203,7 +1247,7 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
       minimizeTextWindowHeight: false,
       featuresVisibility: remoteFeaturesVisibilityPresetForMode('intensive_care'),
       journeyDiary: { allowViewSharedEntries: false },
-      dailyCheckIn: { enabled: true, quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS } },
+      dailyCheckIn: { enabled: false, quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS } },
       visibleAreas: { phrases: false, categories: false, emojis: false, unicode: true },
       contentFontSize: 'medium',
     };
@@ -1227,7 +1271,7 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
       featuresVisibility: remoteFeaturesVisibilityPresetForMode('user'),
       journeyDiary: { allowViewSharedEntries: false },
       dailyCheckIn: {
-        enabled: false,
+        enabled: true,
         quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS },
       },
       visibleAreas: visibleAll,
@@ -1341,6 +1385,7 @@ export function createDefaultRemoteSettings(patientId: string): PatientRemoteSet
     patientId,
     primaryLanguage: 'English',
     ...remotePresetPayloadForMode('hospital'),
+    dailyCheckInDefaultOnAllStagesV1: true,
     updatedAt: 0,
     updatedByUid: '',
     updatedByName: '',
@@ -1365,7 +1410,7 @@ export function setRemoteDailyCheckIn(
   },
 ): PatientRemoteSettingsDoc {
   const current = doc.dailyCheckIn ?? {
-    enabled: false,
+    enabled: true,
     quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS },
   };
   return {
@@ -1382,12 +1427,77 @@ export function setRemoteDailyCheckIn(
   };
 }
 
+/** One-time: Daily life / Hospital on; ICU off (Circle Home reminder turns ICU on when ready). */
+export function applyDailyCheckInDefaultOnAllStages(
+  doc: PatientRemoteSettingsDoc,
+): { next: PatientRemoteSettingsDoc; changed: boolean } {
+  let next = doc;
+  let changed = false;
+  const fallback = {
+    enabled: next.appMode !== 'intensive_care',
+    quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS },
+  };
+
+  if (!next.dailyCheckInDefaultOnAllStagesV1) {
+    const current = next.dailyCheckIn ?? fallback;
+    next = {
+      ...next,
+      dailyCheckIn: {
+        ...current,
+        enabled: next.appMode !== 'intensive_care',
+      },
+      dailyCheckInDefaultOnAllStagesV1: true,
+    };
+    changed = true;
+  }
+
+  if (next.appMode === 'intensive_care' && !next.dailyCheckInIcuDefaultOffV1) {
+    const current = next.dailyCheckIn ?? fallback;
+    next = {
+      ...next,
+      dailyCheckIn: { ...current, enabled: false },
+      dailyCheckInIcuDefaultOffV1: true,
+    };
+    changed = true;
+  }
+
+  return { next, changed };
+}
+
+/** One-time: Daily Life leftover all-off schedule (from ICU/Hospital) restored to stage defaults. */
+export function applyDailyLifeAssessmentScheduleIfNeeded(
+  doc: PatientRemoteSettingsDoc,
+): { next: PatientRemoteSettingsDoc; changed: boolean } {
+  if (doc.appMode !== 'user') return { next: doc, changed: false };
+  if (doc.assessmentScheduleDailyLifeRestoredV1) return { next: doc, changed: false };
+
+  if (!assessmentScheduleLooksFullyDisabled(doc.assessmentSchedule)) {
+    return {
+      next: { ...doc, assessmentScheduleDailyLifeRestoredV1: true },
+      changed: true,
+    };
+  }
+
+  const restored = setRemoteAssessmentSchedule(
+    doc,
+    assessmentScheduleForRecoveryStage(
+      'maintenance',
+      doc.assessmentSchedule?.lockedIds ?? [],
+    ),
+  );
+  return {
+    next: { ...restored, assessmentScheduleDailyLifeRestoredV1: true },
+    changed: true,
+  };
+}
+
 export function setRemoteAppMode(
   doc: PatientRemoteSettingsDoc,
   appMode: RemoteAppMode,
 ): PatientRemoteSettingsDoc {
+  const previous = doc.appMode;
   const preset = remotePresetPayloadForMode(appMode);
-  const next: PatientRemoteSettingsDoc = {
+  let next: PatientRemoteSettingsDoc = {
     ...doc,
     ...preset,
     appMode,
@@ -1402,6 +1512,19 @@ export function setRemoteAppMode(
     next.intensiveCareExperience = doc.intensiveCareExperience ?? 'standard';
   } else {
     delete next.intensiveCareExperience;
+  }
+  if (
+    appMode === 'user' &&
+    (previous === 'intensive_care' || previous === 'hospital')
+  ) {
+    next = setRemoteAssessmentSchedule(
+      next,
+      assessmentScheduleForRecoveryStage(
+        'maintenance',
+        next.assessmentSchedule?.lockedIds ?? [],
+      ),
+    );
+    next.assessmentScheduleDailyLifeRestoredV1 = true;
   }
   return next;
 }
@@ -1599,6 +1722,6 @@ export function setRemoteAssessmentSchedule(
 ): PatientRemoteSettingsDoc {
   return {
     ...doc,
-    assessmentSchedule: schedule,
+    assessmentSchedule: sanitizeRemoteAssessmentSchedule(schedule) ?? schedule,
   };
 }

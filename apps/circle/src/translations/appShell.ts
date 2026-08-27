@@ -968,6 +968,7 @@ export const appShellEnglish = {
       'Check-in will not prompt on the tablet. Turn it back on when the patient is ready.',
     icuCheckInTurnOff: 'Turn off check-in',
     icuCheckInTurnOn: 'Turn on check-in',
+    icuCheckInOpenApplicationSettings: 'Application settings',
     icuCheckInUpdating: 'Updating…',
     coreProfileMissing: 'Still need: {{fields}}',
     coreProfileFields: {
@@ -2328,6 +2329,7 @@ export const appShellGerman = {
       'Auf dem Tablet erscheint kein Check-in. Schalten Sie ihn wieder ein, wenn der Patient bereit ist.',
     icuCheckInTurnOff: 'Check-in ausschalten',
     icuCheckInTurnOn: 'Check-in einschalten',
+    icuCheckInOpenApplicationSettings: 'Anwendungseinstellungen',
     icuCheckInUpdating: 'Wird aktualisiert…',
     coreProfileMissing: 'Noch nötig: {{fields}}',
     coreProfileFields: {
@@ -3688,6 +3690,7 @@ export const appShellSpanish = {
       'La tableta no pedirá el check-in. Actívelo de nuevo cuando el paciente esté listo.',
     icuCheckInTurnOff: 'Desactivar check-in',
     icuCheckInTurnOn: 'Activar check-in',
+    icuCheckInOpenApplicationSettings: 'Ajustes de la aplicación',
     icuCheckInUpdating: 'Actualizando…',
     coreProfileMissing: 'Aún falta: {{fields}}',
     coreProfileFields: {
@@ -5048,6 +5051,7 @@ export const appShellPolish = {
       'Tablet nie będzie prosił o check-in. Włącz go ponownie, gdy pacjent będzie gotowy.',
     icuCheckInTurnOff: 'Wyłącz check-in',
     icuCheckInTurnOn: 'Włącz check-in',
+    icuCheckInOpenApplicationSettings: 'Ustawienia aplikacji',
     icuCheckInUpdating: 'Aktualizowanie…',
     coreProfileMissing: 'Brakuje: {{fields}}',
     coreProfileFields: {

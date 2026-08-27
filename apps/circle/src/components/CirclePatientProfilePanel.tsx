@@ -102,6 +102,7 @@ interface CirclePatientProfilePanelProps {
   embedded?: boolean;
   onOpenCircleHelp?: () => void;
   onOpenCareTransition?: () => void;
+  onOpenRemoteSettingsApplicationMode?: () => void;
 }
 
 function buildInitialProfileSnapshot(patient: CirclePatientSummary): CirclePatientProfileSnapshot {
@@ -127,6 +128,7 @@ export function CirclePatientProfilePanel({
   embedded = false,
   onOpenCircleHelp,
   onOpenCareTransition,
+  onOpenRemoteSettingsApplicationMode,
 }: CirclePatientProfilePanelProps) {
   const t = useCircleT();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -567,28 +569,39 @@ export function CirclePatientProfilePanel({
                 {displayProfileName(workingSnapshot, patient.displayName)}
               </p>
               {showClinical && workingSnapshot.clinical.treatmentPhase ? (
-                <button
-                  type="button"
-                  onClick={() => (canEdit ? handleEditSection('clinical') : undefined)}
-                  disabled={!canEdit}
-                  className={cn(
-                    'inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-left transition-colors',
-                    treatmentPhaseCardClass(workingSnapshot.clinical.treatmentPhase, true),
-                    canEdit ? 'hover:opacity-95 cursor-pointer' : 'cursor-default',
-                  )}
-                >
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                    {t('admin.profile.fieldTreatmentPhase')}
-                  </span>
-                  <span
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <button
+                    type="button"
+                    onClick={() => (canEdit ? handleEditSection('clinical') : undefined)}
+                    disabled={!canEdit}
                     className={cn(
-                      'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
-                      treatmentPhaseBadgeClass(workingSnapshot.clinical.treatmentPhase),
+                      'inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-left transition-colors',
+                      treatmentPhaseCardClass(workingSnapshot.clinical.treatmentPhase, true),
+                      canEdit ? 'hover:opacity-95 cursor-pointer' : 'cursor-default',
                     )}
                   >
-                    {treatmentPhaseLabelT(t, workingSnapshot.clinical.treatmentPhase)}
-                  </span>
-                </button>
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                      {t('admin.profile.fieldTreatmentPhase')}
+                    </span>
+                    <span
+                      className={cn(
+                        'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                        treatmentPhaseBadgeClass(workingSnapshot.clinical.treatmentPhase),
+                      )}
+                    >
+                      {treatmentPhaseLabelT(t, workingSnapshot.clinical.treatmentPhase)}
+                    </span>
+                  </button>
+                  {canEdit && onOpenRemoteSettingsApplicationMode ? (
+                    <button
+                      type="button"
+                      onClick={onOpenRemoteSettingsApplicationMode}
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-700 px-0.5"
+                    >
+                      {t('admin.profile.openApplicationModeSettings')}
+                    </button>
+                  ) : null}
+                </div>
               ) : null}
               {workingSnapshot.identity.email &&
               workingSnapshot.identity.email.trim().toLowerCase() !==

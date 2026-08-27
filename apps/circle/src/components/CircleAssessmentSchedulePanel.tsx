@@ -100,6 +100,8 @@ export function CircleAssessmentSchedulePanel({
   ] as const;
 
   const updateRule = (assessmentId: AssessmentScheduleId, patchRule: Partial<AssessmentScheduleRule>) => {
+    const meta = SCHEDULABLE_ASSESSMENTS.find((item) => item.id === assessmentId);
+    if (!meta?.released) return;
     const nextRules = {
       ...remote.rules,
       [assessmentId]: {
@@ -115,6 +117,8 @@ export function CircleAssessmentSchedulePanel({
   };
 
   const toggleLock = (assessmentId: AssessmentScheduleId) => {
+    const meta = SCHEDULABLE_ASSESSMENTS.find((item) => item.id === assessmentId);
+    if (!meta?.released) return;
     const nextLocked = new Set(locked);
     if (nextLocked.has(assessmentId)) nextLocked.delete(assessmentId);
     else nextLocked.add(assessmentId);
@@ -197,9 +201,14 @@ export function CircleAssessmentSchedulePanel({
                             {t(`remoteSettings.assessmentSchedule.items.${meta.id}`)}
                           </p>
                           {isLocked ? (
-                            <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-                              <Lock size={10} />
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
+                              <Lock size={12} />
                               {t('remoteSettings.assessmentSchedule.lockedForPatient')}
+                            </span>
+                          ) : null}
+                          {!meta.released ? (
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-full">
+                              {t('remoteSettings.toBeReleased')}
                             </span>
                           ) : null}
                         </div>
@@ -222,7 +231,7 @@ export function CircleAssessmentSchedulePanel({
                                 ? 'bg-blue-600'
                                 : 'bg-slate-300',
                           )}
-                          aria-pressed={rule.enabled}
+                          aria-pressed={meta.released && rule.enabled}
                         >
                           <span
                             className={cn(
@@ -231,24 +240,57 @@ export function CircleAssessmentSchedulePanel({
                             )}
                           />
                         </button>
-                        <button
-                          type="button"
-                          disabled={!meta.released}
-                          onClick={() => toggleLock(meta.id)}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={!meta.released}
+                      aria-pressed={isLocked}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        toggleLock(meta.id);
+                      }}
+                      className={cn(
+                        'w-full flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors',
+                        isLocked
+                          ? 'bg-amber-100 border-amber-300'
+                          : 'bg-slate-50 border-slate-200 hover:border-slate-300',
+                        !meta.released && 'opacity-60 cursor-not-allowed',
+                      )}
+                    >
+                      <span className="flex items-center gap-2 min-w-0">
+                        <Lock
+                          size={16}
+                          className={isLocked ? 'text-amber-800 shrink-0' : 'text-slate-500 shrink-0'}
+                        />
+                        <span
                           className={cn(
-                            'text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border transition-colors',
-                            isLocked
-                              ? 'bg-amber-50 text-amber-700 border-amber-200'
-                              : 'bg-slate-50 text-slate-500 border-slate-100 hover:border-slate-200',
-                            !meta.released && 'opacity-60 cursor-not-allowed',
+                            'text-xs font-semibold',
+                            isLocked ? 'text-amber-950' : 'text-slate-700',
                           )}
                         >
                           {isLocked
-                            ? t('remoteSettings.assessmentSchedule.unlock')
-                            : t('remoteSettings.assessmentSchedule.lock')}
-                        </button>
-                      </div>
-                    </div>
+                            ? t('remoteSettings.assessmentSchedule.lockedForPatient')
+                            : t('remoteSettings.assessmentSchedule.lockForPatient')}
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          'w-12 h-7 rounded-full transition-all duration-300 relative shrink-0',
+                          isLocked ? 'bg-amber-500' : 'bg-slate-300',
+                        )}
+                        aria-hidden
+                      >
+                        <span
+                          className={cn(
+                            'absolute top-1 left-0 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300',
+                            isLocked ? 'translate-x-[22px]' : 'translate-x-1',
+                          )}
+                        />
+                      </span>
+                    </button>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                       {RECURRENCE_KINDS.map((kind) => (

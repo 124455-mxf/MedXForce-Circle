@@ -73,6 +73,8 @@ type CircleCareTransitionPackComposerProps = {
   onClose: () => void;
   onStart: (packId: CareTransitionPackId) => void | Promise<void>;
   onShare: (note: string, alsoDiary: boolean) => void | Promise<void>;
+  /** Same discard-confirm path as the Circle tasks draft card. */
+  onDiscard: () => void;
   children?: ReactNode;
 };
 
@@ -90,6 +92,7 @@ export function CircleCareTransitionPackComposer({
   onClose,
   onStart,
   onShare,
+  onDiscard,
   children,
 }: CircleCareTransitionPackComposerProps) {
   const t = useCircleT();
@@ -110,7 +113,7 @@ export function CircleCareTransitionPackComposer({
     }
     setPackId(currentPackId ?? '');
     setStep(resumeReview ? 'review' : 'select');
-    // Initialize only when the modal opens, so "choose a different pack" is not reset.
+    // Hydrate only when the modal opens so in-progress review is not reset.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- open-only hydrate
   }, [open, reset]);
 
@@ -201,11 +204,11 @@ export function CircleCareTransitionPackComposer({
         <>
           <button
             type="button"
-            onClick={() => setStep('select')}
+            onClick={onDiscard}
             className="font-semibold text-slate-600 hover:bg-slate-50 rounded-2xl border border-slate-200 px-4 py-2 text-sm"
             disabled={sending}
           >
-            {t('circle.packChooseDifferent')}
+            {t('careTransition.discardDraft')}
           </button>
           <button
             type="button"

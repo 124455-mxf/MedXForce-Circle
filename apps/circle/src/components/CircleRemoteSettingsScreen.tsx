@@ -468,12 +468,14 @@ function ToggleRow({
   description,
   enabled,
   disabled = false,
+  comingSoonLabel,
   onToggle,
 }: {
   label: string;
   description?: string;
   enabled: boolean;
   disabled?: boolean;
+  comingSoonLabel?: string;
   onToggle: () => void;
 }) {
   return (
@@ -484,7 +486,14 @@ function ToggleRow({
       )}
     >
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-normal text-slate-800">{label}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-normal text-slate-800">{label}</p>
+          {disabled && comingSoonLabel ? (
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-full">
+              {comingSoonLabel}
+            </span>
+          ) : null}
+        </div>
         {description ? (
           <p className="text-xs text-slate-400 leading-snug mt-0.5">{description}</p>
         ) : null}
@@ -495,8 +504,7 @@ function ToggleRow({
         disabled={disabled}
         className={cn(
           'w-12 h-7 rounded-full transition-all duration-300 relative shrink-0',
-          enabled ? 'bg-blue-600' : 'bg-slate-300',
-          disabled && 'cursor-not-allowed',
+          disabled ? 'bg-slate-200 cursor-not-allowed' : enabled ? 'bg-blue-600' : 'bg-slate-300',
         )}
         aria-pressed={enabled}
         aria-disabled={disabled}
@@ -504,7 +512,7 @@ function ToggleRow({
         <span
           className={cn(
             'absolute top-1 left-0 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300',
-            enabled ? 'translate-x-[22px]' : 'translate-x-1',
+            enabled && !disabled ? 'translate-x-[22px]' : 'translate-x-1',
           )}
         />
       </button>
@@ -574,8 +582,9 @@ function ProxyToggleList({
   return (
     <div className="grid grid-cols-1 gap-2">
       {paths.map((item) => {
-        const disabled = isRemoteFeatureToggleDisabled(settings, item);
-        const enabled = getRemoteFeatureToggleEnabled(settings, item.path);
+        const unreleased = item.released === false;
+        const disabled = unreleased || isRemoteFeatureToggleDisabled(settings, item);
+        const enabled = unreleased ? false : getRemoteFeatureToggleEnabled(settings, item.path);
         return (
           <ToggleRow
             key={item.path}
@@ -583,6 +592,7 @@ function ProxyToggleList({
             description={remoteSettingsToggleDescription(t, item.path, item.description)}
             enabled={enabled}
             disabled={disabled}
+            comingSoonLabel={unreleased ? t('remoteSettings.toBeReleased') : undefined}
             onToggle={() => {
               if (disabled) return;
               patch(
@@ -606,7 +616,7 @@ export function CircleRemoteSettingsScreen({
   db: Firestore;
   user: User;
   patient: CirclePatientSummary;
-  focusSection?: 'circle-initiate' | 'circle-drop-in' | null;
+  focusSection?: 'circle-initiate' | 'circle-drop-in' | 'application-mode' | null;
   onFocusConsumed?: () => void;
 }) {
   const { settings, loading, saving, error, savedAt, persist } = useCircleRemoteSettingsFromShell();
@@ -623,6 +633,7 @@ export function CircleRemoteSettingsScreen({
   const [overviewOpen, setOverviewOpen] = useState(false);
   const [highlightCircleInitiate, setHighlightCircleInitiate] = useState(false);
   const [highlightCircleDropIn, setHighlightCircleDropIn] = useState(false);
+  const [highlightApplicationMode, setHighlightApplicationMode] = useState(false);
   const { snapshot: profileSnapshot } = useCirclePatientProfileSnapshot(db, patient.patientId);
   const { overview, loading: overviewLoading } = useCircleApplicationOverview(db, patient.patientId);
   const treatmentPhase = profileSnapshot?.clinical?.treatmentPhase;
@@ -707,6 +718,7 @@ export function CircleRemoteSettingsScreen({
 
   const customized = settings ? isRemoteSettingsCustomized(settings) : false;
   const dashboardTabEnabled = settings?.featuresVisibility?.dashboard === true;
+  const assessmentsTabEnabled = settings?.featuresVisibility?.healthAssessments === true;
   const effectiveDashboardPreset = resolveEffectiveRemoteDashboardPreset(settings);
   const storedDashboardPreset =
     dashboardTabEnabled && effectiveDashboardPreset !== 'custom' ? effectiveDashboardPreset : null;
@@ -714,7 +726,9 @@ export function CircleRemoteSettingsScreen({
 
   useEffect(() => {
     if (
-      (focusSection !== 'circle-initiate' && focusSection !== 'circle-drop-in') ||
+      (focusSection !== 'circle-initiate' &&
+        focusSection !== 'circle-drop-in' &&
+        focusSection !== 'application-mode') ||
       loading ||
       !settings
     ) {
@@ -723,8 +737,11 @@ export function CircleRemoteSettingsScreen({
     const targetId =
       focusSection === 'circle-drop-in'
         ? 'remote-settings-circle-drop-in'
-        : 'remote-settings-circle-initiate';
+        : focusSection === 'application-mode'
+          ? 'remote-settings-application-mode'
+          : 'remote-settings-circle-initiate';
     if (focusSection === 'circle-drop-in') setHighlightCircleDropIn(true);
+    else if (focusSection === 'application-mode') setHighlightApplicationMode(true);
     else setHighlightCircleInitiate(true);
     const timer = window.setTimeout(() => {
       document.getElementById(targetId)?.scrollIntoView({
@@ -747,6 +764,12 @@ export function CircleRemoteSettingsScreen({
     const timer = window.setTimeout(() => setHighlightCircleDropIn(false), 2400);
     return () => window.clearTimeout(timer);
   }, [highlightCircleDropIn]);
+
+  useEffect(() => {
+    if (!highlightApplicationMode) return;
+    const timer = window.setTimeout(() => setHighlightApplicationMode(false), 2400);
+    return () => window.clearTimeout(timer);
+  }, [highlightApplicationMode]);
 
   const handleCopyOverview = async () => {
     const text = overview?.text ?? '';
@@ -828,7 +851,13 @@ export function CircleRemoteSettingsScreen({
             </p>
           )}
 
-          <section className="space-y-2">
+          <section
+            id="remote-settings-application-mode"
+            className={cn(
+              'space-y-2',
+              highlightApplicationMode && 'rounded-2xl ring-2 ring-blue-400 ring-offset-2 p-1 -m-1',
+            )}
+          >
             <div className="flex items-center justify-between gap-2 px-0.5">
               <SectionLabel>{t('remoteSettings.applicationMode')}</SectionLabel>
               {customized && (
@@ -888,6 +917,10 @@ export function CircleRemoteSettingsScreen({
                     {mode.key === 'intensive_care' ? (
                       <p className="text-[11px] font-semibold text-red-700/80 mt-1.5 leading-relaxed">
                         {t('remoteSettings.modes.intensiveCareDashboardHint')}
+                      </p>
+                    ) : mode.key === 'hospital' ? (
+                      <p className="text-[11px] font-semibold text-amber-800/80 mt-1.5 leading-relaxed">
+                        {t('remoteSettings.modes.hospitalDashboardHint')}
                       </p>
                     ) : null}
                   </button>
@@ -991,34 +1024,18 @@ export function CircleRemoteSettingsScreen({
           </section>
 
           <div className="space-y-3">
-            <CircleCollapsibleSection
-              title={t('remoteSettings.dashboardView')}
-              trailing={
-                patientSetDashboardLayout && storedDashboardPreset ? (
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
-                    {t('remoteSettings.dashboardSetOnTablet')}
-                  </span>
-                ) : null
-              }
-            >
-              <div className="p-4 space-y-2">
-                {!dashboardTabEnabled ? (
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <LayoutDashboard size={16} className="text-slate-500" />
-                      <p className="text-sm font-bold text-slate-800">
-                        {t('remoteSettings.dashboardPresets.none')}
-                      </p>
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded-full">
-                        {t('remoteSettings.current')}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                      {t('remoteSettings.dashboardPresets.noneDesc')}
-                    </p>
-                  </div>
-                ) : null}
-                <div className="space-y-2">
+            {dashboardTabEnabled ? (
+              <CircleCollapsibleSection
+                title={t('remoteSettings.dashboardView')}
+                trailing={
+                  patientSetDashboardLayout && storedDashboardPreset ? (
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
+                      {t('remoteSettings.dashboardSetOnTablet')}
+                    </span>
+                  ) : null
+                }
+              >
+                <div className="p-4 space-y-2">
                   {REMOTE_DASHBOARD_PRESETS.map((preset) => {
                     const active = storedDashboardPreset === preset.key;
                     return (
@@ -1033,7 +1050,6 @@ export function CircleRemoteSettingsScreen({
                           active
                             ? 'border-violet-300 bg-violet-50/70'
                             : 'border-slate-100 bg-white hover:border-slate-200',
-                          !dashboardTabEnabled && 'opacity-60',
                         )}
                       >
                         <div className="flex items-center gap-2">
@@ -1057,8 +1073,8 @@ export function CircleRemoteSettingsScreen({
                     );
                   })}
                 </div>
-              </div>
-            </CircleCollapsibleSection>
+              </CircleCollapsibleSection>
+            ) : null}
 
             <CircleCollapsibleSection title={t('remoteSettings.sections.language')}>
               <div className="p-4 space-y-2">
@@ -1177,13 +1193,17 @@ export function CircleRemoteSettingsScreen({
                     </>
                   );
                 })()}
-                <SectionLabel>{t('remoteSettings.sections.individualAssessments')}</SectionLabel>
-                <ProxyToggleList
-                  settings={settings}
-                  paths={REMOTE_ASSESSMENT_VISIBILITY_TOGGLES}
-                  patch={patch}
-                  t={t}
-                />
+                {assessmentsTabEnabled ? (
+                  <>
+                    <SectionLabel>{t('remoteSettings.sections.individualAssessments')}</SectionLabel>
+                    <ProxyToggleList
+                      settings={settings}
+                      paths={REMOTE_ASSESSMENT_VISIBILITY_TOGGLES}
+                      patch={patch}
+                      t={t}
+                    />
+                  </>
+                ) : null}
               </div>
             </CircleCollapsibleSection>
 

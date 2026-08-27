@@ -62,6 +62,7 @@ const remoteSettingsEnglish = {
     'Switching to {{mode}} applies that mode\'s preset and updates all toggles below. You can still adjust individual toggles afterward.',
   cancel: 'Cancel',
   applyMode: 'Apply mode',
+  toBeReleased: 'To be released',
   sections: {
     language: 'Language',
     featuresVisibility: 'Features & visibility',
@@ -104,8 +105,10 @@ const remoteSettingsEnglish = {
   modes: {
     intensiveCare: 'ICU',
     intensiveCareDesc: 'Intensive Care / Critical care — communication-first, minimal distractions, caregiver-controlled.',
-    intensiveCareDashboardHint: 'Dashboard tab off by default (turn on under Features if needed).',
+    intensiveCareDashboardHint:
+      'Daily check-in and the Dashboard tab are off by default (turn on manually).',
     hospital: 'Hospital',
+    hospitalDashboardHint: 'The Dashboard tab is off by default (turn on manually).',
     hospitalDesc: 'Acute care and active recovery — structured support in hospital or rehab.',
     user: 'Daily Life',
     userDesc: 'Home and everyday life — full features with sensible safety defaults.',
@@ -113,7 +116,7 @@ const remoteSettingsEnglish = {
   dashboardPresets: {
     none: 'No dashboard',
     noneDesc:
-      'The Dashboard tab is hidden on the tablet. ICU and Hospital modes use this by default until Dashboard is enabled under Features & visibility.',
+      'Daily check-in and the Dashboard tab are off by default (turn on manually).',
     minimal: 'Essentials',
     minimalDesc: 'Communication, check-in, and time — a calm, focused dashboard.',
     balanced: 'Balanced',
@@ -237,6 +240,7 @@ const remoteSettingsEnglish = {
       'Set how often each assessment should be done on the patient tablet. Lock a schedule to prevent the patient from changing it.',
     lock: 'Lock',
     unlock: 'Unlock',
+    lockForPatient: 'Lock for patient',
     lockHint:
       'Lock keeps this cadence on the tablet. The patient cannot change a locked assessment in Settings.',
     resetToStageDefaults: 'Reset to {{stage}} defaults',
@@ -364,6 +368,7 @@ const remoteSettingsGerman = {
     'Der Wechsel zu {{mode}} wendet die Voreinstellung an und aktualisiert alle Schalter unten. Einzelne Schalter können danach weiter angepasst werden.',
   cancel: 'Abbrechen',
   applyMode: 'Modus anwenden',
+  toBeReleased: 'Demnächst verfügbar',
   sections: {
     language: 'Sprache',
     featuresVisibility: 'Funktionen & Sichtbarkeit',
@@ -407,8 +412,9 @@ const remoteSettingsGerman = {
     intensiveCare: 'Intensivstation (ICU)',
     intensiveCareDesc: 'Intensivpflege / Critical Care — kommunikationsorientiert, wenig Ablenkung, betreuergesteuert.',
     intensiveCareDashboardHint:
-      'Dashboard-Tab standardmäßig aus (bei Bedarf unter Funktionen einschalten).',
+      'Täglicher Check-in und der Dashboard-Tab sind standardmäßig aus (manuell einschalten).',
     hospital: 'Krankenhaus',
+    hospitalDashboardHint: 'Der Dashboard-Tab ist standardmäßig aus (manuell einschalten).',
     hospitalDesc: 'Akutpflege und aktive Genesung — strukturierte Unterstützung im Krankenhaus oder in der Reha.',
     user: 'Alltag',
     userDesc: 'Zuhause und Alltag — voller Funktionsumfang mit sinnvollen Sicherheitsstandards.',
@@ -416,7 +422,7 @@ const remoteSettingsGerman = {
   dashboardPresets: {
     none: 'Kein Dashboard',
     noneDesc:
-      'Der Dashboard-Tab ist auf dem Tablet ausgeblendet. ICU- und Krankenhaus-Modus nutzen das standardmäßig, bis Dashboard unter Funktionen & Sichtbarkeit aktiviert wird.',
+      'Täglicher Check-in und der Dashboard-Tab sind standardmäßig aus (manuell einschalten).',
     minimal: 'Essentials',
     minimalDesc: 'Kommunikation, Check-in und Uhrzeit — ein ruhiges, fokussiertes Dashboard.',
     balanced: 'Ausgewogen',
@@ -541,6 +547,7 @@ const remoteSettingsGerman = {
       'Legen Sie fest, wie oft jedes Assessment auf dem Patienten-Tablet durchgeführt werden soll. Sperren Sie einen Zeitplan, damit der Patient ihn nicht ändern kann.',
     lock: 'Sperren',
     unlock: 'Entsperren',
+    lockForPatient: 'Für Patient sperren',
     lockHint:
       'Sperren hält diesen Rhythmus auf dem Tablet. Der Patient kann ein gesperrtes Assessment in den Einstellungen nicht ändern.',
     resetToStageDefaults: 'Auf {{stage}}-Standard zurücksetzen',
@@ -667,6 +674,7 @@ const remoteSettingsSpanish = {
     'Cambiar a {{mode}} aplica ese preajuste y actualiza todos los interruptores. Puede ajustarlos individualmente después.',
   cancel: 'Cancelar',
   applyMode: 'Aplicar modo',
+  toBeReleased: 'Próximamente',
   sections: {
     language: 'Idioma',
     featuresVisibility: 'Funciones y visibilidad',
@@ -710,8 +718,9 @@ const remoteSettingsSpanish = {
     intensiveCare: 'UCI',
     intensiveCareDesc: 'Cuidados intensivos / Cuidados críticos — comunicación primero, mínimas distracciones, control del cuidador.',
     intensiveCareDashboardHint:
-      'Pestaña Panel desactivada por defecto (actívela en Funciones si hace falta).',
+      'El check-in diario y la pestaña Panel están desactivados por defecto (actívelos manualmente).',
     hospital: 'Hospital',
+    hospitalDashboardHint: 'La pestaña Panel está desactivada por defecto (actívela manualmente).',
     hospitalDesc: 'Cuidados agudos y recuperación activa — apoyo en hospital o rehabilitación.',
     user: 'Vida diaria',
     userDesc: 'Hogar y vida cotidiana — funciones completas con valores de seguridad sensatos.',
@@ -719,7 +728,7 @@ const remoteSettingsSpanish = {
   dashboardPresets: {
     none: 'Sin panel',
     noneDesc:
-      'La pestaña Panel está oculta en la tableta. Los modos UCI y Hospital lo usan por defecto hasta que se active Panel en Funciones y visibilidad.',
+      'El check-in diario y la pestaña Panel están desactivados por defecto (actívelos manualmente).',
     minimal: 'Esenciales',
     minimalDesc: 'Comunicación, registro diario y hora — un panel tranquilo y enfocado.',
     balanced: 'Equilibrado',
@@ -844,6 +853,7 @@ const remoteSettingsSpanish = {
       'Defina la frecuencia de cada evaluación en la tableta del paciente. Bloquee un calendario para impedir cambios del paciente.',
     lock: 'Bloquear',
     unlock: 'Desbloquear',
+    lockForPatient: 'Bloquear para el paciente',
     lockHint:
       'Bloquear mantiene esta cadencia en la tableta. El paciente no puede cambiar una evaluación bloqueada en Ajustes.',
     resetToStageDefaults: 'Restablecer valores de {{stage}}',
@@ -969,6 +979,7 @@ const remoteSettingsPolish = {
     'Przełączenie na {{mode}} stosuje ustawienie wstępne i aktualizuje wszystkie przełączniki poniżej.',
   cancel: 'Anuluj',
   applyMode: 'Zastosuj tryb',
+  toBeReleased: 'Wkrótce dostępne',
   sections: {
     language: 'Język',
     featuresVisibility: 'Funkcje i widoczność',
@@ -1012,8 +1023,9 @@ const remoteSettingsPolish = {
     intensiveCare: 'OIOM',
     intensiveCareDesc: 'Opieka intensywna / Opieka krytyczna — komunikacja na pierwszym miejscu, minimum rozproszeń, kontrola opiekuna.',
     intensiveCareDashboardHint:
-      'Zakładka Panel domyślnie wyłączona (włącz w Funkcjach, jeśli potrzeba).',
+      'Codzienny check-in i zakładka Panel są domyślnie wyłączone (włącz ręcznie).',
     hospital: 'Szpital',
+    hospitalDashboardHint: 'Zakładka Panel jest domyślnie wyłączona (włącz ręcznie).',
     hospitalDesc: 'Opieka ostrzowa i aktywna rekonwalescencja — wsparcie w szpitalu lub rehabilitacji.',
     user: 'Codzienne życie',
     userDesc: 'Dom i codzienność — pełne funkcje z rozsądnymi ustawieniami bezpieczeństwa.',
@@ -1021,7 +1033,7 @@ const remoteSettingsPolish = {
   dashboardPresets: {
     none: 'Bez panelu',
     noneDesc:
-      'Zakładka Panel jest ukryta na tablecie. Tryby OIOM i Szpital używają tego domyślnie, dopóki Panel nie zostanie włączony w Funkcjach i widoczności.',
+      'Codzienny check-in i zakładka Panel są domyślnie wyłączone (włącz ręcznie).',
     minimal: 'Essentials',
     minimalDesc: 'Komunikacja, check-in i czas — spokojny, skupiony panel.',
     balanced: 'Zbalansowany',
@@ -1146,6 +1158,7 @@ const remoteSettingsPolish = {
       'Ustaw, jak często każda ocena ma być wykonywana na tablecie pacjenta. Zablokuj harmonogram, aby pacjent nie mógł go zmienić.',
     lock: 'Zablokuj',
     unlock: 'Odblokuj',
+    lockForPatient: 'Zablokuj dla pacjenta',
     lockHint:
       'Blokada utrzymuje ten rytm na tablecie. Pacjent nie może zmienić zablokowanej oceny w Ustawieniach.',
     resetToStageDefaults: 'Przywróć domyślne dla {{stage}}',

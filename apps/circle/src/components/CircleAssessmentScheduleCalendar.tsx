@@ -954,10 +954,10 @@ function MonthCalendarBody({
                       ? 'border-emerald-200 bg-emerald-50/70 hover:bg-emerald-50'
                       : hasAppointment
                         ? 'border-pink-200 bg-pink-50/70 hover:bg-pink-50'
-                        : 'border-orange-200 bg-orange-50/50 hover:bg-orange-50/80',
+                        : 'border-sky-200 bg-sky-50/50 hover:bg-sky-50/80',
                   isSelected && hasInternal && !hasAppointment && 'ring-1 ring-emerald-300/70 border-emerald-300',
                   isSelected && hasAppointment && 'ring-1 ring-pink-300/70 border-pink-300',
-                  isSelected && !hasCare && hasAssessments && 'border-orange-300 bg-orange-50/70 ring-1 ring-orange-200/60',
+                  isSelected && !hasCare && hasAssessments && 'border-sky-300 bg-sky-50/70 ring-1 ring-sky-200/60',
                   isToday &&
                     !isSelected &&
                     (hasInternal && !hasAppointment
@@ -965,7 +965,7 @@ function MonthCalendarBody({
                       : hasAppointment
                         ? 'border-pink-300'
                         : hasAssessments
-                          ? 'border-orange-300'
+                          ? 'border-sky-300'
                           : 'border-blue-200'),
                 )}
               >
@@ -980,7 +980,7 @@ function MonthCalendarBody({
                 </span>
                 {(hasAssessments || hasCare) && (
                   <div className="flex gap-0.5">
-                    {hasAssessments && <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />}
+                    {hasAssessments && <span className="w-1.5 h-1.5 rounded-full bg-sky-600" />}
                     {hasAppointment && <span className="w-1.5 h-1.5 rounded-full bg-pink-500" />}
                     {hasInternal && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
                   </div>
@@ -996,7 +996,7 @@ function MonthCalendarBody({
           )}
         >
           <span className="inline-flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-600" />
             {ct('legendAssessment')}
           </span>
           <span className="inline-flex items-center gap-1.5">

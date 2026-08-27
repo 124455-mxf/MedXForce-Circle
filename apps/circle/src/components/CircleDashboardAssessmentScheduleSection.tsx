@@ -27,6 +27,7 @@ export type CircleDashboardAssessmentScheduleSectionProps = {
   treatmentPhase?: string | null;
   appMode?: string | null;
   scheduleEnabled?: boolean;
+  featuresVisibility?: Record<string, unknown>;
   remoteAssessmentSchedule?: RemoteAssessmentSchedule;
   enabled: boolean;
   fullPage?: boolean;
@@ -51,6 +52,7 @@ export function CircleDashboardAssessmentScheduleSection({
   treatmentPhase,
   appMode,
   scheduleEnabled,
+  featuresVisibility,
   remoteAssessmentSchedule,
   enabled,
   fullPage = false,
@@ -121,6 +123,7 @@ export function CircleDashboardAssessmentScheduleSection({
         treatmentPhase,
         appMode: canReadRemoteSettings ? appMode : undefined,
         scheduleEnabled: effectiveScheduleEnabled,
+        featuresVisibility: canReadRemoteSettings ? featuresVisibility : undefined,
         remoteAssessmentSchedule: canReadRemoteSettings ? remoteAssessmentSchedule : undefined,
       }),
     [
@@ -129,6 +132,7 @@ export function CircleDashboardAssessmentScheduleSection({
       appMode,
       canReadRemoteSettings,
       effectiveScheduleEnabled,
+      featuresVisibility,
       remoteAssessmentSchedule,
     ],
   );

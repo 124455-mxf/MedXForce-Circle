@@ -89,6 +89,7 @@ const profileEnglish = {
   treatmentPhaseDrivesAppHint:
     'You can keep the tablet as it is, or switch it to the matching application mode and dashboard.',
   treatmentPhaseChange: 'Change',
+  openApplicationModeSettings: 'Application mode settings',
   fieldSurgicalHistory: 'Surgical history',
   fieldComorbidities: 'Comorbidities',
   fieldMedications: 'Medications',
@@ -465,6 +466,7 @@ const profileGerman = {
   treatmentPhaseDrivesAppHint:
     'Sie können das Tablet unverändert lassen oder auf den passenden Anwendungsmodus und das Dashboard umstellen.',
   treatmentPhaseChange: 'Ändern',
+  openApplicationModeSettings: 'Anwendungsmodus-Einstellungen',
   fieldSurgicalHistory: 'Operationsgeschichte',
   fieldComorbidities: 'Komorbiditäten',
   fieldMedications: 'Medikamente',
@@ -850,6 +852,7 @@ const profileSpanish = {
   treatmentPhaseDrivesAppHint:
     'Puede dejar la tablet como está o cambiarla al modo de aplicación y panel correspondientes.',
   treatmentPhaseChange: 'Cambiar',
+  openApplicationModeSettings: 'Ajustes del modo de aplicación',
   fieldSurgicalHistory: 'Historial quirúrgico',
   fieldComorbidities: 'Comorbilidades',
   fieldMedications: 'Medicamentos',
@@ -1235,6 +1238,7 @@ const profilePolish = {
   treatmentPhaseDrivesAppHint:
     'Możesz zostawić tablet bez zmian albo przełączyć go na pasujący tryb aplikacji i układ pulpitu.',
   treatmentPhaseChange: 'Zmień',
+  openApplicationModeSettings: 'Ustawienia trybu aplikacji',
   fieldSurgicalHistory: 'Historia operacji',
   fieldComorbidities: 'Choroby współistniejące',
   fieldMedications: 'Leki',

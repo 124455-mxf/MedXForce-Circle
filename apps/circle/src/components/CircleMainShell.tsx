@@ -137,7 +137,7 @@ export function CircleMainShell({
     null,
   );
   const [remoteSettingsFocus, setRemoteSettingsFocus] = useState<
-    'circle-initiate' | 'circle-drop-in' | null
+    'circle-initiate' | 'circle-drop-in' | 'application-mode' | null
   >(null);
   const { language, t } = useCircleI18nContext();
   const [switcherOpen, setSwitcherOpen] = useState(false);
@@ -300,6 +300,17 @@ export function CircleMainShell({
     setScheduleViewIntent(null);
     guardedNavigate(() => {
       setRemoteSettingsFocus('circle-drop-in');
+      setActiveTab('remote-settings');
+    });
+  }, [guardedNavigate]);
+
+  const handleOpenRemoteSettingsApplicationMode = useCallback(() => {
+    analyticsOriginTabRef.current = null;
+    setInitialAssessmentsOverview(false);
+    setInitialPeriodOverviewDays(null);
+    setScheduleViewIntent(null);
+    guardedNavigate(() => {
+      setRemoteSettingsFocus('application-mode');
       setActiveTab('remote-settings');
     });
   }, [guardedNavigate]);
@@ -793,6 +804,7 @@ export function CircleMainShell({
               onOpenAdminAccess={handleOpenAdminAccess}
               onOpenRemoteSettingsCircleInitiate={handleOpenRemoteSettingsCircleInitiate}
               onOpenRemoteSettingsDropIn={handleOpenRemoteSettingsDropIn}
+              onOpenRemoteSettingsApplicationMode={handleOpenRemoteSettingsApplicationMode}
               onOpenCircleFolder={handleOpenCircleFolder}
               onOpenMessagesInbox={handleOpenMessagesInbox}
               onOpenAnalyticsDetail={handleOpenAnalyticsDetail}
@@ -905,6 +917,7 @@ export function CircleMainShell({
                 storage={storage}
                 patient={selectedPatient}
                 onOpenCircleHelp={() => handleOpenCircleFolder('open', 'care_transition')}
+                onOpenRemoteSettingsApplicationMode={handleOpenRemoteSettingsApplicationMode}
               />
             </div>
           )}

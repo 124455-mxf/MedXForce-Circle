@@ -134,6 +134,7 @@ export function CircleScheduleScreen({
             treatmentPhase={profileSnapshot?.clinical?.treatmentPhase}
             appMode={remoteSettings?.appMode}
             scheduleEnabled
+            featuresVisibility={remoteSettings?.featuresVisibility}
             remoteAssessmentSchedule={remoteSettings?.assessmentSchedule}
             enabled={scheduleTabEnabled}
             fullPage

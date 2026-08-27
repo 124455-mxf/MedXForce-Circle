@@ -202,6 +202,7 @@ interface CircleDashboardScreenProps {
   onOpenAdminAccess?: () => void;
   onOpenRemoteSettingsCircleInitiate?: () => void;
   onOpenRemoteSettingsDropIn?: () => void;
+  onOpenRemoteSettingsApplicationMode?: () => void;
   onOpenCircleFolder?: (thread: CircleMemberThreadKind, folder: CircleInboxFolder) => void;
   /** Open Messages on a specific inbox folder (e.g. ICU communication log). */
   onOpenMessagesInbox?: (view: 'communication_log' | 'in_out') => void;
@@ -997,6 +998,7 @@ export function CircleDashboardScreen({
   onOpenAdminAccess,
   onOpenRemoteSettingsCircleInitiate,
   onOpenRemoteSettingsDropIn,
+  onOpenRemoteSettingsApplicationMode,
   onOpenCircleFolder,
   onOpenMessagesInbox,
   onOpenAnalyticsDetail,
@@ -1183,6 +1185,7 @@ export function CircleDashboardScreen({
         treatmentPhase: profileSnapshot?.clinical?.treatmentPhase,
         appMode: remoteSettings?.appMode,
         scheduleEnabled: remoteSettings?.featuresVisibility?.schedule,
+        featuresVisibility: remoteSettings?.featuresVisibility,
         remoteAssessmentSchedule: remoteSettings?.assessmentSchedule,
       }),
     [
@@ -1190,7 +1193,7 @@ export function CircleDashboardScreen({
       profileSnapshot?.clinical?.treatmentPhase,
       remoteSettings?.appMode,
       remoteSettings?.assessmentSchedule,
-      remoteSettings?.featuresVisibility?.schedule,
+      remoteSettings?.featuresVisibility,
     ],
   );
   const previewReminders = useMemo(() => isPatientInsightsPreviewRemindersEnabled(), []);
@@ -2141,6 +2144,7 @@ export function CircleDashboardScreen({
           onOpenAdminAccess={onOpenAdminAccess}
           onOpenRemoteSettingsCircleInitiate={onOpenRemoteSettingsCircleInitiate}
           onOpenRemoteSettingsDropIn={onOpenRemoteSettingsDropIn}
+          onOpenRemoteSettingsApplicationMode={onOpenRemoteSettingsApplicationMode}
         />
 
         {showPatientLocale && !showPatientLocaleUnderLive ? (

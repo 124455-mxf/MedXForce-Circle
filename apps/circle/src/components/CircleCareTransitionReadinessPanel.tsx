@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import {
@@ -1594,6 +1595,7 @@ export function CircleCareTransitionReadinessPanel({
             if (state.activePackId !== packId) await setActivePack(packId);
           }}
           onShare={shareDraftPack}
+          onDiscard={() => setPackConfirm('discard')}
         >
           <div className="space-y-4">
             {pack?.kind === 'crisis' ? (
@@ -1806,53 +1808,57 @@ export function CircleCareTransitionReadinessPanel({
           </div>
         </CircleCareTransitionPackComposer>
       ) : null}
-      {packConfirm ? (
-        <div className="fixed inset-0 z-[180] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div
-            className="bg-white p-6 rounded-[28px] shadow-2xl max-w-md w-full space-y-4 border border-slate-100"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="care-transition-pack-confirm-title"
-          >
-            <h3
-              id="care-transition-pack-confirm-title"
-              className="text-lg font-bold text-slate-900"
-            >
-              {packConfirm === 'end'
-                ? t('careTransition.endPackConfirmTitle')
-                : t('careTransition.discardDraftConfirmTitle')}
-            </h3>
-            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
-              {packConfirm === 'end'
-                ? t('careTransition.endPackConfirmBody')
-                : t('careTransition.discardDraftConfirmBody')}
-            </p>
-            <div className="flex gap-2 pt-1">
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => setPackConfirm(null)}
-                className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-semibold text-sm"
+      {packConfirm && typeof document !== 'undefined'
+        ? createPortal(
+            <div className="fixed inset-0 z-[220] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+              <div
+                className="bg-white p-6 rounded-[28px] shadow-2xl max-w-md w-full space-y-4 border border-slate-100"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="care-transition-pack-confirm-title"
               >
-                {t('common.cancel')}
-              </button>
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => {
-                  setPackConfirm(null);
-                  void setActivePack(null);
-                }}
-                className="flex-1 py-3 rounded-2xl bg-slate-800 text-white font-semibold text-sm disabled:opacity-50"
-              >
-                {packConfirm === 'end'
-                  ? t('careTransition.endPackConfirm')
-                  : t('careTransition.discardDraft')}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+                <h3
+                  id="care-transition-pack-confirm-title"
+                  className="text-lg font-bold text-slate-900"
+                >
+                  {packConfirm === 'end'
+                    ? t('careTransition.endPackConfirmTitle')
+                    : t('careTransition.discardDraftConfirmTitle')}
+                </h3>
+                <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+                  {packConfirm === 'end'
+                    ? t('careTransition.endPackConfirmBody')
+                    : t('careTransition.discardDraftConfirmBody')}
+                </p>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => setPackConfirm(null)}
+                    className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-semibold text-sm"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => {
+                      setPackConfirm(null);
+                      void setActivePack(null);
+                      setPackStarterOpen(false);
+                    }}
+                    className="flex-1 py-3 rounded-2xl bg-slate-800 text-white font-semibold text-sm disabled:opacity-50"
+                  >
+                    {packConfirm === 'end'
+                      ? t('careTransition.endPackConfirm')
+                      : t('careTransition.discardDraft')}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
