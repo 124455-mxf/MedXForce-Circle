@@ -22,6 +22,7 @@ import {
   type AssessmentScheduleDayEvent,
   type CareCalendarDayEvent,
   type CareCalendarMemberInviteContext,
+  assessmentScheduleStatusI18n,
 } from '@medxforce/shared';
 import type { Firestore } from 'firebase/firestore';
 import type { AnalyticsMetricId } from '@medxforce/shared';
@@ -292,6 +293,7 @@ export function CircleScheduleTodayView({
               <ul className="space-y-3">
                 {assessmentEvents.map((event) => {
                   const metricId = assessmentScheduleIdToAnalyticsMetric(event.id);
+                  const status = assessmentScheduleStatusI18n(event, dateKey);
                   return (
                     <li
                       key={event.id}
@@ -313,7 +315,10 @@ export function CircleScheduleTodayView({
                               event.status === 'completed' && 'text-emerald-600',
                             )}
                           >
-                            {t(`dashboard.assessmentScheduleCalendar.status.${event.status}`)}
+                            {t(
+                              `dashboard.assessmentScheduleCalendar.status.${status.key}`,
+                              status.date ? { date: status.date } : undefined,
+                            )}
                           </p>
                         </div>
                         {metricId && onOpenAssessment && event.status !== 'completed' ? (

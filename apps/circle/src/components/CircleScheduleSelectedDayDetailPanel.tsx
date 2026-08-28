@@ -1,7 +1,13 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 
 import type { Firestore } from 'firebase/firestore';
-import type { AnalyticsMetricId, AssessmentHistoryMap, AssessmentScheduleDayEvent, CareCalendarDayEvent } from '@medxforce/shared';
+import {
+  assessmentScheduleStatusI18n,
+  type AnalyticsMetricId,
+  type AssessmentHistoryMap,
+  type AssessmentScheduleDayEvent,
+  type CareCalendarDayEvent,
+} from '@medxforce/shared';
 import { assessmentScheduleIdToAnalyticsMetric } from '../lib/circleAssessmentScheduleMetrics';
 import type { CircleAssessmentScheduleContext } from '../lib/circleAssessmentScheduleMetrics';
 import {
@@ -118,6 +124,7 @@ export function CircleScheduleSelectedDayDetailPanel({
           <ul className="space-y-3">
             {assessmentEvents.map((event) => {
               const metricId = assessmentScheduleIdToAnalyticsMetric(event.id);
+              const status = assessmentScheduleStatusI18n(event, selectedDateKey);
               return (
                 <li
                   key={event.id}
@@ -135,7 +142,10 @@ export function CircleScheduleSelectedDayDetailPanel({
                         event.status === 'completed' && 'text-emerald-600',
                       )}
                     >
-                      {t(`dashboard.assessmentScheduleCalendar.status.${event.status}`)}
+                      {t(
+                        `dashboard.assessmentScheduleCalendar.status.${status.key}`,
+                        status.date ? { date: status.date } : undefined,
+                      )}
                     </p>
                   </div>
                   {metricId && onOpenAssessment && event.status !== 'completed' ? (

@@ -4,6 +4,8 @@ import type { Firestore } from 'firebase/firestore';
 import { Calendar, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import {
   assessmentScheduleDateKey,
+  assessmentScheduleStatusI18n,
+  dayHasAssessmentCalendarDot,
   getAssessmentScheduleCalendar,
   getCalendarWeekDays,
   getCareCalendarByDay,
@@ -167,24 +169,35 @@ export function CircleAssessmentScheduleCalendar({
   const defaultScheduleView = useCircleScheduleDefaultView();
   const [viewMode, setViewMode] = useState<ScheduleViewMode>(() => {
     if (enableViewModes && viewIntent === 'tasks') return 'tasks';
+    if (enableViewModes && viewIntent === 'today') return 'today';
     return enableViewModes ? getCircleScheduleDefaultView() : 'month';
   });
-  const appliedViewIntentRef = useRef(viewIntent === 'tasks');
+  const appliedViewIntentRef = useRef<CircleScheduleViewIntent | null>(
+    viewIntent === 'tasks' || viewIntent === 'today' ? viewIntent : null,
+  );
   const [weekAnchor, setWeekAnchor] = useState(today);
   const [appointmentSelection, setAppointmentSelection] =
     useState<CircleScheduleAppointmentSelection | null>(null);
 
   useEffect(() => {
     if (!enableViewModes) return;
-    if (viewIntent === 'tasks') {
-      if (!appliedViewIntentRef.current) {
-        appliedViewIntentRef.current = true;
-        setViewMode('tasks');
+    if (viewIntent === 'tasks' || viewIntent === 'today') {
+      if (appliedViewIntentRef.current !== viewIntent) {
+        appliedViewIntentRef.current = viewIntent;
+        setViewMode(viewIntent === 'tasks' ? 'tasks' : 'today');
+        if (viewIntent === 'today') {
+          const now = new Date();
+          setSelectedDateKey(todayKey);
+          setWeekAnchor(now);
+          setViewYear(now.getFullYear());
+          setViewMonth(now.getMonth());
+        }
       }
       return;
     }
+    appliedViewIntentRef.current = null;
     setViewMode(defaultScheduleView);
-  }, [defaultScheduleView, enableViewModes, viewIntent]);
+  }, [defaultScheduleView, enableViewModes, todayKey, viewIntent]);
 
   const rangeStart = useMemo(() => new Date(viewYear, viewMonth, 1), [viewYear, viewMonth]);
   const rangeEnd = useMemo(() => new Date(viewYear, viewMonth + 1, 0), [viewYear, viewMonth]);
@@ -938,7 +951,7 @@ function MonthCalendarBody({
             const hasAppointment = careEvents.some(
               (event) => !isCareCalendarInternalMeeting(event.kind),
             );
-            const hasAssessments = events.length > 0;
+            const hasAssessments = dayHasAssessmentCalendarDot(events);
 
             return (
               <button
@@ -1089,6 +1102,7 @@ function MonthCalendarBody({
             <ul className="space-y-2">
             {selectedEvents.map((event) => {
               const metricId = assessmentScheduleIdToAnalyticsMetric(event.id);
+              const status = assessmentScheduleStatusI18n(event, selectedDateKey);
               return (
                 <li
                   key={event.id}
@@ -1107,7 +1121,10 @@ function MonthCalendarBody({
                         event.status === 'completed' && 'text-emerald-600',
                       )}
                     >
-                      {t(`dashboard.assessmentScheduleCalendar.status.${event.status}`)}
+                      {t(
+                        `dashboard.assessmentScheduleCalendar.status.${status.key}`,
+                        status.date ? { date: status.date } : undefined,
+                      )}
                     </p>
                   </div>
                   {metricId && onOpenAssessment && event.status !== 'completed' ? (

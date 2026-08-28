@@ -16,6 +16,7 @@ import {
   type AssessmentScheduleDayEvent,
   type CareCalendarDayEvent,
   type CareCalendarMemberInviteContext,
+  assessmentScheduleStatusI18n,
 } from '@medxforce/shared';
 import { assessmentScheduleIdToAnalyticsMetric } from '../lib/circleAssessmentScheduleMetrics';
 import type { CircleAssessmentScheduleContext } from '../lib/circleAssessmentScheduleMetrics';
@@ -212,6 +213,7 @@ export function CircleScheduleWeekAgenda({
                     const isCompleted = event.status === 'completed';
                     const canOpen = !!metricId && !!onOpenAssessment && !isCompleted;
                     const canExpand = !canOpen && !isCompleted;
+                    const status = assessmentScheduleStatusI18n(event, dateKey);
                     return (
                       <li
                         key={itemKey}
@@ -247,7 +249,10 @@ export function CircleScheduleWeekAgenda({
                                 isCompleted && 'text-emerald-600',
                               )}
                             >
-                              {t(`dashboard.assessmentScheduleCalendar.status.${event.status}`)}
+                              {t(
+                                `dashboard.assessmentScheduleCalendar.status.${status.key}`,
+                                status.date ? { date: status.date } : undefined,
+                              )}
                             </span>
                           </span>
                           {canExpand ? (
@@ -263,7 +268,10 @@ export function CircleScheduleWeekAgenda({
                         {expanded && canExpand ? (
                           <div className="border-t border-slate-100 px-3 py-3">
                             <p className="text-sm text-slate-500">
-                              {t(`dashboard.assessmentScheduleCalendar.status.${event.status}`)}
+                              {t(
+                                `dashboard.assessmentScheduleCalendar.status.${status.key}`,
+                                status.date ? { date: status.date } : undefined,
+                              )}
                             </p>
                           </div>
                         ) : null}

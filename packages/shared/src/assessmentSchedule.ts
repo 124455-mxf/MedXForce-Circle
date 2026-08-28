@@ -793,7 +793,70 @@ export type AssessmentScheduleDayEvent = {
   modal: NonNullable<SchedulableAssessmentMeta['modal']>;
   titleKey: string;
   status: 'due' | 'upcoming' | 'completed';
+  /** False when this calendar day is still before the early-completion window. */
+  canCompleteNow: boolean;
+  /** Scheduled due date for this credit period (`YYYY-MM-DD`). */
+  scheduledDateKey: string;
+  /**
+   * When false, list in the selected-day panel (grace window) but do not draw a
+   * calendar dot — dots stay on the scheduled due date.
+   */
+  showOnCalendar?: boolean;
 };
+
+export function assessmentEventShowsCalendarDot(
+  event: Pick<AssessmentScheduleDayEvent, 'showOnCalendar'>,
+): boolean {
+  return event.showOnCalendar !== false;
+}
+
+export function dayHasAssessmentCalendarDot(
+  events: AssessmentScheduleDayEvent[] | undefined,
+): boolean {
+  return (events ?? []).some(assessmentEventShowsCalendarDot);
+}
+
+export function formatAssessmentScheduleDueDate(dateKey: string, locale?: string): string {
+  return new Date(`${dateKey}T12:00:00`).toLocaleDateString(locale, {
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+/** Status copy: grace listings on today include the real due date. */
+export function assessmentScheduleStatusI18n(
+  event: Pick<AssessmentScheduleDayEvent, 'status' | 'showOnCalendar' | 'scheduledDateKey'>,
+  viewingDateKey: string,
+  locale?: string,
+): { key: 'availableNowDue' | AssessmentScheduleDayEvent['status']; date?: string } {
+  if (
+    event.showOnCalendar === false &&
+    event.scheduledDateKey &&
+    event.scheduledDateKey !== viewingDateKey
+  ) {
+    return {
+      key: 'availableNowDue',
+      date: formatAssessmentScheduleDueDate(event.scheduledDateKey, locale),
+    };
+  }
+  return { key: event.status };
+}
+
+function isSchedulableCalendarMeta(
+  preferences: {
+    featuresVisibility?: Record<string, unknown>;
+  },
+  meta: SchedulableAssessmentMeta,
+  rule: AssessmentScheduleRule | undefined,
+): rule is AssessmentScheduleRule {
+  return Boolean(
+    rule?.enabled &&
+      meta.released &&
+      meta.modal &&
+      meta.historyKey &&
+      isFeatureEnabled(preferences, meta.featureKey),
+  );
+}
 
 export function getAssessmentScheduleCalendar(
   preferences: {
@@ -806,12 +869,14 @@ export function getAssessmentScheduleCalendar(
   rangeStart: Date,
   rangeEnd: Date,
   remoteAssessmentSchedule?: RemoteAssessmentSchedule,
+  now = new Date(),
 ): Map<string, AssessmentScheduleDayEvent[]> {
   const result = new Map<string, AssessmentScheduleDayEvent[]>();
   if (!isScheduleEnabled(preferences)) return result;
 
   const rules = resolveEffectiveAssessmentScheduleRules({ preferences, remoteAssessmentSchedule });
-  const todayStart = startOfDay(new Date());
+  const todayStart = startOfDay(now);
+  const nowMs = now.getTime();
 
   const start = startOfDay(rangeStart);
   const end = startOfDay(rangeEnd);
@@ -820,22 +885,22 @@ export function getAssessmentScheduleCalendar(
     day.setHours(12, 0, 0, 0);
     const dateKey = assessmentScheduleDateKey(day);
     const events: AssessmentScheduleDayEvent[] = [];
+    const dayStart = startOfDay(day);
 
     for (const meta of SCHEDULABLE_ASSESSMENTS) {
       const rule = rules[meta.id];
-      if (!rule?.enabled || !meta.released || !meta.modal || !meta.historyKey) continue;
-      if (!isFeatureEnabled(preferences, meta.featureKey)) continue;
+      if (!isSchedulableCalendarMeta(preferences, meta, rule)) continue;
       if (!isRecurrenceActiveOnDate(rule.recurrence, day)) continue;
 
-      const latest = latestTimestamp(histories[meta.historyKey] ?? []);
+      const latest = latestTimestamp(histories[meta.historyKey!] ?? []);
       const due = isAssessmentDueForRecurrence(latest, rule.recurrence, day);
-      const dayStart = startOfDay(day);
+      const creditStart = getPeriodCreditStart(rule.recurrence, day);
+      const alreadyCredited = latest !== null && latest >= creditStart;
+      const canCompleteNow = !alreadyCredited && nowMs >= creditStart;
       let status: AssessmentScheduleDayEvent['status'];
       if (!due) {
         status = 'completed';
-      } else if (dayStart < todayStart) {
-        status = 'due';
-      } else if (dayStart === todayStart) {
+      } else if (canCompleteNow || dayStart <= todayStart) {
         status = 'due';
       } else {
         status = 'upcoming';
@@ -843,10 +908,36 @@ export function getAssessmentScheduleCalendar(
 
       events.push({
         id: meta.id,
-        modal: meta.modal,
+        modal: meta.modal!,
         titleKey: meta.titleKey,
         status,
+        canCompleteNow,
+        scheduledDateKey: dateKey,
       });
+    }
+
+    if (dayStart === todayStart) {
+      const listedIds = new Set(events.map((event) => event.id));
+      for (const meta of SCHEDULABLE_ASSESSMENTS) {
+        const rule = rules[meta.id];
+        if (!isSchedulableCalendarMeta(preferences, meta, rule)) continue;
+        if (listedIds.has(meta.id)) continue;
+        const latest = latestTimestamp(histories[meta.historyKey!] ?? []);
+        if (!isAssessmentDueForRecurrence(latest, rule.recurrence, now)) continue;
+        const nextDue = getNextDueTimestamp(latest, rule.recurrence, now);
+        if (nextDue == null) continue;
+        const scheduledDateKey = assessmentScheduleDateKey(new Date(nextDue));
+        if (scheduledDateKey === dateKey) continue;
+        events.push({
+          id: meta.id,
+          modal: meta.modal!,
+          titleKey: meta.titleKey,
+          status: 'due',
+          canCompleteNow: true,
+          scheduledDateKey,
+          showOnCalendar: false,
+        });
+      }
     }
 
     if (events.length > 0) result.set(dateKey, events);

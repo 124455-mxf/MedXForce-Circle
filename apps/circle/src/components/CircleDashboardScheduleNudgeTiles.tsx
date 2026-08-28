@@ -182,7 +182,7 @@ export function CircleDashboardScheduleNudgeTiles({
           })}
           needsAction={counts.dueAssessments > 0}
           hint={hint}
-          onClick={() => onOpenSchedule?.()}
+          onClick={() => onOpenSchedule?.(counts.dueAssessments > 0 ? 'today' : undefined)}
         />
       ) : null}
       {showAppointments ? (

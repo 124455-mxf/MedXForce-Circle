@@ -600,6 +600,7 @@ export const appShellEnglish = {
         due: 'Due',
         upcoming: 'Upcoming',
         completed: 'Completed',
+        availableNowDue: 'Available now · due {{date}}',
       },
     },
     careCalendar: {
@@ -1959,6 +1960,7 @@ export const appShellGerman = {
         due: 'Fällig',
         upcoming: 'Bevorstehend',
         completed: 'Abgeschlossen',
+        availableNowDue: 'Jetzt möglich · fällig {{date}}',
       },
     },
     careCalendar: {
@@ -3320,6 +3322,7 @@ export const appShellSpanish = {
         due: 'Vence',
         upcoming: 'Próxima',
         completed: 'Completada',
+        availableNowDue: 'Disponible ahora · vence {{date}}',
       },
     },
     careCalendar: {
@@ -4681,6 +4684,7 @@ export const appShellPolish = {
         due: 'Termin',
         upcoming: 'Nadchodząca',
         completed: 'Ukończona',
+        availableNowDue: 'Dostępne teraz · termin {{date}}',
       },
     },
     careCalendar: {

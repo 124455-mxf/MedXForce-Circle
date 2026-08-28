@@ -12,7 +12,7 @@ export const CIRCLE_SCHEDULE_DEFAULT_VIEW_CHANGED =
 export type CircleScheduleDefaultView = 'today' | 'week' | 'month';
 
 /** One-shot Schedule tab landing from Home (not a saved default). */
-export type CircleScheduleViewIntent = 'tasks';
+export type CircleScheduleViewIntent = 'tasks' | 'today';
 
 export const CIRCLE_SCHEDULE_DEFAULT_VIEW_OPTIONS: CircleScheduleDefaultView[] = [
   'today',
