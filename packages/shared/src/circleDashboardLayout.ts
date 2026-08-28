@@ -5,6 +5,7 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import {
+  canSeePatientScheduleNudgeTiles,
   canViewPatientProfileTab,
   type CircleMemberRole,
   type PatientCapabilities,
@@ -22,6 +23,8 @@ export type CircleDashboardWidgetKey =
   | 'vitality'
   | 'assessments'
   | 'assessments-compact'
+  | 'patient-activity'
+  | 'patient-activity-compact'
   | 'last-7-days-overview'
   | 'last-30-days-overview'
   | 'diary'
@@ -64,6 +67,8 @@ export const ALL_CUSTOMIZABLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
   'vitality',
   'assessments',
   'assessments-compact',
+  'patient-activity',
+  'patient-activity-compact',
   'last-7-days-overview',
   'last-30-days-overview',
   'diary',
@@ -107,6 +112,7 @@ const COMPACT_VISIBLE_BY_ROLE: Record<DashboardPresetRoleGroup, CircleDashboardW
     'daily-check-in',
     'check-in-wellness-ring',
     'last-7-days-overview',
+    'patient-activity-compact',
     'circle',
     'gallery-engagement',
     'remote-settings',
@@ -120,6 +126,7 @@ const COMPACT_VISIBLE_BY_ROLE: Record<DashboardPresetRoleGroup, CircleDashboardW
     'alert-attention',
     'daily-check-in',
     'last-7-days-overview',
+    'patient-activity-compact',
     'circle',
     'gallery-engagement',
     'user-profile',
@@ -166,6 +173,7 @@ const DETAILED_VISIBLE_BY_ROLE: Record<DashboardPresetRoleGroup, CircleDashboard
     'companion',
     'vitality',
     'assessments',
+    'patient-activity',
     'diary',
     'circle',
     'gallery-engagement',
@@ -185,6 +193,7 @@ const DETAILED_VISIBLE_BY_ROLE: Record<DashboardPresetRoleGroup, CircleDashboard
     'companion',
     'vitality',
     'assessments',
+    'patient-activity',
     'diary',
     'circle',
     'gallery-engagement',
@@ -278,7 +287,17 @@ export const DASHBOARD_EXCLUSIVE_WIDGET_PAIRS: ReadonlyArray<
   ['circle-map', 'circle-compact'],
   ['assessments', 'assessments-compact'],
   ['last-7-days-overview', 'last-30-days-overview'],
+  ['patient-activity', 'patient-activity-compact'],
 ];
+
+/** True when Home should use the side-by-side Patient activity tiles. */
+export function isPatientActivityCompactVisible(
+  hiddenWidgets: ReadonlySet<CircleDashboardWidgetKey>,
+): boolean {
+  const compactOn = !hiddenWidgets.has('patient-activity-compact');
+  const expandedOn = !hiddenWidgets.has('patient-activity');
+  return compactOn && !expandedOn;
+}
 
 export function exclusivePartnerForDashboardWidget(
   key: CircleDashboardWidgetKey,
@@ -380,6 +399,33 @@ export function applyExclusiveDashboardWidgetPairs(
   return [...next];
 }
 
+/**
+ * Stored layouts from before Patient activity density keys existed list neither key.
+ * Infer Compact vs Expanded so Compact Home keeps the side-by-side tiles.
+ */
+function migratePatientActivityWidgetKeys(
+  hidden: readonly CircleDashboardWidgetKey[],
+  role: CircleMemberRole,
+): CircleDashboardWidgetKey[] {
+  const set = new Set(hidden);
+  if (set.has('patient-activity') || set.has('patient-activity-compact')) {
+    return [...hidden];
+  }
+  if (!canSeePatientScheduleNudgeTiles(role)) {
+    return [...hidden, 'patient-activity', 'patient-activity-compact'];
+  }
+  const withoutPair = hidden.filter(
+    (key) => key !== 'patient-activity' && key !== 'patient-activity-compact',
+  );
+  const compactWithoutPair = hiddenDashboardWidgetsForRolePreset(role, 'compact').filter(
+    (key) => key !== 'patient-activity' && key !== 'patient-activity-compact',
+  );
+  if (hiddenWidgetSetEquals(withoutPair, compactWithoutPair)) {
+    return [...hidden, 'patient-activity'];
+  }
+  return [...hidden, 'patient-activity-compact'];
+}
+
 export function resolveEffectiveHiddenDashboardWidgets(
   parsed: { layout: CircleDashboardLayout | null; hasStoredLayout: boolean },
   role: CircleMemberRole,
@@ -388,7 +434,7 @@ export function resolveEffectiveHiddenDashboardWidgets(
     parsed.hasStoredLayout && parsed.layout
       ? parsed.layout.hiddenWidgets
       : defaultHiddenDashboardWidgetsForRole(role);
-  return applyExclusiveDashboardWidgetPairs(hidden);
+  return applyExclusiveDashboardWidgetPairs(migratePatientActivityWidgetKeys(hidden, role));
 }
 
 /** Legacy field on members/{uid}; prefer prefs/dashboard for reads/writes. */
@@ -496,6 +542,9 @@ export function isCircleDashboardWidgetAvailable(
     case 'assessments':
     case 'assessments-compact':
       return !!role && !!caps && canReadAnalyticsAudience('care', role, caps);
+    case 'patient-activity':
+    case 'patient-activity-compact':
+      return !!role && canSeePatientScheduleNudgeTiles(role);
     case 'circle':
       return true;
     case 'circle-map':

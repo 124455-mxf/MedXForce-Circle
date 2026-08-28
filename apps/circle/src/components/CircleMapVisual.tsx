@@ -28,15 +28,24 @@ const CX = 200;
 const CY = 200;
 
 /** Contacts/outer ring today — thinnest orbit stroke. */
-const RING_STROKE_MIN = 1.5;
+const RING_STROKE_MIN = 4.5;
 /** Innermost visible orbit; tapers down to RING_STROKE_MIN. */
-const RING_STROKE_MAX = 6;
+const RING_STROKE_MAX = 10;
+/** Home tile is scaled down, so rings need extra stroke to read the same. */
+const RING_STROKE_MIN_TILE = 7.5;
+const RING_STROKE_MAX_TILE = 14;
 const RING_STROKE_GRAY = '#cbd5e1';
 
-function orbitRingStrokeWidth(visibleIndex: number, visibleCount: number): number {
-  if (visibleCount <= 1) return RING_STROKE_MIN;
+function orbitRingStrokeWidth(
+  visibleIndex: number,
+  visibleCount: number,
+  tileScale = false,
+): number {
+  const min = tileScale ? RING_STROKE_MIN_TILE : RING_STROKE_MIN;
+  const max = tileScale ? RING_STROKE_MAX_TILE : RING_STROKE_MAX;
+  if (visibleCount <= 1) return min;
   const t = visibleIndex / (visibleCount - 1);
-  return RING_STROKE_MAX - t * (RING_STROKE_MAX - RING_STROKE_MIN);
+  return max - t * (max - min);
 }
 
 /** Radians per second — one full orbit takes about a minute. */
@@ -236,7 +245,11 @@ export function CircleMapVisual({
               fill="none"
               stroke={RING_STROKE_GRAY}
               strokeOpacity={emphasized ? 0.7 : 0.5}
-              strokeWidth={orbitRingStrokeWidth(visibleIndex, visibleOrbitCount)}
+              strokeWidth={orbitRingStrokeWidth(
+                visibleIndex,
+                visibleOrbitCount,
+                compact && emphasized,
+              )}
               strokeDasharray={ring?.dashed ? '6 8' : undefined}
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{

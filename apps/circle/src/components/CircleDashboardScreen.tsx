@@ -40,6 +40,7 @@ import {
   circleDisplayFirstName,
   isCareTransitionPackDraft,
   isHospitalFeatureEnabledInRemoteSettings,
+  isPatientActivityCompactVisible,
   isPatientInsightsPreviewRemindersEnabled,
   isRemoteSettingsCustomized,
   normalizeMemberRole,
@@ -114,6 +115,7 @@ import {
   isCircleProfileDataComplete,
   isCoreCircleProfileComplete,
   getMissingCoreCircleProfileFields,
+  getMissingCircleProfileSections,
   getUserProfileRecencyUrgency,
 } from '../lib/circleProfileDashboard';
 
@@ -136,6 +138,7 @@ import {
   formatPatientActiveSectionT,
   formatPatientOnlineDurationLabelT,
   profileCompletenessLabelT,
+  profileGapSectionLabelT,
   treatmentPhaseLabelT,
 } from '../lib/dashboardI18n';
 import {
@@ -259,6 +262,8 @@ type DashboardWidgetSpec = {
   activityDays?: DashboardActivityDay[];
   /** Full-width tiles can put the week bar beside the hero instead of under it. */
   activityDaysPlacement?: 'bottom' | 'end';
+  /** Extra hint row under a label hero (e.g. missing profile sections). */
+  heroChips?: ReactNode;
 };
 
 const WIDGET_ICON_TONE_CLASSES: Record<DashboardWidgetIconTone, string> = {
@@ -457,23 +462,26 @@ function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
             </div>
           </div>
         ) : spec.span === 'full' && spec.heroVariant === 'label' ? (
-          <div className="flex items-center justify-between gap-3 min-w-0">
-            <p
-              className={cn(
-                'font-bold tracking-tight min-w-0',
-                typeof spec.heroValue === 'number'
-                  ? 'leading-none text-3xl sm:text-[2rem] shrink-0'
-                  : 'text-lg leading-tight',
-                spec.heroMuted ? 'text-slate-400' : 'text-slate-900',
-              )}
-            >
-              {spec.heroValue}
-            </p>
-            <div className="shrink-0 max-w-[55%] text-right">
-              {rows.map((row, index) => (
-                <DashboardWidgetRow key={index} row={row} index={index} heroLayout />
-              ))}
+          <div className="flex flex-col gap-2 min-w-0">
+            <div className="flex items-center justify-between gap-3 min-w-0">
+              <p
+                className={cn(
+                  'font-bold tracking-tight min-w-0',
+                  typeof spec.heroValue === 'number'
+                    ? 'leading-none text-3xl sm:text-[2rem] shrink-0'
+                    : 'text-lg leading-tight',
+                  spec.heroMuted ? 'text-slate-400' : 'text-slate-900',
+                )}
+              >
+                {spec.heroValue}
+              </p>
+              <div className="shrink-0 max-w-[55%] text-right">
+                {rows.map((row, index) => (
+                  <DashboardWidgetRow key={index} row={row} index={index} heroLayout />
+                ))}
+              </div>
             </div>
+            {spec.heroChips ? spec.heroChips : null}
           </div>
         ) : (
         <>
@@ -508,6 +516,35 @@ function DashboardWidget({ spec }: { spec: DashboardWidgetSpec }) {
         </div>
       )}
     </button>
+  );
+}
+
+function ProfileGapChips({
+  labels,
+  tone,
+}: {
+  labels: string[];
+  tone: AlertAttentionRecencyUrgency;
+}) {
+  if (labels.length === 0) return null;
+  const toneClass =
+    tone === 'red'
+      ? 'border-red-200 bg-red-50 text-red-800'
+      : 'border-amber-200 bg-amber-50 text-amber-800';
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {labels.map((label) => (
+        <span
+          key={label}
+          className={cn(
+            'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+            toneClass,
+          )}
+        >
+          {label}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -1041,7 +1078,7 @@ export function CircleDashboardScreen({
     isHospitalFeatureEnabledInRemoteSettings(remoteSettings, 'hospitalFeatureAssessments');
   const caps = patient.capabilities;
   const memberRole = normalizeMemberRole(patient.role);
-  const { isWidgetVisible } = useCircleDashboardLayout(
+  const { isWidgetVisible, hiddenWidgets } = useCircleDashboardLayout(
     db,
     patient.patientId,
     user.uid,
@@ -1149,6 +1186,7 @@ export function CircleDashboardScreen({
     patient.patientId,
   );
   const showScheduleNudgeTiles = canSeePatientScheduleNudgeTiles(memberRole);
+  const patientActivityCompact = isPatientActivityCompactVisible(hiddenWidgets);
   const { inviteContext, memberContactId, inviteContextReady } = useCircleMemberInviteContext(
     db,
     user,
@@ -1872,11 +1910,13 @@ export function CircleDashboardScreen({
 
   const missingCoreFields = getMissingCoreCircleProfileFields(profileSnapshot);
   const missingCoreLabel = formatMissingCoreProfileFieldsT(t, missingCoreFields);
+  const missingProfileSections = getMissingCircleProfileSections(profileSnapshot);
   const coreComplete =
     profileSnapshot != null && isCoreCircleProfileComplete(profileSnapshot);
 
   const dataComplete =
     profileSnapshot != null && isCircleProfileDataComplete(profileSnapshot);
+  const profileUrgency = getUserProfileRecencyUrgency(profileSnapshot);
 
   if (canOpenPatientProfile) {
     patientAppWidgets.push({
@@ -1909,7 +1949,17 @@ export function CircleDashboardScreen({
                     )}
                   </span>
                 ),
-            recencyTint: getUserProfileRecencyUrgency(profileSnapshot),
+            row2: '',
+            recencyTint: profileUrgency,
+            heroChips:
+              !dataComplete && missingProfileSections.length > 0 ? (
+                <ProfileGapChips
+                  labels={missingProfileSections.map((section) =>
+                    profileGapSectionLabelT(t, section),
+                  )}
+                  tone={profileUrgency}
+                />
+              ) : undefined,
           }),
       onClick: () => onGoToTab('patient-profile'),
     });
@@ -2111,6 +2161,7 @@ export function CircleDashboardScreen({
           onOpenCircleFolder={onOpenCircleFolder}
           scheduleNudgeCounts={showScheduleNudgeTiles ? scheduleNudgeCounts : null}
           scheduleEnabled={scheduleEnabledForNudges}
+          patientActivityCompact={patientActivityCompact}
           onOpenSchedule={(view) => {
             if (onOpenSchedule) {
               onOpenSchedule(view);

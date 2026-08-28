@@ -96,6 +96,7 @@ export function CircleDashboardAttentionTiles({
   onOpenCircleFolder,
   scheduleNudgeCounts,
   scheduleEnabled = true,
+  patientActivityCompact = false,
   onOpenSchedule,
 }: {
   memberRole: string;
@@ -122,6 +123,7 @@ export function CircleDashboardAttentionTiles({
   onOpenCircleFolder?: (thread: CircleMemberThreadKind, folder: CircleInboxFolder) => void;
   scheduleNudgeCounts?: CircleScheduleNudgeCounts | null;
   scheduleEnabled?: boolean;
+  patientActivityCompact?: boolean;
   onOpenSchedule?: (view?: CircleScheduleViewIntent) => void;
 }) {
   const t = useCircleT();
@@ -288,10 +290,11 @@ export function CircleDashboardAttentionTiles({
           <h3 className={dashboardSectionTitleClass}>
             {t('dashboard.sectionPatientActivity')}
           </h3>
-          <div className="grid grid-cols-1 gap-3">
+          <div className={cn('grid gap-3', patientActivityCompact ? 'grid-cols-2' : 'grid-cols-1')}>
             <CircleDashboardScheduleNudgeTiles
               counts={scheduleNudgeCounts}
               scheduleEnabled={scheduleEnabled}
+              compact={patientActivityCompact}
               onOpenSchedule={onOpenSchedule}
             />
           </div>

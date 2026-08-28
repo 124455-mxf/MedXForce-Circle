@@ -188,17 +188,161 @@ function ScheduleNudgeTile({
   );
 }
 
+function CompactNudgeChip({
+  count,
+  label,
+  icon: Icon,
+  tone,
+  onClick,
+}: {
+  count: number;
+  label: string;
+  icon: LucideIcon;
+  tone: 'amber' | 'violet';
+  onClick?: () => void;
+}) {
+  const toneClass =
+    tone === 'amber'
+      ? {
+          wrap: 'border-amber-200 bg-amber-50',
+          icon: 'text-amber-700',
+          text: 'text-amber-800',
+        }
+      : {
+          wrap: 'border-violet-200 bg-violet-50',
+          icon: 'text-violet-700',
+          text: 'text-violet-800',
+        };
+
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick?.();
+      }}
+      disabled={!onClick}
+      className={cn(
+        'inline-flex items-center gap-1 max-w-full rounded-full border px-2 py-0.5 text-left',
+        toneClass.wrap,
+        !onClick && 'cursor-default',
+      )}
+    >
+      <Icon size={10} className={cn('shrink-0', toneClass.icon)} aria-hidden />
+      <span className={cn('text-[10px] font-bold uppercase tracking-wide truncate', toneClass.text)}>
+        {label}
+      </span>
+      <span className={cn('font-bold tabular-nums text-[11px]', toneClass.text)}>
+        {formatCircleBadgeCount(count)}
+      </span>
+    </button>
+  );
+}
+
+function CompactScheduleNudgeTile({
+  label,
+  icon: Icon,
+  primaryCount,
+  primaryLabel,
+  upcomingLabel,
+  needsAction,
+  startingSoonCount = 0,
+  startingSoonLabel,
+  visitTasksCount = 0,
+  visitTasksLabel,
+  fullWidth = false,
+  onClick,
+  onStartingSoonClick,
+  onVisitTasksClick,
+}: {
+  label: string;
+  icon: LucideIcon;
+  primaryCount: number;
+  primaryLabel: string;
+  upcomingLabel: string;
+  needsAction: boolean;
+  startingSoonCount?: number;
+  startingSoonLabel?: string;
+  visitTasksCount?: number;
+  visitTasksLabel?: string;
+  fullWidth?: boolean;
+  onClick?: () => void;
+  onStartingSoonClick?: () => void;
+  onVisitTasksClick?: () => void;
+}) {
+  const recencyTint = needsAction ? 'orange' : 'green';
+  const showStartingSoon = startingSoonCount > 0 && !!startingSoonLabel;
+  const showVisitTasks = visitTasksCount > 0 && !!visitTasksLabel;
+
+  return (
+    <div
+      className={cn(
+        'min-h-[7.5rem] flex flex-col gap-2 p-3 rounded-2xl border text-left',
+        DASHBOARD_RECENCY_TINT_CLASSES[recencyTint],
+        fullWidth && 'col-span-2',
+      )}
+    >
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={!onClick}
+        className={cn(
+          'flex flex-col gap-2 min-w-0 w-full text-left rounded-lg flex-1',
+          !onClick && 'cursor-default',
+        )}
+      >
+        <span className="flex items-center gap-2 w-full min-w-0">
+          <Icon size={16} className="shrink-0 text-blue-600" aria-hidden />
+          <span className={cn(dashboardTileTitleClass, 'truncate')}>{label}</span>
+        </span>
+        <span className="font-bold tabular-nums leading-none text-4xl text-slate-800">
+          {formatCircleBadgeCount(primaryCount)}
+        </span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 leading-snug">
+          {primaryLabel}
+        </span>
+        <span className="text-[11px] text-slate-500 leading-snug">{upcomingLabel}</span>
+      </button>
+      {showVisitTasks || showStartingSoon ? (
+        <div className="flex flex-wrap gap-1.5">
+          {showVisitTasks ? (
+            <CompactNudgeChip
+              count={visitTasksCount}
+              label={visitTasksLabel!}
+              icon={ListTodo}
+              tone="violet"
+              onClick={onVisitTasksClick ?? onClick}
+            />
+          ) : null}
+          {showStartingSoon ? (
+            <CompactNudgeChip
+              count={startingSoonCount}
+              label={startingSoonLabel!}
+              icon={Clock}
+              tone="amber"
+              onClick={onStartingSoonClick ?? onClick}
+            />
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function CircleDashboardScheduleNudgeTiles({
   counts,
   scheduleEnabled = true,
+  compact = false,
   onOpenSchedule,
 }: {
   counts: CircleScheduleNudgeCounts;
   scheduleEnabled?: boolean;
+  compact?: boolean;
   onOpenSchedule?: (view?: CircleScheduleViewIntent) => void;
 }) {
   const t = useCircleT();
   const hint = t('dashboard.attentionScheduleNudgeHint');
+  const upcomingDays = CIRCLE_SCHEDULE_NUDGE_UPCOMING_DAYS;
 
   const showAssessments =
     scheduleEnabled && (counts.dueAssessments > 0 || counts.upcomingAssessments > 0);
@@ -210,6 +354,56 @@ export function CircleDashboardScheduleNudgeTiles({
 
   if (!showAssessments && !showAppointments) return null;
 
+  const tileCount = (showAssessments ? 1 : 0) + (showAppointments ? 1 : 0);
+  const fullWidth = compact && tileCount === 1;
+
+  if (compact) {
+    return (
+      <>
+        {showAssessments ? (
+          <CompactScheduleNudgeTile
+            label={t('dashboard.attentionAssessments')}
+            icon={ClipboardList}
+            primaryCount={counts.dueAssessments}
+            primaryLabel={t('dashboard.attentionAssessmentsDueNow')}
+            upcomingLabel={t('dashboard.attentionUpcomingInDays', {
+              count: formatCircleBadgeCount(counts.upcomingAssessments),
+              days: upcomingDays,
+            })}
+            needsAction={counts.dueAssessments > 0}
+            fullWidth={fullWidth}
+            onClick={() => onOpenSchedule?.(counts.dueAssessments > 0 ? 'today' : undefined)}
+          />
+        ) : null}
+        {showAppointments ? (
+          <CompactScheduleNudgeTile
+            label={t('dashboard.attentionAppointments')}
+            icon={Calendar}
+            primaryCount={counts.appointmentsToday}
+            primaryLabel={t('dashboard.attentionAppointmentsToday')}
+            upcomingLabel={t('dashboard.attentionUpcomingInDays', {
+              count: formatCircleBadgeCount(counts.upcomingAppointments),
+              days: upcomingDays,
+            })}
+            needsAction={
+              counts.appointmentsToday > 0
+              || counts.imminentAppointments > 0
+              || counts.openVisitTasks > 0
+            }
+            startingSoonCount={counts.imminentAppointments}
+            startingSoonLabel={t('dashboard.attentionAppointmentsStartingSoon')}
+            visitTasksCount={counts.openVisitTasks}
+            visitTasksLabel={t('dashboard.attentionAppointmentsVisitTasks')}
+            fullWidth={fullWidth}
+            onClick={() => onOpenSchedule?.('week')}
+            onStartingSoonClick={() => onOpenSchedule?.('today')}
+            onVisitTasksClick={() => onOpenSchedule?.('tasks')}
+          />
+        ) : null}
+      </>
+    );
+  }
+
   return (
     <>
       {showAssessments ? (
@@ -220,7 +414,7 @@ export function CircleDashboardScheduleNudgeTiles({
           primaryLabel={t('dashboard.attentionAssessmentsDueNow')}
           secondaryCount={counts.upcomingAssessments}
           secondaryLabel={t('dashboard.attentionAssessmentsUpcoming', {
-            days: CIRCLE_SCHEDULE_NUDGE_UPCOMING_DAYS,
+            days: upcomingDays,
           })}
           needsAction={counts.dueAssessments > 0}
           hint={hint}
@@ -235,7 +429,7 @@ export function CircleDashboardScheduleNudgeTiles({
           primaryLabel={t('dashboard.attentionAppointmentsToday')}
           secondaryCount={counts.upcomingAppointments}
           secondaryLabel={t('dashboard.attentionAppointmentsUpcoming', {
-            days: CIRCLE_SCHEDULE_NUDGE_UPCOMING_DAYS,
+            days: upcomingDays,
           })}
           needsAction={
             counts.appointmentsToday > 0

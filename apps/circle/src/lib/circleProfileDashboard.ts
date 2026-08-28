@@ -75,6 +75,27 @@ function isEngagementComplete(snapshot: CirclePatientProfileSnapshot): boolean {
   );
 }
 
+/** Non-identity profile areas still empty — shown as chips on the Home tile. */
+export type CircleProfileGapSection =
+  | 'diagnosis'
+  | 'dailyAbilities'
+  | 'homeLife'
+  | 'interests';
+
+export function getMissingCircleProfileSections(
+  snapshot: CirclePatientProfileSnapshot | null | undefined,
+): CircleProfileGapSection[] {
+  if (!snapshot) {
+    return ['diagnosis', 'dailyAbilities', 'homeLife', 'interests'];
+  }
+  const missing: CircleProfileGapSection[] = [];
+  if (!hasText(snapshot.clinical.primaryDiagnosis)) missing.push('diagnosis');
+  if (!isFunctionalComplete(snapshot)) missing.push('dailyAbilities');
+  if (!isLifestyleComplete(snapshot)) missing.push('homeLife');
+  if (!isEngagementComplete(snapshot)) missing.push('interests');
+  return missing;
+}
+
 export function isCircleProfileDataComplete(snapshot: CirclePatientProfileSnapshot): boolean {
   return (
     isIdentityComplete(snapshot) &&

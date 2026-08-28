@@ -149,6 +149,13 @@ export function formatMissingCoreProfileFieldsT(
   return fields.map((field) => coreProfileFieldLabelT(t, field)).join(', ');
 }
 
+export function profileGapSectionLabelT(
+  t: CircleTranslator,
+  section: 'diagnosis' | 'dailyAbilities' | 'homeLife' | 'interests',
+): string {
+  return t(`dashboard.profileGap.${section}`);
+}
+
 export function treatmentPhaseLabelT(t: CircleTranslator, phase: string | undefined | null): string {
   const raw = phase?.trim() ?? '';
   if (!raw) return t('dashboard.notSet');

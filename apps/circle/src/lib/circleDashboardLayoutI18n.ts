@@ -9,6 +9,8 @@ export const DASHBOARD_WIDGET_TITLE_KEYS: Record<CircleDashboardWidgetKey, strin
   vitality: 'dashboard.vitality',
   assessments: 'dashboard.assessments',
   'assessments-compact': 'dashboard.customizeAssessmentsCompact',
+  'patient-activity': 'dashboard.customizePatientActivityExpanded',
+  'patient-activity-compact': 'dashboard.customizePatientActivityCompact',
   'last-7-days-overview': 'dashboard.last7DaysOverview',
   'last-30-days-overview': 'dashboard.last30DaysOverview',
   diary: 'dashboard.diary',

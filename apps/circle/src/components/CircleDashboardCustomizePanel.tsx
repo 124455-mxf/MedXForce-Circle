@@ -5,6 +5,7 @@ import type { Firestore } from 'firebase/firestore';
 import {
   CIRCLE_DASHBOARD_WIDGET_SECTIONS,
   isCircleDashboardWidgetAvailable,
+  isPatientActivityCompactVisible,
   normalizeMemberRole,
   type CircleDashboardLayoutPreset,
   type CircleDashboardLayoutSection,
@@ -24,6 +25,54 @@ type CircleDashboardCustomizePanelProps = {
   db: Firestore;
   patient: CirclePatientSummary | null;
 };
+
+function PatientActivityDensityPicker({
+  compact,
+  saving,
+  onSelect,
+}: {
+  compact: boolean;
+  saving: boolean;
+  onSelect: (compact: boolean) => void;
+}) {
+  const t = useCircleT();
+  return (
+    <div className="space-y-2 rounded-2xl border border-slate-100 bg-white px-4 py-3.5">
+      <div className="min-w-0">
+        <p className="font-semibold text-slate-800 text-sm">
+          {t('dashboard.sectionPatientActivity')}
+        </p>
+        <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+          {t('dashboard.customizePatientActivityHint')}
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {([
+          { id: 'compact' as const, label: t('dashboard.customizePatientActivityCompact') },
+          { id: 'expanded' as const, label: t('dashboard.customizePatientActivityExpanded') },
+        ]).map((option) => {
+          const active = option.id === 'compact' ? compact : !compact;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              disabled={saving}
+              onClick={() => onSelect(option.id === 'compact')}
+              className={cn(
+                'py-2.5 rounded-2xl border text-sm font-semibold transition-colors disabled:opacity-60',
+                active
+                  ? 'border-blue-600 bg-blue-50 text-blue-800'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+              )}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function DashboardWidgetToggle({
   title,
@@ -286,6 +335,22 @@ export function CircleDashboardCustomizePanel({
         </div>
       ) : (
         <div className="space-y-2">
+          {isCircleDashboardWidgetAvailable(
+            'patient-activity',
+            patient.capabilities,
+            memberRole,
+          ) ? (
+            <PatientActivityDensityPicker
+              compact={isPatientActivityCompactVisible(hiddenWidgets)}
+              saving={saving}
+              onSelect={(compact) =>
+                void handleToggle(
+                  compact ? 'patient-activity-compact' : 'patient-activity',
+                  true,
+                )
+              }
+            />
+          ) : null}
           {(Object.keys(CIRCLE_DASHBOARD_WIDGET_SECTIONS) as CircleDashboardLayoutSection[]).map(
             (section) => (
               <DashboardSectionToggles
