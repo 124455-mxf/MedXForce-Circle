@@ -35,6 +35,7 @@ export function CirclePostBodyRenderer({
   memberDisplayName,
   memberRole,
   onRecordVisit,
+  onTakeNotes,
   authorDisplayName,
   translationTargetLanguages,
 }: {
@@ -53,6 +54,7 @@ export function CirclePostBodyRenderer({
   memberDisplayName?: string;
   memberRole?: string;
   onRecordVisit?: (entryId?: string) => void;
+  onTakeNotes?: (entryId: string, dateKey: string) => void;
   authorDisplayName?: string;
   translationTargetLanguages?: CircleUiLanguage[];
 }) {
@@ -102,6 +104,7 @@ export function CirclePostBodyRenderer({
         t={t}
         disableTruncate={disableTruncate}
         onRecordVisit={onRecordVisit}
+        onTakeNotes={onTakeNotes}
       />
     );
   }

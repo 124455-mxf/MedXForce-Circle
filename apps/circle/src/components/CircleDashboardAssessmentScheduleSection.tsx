@@ -13,7 +13,7 @@ import { useCircleMemberTimeZone } from '../hooks/useCircleMemberTimeZone';
 import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfileSnapshot';
 import { updateCareCalendarEntry } from '../services/careCalendarService';
 import type { CareCalendarAppointmentTask, CareCalendarEntry, CareCalendarVisitDebrief } from '@medxforce/shared';
-import type { CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
+import type { CircleScheduleAppointmentFocus, CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
 
 export type CircleDashboardAssessmentScheduleSectionProps = {
   db: Firestore;
@@ -38,6 +38,8 @@ export type CircleDashboardAssessmentScheduleSectionProps = {
   onRegisterAddAppointment?: (add: ((dateKey?: string) => void) | null) => void;
   onOpenCountChange?: (count: number) => void;
   viewIntent?: CircleScheduleViewIntent | null;
+  appointmentFocus?: CircleScheduleAppointmentFocus | null;
+  onAppointmentFocusConsumed?: () => void;
 };
 
 export function CircleDashboardAssessmentScheduleSection({
@@ -63,6 +65,8 @@ export function CircleDashboardAssessmentScheduleSection({
   onRegisterAddAppointment,
   onOpenCountChange,
   viewIntent = null,
+  appointmentFocus = null,
+  onAppointmentFocusConsumed,
 }: CircleDashboardAssessmentScheduleSectionProps) {
   const { inviteContext, memberContactId, contact: ownContact, loading: ownContactLoading, inviteContextReady } =
     useCircleMemberInviteContext(db, user, patient);
@@ -209,7 +213,7 @@ export function CircleDashboardAssessmentScheduleSection({
           onClinicalReferenceIdsChange={
             canManageAppointments ? handleClinicalReferenceIdsChange : undefined
           }
-          onVisitDebriefChange={canManageAppointments ? handleVisitDebriefChange : undefined}
+          onVisitDebriefChange={handleVisitDebriefChange}
           onManageClinicalReferences={onManageClinicalReferences}
           currentUserUid={user.uid}
           currentUserName={authorName}
@@ -228,6 +232,8 @@ export function CircleDashboardAssessmentScheduleSection({
           onRecordVisit={onRecordVisit}
           onOpenCountChange={onOpenCountChange}
           viewIntent={viewIntent}
+          appointmentFocus={appointmentFocus}
+          onAppointmentFocusConsumed={onAppointmentFocusConsumed}
         />
       </div>
       {canManageAppointments && (

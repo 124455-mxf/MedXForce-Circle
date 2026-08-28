@@ -33,6 +33,9 @@ export type CareCalendarVisitDebriefActionItem = {
   due?: string;
 };
 
+/** Sentinel id when notes were typed by hand instead of published from a recording. */
+export const MANUAL_VISIT_NOTES_CAPTURE_ID = 'manual-notes';
+
 /** Post-visit debrief from visit capture, stored on the appointment. */
 export type CareCalendarVisitDebrief = {
   visitCaptureId: string;
@@ -44,6 +47,38 @@ export type CareCalendarVisitDebrief = {
   editedAt?: number;
   editedByUid?: string;
 };
+
+export function isManualVisitNotesDebrief(debrief?: CareCalendarVisitDebrief): boolean {
+  return !debrief || debrief.visitCaptureId === MANUAL_VISIT_NOTES_CAPTURE_ID;
+}
+
+export function createManualVisitNotesDebrief(input: {
+  summary: string;
+  capturedByName?: string;
+  editedByUid?: string;
+  existing?: CareCalendarVisitDebrief;
+}): CareCalendarVisitDebrief {
+  const summary = input.summary.trim().slice(0, 4000);
+  const now = Date.now();
+  if (input.existing) {
+    return {
+      ...input.existing,
+      summary,
+      editedAt: now,
+      ...(input.editedByUid ? { editedByUid: input.editedByUid } : {}),
+    };
+  }
+  const capturedByName = input.capturedByName?.trim();
+  return {
+    visitCaptureId: MANUAL_VISIT_NOTES_CAPTURE_ID,
+    publishedAt: now,
+    summary,
+    actionItems: [],
+    followUpQuestions: [],
+    ...(capturedByName ? { capturedByName: capturedByName.slice(0, 200) } : {}),
+    ...(input.editedByUid ? { editedByUid: input.editedByUid, editedAt: now } : {}),
+  };
+}
 
 const BRIEF_OWNERS = new Set(['care_team', 'patient', 'doctor', 'unknown']);
 

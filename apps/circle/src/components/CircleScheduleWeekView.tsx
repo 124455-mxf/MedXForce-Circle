@@ -42,6 +42,7 @@ import { CircleScheduleWeekAgenda } from './CircleScheduleWeekAgenda';
 export type CircleScheduleAppointmentSelection = {
   dateKey: string;
   event: CareCalendarDayEvent;
+  episodeTab?: 'details' | 'prepare' | 'followup';
 };
 
 export function resolveCircleScheduleAppointmentSelection(
@@ -49,7 +50,7 @@ export function resolveCircleScheduleAppointmentSelection(
   dayEvents: CareCalendarDayEvent[],
 ): CircleScheduleAppointmentSelection {
   const fresh = dayEvents.find((event) => event.entryId === selection.event.entryId);
-  return fresh ? { dateKey: selection.dateKey, event: fresh } : selection;
+  return fresh ? { ...selection, dateKey: selection.dateKey, event: fresh } : selection;
 }
 
 type CircleScheduleWeekViewProps = {
@@ -578,32 +579,29 @@ function WeekAppointmentDetail({
           return (
             <li
               key={attendee.contactId}
-              className={cn('flex items-center gap-2 text-sm text-slate-700', declined && 'opacity-60')}
+              className={cn('text-sm text-slate-700', declined && 'opacity-60')}
             >
-              <Users size={14} className="shrink-0 text-violet-600" />
-              <span className="min-w-0 flex-1">
-                <span className="font-semibold text-slate-800">{attendee.name}</span>
-                <span className="text-slate-500">
-                  {' '}
-                  · {tier ? `${t(`dashboard.circleMap.roles.${role}`)} (${tier})` : t(`dashboard.circleMap.roles.${role}`)}
-                </span>
-                {showResponseBadge ? (
-                  <span
-                    className={cn(
-                      'ml-2 text-[10px] font-bold uppercase tracking-wide',
-                      response === 'accepted'
-                        ? 'text-emerald-600'
-                        : response === 'declined'
-                          ? 'text-slate-400'
-                          : 'text-amber-600',
-                    )}
-                  >
-                    {ct(
-                      `fields.rsvp${response === 'accepted' ? 'Accepted' : response === 'declined' ? 'Declined' : 'Pending'}`,
-                    )}
-                  </span>
-                ) : null}
+              <span className="font-semibold text-slate-800">{attendee.name}</span>
+              <span className="text-slate-500">
+                {' '}
+                · {tier ? `${t(`dashboard.circleMap.roles.${role}`)} (${tier})` : t(`dashboard.circleMap.roles.${role}`)}
               </span>
+              {showResponseBadge ? (
+                <span
+                  className={cn(
+                    'ml-2 text-[10px] font-bold uppercase tracking-wide',
+                    response === 'accepted'
+                      ? 'text-emerald-600'
+                      : response === 'declined'
+                        ? 'text-slate-400'
+                        : 'text-amber-600',
+                  )}
+                >
+                  {ct(
+                    `fields.rsvp${response === 'accepted' ? 'Accepted' : response === 'declined' ? 'Declined' : 'Pending'}`,
+                  )}
+                </span>
+              ) : null}
             </li>
           );
         })}
@@ -680,6 +678,7 @@ function WeekAppointmentDetail({
               ? (tasks) => onAppointmentTasksChange(event.entryId, event.kind, tasks)
               : undefined
           }
+          initialTab={selection.episodeTab}
           patientId={patientId}
           db={db}
           onClinicalReferenceIdsChange={

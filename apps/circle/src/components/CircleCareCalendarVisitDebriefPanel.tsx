@@ -1,13 +1,24 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 
-import { useState } from 'react';
-import { ClipboardCopy, Loader2, Stethoscope } from 'lucide-react';
-import type { CareCalendarVisitDebrief } from '@medxforce/shared';
+import { useEffect, useState } from 'react';
+import { ClipboardCopy, Loader2, Mic, MicOff, NotebookPen, Stethoscope } from 'lucide-react';
+import {
+  createManualVisitNotesDebrief,
+  isManualVisitNotesDebrief,
+  type CareCalendarVisitDebrief,
+} from '@medxforce/shared';
+import { useDictation } from '../hooks/useDictation';
 import { copyVisitDebriefToClipboard } from '../lib/visitBriefExport';
+import { cn } from '../lib/utils';
+
+const VISIT_NOTES_MAX = 4000;
 
 type CircleCareCalendarVisitDebriefPanelProps = {
   debrief?: CareCalendarVisitDebrief;
   canEdit?: boolean;
+  allowCreate?: boolean;
+  capturedByName?: string;
+  editedByUid?: string;
   t: (path: string, params?: Record<string, unknown>) => string;
   onSave?: (debrief: CareCalendarVisitDebrief) => void | Promise<void>;
 };
@@ -15,6 +26,9 @@ type CircleCareCalendarVisitDebriefPanelProps = {
 export function CircleCareCalendarVisitDebriefPanel({
   debrief,
   canEdit = false,
+  allowCreate = false,
+  capturedByName,
+  editedByUid,
   t,
   onSave,
 }: CircleCareCalendarVisitDebriefPanelProps) {
@@ -22,21 +36,45 @@ export function CircleCareCalendarVisitDebriefPanel({
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { isRecording, micError, setMicError, toggleRecording, stopRecording } = useDictation();
 
-  if (!debrief) return null;
+  useEffect(() => {
+    setDraftSummary(debrief?.summary ?? '');
+    setError(null);
+  }, [debrief?.visitCaptureId, debrief?.publishedAt, debrief?.summary]);
 
-  const dirty = draftSummary.trim() !== debrief.summary.trim();
+  useEffect(() => () => stopRecording(), [stopRecording]);
+
+  const applyDraft = (next: string) => setDraftSummary(next.slice(0, VISIT_NOTES_MAX));
+
+  const handleDictation = () => {
+    setMicError(null);
+    void toggleRecording(() => draftSummary, applyDraft);
+  };
+
+  const canCompose = canEdit && !!onSave && (debrief || allowCreate);
+  if (!debrief && !canCompose) return null;
+
+  const creating = !debrief;
+  const manualNotes = isManualVisitNotesDebrief(debrief);
+  const dirty = creating
+    ? draftSummary.trim().length > 0
+    : draftSummary.trim() !== (debrief?.summary ?? '').trim();
+  const TitleIcon = creating || manualNotes ? NotebookPen : Stethoscope;
 
   const handleSave = async () => {
-    if (!onSave || !dirty) return;
+    if (!onSave || !dirty || !draftSummary.trim()) return;
     setSaving(true);
     setError(null);
     try {
-      await onSave({
-        ...debrief,
-        summary: draftSummary.trim().slice(0, 4000),
-        editedAt: Date.now(),
-      });
+      await onSave(
+        createManualVisitNotesDebrief({
+          summary: draftSummary,
+          capturedByName,
+          editedByUid,
+          existing: debrief,
+        }),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : t('visitBrief.saveError'));
     } finally {
@@ -45,8 +83,12 @@ export function CircleCareCalendarVisitDebriefPanel({
   };
 
   const handleCopy = async () => {
+    const payload = debrief
+      ? { ...debrief, summary: draftSummary.trim() || debrief.summary }
+      : createManualVisitNotesDebrief({ summary: draftSummary, capturedByName, editedByUid });
+    if (!payload.summary.trim()) return;
     try {
-      await copyVisitDebriefToClipboard({ ...debrief, summary: draftSummary.trim() || debrief.summary });
+      await copyVisitDebriefToClipboard(payload);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -57,29 +99,75 @@ export function CircleCareCalendarVisitDebriefPanel({
   return (
     <section className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4 space-y-3">
       <div className="flex items-start gap-2">
-        <Stethoscope size={18} className="text-emerald-700 shrink-0 mt-0.5" aria-hidden />
+        <TitleIcon size={18} className="text-emerald-700 shrink-0 mt-0.5" aria-hidden />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-emerald-900">{t('visitBrief.debriefTitle')}</p>
-          {debrief.capturedByName ? (
+          <p className="text-sm font-bold text-emerald-900">
+            {t(creating || manualNotes ? 'visitBrief.notesTitle' : 'visitBrief.debriefTitle')}
+          </p>
+          {debrief?.capturedByName ? (
             <p className="text-sm text-slate-500 mt-0.5">
-              {t('visitBrief.debriefCapturedBy', { name: debrief.capturedByName })}
+              {t(manualNotes ? 'visitBrief.notesCapturedBy' : 'visitBrief.debriefCapturedBy', {
+                name: debrief.capturedByName,
+              })}
+            </p>
+          ) : creating ? (
+            <p className="text-sm text-slate-500 mt-0.5">{t('visitBrief.notesEmpty')}</p>
+          ) : null}
+        </div>
+        {canCompose ? (
+          <button
+            type="button"
+            onClick={handleDictation}
+            className={cn(
+              'shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors',
+              isRecording
+                ? 'bg-red-50 text-red-600 ring-2 ring-red-200 animate-pulse'
+                : 'text-slate-500 hover:bg-white hover:text-emerald-800',
+            )}
+            aria-label={
+              isRecording
+                ? t('dashboard.careCalendar.fields.dictateStop')
+                : t('dashboard.careCalendar.fields.dictate')
+            }
+            aria-pressed={isRecording}
+          >
+            {isRecording ? <MicOff size={14} /> : <Mic size={14} />}
+            {isRecording
+              ? t('dashboard.careCalendar.fields.dictateStop')
+              : t('dashboard.careCalendar.fields.dictate')}
+          </button>
+        ) : null}
+      </div>
+
+      {canCompose ? (
+        <div className="space-y-1.5">
+          <textarea
+            value={draftSummary}
+            onChange={(e) => applyDraft(e.target.value)}
+            rows={5}
+            maxLength={VISIT_NOTES_MAX}
+            placeholder={t('visitBrief.notesPlaceholder')}
+            className={cn(
+              'w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-800 leading-relaxed',
+              isRecording ? 'border-red-200 ring-2 ring-red-100' : 'border-emerald-100',
+            )}
+          />
+          {isRecording ? (
+            <p className="text-xs text-red-600 font-medium">
+              {t('dashboard.careCalendar.fields.dictateListening')}
+            </p>
+          ) : null}
+          {micError ? (
+            <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+              {micError}
             </p>
           ) : null}
         </div>
-      </div>
-
-      {canEdit && onSave ? (
-        <textarea
-          value={draftSummary}
-          onChange={(e) => setDraftSummary(e.target.value)}
-          rows={5}
-          className="w-full rounded-xl border border-emerald-100 bg-white px-3 py-2 text-sm text-slate-800 leading-relaxed"
-        />
       ) : (
-        <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{debrief.summary}</p>
+        <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{debrief?.summary}</p>
       )}
 
-      {debrief.actionItems.length > 0 ? (
+      {debrief && debrief.actionItems.length > 0 ? (
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
             {t('visitBrief.debriefActionItems')}
@@ -93,7 +181,7 @@ export function CircleCareCalendarVisitDebriefPanel({
         </div>
       ) : null}
 
-      {debrief.followUpQuestions.length > 0 ? (
+      {debrief && debrief.followUpQuestions.length > 0 ? (
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
             {t('visitBrief.debriefFollowUp')}
@@ -113,15 +201,17 @@ export function CircleCareCalendarVisitDebriefPanel({
       ) : null}
 
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => void handleCopy()}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50"
-        >
-          <ClipboardCopy size={14} />
-          {copied ? t('visitBrief.copied') : t('visitBrief.copy')}
-        </button>
-        {canEdit && onSave && dirty ? (
+        {(debrief || draftSummary.trim()) && (
+          <button
+            type="button"
+            onClick={() => void handleCopy()}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50"
+          >
+            <ClipboardCopy size={14} />
+            {copied ? t('visitBrief.copied') : t('visitBrief.copy')}
+          </button>
+        )}
+        {canCompose && dirty ? (
           <button
             type="button"
             onClick={() => void handleSave()}
@@ -129,7 +219,11 @@ export function CircleCareCalendarVisitDebriefPanel({
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 disabled:opacity-60"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : null}
-            {saving ? t('visitBrief.saving') : t('visitBrief.saveEdits')}
+            {saving
+              ? t('visitBrief.saving')
+              : creating
+                ? t('visitBrief.saveNotes')
+                : t('visitBrief.saveEdits')}
           </button>
         ) : null}
       </div>

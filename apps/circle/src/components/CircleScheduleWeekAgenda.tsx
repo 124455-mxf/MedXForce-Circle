@@ -1,5 +1,5 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { Firestore } from 'firebase/firestore';
 import {
@@ -59,6 +59,26 @@ function sortCareEvents(events: CareCalendarDayEvent[]): CareCalendarDayEvent[] 
   return [...events].sort((a, b) => (a.startTimeMinutes ?? 0) - (b.startTimeMinutes ?? 0));
 }
 
+const SCHEDULE_WEEK_SCROLLER = '[data-schedule-week-scroller]';
+
+/** Align today to the top of the week scroller; earlier days stay above for scroll-up. */
+function scrollScheduleWeekToToday(todayEl: HTMLElement, spacerEl: HTMLElement | null) {
+  const scroller = todayEl.closest(SCHEDULE_WEEK_SCROLLER) as HTMLElement | null;
+  if (!scroller || scroller.clientHeight <= 0) {
+    todayEl.scrollIntoView({ block: 'start', inline: 'nearest' });
+    return;
+  }
+  if (spacerEl) {
+    const todayHeight = Math.ceil(todayEl.getBoundingClientRect().height);
+    spacerEl.style.height = `${Math.max(0, scroller.clientHeight - todayHeight)}px`;
+  }
+  const top =
+    todayEl.getBoundingClientRect().top -
+    scroller.getBoundingClientRect().top +
+    scroller.scrollTop;
+  scroller.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+}
+
 export function CircleScheduleWeekAgenda({
   weekAnchor,
   calendarByDay,
@@ -80,7 +100,29 @@ export function CircleScheduleWeekAgenda({
   const ct = (key: string, params?: Record<string, unknown>) =>
     t(`dashboard.careCalendar.${key}`, params);
   const [expandedAssessmentKey, setExpandedAssessmentKey] = useState<string | null>(null);
+  const todaySectionRef = useRef<HTMLElement | null>(null);
+  const todayScrollSpacerRef = useRef<HTMLDivElement | null>(null);
   const weekDays = getCalendarWeekDays(weekAnchor);
+  const weekStartKey = careCalendarDateKey(weekDays[0] ?? weekAnchor);
+
+  useLayoutEffect(() => {
+    let cancelled = false;
+    const align = () => {
+      if (cancelled) return;
+      const el = todaySectionRef.current;
+      if (!el) return;
+      scrollScheduleWeekToToday(el, todayScrollSpacerRef.current);
+    };
+    const frame = requestAnimationFrame(() => {
+      align();
+      requestAnimationFrame(align);
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+    };
+  }, [todayKey, weekStartKey]);
+
   const inviteContext = useMemo<CareCalendarMemberInviteContext | null>(
     () =>
       currentUserUid
@@ -97,7 +139,10 @@ export function CircleScheduleWeekAgenda({
 
   return (
     <div className={CIRCLE_SCHEDULE_WEEK_VIEW_SHELL_CLASS}>
-      <div className={cn(CIRCLE_SCHEDULE_WEEK_SCROLL_CLASS, 'p-1 space-y-4')}>
+      <div
+        className={cn(CIRCLE_SCHEDULE_WEEK_SCROLL_CLASS, 'p-1 space-y-4')}
+        data-schedule-week-scroller=""
+      >
         {weekDays.map((date) => {
           const dateKey = careCalendarDateKey(date);
           const isToday = dateKey === todayKey;
@@ -110,7 +155,11 @@ export function CircleScheduleWeekAgenda({
           });
 
           return (
-            <section key={dateKey} className="space-y-2">
+            <section
+              key={dateKey}
+              ref={isToday ? todaySectionRef : undefined}
+              className="space-y-2"
+            >
               <div className={cn('flex items-center gap-2 px-1', isToday && 'text-blue-700')}>
                 <h3
                   className={cn(
@@ -283,6 +332,7 @@ export function CircleScheduleWeekAgenda({
             </section>
           );
         })}
+        <div ref={todayScrollSpacerRef} aria-hidden className="pointer-events-none" />
       </div>
     </div>
   );

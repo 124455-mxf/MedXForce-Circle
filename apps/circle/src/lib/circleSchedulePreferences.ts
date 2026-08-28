@@ -12,7 +12,14 @@ export const CIRCLE_SCHEDULE_DEFAULT_VIEW_CHANGED =
 export type CircleScheduleDefaultView = 'today' | 'week' | 'month';
 
 /** One-shot Schedule tab landing from Home (not a saved default). */
-export type CircleScheduleViewIntent = 'tasks' | 'today';
+export type CircleScheduleViewIntent = 'tasks' | 'today' | 'week';
+
+/** Open a specific appointment sheet after landing on Schedule (e.g. Take notes from Circle). */
+export type CircleScheduleAppointmentFocus = {
+  entryId: string;
+  dateKey?: string;
+  episodeTab?: 'details' | 'prepare' | 'followup';
+};
 
 export const CIRCLE_SCHEDULE_DEFAULT_VIEW_OPTIONS: CircleScheduleDefaultView[] = [
   'today',

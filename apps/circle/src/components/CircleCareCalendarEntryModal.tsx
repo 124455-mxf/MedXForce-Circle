@@ -625,7 +625,10 @@ function CircleCareCalendarEntryModalContent({
             })}
           />
 
-          <div className={cn(RESPONSIVE_FORM_MODAL_BODY_CLASS, 'space-y-5')}>
+          <div className={cn(
+            RESPONSIVE_FORM_MODAL_BODY_CLASS,
+            section === 'invitees' ? 'flex flex-col overflow-hidden pb-3' : 'space-y-5',
+          )}>
             {section === 'general' && (
               <div className="space-y-5 pb-2 tablet-portrait:pb-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -817,7 +820,8 @@ function CircleCareCalendarEntryModalContent({
             )}
 
             {section === 'invitees' && (
-              <CircleCareCalendarAttendeeFields
+              <div className="flex-1 min-h-0 flex flex-col">
+                <CircleCareCalendarAttendeeFields
                 options={inviteeOptions}
                 attendees={attendees}
                 onChange={setAttendees}
@@ -832,7 +836,9 @@ function CircleCareCalendarEntryModalContent({
                 familySectionLabel={ct('fields.attendeesFamilySection')}
                 patientSectionLabel={ct('fields.attendeesPatientSection')}
                 defaultExpanded
+                fillAvailableHeight
               />
+              </div>
             )}
 
             {section === 'review' && (
@@ -912,7 +918,7 @@ function CircleCareCalendarEntryModalContent({
               </div>
             )}
 
-            {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+            {error && <p className="shrink-0 text-sm font-medium text-red-600">{error}</p>}
           </div>
 
           <div className={RESPONSIVE_FORM_MODAL_FOOTER_CLASS}>

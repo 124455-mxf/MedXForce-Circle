@@ -69,6 +69,8 @@ function ScheduleNudgeTile({
   visitTasksCount = 0,
   visitTasksLabel,
   onClick,
+  onStartingSoonClick,
+  onVisitTasksClick,
 }: {
   label: string;
   icon: LucideIcon;
@@ -83,48 +85,88 @@ function ScheduleNudgeTile({
   visitTasksCount?: number;
   visitTasksLabel?: string;
   onClick?: () => void;
+  onStartingSoonClick?: () => void;
+  onVisitTasksClick?: () => void;
 }) {
   const recencyTint = needsAction ? 'orange' : 'green';
   const showStartingSoon = startingSoonCount > 0 && !!startingSoonLabel;
   const showVisitTasks = visitTasksCount > 0 && !!visitTasksLabel;
+  const startingSoonClick = onStartingSoonClick ?? onClick;
+  const visitTasksClick = onVisitTasksClick ?? onClick;
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={!onClick}
+    <div
       className={cn(
-        'w-full min-h-[7.5rem] flex flex-col sm:flex-row sm:items-stretch gap-3 p-3 sm:p-4 rounded-2xl border text-left transition-colors',
+        'w-full min-h-[7.5rem] flex flex-col sm:flex-row sm:items-stretch gap-3 p-3 sm:p-4 rounded-2xl border text-left',
         DASHBOARD_RECENCY_TINT_CLASSES[recencyTint],
-        !onClick && 'cursor-default',
       )}
     >
       <div className="flex flex-col gap-2 min-w-0 sm:flex-1 sm:justify-between">
-        <div className="flex items-center gap-2 w-full min-w-0">
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={!onClick}
+          className={cn(
+            'flex items-center gap-2 w-full min-w-0 text-left rounded-lg',
+            !onClick && 'cursor-default',
+          )}
+        >
           <Icon size={16} className="shrink-0 text-blue-600" aria-hidden />
           <span className={cn(dashboardTileTitleClass, 'truncate')}>
             {label}
           </span>
-        </div>
+        </button>
         {showStartingSoon ? (
-          <NudgeAlertBar
-            count={startingSoonCount}
-            label={startingSoonLabel!}
-            icon={Clock}
-            tone="amber"
-          />
+          <button
+            type="button"
+            onClick={startingSoonClick}
+            disabled={!startingSoonClick}
+            className={cn('w-full text-left', !startingSoonClick && 'cursor-default')}
+          >
+            <NudgeAlertBar
+              count={startingSoonCount}
+              label={startingSoonLabel!}
+              icon={Clock}
+              tone="amber"
+            />
+          </button>
         ) : null}
         {showVisitTasks ? (
-          <NudgeAlertBar
-            count={visitTasksCount}
-            label={visitTasksLabel!}
-            icon={ListTodo}
-            tone="violet"
-          />
+          <button
+            type="button"
+            onClick={visitTasksClick}
+            disabled={!visitTasksClick}
+            className={cn('w-full text-left', !visitTasksClick && 'cursor-default')}
+          >
+            <NudgeAlertBar
+              count={visitTasksCount}
+              label={visitTasksLabel!}
+              icon={ListTodo}
+              tone="violet"
+            />
+          </button>
         ) : null}
-        <span className="text-[11px] text-slate-500 leading-snug">{hint}</span>
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={!onClick}
+          className={cn(
+            'text-[11px] text-slate-500 leading-snug text-left',
+            !onClick && 'cursor-default',
+          )}
+        >
+          {hint}
+        </button>
       </div>
-      <div className="grid grid-cols-2 gap-x-4 w-full items-start sm:w-56 sm:shrink-0 sm:pl-4 sm:border-l sm:border-slate-200/80">
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={!onClick}
+        className={cn(
+          'grid grid-cols-2 gap-x-4 w-full items-start sm:w-56 sm:shrink-0 sm:pl-4 sm:border-l sm:border-slate-200/80 text-left',
+          !onClick && 'cursor-default',
+        )}
+      >
         <div className="min-w-0">
           <p className="font-bold tabular-nums leading-none text-3xl text-slate-800">
             {formatCircleBadgeCount(primaryCount)}
@@ -141,8 +183,8 @@ function ScheduleNudgeTile({
             {secondaryLabel}
           </p>
         </div>
-      </div>
-    </button>
+      </button>
+    </div>
   );
 }
 
@@ -205,9 +247,9 @@ export function CircleDashboardScheduleNudgeTiles({
           visitTasksCount={counts.openVisitTasks}
           visitTasksLabel={t('dashboard.attentionAppointmentsVisitTasks')}
           hint={hint}
-          onClick={() =>
-            onOpenSchedule?.(counts.openVisitTasks > 0 ? 'tasks' : undefined)
-          }
+          onClick={() => onOpenSchedule?.('week')}
+          onStartingSoonClick={() => onOpenSchedule?.('today')}
+          onVisitTasksClick={() => onOpenSchedule?.('tasks')}
         />
       ) : null}
     </>

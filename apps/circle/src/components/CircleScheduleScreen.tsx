@@ -20,7 +20,7 @@ import {
 import { CircleDashboardAssessmentScheduleSection } from './CircleDashboardAssessmentScheduleSection';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 import { formatCircleBadgeCount } from './CircleCountBadge';
-import type { CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
+import type { CircleScheduleAppointmentFocus, CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
 
 type CircleScheduleScreenProps = {
   user: User;
@@ -28,6 +28,8 @@ type CircleScheduleScreenProps = {
   patient: CirclePatientSummary;
   actionBadgeCount?: number;
   viewIntent?: CircleScheduleViewIntent | null;
+  appointmentFocus?: CircleScheduleAppointmentFocus | null;
+  onAppointmentFocusConsumed?: () => void;
   onOpenCountChange?: (count: number) => void;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
   onRecordVisit?: (entryId: string) => void;
@@ -40,6 +42,8 @@ export function CircleScheduleScreen({
   patient,
   actionBadgeCount = 0,
   viewIntent = null,
+  appointmentFocus = null,
+  onAppointmentFocusConsumed,
   onOpenCountChange,
   onOpenAssessment,
   onRecordVisit,
@@ -123,6 +127,7 @@ export function CircleScheduleScreen({
         </div>
         <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
           <CircleDashboardAssessmentScheduleSection
+            key={viewIntent ?? 'default'}
             db={db}
             patientId={patient.patientId}
             user={user}
@@ -145,6 +150,8 @@ export function CircleScheduleScreen({
             onRegisterAddAppointment={registerAddAppointment}
             onOpenCountChange={handleOpenCountChange}
             viewIntent={viewIntent}
+            appointmentFocus={appointmentFocus}
+            onAppointmentFocusConsumed={onAppointmentFocusConsumed}
           />
         </div>
       </div>

@@ -1,12 +1,13 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Firestore } from 'firebase/firestore';
-import { Mic } from 'lucide-react';
+import { Mic, NotebookPen } from 'lucide-react';
 import type { AnalyticsMetricId, AssessmentHistoryMap, CareCalendarDayEvent } from '@medxforce/shared';
 import {
   appointmentTasksForPhase,
   appointmentTasksStatusMatch,
   canOfferRecordVisitForAppointment,
+  canOfferVisitNotesForAppointment,
   careCalendarDateKey,
   countRecommendedCareCalendarAssessmentNudges,
   getCareCalendarAssessmentNudges,
@@ -45,6 +46,7 @@ type CircleCareCalendarAppointmentEpisodePanelProps = {
   onTasksChange?: (tasks: CareCalendarAppointmentTask[]) => void | Promise<void>;
   detailsContent?: ReactNode;
   onRecordVisit?: (entryId: string) => void;
+  initialTab?: EpisodeTab;
   patientId?: string;
   db?: Firestore;
   onClinicalReferenceIdsChange?: (ids: string[]) => void | Promise<void>;
@@ -66,6 +68,7 @@ export function CircleCareCalendarAppointmentEpisodePanel({
   onTasksChange,
   detailsContent,
   onRecordVisit,
+  initialTab,
   patientId,
   db,
   onClinicalReferenceIdsChange,
@@ -74,7 +77,7 @@ export function CircleCareCalendarAppointmentEpisodePanel({
   memberRole,
 }: CircleCareCalendarAppointmentEpisodePanelProps) {
   const hasEpisode = supportsCareCalendarAppointmentEpisode(event.kind);
-  const [tab, setTab] = useState<EpisodeTab>('details');
+  const [tab, setTab] = useState<EpisodeTab>(initialTab ?? 'details');
   const [tasksOverride, setTasksOverride] = useState<CareCalendarAppointmentTask[] | null>(null);
   const [refsOverride, setRefsOverride] = useState<string[] | null>(null);
   const [briefOverride, setBriefOverride] = useState<CareCalendarVisitBrief | null>(null);
@@ -100,6 +103,10 @@ export function CircleCareCalendarAppointmentEpisodePanel({
     setBriefOverride(null);
     setDebriefOverride(null);
   }, [event.entryId]);
+
+  useEffect(() => {
+    setTab(initialTab ?? 'details');
+  }, [event.entryId, initialTab]);
 
   useEffect(() => {
     setRefsOverride((current) => {
@@ -172,13 +179,25 @@ export function CircleCareCalendarAppointmentEpisodePanel({
       .slice(0, 12);
   }, [appointmentDateKey, event, histories, preferences, t]);
 
+  const appointmentTiming = useMemo(
+    () => resolveCareCalendarAppointmentTiming(event, appointmentDateKey),
+    [appointmentDateKey, event],
+  );
+  const isAppointmentToday = appointmentDateKey === careCalendarDateKey(new Date());
+
   const showRecordVisit = useMemo(() => {
     if (!onRecordVisit) return false;
-    const timing = resolveCareCalendarAppointmentTiming(event, appointmentDateKey);
-    return canOfferRecordVisitForAppointment(event.kind, timing, {
-      isAppointmentToday: appointmentDateKey === careCalendarDateKey(new Date()),
+    return canOfferRecordVisitForAppointment(event.kind, appointmentTiming, {
+      isAppointmentToday,
     });
-  }, [appointmentDateKey, event, onRecordVisit]);
+  }, [appointmentTiming, event.kind, isAppointmentToday, onRecordVisit]);
+
+  const showTakeNotes = useMemo(() => {
+    if (!onVisitDebriefChange) return false;
+    return canOfferVisitNotesForAppointment(event.kind, appointmentTiming, {
+      isAppointmentToday,
+    });
+  }, [appointmentTiming, event.kind, isAppointmentToday, onVisitDebriefChange]);
 
   if (!hasEpisode) {
     return <>{detailsContent}</>;
@@ -248,15 +267,34 @@ export function CircleCareCalendarAppointmentEpisodePanel({
               )}
             />
           ) : null}
-          {showRecordVisit ? (
-            <button
-              type="button"
-              onClick={() => onRecordVisit?.(event.entryId)}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200/80 py-3 px-4"
-            >
-              <Mic size={16} className="shrink-0" aria-hidden />
-              {ct('episode.recordVisit')}
-            </button>
+          {showRecordVisit || showTakeNotes ? (
+            <div className={cn('grid gap-2', showRecordVisit && showTakeNotes && 'grid-cols-2')}>
+              {showRecordVisit ? (
+                <button
+                  type="button"
+                  onClick={() => onRecordVisit?.(event.entryId)}
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200/80 py-3 px-4"
+                >
+                  <Mic size={16} className="shrink-0" aria-hidden />
+                  {ct('episode.recordVisit')}
+                </button>
+              ) : null}
+              {showTakeNotes ? (
+                <button
+                  type="button"
+                  onClick={() => setTab('followup')}
+                  className={cn(
+                    'w-full flex items-center justify-center gap-2 rounded-2xl text-sm font-bold transition-colors py-3 px-4',
+                    showRecordVisit
+                      ? 'border-2 border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50'
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-200/80',
+                  )}
+                >
+                  <NotebookPen size={16} className="shrink-0" aria-hidden />
+                  {ct('episode.takeNotes')}
+                </button>
+              ) : null}
+            </div>
           ) : null}
         </div>
       )}
@@ -330,6 +368,9 @@ export function CircleCareCalendarAppointmentEpisodePanel({
           <CircleCareCalendarVisitDebriefPanel
             debrief={activeDebrief}
             canEdit={!!onVisitDebriefChange}
+            allowCreate={showTakeNotes}
+            capturedByName={currentUserName}
+            editedByUid={currentUserUid}
             t={t}
             onSave={
               onVisitDebriefChange

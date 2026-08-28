@@ -70,6 +70,7 @@ export function CirclePostDetailView({
   memberDisplayName,
   memberRole,
   onRecordVisit,
+  onTakeNotes,
   authorDisplayName,
   translationTargetLanguages,
 }: {
@@ -105,6 +106,7 @@ export function CirclePostDetailView({
   memberDisplayName?: string;
   memberRole?: string;
   onRecordVisit?: (entryId?: string) => void;
+  onTakeNotes?: (entryId: string, dateKey: string) => void;
   authorDisplayName?: string;
   translationTargetLanguages?: CircleUiLanguage[];
 }) {
@@ -287,6 +289,7 @@ export function CirclePostDetailView({
             memberDisplayName={memberDisplayName}
             memberRole={memberRole}
             onRecordVisit={onRecordVisit}
+            onTakeNotes={onTakeNotes}
             authorDisplayName={authorDisplayName}
             translationTargetLanguages={translationTargetLanguages}
           />
@@ -420,6 +423,8 @@ export function CirclePostDetailView({
             inviteContactId={inviteContactId}
             memberDisplayName={memberDisplayName}
             memberRole={memberRole}
+            onRecordVisit={onRecordVisit}
+            onTakeNotes={onTakeNotes}
             authorDisplayName={authorDisplayName}
             translationTargetLanguages={translationTargetLanguages}
           />

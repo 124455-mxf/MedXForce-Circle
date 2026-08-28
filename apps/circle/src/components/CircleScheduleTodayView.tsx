@@ -1,9 +1,10 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Mic, Users } from 'lucide-react';
+import { ChevronDown, Mic, NotebookPen, Users } from 'lucide-react';
 import {
   careCalendarAttendeeRoleLabelKey,
   canOfferRecordVisitForAppointmentOnDate,
+  canOfferVisitNotesForAppointmentOnDate,
   applyCareCalendarAttendeeDisplayNames,
   findImminentCareCalendarDayEvents,
   formatCareCalendarTime,
@@ -228,6 +229,11 @@ export function CircleScheduleTodayView({
                       assessmentSchedule={assessmentSchedule}
                       dateKey={dateKey}
                       onRecordVisit={onRecordVisit}
+                      onTakeNotes={
+                        onVisitDebriefChange
+                          ? () => setSelection({ dateKey, event, episodeTab: 'followup' })
+                          : undefined
+                      }
                       viewerTimezoneId={viewerTimezoneId}
                     />
                   ))}
@@ -275,6 +281,11 @@ export function CircleScheduleTodayView({
                           currentUserUid={currentUserUid}
                           dateKey={dateKey}
                           muted
+                          onTakeNotes={
+                            onVisitDebriefChange
+                              ? () => setSelection({ dateKey, event, episodeTab: 'followup' })
+                              : undefined
+                          }
                           viewerTimezoneId={viewerTimezoneId}
                         />
                       ))}
@@ -400,6 +411,7 @@ export function CircleScheduleDayAppointmentCard({
   showPrepBorder = true,
   compact = false,
   onRecordVisit,
+  onTakeNotes,
   viewerTimezoneId,
 }: {
   event: CareCalendarDayEvent;
@@ -424,6 +436,7 @@ export function CircleScheduleDayAppointmentCard({
   /** Week view day list — title and badges only; tap opens detail sheet. */
   compact?: boolean;
   onRecordVisit?: (entryId: string) => void;
+  onTakeNotes?: () => void;
   viewerTimezoneId?: string;
 }) {
   const timeLabel =
@@ -450,6 +463,15 @@ export function CircleScheduleDayAppointmentCard({
   const showRecordVisit =
     !!onRecordVisit &&
     canOfferRecordVisitForAppointmentOnDate(
+      event.kind,
+      dateKey,
+      event.startTimeMinutes,
+      event.endTimeMinutes,
+      now,
+    );
+  const showTakeNotes =
+    !!onTakeNotes &&
+    canOfferVisitNotesForAppointmentOnDate(
       event.kind,
       dateKey,
       event.startTimeMinutes,
@@ -609,20 +631,37 @@ export function CircleScheduleDayAppointmentCard({
             ) : null}
           </div>
         </div>
-        {!compact && showRecordVisit ? (
+        {!compact && (showRecordVisit || showTakeNotes) ? (
           <div
-            className="pt-3"
+            className={cn('pt-3 grid gap-2', showRecordVisit && showTakeNotes && 'grid-cols-2')}
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
-            <button
-              type="button"
-              onClick={() => onRecordVisit?.(event.entryId)}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200/80"
-            >
-              <Mic size={16} className="shrink-0" aria-hidden />
-              {ct('episode.recordVisit')}
-            </button>
+            {showRecordVisit ? (
+              <button
+                type="button"
+                onClick={() => onRecordVisit?.(event.entryId)}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200/80"
+              >
+                <Mic size={16} className="shrink-0" aria-hidden />
+                {ct('episode.recordVisit')}
+              </button>
+            ) : null}
+            {showTakeNotes ? (
+              <button
+                type="button"
+                onClick={onTakeNotes}
+                className={cn(
+                  'inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-colors',
+                  showRecordVisit
+                    ? 'border-2 border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50'
+                    : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-200/80',
+                )}
+              >
+                <NotebookPen size={16} className="shrink-0" aria-hidden />
+                {ct('episode.takeNotes')}
+              </button>
+            ) : null}
           </div>
         ) : null}
         {!compact && event.attendees?.length ? (
@@ -738,7 +777,7 @@ function AppointmentAttendeeResponses({
         <Users size={14} className="shrink-0 text-violet-600" aria-hidden />
         {ct('fields.attendeesWith')}
       </p>
-      <ul className="space-y-1">
+      <ul className="space-y-1 pl-5">
         {attendees.map((attendee) => {
           const roleKey = careCalendarAttendeeRoleLabelKey(attendee.role);
           const role = roleKey.split('.').pop() ?? attendee.role;
@@ -757,32 +796,29 @@ function AppointmentAttendeeResponses({
           return (
             <li
               key={attendee.contactId}
-              className={cn('flex items-center gap-2 text-sm text-slate-700', declined && 'opacity-60')}
+              className={cn('text-sm text-slate-700', declined && 'opacity-60')}
             >
-              <Users size={14} className="shrink-0 text-violet-600" />
-              <span className="min-w-0 flex-1">
-                <span className="font-semibold text-slate-800">{attendee.name}</span>
-                <span className="text-slate-500">
-                  {' '}
-                  · {tier ? `${t(`dashboard.circleMap.roles.${role}`)} (${tier})` : t(`dashboard.circleMap.roles.${role}`)}
-                </span>
-                {showResponseBadge ? (
-                  <span
-                    className={cn(
-                      'ml-2 text-[10px] font-bold uppercase tracking-wide',
-                      response === 'accepted'
-                        ? 'text-emerald-600'
-                        : response === 'declined'
-                          ? 'text-slate-400'
-                          : 'text-amber-600',
-                    )}
-                  >
-                    {ct(
-                      `fields.rsvp${response === 'accepted' ? 'Accepted' : response === 'declined' ? 'Declined' : 'Pending'}`,
-                    )}
-                  </span>
-                ) : null}
+              <span className="font-semibold text-slate-800">{attendee.name}</span>
+              <span className="text-slate-500">
+                {' '}
+                · {tier ? `${t(`dashboard.circleMap.roles.${role}`)} (${tier})` : t(`dashboard.circleMap.roles.${role}`)}
               </span>
+              {showResponseBadge ? (
+                <span
+                  className={cn(
+                    'ml-2 text-[10px] font-bold uppercase tracking-wide',
+                    response === 'accepted'
+                      ? 'text-emerald-600'
+                      : response === 'declined'
+                        ? 'text-slate-400'
+                        : 'text-amber-600',
+                  )}
+                >
+                  {ct(
+                    `fields.rsvp${response === 'accepted' ? 'Accepted' : response === 'declined' ? 'Declined' : 'Pending'}`,
+                  )}
+                </span>
+              ) : null}
             </li>
           );
         })}

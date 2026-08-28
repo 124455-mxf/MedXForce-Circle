@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Firestore } from 'firebase/firestore';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { Calendar, Mic } from 'lucide-react';
+import { Calendar, Mic, NotebookPen } from 'lucide-react';
 import {
   APPOINTMENT_INVITE_POST_MARKER,
   appointmentInviteAttendeesFromPost,
   applyCareCalendarAttendeeDisplayNames,
   canOfferRecordVisitForAppointmentOnDate,
+  canOfferVisitNotesForAppointmentOnDate,
   formatCareCalendarAttendeeSummary,
   formatCareCalendarTimeRange,
   hasCareCalendarAddress,
@@ -128,6 +129,7 @@ export function CircleAppointmentInvitePost({
   t,
   disableTruncate = false,
   onRecordVisit,
+  onTakeNotes,
 }: {
   post: CircleMemberThreadPost;
   db: Firestore;
@@ -141,6 +143,7 @@ export function CircleAppointmentInvitePost({
   t: CircleTranslator;
   disableTruncate?: boolean;
   onRecordVisit?: (entryId?: string) => void;
+  onTakeNotes?: (entryId: string, dateKey: string) => void;
 }) {
   const parsed = useMemo(() => parseAppointmentInvitePost(post), [post]);
   const [entry, setEntry] = useState<LoadedCareCalendarEntry | null>(null);
@@ -256,16 +259,46 @@ export function CircleAppointmentInvitePost({
     );
   }, [entry, entryId, onRecordVisit]);
 
-  const recordVisitButton = showRecordVisit ? (
-    <button
-      type="button"
-      onClick={() => onRecordVisit?.(entryId)}
-      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200/80"
-    >
-      <Mic size={16} className="shrink-0" aria-hidden />
-      {ct('episode.recordVisit')}
-    </button>
-  ) : null;
+  const showTakeNotes = useMemo(() => {
+    if (!onTakeNotes || !entryId || !entry?.startDateKey) return false;
+    return canOfferVisitNotesForAppointmentOnDate(
+      entry.kind,
+      entry.startDateKey,
+      entry.startTimeMinutes,
+      entry.endTimeMinutes,
+    );
+  }, [entry, entryId, onTakeNotes]);
+
+  const visitActions =
+    showRecordVisit || showTakeNotes ? (
+      <div className={cn('grid gap-2', showRecordVisit && showTakeNotes && 'grid-cols-2')}>
+        {showRecordVisit ? (
+          <button
+            type="button"
+            onClick={() => onRecordVisit?.(entryId)}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200/80"
+          >
+            <Mic size={16} className="shrink-0" aria-hidden />
+            {ct('episode.recordVisit')}
+          </button>
+        ) : null}
+        {showTakeNotes ? (
+          <button
+            type="button"
+            onClick={() => onTakeNotes?.(entryId, entry?.startDateKey ?? '')}
+            className={cn(
+              'inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold transition-colors',
+              showRecordVisit
+                ? 'border-2 border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50'
+                : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-200/80',
+            )}
+          >
+            <NotebookPen size={16} className="shrink-0" aria-hidden />
+            {ct('episode.takeNotes')}
+          </button>
+        ) : null}
+      </div>
+    ) : null;
 
   if (!parsed && !entryLoaded) {
     return (
@@ -418,7 +451,7 @@ export function CircleAppointmentInvitePost({
         </div>
       </div>
 
-      {recordVisitButton}
+      {visitActions}
 
       {entryId ? (
         <CircleCareCalendarInviteRsvpBar

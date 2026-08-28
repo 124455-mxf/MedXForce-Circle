@@ -85,7 +85,7 @@ import { CircleSelectedPatientProvider } from '../context/CircleSelectedPatientC
 import { normalizeCircleUiLanguage } from '../lib/circleLanguages';
 import type { CirclePostInboxView } from '../lib/circlePostInboxViews';
 import type { CircleGalleryIntent } from '../lib/circleGalleryIntent';
-import type { CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
+import type { CircleScheduleAppointmentFocus, CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
 
 function TabLoadingFallback() {
   const t = useCircleT();
@@ -154,6 +154,8 @@ export function CircleMainShell({
   const [scheduleViewIntent, setScheduleViewIntent] = useState<CircleScheduleViewIntent | null>(
     null,
   );
+  const [scheduleAppointmentFocus, setScheduleAppointmentFocus] =
+    useState<CircleScheduleAppointmentFocus | null>(null);
   const [dropInConfirmOpen, setDropInConfirmOpen] = useState(false);
   const [dropInSentThisOpen, setDropInSentThisOpen] = useState(false);
   const replyDraftGuardRef = useRef<UnsavedReplyDraftGuard | null>(null);
@@ -163,7 +165,10 @@ export function CircleMainShell({
   const compactChrome = activeTab !== 'dashboard';
 
   useEffect(() => {
-    if (activeTab !== 'schedule') setScheduleViewIntent(null);
+    if (activeTab !== 'schedule') {
+      setScheduleViewIntent(null);
+      setScheduleAppointmentFocus(null);
+    }
   }, [activeTab]);
 
   useLayoutEffect(() => {
@@ -222,8 +227,31 @@ export function CircleMainShell({
     [guardedNavigate],
   );
 
+  const handleOpenAppointmentNotes = useCallback(
+    (entryId: string, dateKey?: string) => {
+      analyticsOriginTabRef.current = null;
+      setInitialAssessmentsOverview(false);
+      setInitialPeriodOverviewDays(null);
+      guardedNavigate(() => {
+        setScheduleAppointmentFocus({
+          entryId,
+          dateKey: dateKey?.trim() || undefined,
+          episodeTab: 'followup',
+        });
+        setScheduleViewIntent('today');
+        setActiveTab('schedule');
+      });
+    },
+    [guardedNavigate],
+  );
+
+  const handleAppointmentFocusConsumed = useCallback(() => {
+    setScheduleAppointmentFocus(null);
+  }, []);
+
   const handleBackToDashboard = useCallback(() => {
     setScheduleViewIntent(null);
+    setScheduleAppointmentFocus(null);
     guardedNavigate(() => setActiveTab('dashboard'));
   }, [guardedNavigate]);
 
@@ -852,6 +880,8 @@ export function CircleMainShell({
                 patient={selectedPatient}
                 actionBadgeCount={scheduleActionBadgeCount}
                 viewIntent={scheduleViewIntent}
+                appointmentFocus={scheduleAppointmentFocus}
+                onAppointmentFocusConsumed={handleAppointmentFocusConsumed}
                 onOpenCountChange={setScheduleScreenOpenCount}
                 onOpenAssessment={handleOpenAnalyticsDetail}
                 onRecordVisit={
@@ -903,6 +933,7 @@ export function CircleMainShell({
                     ? (entryId?: string) => handleOpenVisitCapture(entryId)
                     : undefined
                 }
+                onTakeNotes={handleOpenAppointmentNotes}
                 onOpenSchedule={handleOpenSchedule}
                 circleInboxIntent={circleInboxIntent}
                 onCircleInboxIntentConsumed={handleCircleInboxIntentConsumed}

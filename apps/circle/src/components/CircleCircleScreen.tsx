@@ -140,6 +140,7 @@ interface CircleCircleScreenProps {
   dropInActive?: boolean;
   dropInChatOpen?: boolean;
   onRecordVisit?: (entryId?: string) => void;
+  onTakeNotes?: (entryId: string, dateKey: string) => void;
   onOpenSchedule?: () => void;
   circleInboxIntent?: { thread: CircleMemberThreadKind; view: CirclePostInboxView } | null;
   onCircleInboxIntentConsumed?: () => void;
@@ -290,6 +291,7 @@ export function CircleCircleScreen({
   dropInActive = false,
   dropInChatOpen = false,
   onRecordVisit,
+  onTakeNotes,
   onOpenSchedule,
   circleInboxIntent = null,
   onCircleInboxIntentConsumed,
@@ -1271,6 +1273,7 @@ export function CircleCircleScreen({
           memberRole={memberRole}
           authorDisplayName={resolveCircleThreadAuthorName(selectedPost, memberDisplayNames)}
           onRecordVisit={onRecordVisit}
+          onTakeNotes={onTakeNotes}
           translationTargetLanguages={[...new Set(Object.values(memberLanguages.byUid))] as CircleUiLanguage[]}
         />
         {messageModals}

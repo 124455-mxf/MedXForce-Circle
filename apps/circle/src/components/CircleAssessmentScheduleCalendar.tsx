@@ -40,7 +40,7 @@ import { circleHeaderActionButtonClass } from '../lib/circleSectionStyles';
 import { useCircleScheduleDefaultView } from '../hooks/useCircleScheduleDefaultView';
 import { useCircleScheduleShowAppointmentDetails } from '../hooks/useCircleScheduleShowAppointmentDetails';
 import { getCircleScheduleDefaultView } from '../lib/circleSchedulePreferences';
-import type { CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
+import type { CircleScheduleAppointmentFocus, CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
 import { useCircleI18nContext } from '../lib/circleI18nContext';
 import { formatCircleDate } from '../lib/circleLanguages';
 
@@ -85,6 +85,8 @@ type CircleAssessmentScheduleCalendarProps = {
   /** Called with the Tasks-screen card count so header / nav can stay in sync. */
   onOpenCountChange?: (count: number) => void;
   viewIntent?: CircleScheduleViewIntent | null;
+  appointmentFocus?: CircleScheduleAppointmentFocus | null;
+  onAppointmentFocusConsumed?: () => void;
 };
 
 type ScheduleViewMode = 'today' | 'week' | 'month' | 'tasks';
@@ -155,6 +157,8 @@ export function CircleAssessmentScheduleCalendar({
   onRecordVisit,
   onOpenCountChange,
   viewIntent = null,
+  appointmentFocus = null,
+  onAppointmentFocusConsumed,
 }: CircleAssessmentScheduleCalendarProps) {
   const { language } = useCircleI18nContext();
   const ct = (key: string, params?: Record<string, unknown>) =>
@@ -168,12 +172,13 @@ export function CircleAssessmentScheduleCalendar({
   const [selectedDateKey, setSelectedDateKey] = useState(todayKey);
   const defaultScheduleView = useCircleScheduleDefaultView();
   const [viewMode, setViewMode] = useState<ScheduleViewMode>(() => {
-    if (enableViewModes && viewIntent === 'tasks') return 'tasks';
-    if (enableViewModes && viewIntent === 'today') return 'today';
+    if (enableViewModes && (viewIntent === 'tasks' || viewIntent === 'today' || viewIntent === 'week')) {
+      return viewIntent;
+    }
     return enableViewModes ? getCircleScheduleDefaultView() : 'month';
   });
   const appliedViewIntentRef = useRef<CircleScheduleViewIntent | null>(
-    viewIntent === 'tasks' || viewIntent === 'today' ? viewIntent : null,
+    viewIntent === 'tasks' || viewIntent === 'today' || viewIntent === 'week' ? viewIntent : null,
   );
   const [weekAnchor, setWeekAnchor] = useState(today);
   const [appointmentSelection, setAppointmentSelection] =
@@ -181,11 +186,11 @@ export function CircleAssessmentScheduleCalendar({
 
   useEffect(() => {
     if (!enableViewModes) return;
-    if (viewIntent === 'tasks' || viewIntent === 'today') {
+    if (viewIntent === 'tasks' || viewIntent === 'today' || viewIntent === 'week') {
       if (appliedViewIntentRef.current !== viewIntent) {
         appliedViewIntentRef.current = viewIntent;
-        setViewMode(viewIntent === 'tasks' ? 'tasks' : 'today');
-        if (viewIntent === 'today') {
+        setViewMode(viewIntent);
+        if (viewIntent === 'today' || viewIntent === 'week') {
           const now = new Date();
           setSelectedDateKey(todayKey);
           setWeekAnchor(now);
@@ -198,6 +203,29 @@ export function CircleAssessmentScheduleCalendar({
     appliedViewIntentRef.current = null;
     setViewMode(defaultScheduleView);
   }, [defaultScheduleView, enableViewModes, todayKey, viewIntent]);
+
+  useEffect(() => {
+    if (!appointmentFocus?.entryId) return;
+    const entry = careEntries.find((item) => item.id === appointmentFocus.entryId);
+    if (!entry) return;
+    const dateKey = appointmentFocus.dateKey?.trim() || entry.startDateKey;
+    if (!dateKey) return;
+    const day = parseCareCalendarDateKey(dateKey);
+    const dayEvents = getCareCalendarByDay([entry], day, day).get(dateKey) ?? [];
+    const event = dayEvents.find((item) => item.entryId === appointmentFocus.entryId);
+    if (!event) return;
+    setViewMode('today');
+    setSelectedDateKey(dateKey);
+    setViewYear(day.getFullYear());
+    setViewMonth(day.getMonth());
+    setWeekAnchor(day);
+    setAppointmentSelection({
+      dateKey,
+      event,
+      episodeTab: appointmentFocus.episodeTab,
+    });
+    onAppointmentFocusConsumed?.();
+  }, [appointmentFocus, careEntries, onAppointmentFocusConsumed]);
 
   const rangeStart = useMemo(() => new Date(viewYear, viewMonth, 1), [viewYear, viewMonth]);
   const rangeEnd = useMemo(() => new Date(viewYear, viewMonth + 1, 0), [viewYear, viewMonth]);
@@ -839,7 +867,11 @@ export function CircleAssessmentScheduleCalendar({
               : undefined
           }
           onAppointmentTasksChange={onAppointmentTasksChange}
+          onClinicalReferenceIdsChange={onClinicalReferenceIdsChange}
+          onManageClinicalReferences={onManageClinicalReferences}
+          onVisitDebriefChange={onVisitDebriefChange}
           currentUserUid={currentUserUid}
+          currentUserName={currentUserName}
           patientId={patientId}
           db={db}
           memberContactId={memberContactId}
