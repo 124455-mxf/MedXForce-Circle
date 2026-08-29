@@ -110,7 +110,6 @@ const COMPACT_VISIBLE_BY_ROLE: Record<DashboardPresetRoleGroup, CircleDashboardW
     'reminder-diary-entry',
     'alert-attention',
     'daily-check-in',
-    'check-in-wellness-ring',
     'last-7-days-overview',
     'patient-activity-compact',
     'circle',
@@ -288,6 +287,7 @@ export const DASHBOARD_EXCLUSIVE_WIDGET_PAIRS: ReadonlyArray<
   ['assessments', 'assessments-compact'],
   ['last-7-days-overview', 'last-30-days-overview'],
   ['patient-activity', 'patient-activity-compact'],
+  ['daily-check-in', 'check-in-wellness-ring'],
 ];
 
 /** True when Home should use the side-by-side Patient activity tiles. */
@@ -501,7 +501,9 @@ export async function writeMemberDashboardLayout(
   preset?: CircleDashboardStoredPreset,
 ): Promise<CircleDashboardLayout> {
   const layout: CircleDashboardLayout = {
-    hiddenWidgets: sanitizeHiddenDashboardWidgets(hiddenWidgets),
+    hiddenWidgets: applyExclusiveDashboardWidgetPairs(
+      sanitizeHiddenDashboardWidgets(hiddenWidgets),
+    ),
     preset,
   };
 

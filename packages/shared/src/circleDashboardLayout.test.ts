@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import {
+  applyExclusiveDashboardWidgetPairs,
+  exclusivePartnerForDashboardWidget,
   hiddenDashboardWidgetsForRolePreset,
   isCircleDashboardWidgetAvailable,
   isPatientActivityCompactVisible,
@@ -72,5 +74,46 @@ const familyEffective = resolveEffectiveHiddenDashboardWidgets(
   'family',
 );
 assert.equal(isPatientActivityCompactVisible(new Set(familyEffective)), false);
+
+assert.equal(
+  exclusivePartnerForDashboardWidget('daily-check-in'),
+  'check-in-wellness-ring',
+);
+assert.equal(
+  exclusivePartnerForDashboardWidget('check-in-wellness-ring'),
+  'daily-check-in',
+);
+assert.equal(
+  compactProxyHidden.includes('check-in-wellness-ring'),
+  true,
+  'compact proxy default shows Check-in compact, not wellness',
+);
+assert.equal(
+  compactProxyHidden.includes('daily-check-in'),
+  false,
+  'compact proxy default keeps Check-in compact on',
+);
+assert.equal(
+  detailedProxyHidden.includes('daily-check-in'),
+  true,
+  'detailed proxy default hides Check-in compact',
+);
+assert.equal(
+  detailedProxyHidden.includes('check-in-wellness-ring'),
+  false,
+  'detailed proxy default keeps wellness Check-In on',
+);
+
+const bothCheckInsVisible = applyExclusiveDashboardWidgetPairs(
+  compactProxyHidden.filter(
+    (key) => key !== 'daily-check-in' && key !== 'check-in-wellness-ring',
+  ),
+);
+assert.equal(bothCheckInsVisible.includes('daily-check-in'), false);
+assert.equal(
+  bothCheckInsVisible.includes('check-in-wellness-ring'),
+  true,
+  'if both check-in tiles would be on, keep compact and hide wellness',
+);
 
 console.log('circle dashboard layout patient-activity tests ok');

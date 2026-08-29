@@ -4,6 +4,7 @@ import {
   FRIEND_NEVER_VISIBLE_DASHBOARD_WIDGETS,
   exclusivePartnerForDashboardWidget,
   hiddenDashboardWidgetsForRolePreset,
+  applyExclusiveDashboardWidgetPairs,
   isCircleDashboardWidgetKey,
   isCircleDashboardWidgetVisibleForRole,
   memberDashboardLayoutLegacyRef,
@@ -101,12 +102,13 @@ export function useCircleDashboardLayout(
   const persistHidden = useCallback(
     async (nextHidden: CircleDashboardWidgetKey[]) => {
       if (!patientId || !memberUid) return;
-      const preset = resolveCircleDashboardLayoutPreset(nextHidden, memberRole);
+      const exclusive = applyExclusiveDashboardWidgetPairs(nextHidden);
+      const preset = resolveCircleDashboardLayoutPreset(exclusive, memberRole);
       const layout = await writeMemberDashboardLayout(
         db,
         patientId,
         memberUid,
-        nextHidden,
+        exclusive,
         preset,
       );
       setParsed({ layout, hasStoredLayout: true });
