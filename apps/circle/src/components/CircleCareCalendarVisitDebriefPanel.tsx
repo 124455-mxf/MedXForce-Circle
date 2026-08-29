@@ -1,11 +1,12 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 
 import { useEffect, useState } from 'react';
-import { ClipboardCopy, Loader2, Mic, MicOff, NotebookPen, Stethoscope } from 'lucide-react';
+import { ClipboardCopy, ChevronDown, ChevronUp, Loader2, Mic, MicOff, NotebookPen, Quote, Stethoscope } from 'lucide-react';
 import {
   createManualVisitNotesDebrief,
+  handwrittenVisitNoteAdditions,
   isManualVisitNotesDebrief,
-  visitNoteAdditions,
+  isRecordedVisitDebrief,
   type CareCalendarVisitDebrief,
   type CareCalendarVisitNoteAddition,
 } from '@medxforce/shared';
@@ -59,17 +60,19 @@ export function CircleCareCalendarVisitDebriefPanel({
 }: CircleCareCalendarVisitDebriefPanelProps) {
   const { language } = useCircleI18nContext();
   const locale = circleUiLanguageToLocale(language);
-  const additions = visitNoteAdditions(debrief);
+  const additions = handwrittenVisitNoteAdditions(debrief);
   const [draftSummary, setDraftSummary] = useState('');
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [transcriptOpen, setTranscriptOpen] = useState(false);
   const { isRecording, micError, setMicError, toggleRecording, stopRecording } = useDictation();
 
   useEffect(() => {
     setDraftSummary('');
     setError(null);
-  }, [debrief?.visitCaptureId, debrief?.publishedAt, debrief?.summary, debrief?.editedAt]);
+    setTranscriptOpen(false);
+  }, [debrief?.visitCaptureId, debrief?.publishedAt, debrief?.summary, debrief?.editedAt, debrief?.transcript]);
 
   useEffect(() => () => stopRecording(), [stopRecording]);
 
@@ -84,6 +87,7 @@ export function CircleCareCalendarVisitDebriefPanel({
   if (!debrief && !canCompose) return null;
 
   const creating = !debrief;
+  const recorded = isRecordedVisitDebrief(debrief);
   const manualNotes = isManualVisitNotesDebrief(debrief);
   const dirty = draftSummary.trim().length > 0;
   const TitleIcon = creating || manualNotes ? NotebookPen : Stethoscope;
@@ -163,13 +167,61 @@ export function CircleCareCalendarVisitDebriefPanel({
         ) : null}
       </div>
 
+      {recorded && debrief?.summary.trim() ? (
+        <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 px-3 py-2.5 space-y-1">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">
+            {t('visitCapture.summaryHeading')}
+          </p>
+          {debrief.capturedByName ? (
+            <p className="text-xs font-semibold text-slate-500">
+              {t('visitBrief.debriefCapturedByAt', {
+                name: debrief.capturedByName,
+                when: formatNoteWhen(debrief.publishedAt, locale),
+              })}
+            </p>
+          ) : null}
+          <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{debrief.summary}</p>
+        </div>
+      ) : null}
+
+      {recorded && debrief?.transcript?.trim() ? (
+        <section className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setTranscriptOpen((open) => !open)}
+            className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-slate-50 transition-colors"
+            aria-expanded={transcriptOpen}
+          >
+            <span className="text-[10px] font-bold uppercase tracking-wide text-slate-600 inline-flex items-center gap-1.5">
+              <Quote size={12} aria-hidden />
+              {t('visitCapture.transcriptHeading')}
+            </span>
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-500 shrink-0">
+              {transcriptOpen ? t('visitCapture.hideTranscript') : t('visitCapture.showTranscript')}
+              {transcriptOpen ? (
+                <ChevronUp size={14} aria-hidden className="shrink-0" />
+              ) : (
+                <ChevronDown size={14} aria-hidden className="shrink-0" />
+              )}
+            </span>
+          </button>
+          {transcriptOpen ? (
+            <div className="border-t border-slate-200 px-3 py-2.5">
+              <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">
+                {debrief.transcript.trim()}
+              </p>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
       {additions.map((item, index) => (
         <div
           key={`${item.capturedAt}-${index}`}
           className="rounded-xl border border-emerald-100 bg-white px-3 py-2.5 space-y-1"
         >
           <p className="text-xs font-semibold text-slate-500">
-            {noteAttribution(item, t, locale, !manualNotes && index === 0)}
+            {noteAttribution(item, t, locale, false)}
           </p>
           <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{item.text}</p>
         </div>

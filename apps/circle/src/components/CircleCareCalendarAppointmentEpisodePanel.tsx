@@ -10,6 +10,8 @@ import {
   canOfferVisitNotesForAppointment,
   careCalendarDateKey,
   getCareCalendarAssessmentNudges,
+  isManualVisitNotesDebrief,
+  isRecordedVisitDebrief,
   openAppointmentTaskCount,
   resolveCareCalendarAppointmentTiming,
   supportsCareCalendarAppointmentEpisode,
@@ -142,7 +144,11 @@ export function CircleCareCalendarAppointmentEpisodePanel({
     setDebriefOverride((current) => {
       if (!current) return null;
       const stored = event.visitDebrief;
-      return stored?.publishedAt === current.publishedAt && stored.summary === current.summary
+      if (!stored) return current;
+      if (isRecordedVisitDebrief(stored) && isManualVisitNotesDebrief(current)) return null;
+      return stored.publishedAt === current.publishedAt &&
+        stored.summary === current.summary &&
+        stored.transcript === current.transcript
         ? null
         : current;
     });

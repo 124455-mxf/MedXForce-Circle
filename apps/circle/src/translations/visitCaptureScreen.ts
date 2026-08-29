@@ -4,6 +4,8 @@ export const visitCaptureScreenEnglish = {
   title: 'Record a meeting',
   subtitle:
     'Record this meeting for your Care Coordination team only — not the wider circle.',
+  subtitleAppointment:
+    'This recording is saved on this appointment and shared with your Care Coordination team — not the wider circle.',
   apiNotConfigured:
     'Set VITE_MEDXFORCE_API_URL in the Circle app env (patient server URL) to enable meeting recording.',
   consentLabel:
@@ -30,8 +32,13 @@ export const visitCaptureScreenEnglish = {
   delete: 'Delete',
   shareWithCareTeam: 'Share with care team',
   shareWithCircle: 'Share with the circle',
+  shareWithCareTeamAppointment: 'Save to appointment & share with care team',
+  shareWithCircleAppointment: 'Save to appointment & share with the circle',
   doneTitle: 'Shared with your care team',
   doneHiddenHint: "You won't see this in Care team — only the care team can.",
+  doneTitleAppointment: 'Saved to this appointment',
+  doneHintAppointment:
+    'The summary and transcript are on this appointment. They are also shared with the care team.',
   doneButton: 'Done',
   failedBody:
     "We couldn't process this recording. Your audio is still saved locally until you delete it.",
@@ -48,6 +55,8 @@ export const visitCaptureScreenGerman = {
   title: 'Meeting aufnehmen',
   subtitle:
     'Nehmen Sie dieses Meeting nur für Ihr Pflegekoordinationsteam auf — nicht für den weiteren Circle.',
+  subtitleAppointment:
+    'Diese Aufnahme wird an diesem Termin gespeichert und mit Ihrem Pflegekoordinationsteam geteilt — nicht mit dem weiteren Circle.',
   apiNotConfigured:
     'Setzen Sie VITE_MEDXFORCE_API_URL in der Circle-App-Umgebung (Patienten-Server-URL), um Meeting-Aufnahmen zu aktivieren.',
   consentLabel:
@@ -74,9 +83,14 @@ export const visitCaptureScreenGerman = {
   delete: 'Löschen',
   shareWithCareTeam: 'Mit Pflegeteam teilen',
   shareWithCircle: 'Mit dem Kreis teilen',
+  shareWithCareTeamAppointment: 'Am Termin speichern & mit Pflegeteam teilen',
+  shareWithCircleAppointment: 'Am Termin speichern & mit dem Kreis teilen',
   doneTitle: 'Mit Ihrem Pflegeteam geteilt',
   doneHiddenHint:
     'Sie sehen dies nicht unter Pflegeteam — nur das Pflegeteam kann.',
+  doneTitleAppointment: 'Am Termin gespeichert',
+  doneHintAppointment:
+    'Zusammenfassung und Transkript stehen an diesem Termin. Sie werden auch mit dem Pflegeteam geteilt.',
   doneButton: 'Fertig',
   failedBody:
     'Diese Aufnahme konnte nicht verarbeitet werden. Ihre Audiodateien bleiben lokal gespeichert, bis Sie sie löschen.',
@@ -93,6 +107,8 @@ export const visitCaptureScreenSpanish = {
   title: 'Grabar una reunión',
   subtitle:
     'Grabe esta reunión solo para su equipo de coordinación de cuidados — no para todo el círculo.',
+  subtitleAppointment:
+    'Esta grabación se guarda en esta cita y se comparte con su equipo de coordinación de cuidados — no con todo el círculo.',
   apiNotConfigured:
     'Configure VITE_MEDXFORCE_API_URL en el entorno de la app Circle (URL del servidor del paciente) para habilitar la grabación de reuniones.',
   consentLabel:
@@ -119,9 +135,14 @@ export const visitCaptureScreenSpanish = {
   delete: 'Eliminar',
   shareWithCareTeam: 'Compartir con el equipo de cuidados',
   shareWithCircle: 'Compartir con el círculo',
+  shareWithCareTeamAppointment: 'Guardar en la cita y compartir con el equipo',
+  shareWithCircleAppointment: 'Guardar en la cita y compartir con el círculo',
   doneTitle: 'Compartido con su equipo de cuidados',
   doneHiddenHint:
     'No verá esto en coordinación de cuidados — solo el equipo de cuidados puede.',
+  doneTitleAppointment: 'Guardado en esta cita',
+  doneHintAppointment:
+    'El resumen y la transcripción están en esta cita. También se comparten con el equipo de cuidados.',
   doneButton: 'Listo',
   failedBody:
     'No pudimos procesar esta grabación. El audio sigue guardado localmente hasta que lo elimine.',
@@ -138,6 +159,8 @@ export const visitCaptureScreenPolish = {
   title: 'Nagraj spotkanie',
   subtitle:
     'Nagraj to spotkanie tylko dla zespołu koordynacji opieki — nie dla całego kręgu.',
+  subtitleAppointment:
+    'To nagranie jest zapisywane przy tej wizycie i udostępniane zespołowi koordynacji opieki — nie całemu kręgowi.',
   apiNotConfigured:
     'Ustaw VITE_MEDXFORCE_API_URL w środowisku aplikacji Circle (URL serwera pacjenta), aby włączyć nagrywanie spotkań.',
   consentLabel:
@@ -164,9 +187,14 @@ export const visitCaptureScreenPolish = {
   delete: 'Usuń',
   shareWithCareTeam: 'Udostępnij zespołowi opieki',
   shareWithCircle: 'Udostępnij w kręgu',
+  shareWithCareTeamAppointment: 'Zapisz przy wizycie i udostępnij zespołowi',
+  shareWithCircleAppointment: 'Zapisz przy wizycie i udostępnij w kręgu',
   doneTitle: 'Udostępniono zespołowi opieki',
   doneHiddenHint:
     'Nie zobaczysz tego w koordynacji opieki — tylko zespół opieki ma dostęp.',
+  doneTitleAppointment: 'Zapisano przy tej wizycie',
+  doneHintAppointment:
+    'Podsumowanie i transkrypcja są przy tej wizycie. Są też udostępnione zespołowi opieki.',
   doneButton: 'Gotowe',
   failedBody:
     'Nie udało się przetworzyć tego nagrania. Audio pozostaje zapisane lokalnie, dopóki go nie usuniesz.',

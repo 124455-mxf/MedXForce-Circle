@@ -409,14 +409,13 @@ export function CircleMainShell({
     !!selectedPatient && canSendPatientRemoteCommands(selectedPatient.role);
 
   const handleVisitCapturePublished = useCallback(() => {
-    setVisitCaptureEntryId(null);
-    setVisitCaptureOpen(false);
+    if (visitCaptureEntryId) return;
     setCircleInboxIntent({
       thread: visitCapturePublishThreadKind(memberRole),
       view: 'visit_captures',
     });
     handleTabChange('circle');
-  }, [handleTabChange, memberRole]);
+  }, [handleTabChange, memberRole, visitCaptureEntryId]);
 
   const handleOpenVisitCapture = useCallback((careCalendarEntryId?: string) => {
     setVisitCaptureEntryId(careCalendarEntryId?.trim() || null);

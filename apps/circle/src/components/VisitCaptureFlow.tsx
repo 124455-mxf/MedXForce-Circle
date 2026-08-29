@@ -276,19 +276,24 @@ export function VisitCaptureFlow({
   };
 
   const publishThreadKind = visitCapturePublishThreadKind(capturedBy.role);
+  const fromAppointment = Boolean(careCalendarEntryId?.trim());
   const recorderSeesThread =
     publishThreadKind === 'open'
       ? canParticipateInCircleOpenThread(capturedBy.role)
       : canViewCareCoordinationCaptures(capturedBy.role);
   const publishShareLabel =
     publishThreadKind === 'open'
-      ? t('visitCapture.shareWithCircle')
-      : t('visitCapture.shareWithCareTeam');
+      ? t(fromAppointment ? 'visitCapture.shareWithCircleAppointment' : 'visitCapture.shareWithCircle')
+      : t(
+          fromAppointment
+            ? 'visitCapture.shareWithCareTeamAppointment'
+            : 'visitCapture.shareWithCareTeam',
+        );
 
   if (!open || typeof document === 'undefined') return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 sm:p-6 bg-slate-900/55 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[260] flex items-center justify-center p-4 sm:p-6 bg-slate-900/55 backdrop-blur-sm">
       <div
         className="bg-white w-full max-w-lg rounded-[28px] shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
@@ -312,7 +317,7 @@ export function VisitCaptureFlow({
               <div>
                 <h2 className="text-xl font-bold text-slate-900">{t('visitCapture.title')}</h2>
                 <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-                  {t('visitCapture.subtitle')}
+                  {t(fromAppointment ? 'visitCapture.subtitleAppointment' : 'visitCapture.subtitle')}
                 </p>
               </div>
 
@@ -543,12 +548,16 @@ export function VisitCaptureFlow({
               {step === 'done' && (
                 <div className="space-y-4 py-4 text-center">
                   <CheckCircle2 size={40} className="mx-auto text-emerald-600" />
-                  <p className="font-bold text-slate-800">{t('visitCapture.doneTitle')}</p>
-                  {!recorderSeesThread && (
+                  <p className="font-bold text-slate-800">
+                    {t(fromAppointment ? 'visitCapture.doneTitleAppointment' : 'visitCapture.doneTitle')}
+                  </p>
+                  {fromAppointment ? (
+                    <p className="text-sm text-slate-500">{t('visitCapture.doneHintAppointment')}</p>
+                  ) : !recorderSeesThread ? (
                     <p className="text-sm text-slate-500">
                       {t('visitCapture.doneHiddenHint')}
                     </p>
-                  )}
+                  ) : null}
                   <button
                     type="button"
                     onClick={onClose}

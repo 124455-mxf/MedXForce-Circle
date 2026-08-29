@@ -51,6 +51,8 @@ export type CareCalendarVisitDebrief = {
   summary: string;
   actionItems: CareCalendarVisitDebriefActionItem[];
   followUpQuestions: string[];
+  /** Full recording transcript when this debrief came from visit capture. */
+  transcript?: string;
   editedAt?: number;
   editedByUid?: string;
   additions?: CareCalendarVisitNoteAddition[];
@@ -60,8 +62,13 @@ export function isManualVisitNotesDebrief(debrief?: CareCalendarVisitDebrief): b
   return !debrief || debrief.visitCaptureId === MANUAL_VISIT_NOTES_CAPTURE_ID;
 }
 
+export function isRecordedVisitDebrief(debrief?: CareCalendarVisitDebrief): boolean {
+  return !!debrief && debrief.visitCaptureId !== MANUAL_VISIT_NOTES_CAPTURE_ID;
+}
+
 const VISIT_NOTE_ADDITION_MAX = 2000;
 const VISIT_NOTE_ADDITIONS_MAX = 30;
+const VISIT_DEBRIEF_TRANSCRIPT_MAX = 80_000;
 
 function parseVisitNoteAdditions(raw: unknown): CareCalendarVisitNoteAddition[] {
   if (!Array.isArray(raw)) return [];
@@ -100,6 +107,16 @@ export function visitNoteAdditions(debrief?: CareCalendarVisitDebrief): CareCale
   ];
 }
 
+/** Handwritten notes only — does not treat a recording summary as a note. */
+export function handwrittenVisitNoteAdditions(
+  debrief?: CareCalendarVisitDebrief,
+): CareCalendarVisitNoteAddition[] {
+  if (!debrief) return [];
+  if (debrief.additions && debrief.additions.length > 0) return debrief.additions;
+  if (isManualVisitNotesDebrief(debrief)) return visitNoteAdditions(debrief);
+  return [];
+}
+
 function joinVisitNoteSummary(additions: CareCalendarVisitNoteAddition[]): string {
   return additions
     .map((item) => item.text.trim())
@@ -120,7 +137,7 @@ export function createManualVisitNotesDebrief(input: {
   const editedByUid = input.editedByUid?.trim().slice(0, 128);
 
   if (input.existing) {
-    const previous = visitNoteAdditions(input.existing);
+    const previous = handwrittenVisitNoteAdditions(input.existing);
     const addedRaw = (input.addedText ?? '').trim();
     const nextSummary = (input.summary ?? '').trim();
     const prevSummary = input.existing.summary.trim();
@@ -136,9 +153,10 @@ export function createManualVisitNotesDebrief(input: {
       ...(editedByUid ? { capturedByUid: editedByUid } : {}),
     };
     const additions = [...previous, addition].slice(-VISIT_NOTE_ADDITIONS_MAX);
+    const recorded = isRecordedVisitDebrief(input.existing);
     return {
       ...input.existing,
-      summary: joinVisitNoteSummary(additions),
+      summary: recorded ? input.existing.summary : joinVisitNoteSummary(additions),
       additions,
       editedAt: now,
       ...(editedByUid ? { editedByUid } : {}),
@@ -161,6 +179,35 @@ export function createManualVisitNotesDebrief(input: {
     additions: first.text ? [first] : [],
     ...(capturedByName ? { capturedByName } : {}),
     ...(editedByUid ? { editedByUid, editedAt: now } : {}),
+  };
+}
+
+export function createRecordingVisitDebrief(input: {
+  visitCaptureId: string;
+  capturedByName?: string;
+  summary: string;
+  actionItems: CareCalendarVisitDebriefActionItem[];
+  followUpQuestions: string[];
+  transcript?: string;
+  existing?: CareCalendarVisitDebrief;
+}): CareCalendarVisitDebrief {
+  const now = Date.now();
+  const capturedByName = input.capturedByName?.trim().slice(0, 200);
+  const additions = handwrittenVisitNoteAdditions(input.existing);
+  const summary =
+    input.summary.trim().slice(0, 4000) ||
+    additions[0]?.text?.slice(0, 4000) ||
+    'Visit recording';
+  const transcript = input.transcript?.trim().slice(0, VISIT_DEBRIEF_TRANSCRIPT_MAX);
+  return {
+    visitCaptureId: input.visitCaptureId.trim().slice(0, 80),
+    publishedAt: now,
+    summary,
+    actionItems: input.actionItems.slice(0, 20),
+    followUpQuestions: input.followUpQuestions.slice(0, 15),
+    ...(capturedByName ? { capturedByName } : {}),
+    ...(additions.length ? { additions } : {}),
+    ...(transcript ? { transcript } : {}),
   };
 }
 
@@ -257,6 +304,7 @@ export function parseCareCalendarVisitDebrief(raw: unknown): CareCalendarVisitDe
   const publishedAt = Number(data.publishedAt);
   if (!visitCaptureId || !summary || !Number.isFinite(publishedAt)) return undefined;
   const additions = parseVisitNoteAdditions(data.additions);
+  const transcript = trimString(data.transcript, VISIT_DEBRIEF_TRANSCRIPT_MAX);
   return {
     visitCaptureId,
     publishedAt,
@@ -269,6 +317,7 @@ export function parseCareCalendarVisitDebrief(raw: unknown): CareCalendarVisitDe
       : {}),
     ...(trimString(data.editedByUid, 128) ? { editedByUid: trimString(data.editedByUid, 128) } : {}),
     ...(additions.length ? { additions } : {}),
+    ...(transcript ? { transcript } : {}),
   };
 }
 
@@ -305,8 +354,12 @@ export function visitBriefPlainText(brief: CareCalendarVisitBrief, appointmentTi
 }
 
 export function visitDebriefPlainText(debrief: CareCalendarVisitDebrief): string {
-  const additions = visitNoteAdditions(debrief);
-  const lines: string[] = ['Visit notes'];
+  const recorded = isRecordedVisitDebrief(debrief);
+  const additions = handwrittenVisitNoteAdditions(debrief);
+  const lines: string[] = [recorded ? 'Visit debrief' : 'Visit notes'];
+  if (recorded && debrief.summary.trim()) {
+    lines.push('', 'Summary', debrief.summary.trim());
+  }
   if (additions.length) {
     for (const item of additions) {
       lines.push('');
@@ -315,7 +368,7 @@ export function visitDebriefPlainText(debrief: CareCalendarVisitDebrief): string
       lines.push(who ? `${who} · ${when}` : when);
       lines.push(item.text);
     }
-  } else {
+  } else if (!recorded) {
     lines.push('', debrief.summary);
   }
   if (debrief.actionItems.length) {
@@ -325,6 +378,9 @@ export function visitDebriefPlainText(debrief: CareCalendarVisitDebrief): string
   if (debrief.followUpQuestions.length) {
     lines.push('', 'Follow-up questions');
     debrief.followUpQuestions.forEach((q, index) => lines.push(`${index + 1}. ${q}`));
+  }
+  if (debrief.transcript?.trim()) {
+    lines.push('', 'Full transcript', debrief.transcript.trim());
   }
   return lines.join('\n');
 }
