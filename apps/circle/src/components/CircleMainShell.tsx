@@ -631,22 +631,13 @@ export function CircleMainShell({
     selectedPatient,
   );
 
-  const [scheduleScreenOpenCount, setScheduleScreenOpenCount] = useState<number | null>(null);
-
-  useEffect(() => {
-    setScheduleScreenOpenCount(null);
-  }, [selectedPatient?.patientId]);
-
   const scheduleActionBadgeCount = useScheduleActionBadgeCount(
     db,
     selectedPatient?.patientId,
     user,
     selectedPatient,
   );
-  const scheduleNavBadge =
-    activeTab === 'schedule' && scheduleScreenOpenCount != null
-      ? scheduleScreenOpenCount
-      : scheduleActionBadgeCount;
+  const scheduleNavBadge = scheduleActionBadgeCount;
 
   const galleryDashboard = useFamilyGalleryDashboard(
     db,
@@ -882,7 +873,6 @@ export function CircleMainShell({
                 viewIntent={scheduleViewIntent}
                 appointmentFocus={scheduleAppointmentFocus}
                 onAppointmentFocusConsumed={handleAppointmentFocusConsumed}
-                onOpenCountChange={setScheduleScreenOpenCount}
                 onOpenAssessment={handleOpenAnalyticsDetail}
                 onRecordVisit={
                   showVisitCapture

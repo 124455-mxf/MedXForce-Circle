@@ -5,13 +5,17 @@ import { ClipboardCopy, Loader2, Mic, MicOff, NotebookPen, Stethoscope } from 'l
 import {
   createManualVisitNotesDebrief,
   isManualVisitNotesDebrief,
+  visitNoteAdditions,
   type CareCalendarVisitDebrief,
+  type CareCalendarVisitNoteAddition,
 } from '@medxforce/shared';
 import { useDictation } from '../hooks/useDictation';
 import { copyVisitDebriefToClipboard } from '../lib/visitBriefExport';
+import { useCircleI18nContext } from '../lib/circleI18nContext';
+import { circleUiLanguageToLocale } from '../lib/circleLanguages';
 import { cn } from '../lib/utils';
 
-const VISIT_NOTES_MAX = 4000;
+const VISIT_NOTES_MAX = 2000;
 
 type CircleCareCalendarVisitDebriefPanelProps = {
   debrief?: CareCalendarVisitDebrief;
@@ -23,6 +27,27 @@ type CircleCareCalendarVisitDebriefPanelProps = {
   onSave?: (debrief: CareCalendarVisitDebrief) => void | Promise<void>;
 };
 
+function formatNoteWhen(capturedAt: number, locale: string): string {
+  return new Date(capturedAt).toLocaleString(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+}
+
+function noteAttribution(
+  item: CareCalendarVisitNoteAddition,
+  t: CircleCareCalendarVisitDebriefPanelProps['t'],
+  locale: string,
+  recorded: boolean,
+): string {
+  const when = formatNoteWhen(item.capturedAt, locale);
+  const name = item.capturedByName?.trim();
+  if (recorded && name) return t('visitBrief.debriefCapturedByAt', { name, when });
+  return name
+    ? t('visitBrief.notesCapturedByAt', { name, when })
+    : t('visitBrief.notesCapturedAt', { when });
+}
+
 export function CircleCareCalendarVisitDebriefPanel({
   debrief,
   canEdit = false,
@@ -32,16 +57,19 @@ export function CircleCareCalendarVisitDebriefPanel({
   t,
   onSave,
 }: CircleCareCalendarVisitDebriefPanelProps) {
-  const [draftSummary, setDraftSummary] = useState(debrief?.summary ?? '');
+  const { language } = useCircleI18nContext();
+  const locale = circleUiLanguageToLocale(language);
+  const additions = visitNoteAdditions(debrief);
+  const [draftSummary, setDraftSummary] = useState('');
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { isRecording, micError, setMicError, toggleRecording, stopRecording } = useDictation();
 
   useEffect(() => {
-    setDraftSummary(debrief?.summary ?? '');
+    setDraftSummary('');
     setError(null);
-  }, [debrief?.visitCaptureId, debrief?.publishedAt, debrief?.summary]);
+  }, [debrief?.visitCaptureId, debrief?.publishedAt, debrief?.summary, debrief?.editedAt]);
 
   useEffect(() => () => stopRecording(), [stopRecording]);
 
@@ -57,24 +85,22 @@ export function CircleCareCalendarVisitDebriefPanel({
 
   const creating = !debrief;
   const manualNotes = isManualVisitNotesDebrief(debrief);
-  const dirty = creating
-    ? draftSummary.trim().length > 0
-    : draftSummary.trim() !== (debrief?.summary ?? '').trim();
+  const dirty = draftSummary.trim().length > 0;
   const TitleIcon = creating || manualNotes ? NotebookPen : Stethoscope;
 
   const handleSave = async () => {
-    if (!onSave || !dirty || !draftSummary.trim()) return;
+    if (!onSave || !dirty) return;
     setSaving(true);
     setError(null);
     try {
       await onSave(
         createManualVisitNotesDebrief({
-          summary: draftSummary,
+          ...(creating ? { summary: draftSummary } : { addedText: draftSummary, existing: debrief }),
           capturedByName,
           editedByUid,
-          existing: debrief,
         }),
       );
+      setDraftSummary('');
     } catch (err) {
       setError(err instanceof Error ? err.message : t('visitBrief.saveError'));
     } finally {
@@ -84,11 +110,15 @@ export function CircleCareCalendarVisitDebriefPanel({
 
   const handleCopy = async () => {
     const payload = debrief
-      ? { ...debrief, summary: draftSummary.trim() || debrief.summary }
+      ? debrief
       : createManualVisitNotesDebrief({ summary: draftSummary, capturedByName, editedByUid });
-    if (!payload.summary.trim()) return;
+    if (!payload.summary.trim() && !draftSummary.trim()) return;
     try {
-      await copyVisitDebriefToClipboard(payload);
+      await copyVisitDebriefToClipboard(
+        draftSummary.trim() && creating
+          ? payload
+          : debrief ?? payload,
+      );
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -104,13 +134,7 @@ export function CircleCareCalendarVisitDebriefPanel({
           <p className="text-sm font-bold text-emerald-900">
             {t(creating || manualNotes ? 'visitBrief.notesTitle' : 'visitBrief.debriefTitle')}
           </p>
-          {debrief?.capturedByName ? (
-            <p className="text-sm text-slate-500 mt-0.5">
-              {t(manualNotes ? 'visitBrief.notesCapturedBy' : 'visitBrief.debriefCapturedBy', {
-                name: debrief.capturedByName,
-              })}
-            </p>
-          ) : creating ? (
+          {creating && additions.length === 0 ? (
             <p className="text-sm text-slate-500 mt-0.5">{t('visitBrief.notesEmpty')}</p>
           ) : null}
         </div>
@@ -139,14 +163,26 @@ export function CircleCareCalendarVisitDebriefPanel({
         ) : null}
       </div>
 
+      {additions.map((item, index) => (
+        <div
+          key={`${item.capturedAt}-${index}`}
+          className="rounded-xl border border-emerald-100 bg-white px-3 py-2.5 space-y-1"
+        >
+          <p className="text-xs font-semibold text-slate-500">
+            {noteAttribution(item, t, locale, !manualNotes && index === 0)}
+          </p>
+          <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{item.text}</p>
+        </div>
+      ))}
+
       {canCompose ? (
         <div className="space-y-1.5">
           <textarea
             value={draftSummary}
             onChange={(e) => applyDraft(e.target.value)}
-            rows={5}
+            rows={additions.length ? 4 : 5}
             maxLength={VISIT_NOTES_MAX}
-            placeholder={t('visitBrief.notesPlaceholder')}
+            placeholder={t(additions.length ? 'visitBrief.notesAddPlaceholder' : 'visitBrief.notesPlaceholder')}
             className={cn(
               'w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-800 leading-relaxed',
               isRecording ? 'border-red-200 ring-2 ring-red-100' : 'border-emerald-100',
@@ -163,9 +199,7 @@ export function CircleCareCalendarVisitDebriefPanel({
             </p>
           ) : null}
         </div>
-      ) : (
-        <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{debrief?.summary}</p>
-      )}
+      ) : null}
 
       {debrief && debrief.actionItems.length > 0 ? (
         <div>
@@ -223,7 +257,7 @@ export function CircleCareCalendarVisitDebriefPanel({
               ? t('visitBrief.saving')
               : creating
                 ? t('visitBrief.saveNotes')
-                : t('visitBrief.saveEdits')}
+                : t('visitBrief.saveNotes')}
           </button>
         ) : null}
       </div>

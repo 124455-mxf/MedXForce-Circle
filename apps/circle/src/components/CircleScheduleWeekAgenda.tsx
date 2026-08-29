@@ -30,6 +30,8 @@ import { cn } from '../lib/utils';
 import { CircleCareCalendarKindMeta } from './CircleCareCalendarKindMeta';
 import { CircleCareCalendarForYouLine } from './CircleCareCalendarForYouLine';
 import { CircleCareCalendarSelfRsvpStatusBadge } from './CircleCareCalendarSelfRsvpStatusBadge';
+import { CircleCareCalendarPrepStatusBadge } from './CircleCareCalendarPrepStatusBadge';
+import { CircleCareCalendarFollowUpStatusBadge } from './CircleCareCalendarFollowUpStatusBadge';
 import { CircleTranslatedUserText } from './CircleTranslatedUserText';
 import type { CircleScheduleAppointmentSelection } from './CircleScheduleWeekView';
 
@@ -220,22 +222,49 @@ export function CircleScheduleWeekAgenda({
                             {timeLabel}
                           </span>
                           <span className="min-w-0 flex-1 space-y-1">
-                            <span className="flex flex-wrap items-center gap-1.5">
-                              {inviteContext ? (
-                                <CircleCareCalendarSelfRsvpStatusBadge
-                                  event={event}
-                                  inviteContext={inviteContext}
-                                  t={t}
-                                  dateKey={dateKey}
-                                  size="sm"
-                                />
+                            {timing !== 'past' ? (
+                              <span className="flex flex-wrap items-center gap-1.5">
+                                {assessmentSchedule ? (
+                                  <CircleCareCalendarPrepStatusBadge
+                                    event={event}
+                                    dateKey={dateKey}
+                                    t={t}
+                                    preferences={assessmentSchedule.preferences}
+                                    histories={assessmentSchedule.histories}
+                                    highlightTodayTiming={isToday}
+                                    compact
+                                  />
+                                ) : null}
+                                {inviteContext ? (
+                                  <CircleCareCalendarSelfRsvpStatusBadge
+                                    event={event}
+                                    inviteContext={inviteContext}
+                                    t={t}
+                                    dateKey={dateKey}
+                                    size="sm"
+                                  />
+                                ) : null}
+                              </span>
+                            ) : (
+                              <CircleCareCalendarFollowUpStatusBadge
+                                event={event}
+                                dateKey={dateKey}
+                                t={t}
+                                compact
+                              />
+                            )}
+                            <span className="flex items-start gap-1.5 min-w-0">
+                              {timing === 'past' ? (
+                                <span className="shrink-0 mt-0.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide bg-slate-500 text-white">
+                                  {t('schedulePage.views.past')}
+                                </span>
                               ) : null}
+                              <CircleTranslatedUserText
+                                text={event.title}
+                                className="text-sm font-bold text-slate-900"
+                                showToggle={false}
+                              />
                             </span>
-                            <CircleTranslatedUserText
-                              text={event.title}
-                              className="text-sm font-bold text-slate-900"
-                              showToggle={false}
-                            />
                             <CircleCareCalendarForYouLine
                               dateKey={dateKey}
                               startMinutes={event.startTimeMinutes}

@@ -149,9 +149,9 @@ export function isCareCalendarAppointmentPast(
   });
 }
 
-/** Pending/declined RSVP badges are hidden once the appointment is in the past. */
+/** RSVP badges are hidden once the appointment is in the past. */
 export function shouldShowAttendeeInviteResponseBadge(
-  response: CareCalendarAttendeeResponse,
+  _response: CareCalendarAttendeeResponse,
   options: {
     eventStatus?: CareCalendarDayEvent['status'];
     startDateKey?: string;
@@ -161,7 +161,6 @@ export function shouldShowAttendeeInviteResponseBadge(
     now?: Date;
   },
 ): boolean {
-  if (response === 'accepted') return true;
   const isPast =
     options.eventStatus === 'past' ||
     (options.startDateKey

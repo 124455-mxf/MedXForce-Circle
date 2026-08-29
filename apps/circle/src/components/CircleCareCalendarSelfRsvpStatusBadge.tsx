@@ -54,8 +54,8 @@ export function CircleCareCalendarSelfRsvpStatusBadge({
           event.timezoneId,
         )
       : false);
-  // Outstanding accept/decline is irrelevant once the appointment has ended.
-  if (isPast && response === 'pending') return null;
+  // Accept/pending/decline on the card is only useful before the visit ends.
+  if (isPast) return null;
 
   return (
     <span

@@ -37,6 +37,13 @@ export type CareCalendarVisitDebriefActionItem = {
 export const MANUAL_VISIT_NOTES_CAPTURE_ID = 'manual-notes';
 
 /** Post-visit debrief from visit capture, stored on the appointment. */
+export type CareCalendarVisitNoteAddition = {
+  text: string;
+  capturedAt: number;
+  capturedByName?: string;
+  capturedByUid?: string;
+};
+
 export type CareCalendarVisitDebrief = {
   visitCaptureId: string;
   publishedAt: number;
@@ -46,37 +53,114 @@ export type CareCalendarVisitDebrief = {
   followUpQuestions: string[];
   editedAt?: number;
   editedByUid?: string;
+  additions?: CareCalendarVisitNoteAddition[];
 };
 
 export function isManualVisitNotesDebrief(debrief?: CareCalendarVisitDebrief): boolean {
   return !debrief || debrief.visitCaptureId === MANUAL_VISIT_NOTES_CAPTURE_ID;
 }
 
+const VISIT_NOTE_ADDITION_MAX = 2000;
+const VISIT_NOTE_ADDITIONS_MAX = 30;
+
+function parseVisitNoteAdditions(raw: unknown): CareCalendarVisitNoteAddition[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const row = item as Record<string, unknown>;
+      const text = trimString(row.text, VISIT_NOTE_ADDITION_MAX);
+      const capturedAt = Number(row.capturedAt);
+      if (!text || !Number.isFinite(capturedAt)) return null;
+      const capturedByName = trimString(row.capturedByName, 200);
+      const capturedByUid = trimString(row.capturedByUid, 128);
+      return {
+        text,
+        capturedAt,
+        ...(capturedByName ? { capturedByName } : {}),
+        ...(capturedByUid ? { capturedByUid } : {}),
+      } satisfies CareCalendarVisitNoteAddition;
+    })
+    .filter((item): item is CareCalendarVisitNoteAddition => !!item)
+    .slice(0, VISIT_NOTE_ADDITIONS_MAX);
+}
+
+/** Each saved note chunk with author and time. Legacy single-summary notes become one addition. */
+export function visitNoteAdditions(debrief?: CareCalendarVisitDebrief): CareCalendarVisitNoteAddition[] {
+  if (!debrief) return [];
+  if (debrief.additions && debrief.additions.length > 0) return debrief.additions;
+  const text = debrief.summary.trim();
+  if (!text) return [];
+  return [
+    {
+      text,
+      capturedAt: debrief.publishedAt,
+      ...(debrief.capturedByName ? { capturedByName: debrief.capturedByName } : {}),
+    },
+  ];
+}
+
+function joinVisitNoteSummary(additions: CareCalendarVisitNoteAddition[]): string {
+  return additions
+    .map((item) => item.text.trim())
+    .filter(Boolean)
+    .join('\n\n')
+    .slice(0, 4000);
+}
+
 export function createManualVisitNotesDebrief(input: {
-  summary: string;
+  summary?: string;
+  addedText?: string;
   capturedByName?: string;
   editedByUid?: string;
   existing?: CareCalendarVisitDebrief;
 }): CareCalendarVisitDebrief {
-  const summary = input.summary.trim().slice(0, 4000);
   const now = Date.now();
+  const capturedByName = input.capturedByName?.trim().slice(0, 200);
+  const editedByUid = input.editedByUid?.trim().slice(0, 128);
+
   if (input.existing) {
+    const previous = visitNoteAdditions(input.existing);
+    const addedRaw = (input.addedText ?? '').trim();
+    const nextSummary = (input.summary ?? '').trim();
+    const prevSummary = input.existing.summary.trim();
+    const appended =
+      addedRaw ||
+      (nextSummary.startsWith(prevSummary) ? nextSummary.slice(prevSummary.length).trim() : '');
+    const added = appended.slice(0, VISIT_NOTE_ADDITION_MAX);
+    if (!added) return input.existing;
+    const addition: CareCalendarVisitNoteAddition = {
+      text: added,
+      capturedAt: now,
+      ...(capturedByName ? { capturedByName } : {}),
+      ...(editedByUid ? { capturedByUid: editedByUid } : {}),
+    };
+    const additions = [...previous, addition].slice(-VISIT_NOTE_ADDITIONS_MAX);
     return {
       ...input.existing,
-      summary,
+      summary: joinVisitNoteSummary(additions),
+      additions,
       editedAt: now,
-      ...(input.editedByUid ? { editedByUid: input.editedByUid } : {}),
+      ...(editedByUid ? { editedByUid } : {}),
     };
   }
-  const capturedByName = input.capturedByName?.trim();
+
+  const summary = (input.summary ?? input.addedText ?? '').trim().slice(0, 4000);
+  const first: CareCalendarVisitNoteAddition = {
+    text: summary.slice(0, VISIT_NOTE_ADDITION_MAX),
+    capturedAt: now,
+    ...(capturedByName ? { capturedByName } : {}),
+    ...(editedByUid ? { capturedByUid: editedByUid } : {}),
+  };
   return {
     visitCaptureId: MANUAL_VISIT_NOTES_CAPTURE_ID,
     publishedAt: now,
     summary,
     actionItems: [],
     followUpQuestions: [],
-    ...(capturedByName ? { capturedByName: capturedByName.slice(0, 200) } : {}),
-    ...(input.editedByUid ? { editedByUid: input.editedByUid, editedAt: now } : {}),
+    additions: first.text ? [first] : [],
+    ...(capturedByName ? { capturedByName } : {}),
+    ...(editedByUid ? { editedByUid, editedAt: now } : {}),
   };
 }
 
@@ -172,6 +256,7 @@ export function parseCareCalendarVisitDebrief(raw: unknown): CareCalendarVisitDe
   const summary = trimString(data.summary, 4000);
   const publishedAt = Number(data.publishedAt);
   if (!visitCaptureId || !summary || !Number.isFinite(publishedAt)) return undefined;
+  const additions = parseVisitNoteAdditions(data.additions);
   return {
     visitCaptureId,
     publishedAt,
@@ -183,6 +268,7 @@ export function parseCareCalendarVisitDebrief(raw: unknown): CareCalendarVisitDe
       ? { editedAt: Number(data.editedAt) }
       : {}),
     ...(trimString(data.editedByUid, 128) ? { editedByUid: trimString(data.editedByUid, 128) } : {}),
+    ...(additions.length ? { additions } : {}),
   };
 }
 
@@ -219,7 +305,19 @@ export function visitBriefPlainText(brief: CareCalendarVisitBrief, appointmentTi
 }
 
 export function visitDebriefPlainText(debrief: CareCalendarVisitDebrief): string {
-  const lines: string[] = ['Visit debrief', '', debrief.summary];
+  const additions = visitNoteAdditions(debrief);
+  const lines: string[] = ['Visit notes'];
+  if (additions.length) {
+    for (const item of additions) {
+      lines.push('');
+      const who = item.capturedByName?.trim();
+      const when = new Date(item.capturedAt).toLocaleString();
+      lines.push(who ? `${who} · ${when}` : when);
+      lines.push(item.text);
+    }
+  } else {
+    lines.push('', debrief.summary);
+  }
   if (debrief.actionItems.length) {
     lines.push('', 'Action items');
     debrief.actionItems.forEach((item) => lines.push(`• ${item.text}`));

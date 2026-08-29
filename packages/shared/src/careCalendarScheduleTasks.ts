@@ -78,7 +78,8 @@ function collectRowsFromRange(
               memberRole: options.memberRole,
               taskScope,
             });
-      if (counts.total <= 0) continue;
+      // Recommended assessments stay on the visit, but they are not Schedule "open tasks".
+      if (counts.openTasks <= 0) continue;
       rows.push({
         entryId: event.entryId,
         dateKey,
@@ -87,7 +88,7 @@ function collectRowsFromRange(
         openPreNudges: options.phase === 'pre' ? counts.openNudges : 0,
         openPostTasks: options.phase === 'post' ? counts.openTasks : 0,
         openPostNudges: options.phase === 'post' ? counts.openNudges : 0,
-        totalOpen: counts.total,
+        totalOpen: counts.openTasks,
       });
     }
   }
@@ -268,7 +269,8 @@ function scheduleTaskRowFromPendingInvite(
 
 /**
  * Schedule badge / Tasks-tab counter: one point per Tasks-screen card
- * (awaiting RSVP + prepare + follow-up appointments), not per checklist item.
+ * (awaiting RSVP + appointments with open visit tasks). Assessment nudges
+ * do not create a card or increment this count.
  */
 export function countScheduleTabBadge(
   entries: CareCalendarEntry[],

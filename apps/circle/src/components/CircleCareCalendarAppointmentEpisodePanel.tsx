@@ -9,7 +9,6 @@ import {
   canOfferRecordVisitForAppointment,
   canOfferVisitNotesForAppointment,
   careCalendarDateKey,
-  countRecommendedCareCalendarAssessmentNudges,
   getCareCalendarAssessmentNudges,
   openAppointmentTaskCount,
   resolveCareCalendarAppointmentTiming,
@@ -96,6 +95,7 @@ export function CircleCareCalendarAppointmentEpisodePanel({
   const activeReferenceIds = refsOverride ?? event.clinicalReferenceIds ?? [];
   const activeBrief = briefOverride ?? event.visitBrief;
   const activeDebrief = debriefOverride ?? event.visitDebrief;
+  const hasVisitNotes = Boolean(activeDebrief?.summary?.trim());
 
   useEffect(() => {
     setTasksOverride(null);
@@ -151,20 +151,6 @@ export function CircleCareCalendarAppointmentEpisodePanel({
   const openPre = openAppointmentTaskCount(appointmentTasksForPhase(activeTasks, 'pre'));
   const openPost = openAppointmentTaskCount(appointmentTasksForPhase(activeTasks, 'post'));
 
-  const preNudgeCount = useMemo(() => {
-    if (!preferences) return 0;
-    return countRecommendedCareCalendarAssessmentNudges(
-      getCareCalendarAssessmentNudges(event, appointmentDateKey, 'pre', preferences, histories),
-    );
-  }, [appointmentDateKey, event, histories, preferences]);
-
-  const postNudgeCount = useMemo(() => {
-    if (!preferences) return 0;
-    return countRecommendedCareCalendarAssessmentNudges(
-      getCareCalendarAssessmentNudges(event, appointmentDateKey, 'post', preferences, histories),
-    );
-  }, [appointmentDateKey, event, histories, preferences]);
-
   const assessmentHighlights = useMemo(() => {
     if (!preferences) return [] as string[];
     return getCareCalendarAssessmentNudges(
@@ -211,8 +197,56 @@ export function CircleCareCalendarAppointmentEpisodePanel({
     onDraftTasksChange: setTasksOverride,
   };
 
+  const debriefPanelProps = {
+    debrief: activeDebrief,
+    canEdit: !!onVisitDebriefChange,
+    capturedByName: currentUserName,
+    editedByUid: currentUserUid,
+    t,
+    onSave: onVisitDebriefChange
+      ? async (debrief: CareCalendarVisitDebrief) => {
+          setDebriefOverride(debrief);
+          try {
+            await onVisitDebriefChange(debrief);
+          } catch {
+            setDebriefOverride(null);
+          }
+        }
+      : undefined,
+  };
+
   return (
     <div className="space-y-3">
+      <div className="space-y-5">
+      {showRecordVisit || (showTakeNotes && !hasVisitNotes) ? (
+        <div className={cn('grid gap-2', showRecordVisit && showTakeNotes && !hasVisitNotes && 'grid-cols-2')}>
+          {showRecordVisit ? (
+            <button
+              type="button"
+              onClick={() => onRecordVisit?.(event.entryId)}
+              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200/80 py-3 px-4"
+            >
+              <Mic size={16} className="shrink-0" aria-hidden />
+              {ct('episode.recordVisit')}
+            </button>
+          ) : null}
+          {showTakeNotes && !hasVisitNotes ? (
+            <button
+              type="button"
+              onClick={() => setTab('followup')}
+              className={cn(
+                'w-full flex items-center justify-center gap-2 rounded-2xl text-sm font-bold transition-colors py-3 px-4',
+                showRecordVisit
+                  ? 'border-2 border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50'
+                  : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-200/80',
+              )}
+            >
+              <NotebookPen size={16} className="shrink-0" aria-hidden />
+              {ct('episode.takeNotes')}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <div className="flex gap-1 p-1 rounded-xl bg-slate-100">
         {(
           [
@@ -222,10 +256,10 @@ export function CircleCareCalendarAppointmentEpisodePanel({
           ] as const
         ).map(([key, label]) => {
           const badge =
-            key === 'prepare' && openPre + preNudgeCount > 0
-              ? openPre + preNudgeCount
-              : key === 'followup' && openPost + postNudgeCount > 0
-                ? openPost + postNudgeCount
+            key === 'prepare' && openPre > 0
+              ? openPre
+              : key === 'followup' && openPost > 0
+                ? openPost
                 : 0;
           return (
             <button
@@ -233,19 +267,20 @@ export function CircleCareCalendarAppointmentEpisodePanel({
               type="button"
               onClick={() => setTab(key)}
               className={cn(
-                'flex-1 px-2 py-2 rounded-lg text-xs font-bold transition-colors relative',
+                'flex-1 px-2 py-2 rounded-lg text-sm font-bold transition-colors relative',
                 tab === key ? 'bg-white text-violet-700 shadow-sm' : 'text-slate-500',
               )}
             >
               {label}
               {badge > 0 && (
-                <span className="ml-1 inline-flex min-w-[1.1rem] h-[1.1rem] items-center justify-center rounded-full bg-violet-600 text-white text-[10px] px-1">
+                <span className="ml-1 inline-flex min-w-[1.1rem] h-[1.1rem] items-center justify-center rounded-full bg-red-500 text-white text-[10px] px-1">
                   {badge}
                 </span>
               )}
             </button>
           );
         })}
+      </div>
       </div>
 
       {tab === 'details' && (
@@ -267,34 +302,8 @@ export function CircleCareCalendarAppointmentEpisodePanel({
               )}
             />
           ) : null}
-          {showRecordVisit || showTakeNotes ? (
-            <div className={cn('grid gap-2', showRecordVisit && showTakeNotes && 'grid-cols-2')}>
-              {showRecordVisit ? (
-                <button
-                  type="button"
-                  onClick={() => onRecordVisit?.(event.entryId)}
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200/80 py-3 px-4"
-                >
-                  <Mic size={16} className="shrink-0" aria-hidden />
-                  {ct('episode.recordVisit')}
-                </button>
-              ) : null}
-              {showTakeNotes ? (
-                <button
-                  type="button"
-                  onClick={() => setTab('followup')}
-                  className={cn(
-                    'w-full flex items-center justify-center gap-2 rounded-2xl text-sm font-bold transition-colors py-3 px-4',
-                    showRecordVisit
-                      ? 'border-2 border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50'
-                      : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-200/80',
-                  )}
-                >
-                  <NotebookPen size={16} className="shrink-0" aria-hidden />
-                  {ct('episode.takeNotes')}
-                </button>
-              ) : null}
-            </div>
+          {hasVisitNotes ? (
+            <CircleCareCalendarVisitDebriefPanel {...debriefPanelProps} />
           ) : null}
         </div>
       )}
@@ -313,6 +322,11 @@ export function CircleCareCalendarAppointmentEpisodePanel({
               onOpenAssessment={onOpenAssessment}
             />
           ) : null}
+          <CircleCareCalendarEpisodeTaskList
+            phase="pre"
+            tasks={appointmentTasksForPhase(activeTasks, 'pre')}
+            {...taskListProps}
+          />
           {patientId && db && onClinicalReferenceIdsChange ? (
             <CircleCareCalendarClinicalReferencesPicker
               db={db}
@@ -344,11 +358,6 @@ export function CircleCareCalendarAppointmentEpisodePanel({
               onBriefGenerated={(brief) => setBriefOverride(brief)}
             />
           ) : null}
-          <CircleCareCalendarEpisodeTaskList
-            phase="pre"
-            tasks={appointmentTasksForPhase(activeTasks, 'pre')}
-            {...taskListProps}
-          />
         </div>
       )}
       {tab === 'followup' && (
@@ -366,40 +375,14 @@ export function CircleCareCalendarAppointmentEpisodePanel({
             />
           ) : null}
           <CircleCareCalendarVisitDebriefPanel
-            debrief={activeDebrief}
-            canEdit={!!onVisitDebriefChange}
+            {...debriefPanelProps}
             allowCreate={showTakeNotes}
-            capturedByName={currentUserName}
-            editedByUid={currentUserUid}
-            t={t}
-            onSave={
-              onVisitDebriefChange
-                ? async (debrief) => {
-                    setDebriefOverride(debrief);
-                    try {
-                      await onVisitDebriefChange(debrief);
-                    } catch {
-                      setDebriefOverride(null);
-                    }
-                  }
-                : undefined
-            }
           />
           <CircleCareCalendarEpisodeTaskList
             phase="post"
             tasks={appointmentTasksForPhase(activeTasks, 'post')}
             {...taskListProps}
           />
-          {showRecordVisit ? (
-            <button
-              type="button"
-              onClick={() => onRecordVisit?.(event.entryId)}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-emerald-200 bg-emerald-50 text-emerald-800 text-sm font-bold hover:bg-emerald-100 transition-colors py-3 px-4"
-            >
-              <Mic size={16} className="shrink-0" aria-hidden />
-              {ct('episode.recordVisit')}
-            </button>
-          ) : null}
         </div>
       )}
     </div>

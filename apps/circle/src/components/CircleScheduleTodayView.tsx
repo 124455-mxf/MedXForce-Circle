@@ -35,6 +35,7 @@ import { CircleScheduleImminentBanner } from './CircleScheduleImminentBanner';
 import { CircleCareCalendarForYouLine } from './CircleCareCalendarForYouLine';
 import { CircleCareCalendarAssessmentNudgeHint } from './CircleCareCalendarAssessmentNudgesList';
 import { CircleCareCalendarPrepStatusBadge } from './CircleCareCalendarPrepStatusBadge';
+import { CircleCareCalendarFollowUpStatusBadge } from './CircleCareCalendarFollowUpStatusBadge';
 import { CircleExpandableTextPreview } from './CircleExpandableTextPreview';
 import { CircleCareCalendarKindMeta } from './CircleCareCalendarKindMeta';
 import { CircleTranslatedUserText } from './CircleTranslatedUserText';
@@ -533,60 +534,72 @@ export function CircleScheduleDayAppointmentCard({
       <div className="flex-1 py-4 pr-4 min-w-0 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0 text-left space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
+            {!isPast ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {inProgress || upcoming ? (
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                      inProgress && 'bg-emerald-600 text-white',
+                      upcoming && !inProgress && 'bg-violet-600 text-white',
+                    )}
+                  >
+                    {inProgress ? (
+                      <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" aria-hidden />
+                    ) : null}
+                    {t(`schedulePage.views.${inProgress ? 'inProgress' : 'upcoming'}`)}
+                  </span>
+                ) : null}
+                {assessmentSchedule ? (
+                  <CircleCareCalendarPrepStatusBadge
+                    event={event}
+                    dateKey={dateKey}
+                    t={t}
+                    preferences={assessmentSchedule.preferences}
+                    histories={assessmentSchedule.histories}
+                    now={now}
+                    highlightTodayTiming={showTimingHighlight}
+                  />
+                ) : null}
+                {currentUserUid ? (
+                  <CircleCareCalendarSelfRsvpStatusBadge
+                    event={event}
+                    dateKey={dateKey}
+                    inviteContext={
+                      {
+                        memberUid: currentUserUid,
+                        contactId: memberContactId,
+                        memberDocContactId,
+                        inviteContactId,
+                        displayName: memberDisplayName,
+                      } satisfies CareCalendarMemberInviteContext
+                    }
+                    t={t}
+                    size={compact ? 'sm' : 'md'}
+                  />
+                ) : null}
+              </div>
+            ) : (
+              <CircleCareCalendarFollowUpStatusBadge
+                event={event}
+                dateKey={dateKey}
+                t={t}
+                now={now}
+                compact={compact}
+              />
+            )}
+            <div className="flex items-start gap-2 min-w-0">
               {isPast ? (
-                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-slate-500 text-white">
+                <span className="shrink-0 mt-0.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-slate-500 text-white">
                   {t('schedulePage.views.past')}
                 </span>
               ) : null}
-              {!isPast && (inProgress || upcoming) ? (
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
-                    inProgress && 'bg-emerald-600 text-white',
-                    upcoming && !inProgress && 'bg-violet-600 text-white',
-                  )}
-                >
-                  {inProgress ? (
-                    <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" aria-hidden />
-                  ) : null}
-                  {t(`schedulePage.views.${inProgress ? 'inProgress' : 'upcoming'}`)}
-                </span>
-              ) : null}
-              {!isPast && assessmentSchedule ? (
-                <CircleCareCalendarPrepStatusBadge
-                  event={event}
-                  dateKey={dateKey}
-                  t={t}
-                  preferences={assessmentSchedule.preferences}
-                  histories={assessmentSchedule.histories}
-                  now={now}
-                  highlightTodayTiming={showTimingHighlight}
-                />
-              ) : null}
-              {!isPast && currentUserUid ? (
-                <CircleCareCalendarSelfRsvpStatusBadge
-                  event={event}
-                  dateKey={dateKey}
-                  inviteContext={
-                    {
-                      memberUid: currentUserUid,
-                      contactId: memberContactId,
-                      memberDocContactId,
-                      inviteContactId,
-                      displayName: memberDisplayName,
-                    } satisfies CareCalendarMemberInviteContext
-                  }
-                  t={t}
-                  size={compact ? 'sm' : 'md'}
-                />
-              ) : null}
+              <CircleTranslatedUserText
+                text={event.title}
+                className="text-base font-bold text-slate-900"
+                showToggle={!compact}
+              />
             </div>
-            <CircleTranslatedUserText
-              text={event.title}
-              className="text-base font-bold text-slate-900"
-              showToggle={!compact}
-            />
             <CircleCareCalendarForYouLine
               dateKey={dateKey}
               startMinutes={event.startTimeMinutes}
