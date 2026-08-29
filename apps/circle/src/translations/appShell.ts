@@ -752,7 +752,7 @@ export const appShellEnglish = {
         recordVisit: 'Record visit',
         takeNotes: 'Take notes',
         editTask: 'Edit task',
-        taskSourceAi: 'AI',
+        taskSourceAi: 'From visit capture',
       },
       errors: {
         titleRequired: 'Please enter a title.',
@@ -1791,7 +1791,7 @@ export const appShellGerman = {
       'Steuern Sie, wie Terminkarten in Tag-, Woche- und Monatsansicht aussehen.',
     showAppointmentDetailsTitle: 'Termindetails anzeigen',
     showAppointmentDetailsDesc:
-      'Wenn aktiv, zeigen Karten Notizen, Ort und Besuch aufzeichnen. Wenn aus, bleiben Karten kompakt wie in der Wochenansicht — tippen für alle Details.',
+      'Wenn aktiv, zeigen Karten Notizen, Ort und Besuch aufnehmen. Wenn aus, bleiben Karten kompakt wie in der Wochenansicht — tippen für alle Details.',
     defaultScheduleViewTitle: 'Standardansicht',
     defaultScheduleViewDesc:
       'Wählen Sie, welche Ansicht sich zuerst im Terminplan öffnet. Sie können jederzeit zwischen Tag, Woche, Monat und Aufgaben wechseln.',
@@ -2125,10 +2125,10 @@ export const appShellGerman = {
         assessmentNudgesPostTitle: 'Empfohlene Assessments nach diesem Besuch',
         assessmentNudgeRecommended: 'Empfohlen',
         assessmentNudgesShort: '{{count}} Assessment(s) empfohlen',
-        recordVisit: 'Besuch aufzeichnen',
+        recordVisit: 'Besuch aufnehmen',
         takeNotes: 'Notizen machen',
         editTask: 'Aufgabe bearbeiten',
-        taskSourceAi: 'KI',
+        taskSourceAi: 'Aus der Aufnahme',
       },
       errors: {
         titleRequired: 'Bitte einen Titel eingeben.',
@@ -3167,7 +3167,7 @@ export const appShellSpanish = {
       'Controle cómo se ven las tarjetas de citas en las vistas Día, Semana y Mes.',
     showAppointmentDetailsTitle: 'Mostrar detalles de la cita',
     showAppointmentDetailsDesc:
-      'Si está activo, las tarjetas incluyen notas, ubicación y registrar visita. Si no, las tarjetas son compactas como en Semana — toque para ver todo.',
+      'Si está activo, las tarjetas incluyen notas, ubicación y grabar visita. Si no, las tarjetas son compactas como en Semana — toque para ver todo.',
     defaultScheduleViewTitle: 'Vista predeterminada',
     defaultScheduleViewDesc:
       'Elija qué vista se abre primero en Agenda. Puede cambiar a Día, Semana, Mes o Tareas en cualquier momento.',
@@ -3501,10 +3501,10 @@ export const appShellSpanish = {
         assessmentNudgesPostTitle: 'Evaluaciones recomendadas después de esta visita',
         assessmentNudgeRecommended: 'Recomendada',
         assessmentNudgesShort: '{{count}} evaluación(es) recomendada(s)',
-        recordVisit: 'Registrar visita',
+        recordVisit: 'Grabar visita',
         takeNotes: 'Tomar notas',
         editTask: 'Editar tarea',
-        taskSourceAi: 'IA',
+        taskSourceAi: 'De la grabación',
       },
       errors: {
         titleRequired: 'Introduzca un título.',
@@ -4880,7 +4880,7 @@ export const appShellPolish = {
         recordVisit: 'Nagraj wizytę',
         takeNotes: 'Zrób notatki',
         editTask: 'Edytuj zadanie',
-        taskSourceAi: 'AI',
+        taskSourceAi: 'Z nagrania',
       },
       errors: {
         titleRequired: 'Wprowadź tytuł.',

@@ -68,7 +68,7 @@ export const visitCaptureScreenGerman = {
   apiNotConfigured:
     'Setzen Sie VITE_MEDXFORCE_API_URL in der Circle-App-Umgebung (Patienten-Server-URL), um Meeting-Aufnahmen zu aktivieren.',
   consentLabel:
-    'Alle Anwesenden wurden informiert, dass dieses Gespräch aufgezeichnet und mit dem Pflegekoordinationsteam geteilt wird.',
+    'Alle Anwesenden wurden informiert, dass dieses Gespräch aufgenommen und mit dem Pflegekoordinationsteam geteilt wird.',
   startCapture: 'Aufnahme starten',
   segmentsLabel: 'Segmente',
   segmentsSaved: '{{count}} gespeichert',
@@ -105,7 +105,7 @@ export const visitCaptureScreenGerman = {
   retry: 'Erneut versuchen',
   errorStartFailed: 'Aufnahme konnte nicht gestartet werden.',
   errorMicRequired: 'Mikrofonzugriff ist erforderlich, um das Meeting aufzunehmen.',
-  errorNoAudio: 'Kein Audio aufgezeichnet. Bitte erneut versuchen.',
+  errorNoAudio: 'Kein Audio aufgenommen. Bitte erneut versuchen.',
   errorSaveLocalFailed: 'Aufnahme konnte lokal nicht gespeichert werden.',
   errorProcessingFailed: 'Verarbeitung fehlgeschlagen.',
   errorShareFailed: 'Freigabe für das Pflegeteam fehlgeschlagen.',
