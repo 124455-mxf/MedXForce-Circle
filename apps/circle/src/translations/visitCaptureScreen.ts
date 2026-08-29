@@ -6,6 +6,10 @@ export const visitCaptureScreenEnglish = {
     'Record this meeting for your Care Coordination team only — not the wider circle.',
   subtitleAppointment:
     'This recording is saved on this appointment and shared with your Care Coordination team — not the wider circle.',
+  replaceExistingWarning:
+    'This appointment already has a recording. Sharing a new one replaces the summary and transcript on the appointment. Earlier shares stay in Meeting captures.',
+  replaceExistingShareHint:
+    'Sharing will replace the recording currently saved on this appointment. Earlier shares stay in Meeting captures.',
   apiNotConfigured:
     'Set VITE_MEDXFORCE_API_URL in the Circle app env (patient server URL) to enable meeting recording.',
   consentLabel:
@@ -57,6 +61,10 @@ export const visitCaptureScreenGerman = {
     'Nehmen Sie dieses Meeting nur für Ihr Pflegekoordinationsteam auf — nicht für den weiteren Circle.',
   subtitleAppointment:
     'Diese Aufnahme wird an diesem Termin gespeichert und mit Ihrem Pflegekoordinationsteam geteilt — nicht mit dem weiteren Circle.',
+  replaceExistingWarning:
+    'Für diesen Termin gibt es bereits eine Aufnahme. Eine neue Freigabe ersetzt Zusammenfassung und Transkript am Termin. Frühere Freigaben bleiben unter Meeting-Aufnahmen.',
+  replaceExistingShareHint:
+    'Die Freigabe ersetzt die aktuell am Termin gespeicherte Aufnahme. Frühere Freigaben bleiben unter Meeting-Aufnahmen.',
   apiNotConfigured:
     'Setzen Sie VITE_MEDXFORCE_API_URL in der Circle-App-Umgebung (Patienten-Server-URL), um Meeting-Aufnahmen zu aktivieren.',
   consentLabel:
@@ -109,6 +117,10 @@ export const visitCaptureScreenSpanish = {
     'Grabe esta reunión solo para su equipo de coordinación de cuidados — no para todo el círculo.',
   subtitleAppointment:
     'Esta grabación se guarda en esta cita y se comparte con su equipo de coordinación de cuidados — no con todo el círculo.',
+  replaceExistingWarning:
+    'Esta cita ya tiene una grabación. Al compartir una nueva se reemplazan el resumen y la transcripción de la cita. Las publicaciones anteriores siguen en Capturas de reunión.',
+  replaceExistingShareHint:
+    'Al compartir se reemplazará la grabación guardada en esta cita. Las publicaciones anteriores siguen en Capturas de reunión.',
   apiNotConfigured:
     'Configure VITE_MEDXFORCE_API_URL en el entorno de la app Circle (URL del servidor del paciente) para habilitar la grabación de reuniones.',
   consentLabel:
@@ -161,6 +173,10 @@ export const visitCaptureScreenPolish = {
     'Nagraj to spotkanie tylko dla zespołu koordynacji opieki — nie dla całego kręgu.',
   subtitleAppointment:
     'To nagranie jest zapisywane przy tej wizycie i udostępniane zespołowi koordynacji opieki — nie całemu kręgowi.',
+  replaceExistingWarning:
+    'Ta wizyta ma już nagranie. Udostępnienie nowego zastąpi podsumowanie i transkrypcję przy wizycie. Wcześniejsze udostępnienia zostaną w Nagraniach spotkań.',
+  replaceExistingShareHint:
+    'Udostępnienie zastąpi nagranie zapisane przy tej wizycie. Wcześniejsze udostępnienia zostaną w Nagraniach spotkań.',
   apiNotConfigured:
     'Ustaw VITE_MEDXFORCE_API_URL w środowisku aplikacji Circle (URL serwera pacjenta), aby włączyć nagrywanie spotkań.',
   consentLabel:

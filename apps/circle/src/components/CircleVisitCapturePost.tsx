@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { Firestore } from 'firebase/firestore';
 import { Languages, Loader2 } from 'lucide-react';
 import { parseVisitCapturePostText } from '@medxforce/shared';
+import { CircleVisitCaptureAppointmentChip } from './CircleVisitCaptureAppointmentChip';
 import {
   CircleVisitCapturePostFallback,
   CircleVisitCapturePostView,
@@ -26,6 +28,10 @@ export function CircleVisitCapturePost({
   patientLanguage,
   showPatientLanguagePill = false,
   capturedByDisplayName,
+  db,
+  patientId,
+  careCalendarEntryId,
+  onOpenAppointment,
 }: {
   text: string;
   translations?: StoredMessageTranslation[];
@@ -35,6 +41,10 @@ export function CircleVisitCapturePost({
   patientLanguage?: string | null;
   showPatientLanguagePill?: boolean;
   capturedByDisplayName?: string;
+  db?: Firestore;
+  patientId?: string;
+  careCalendarEntryId?: string | null;
+  onOpenAppointment?: (entryId: string, dateKey: string) => void;
 }) {
   const resolved = useMemo(
     () => resolveStoredMessageText({ text, translations }, viewerLanguage),
@@ -129,6 +139,16 @@ export function CircleVisitCapturePost({
         <CirclePatientLanguagePill
           language={patientLanguage}
           title={t('messages.patientLanguagePillTitle')}
+        />
+      ) : null}
+
+      {db && patientId && careCalendarEntryId?.trim() ? (
+        <CircleVisitCaptureAppointmentChip
+          db={db}
+          patientId={patientId}
+          entryId={careCalendarEntryId}
+          t={t}
+          onOpen={onOpenAppointment}
         />
       ) : null}
 

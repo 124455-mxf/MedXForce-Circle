@@ -118,7 +118,11 @@ export function circlePostInboxSnippet(
   }
   const parsedVisit = parseVisitCapturePostText(post.text);
   if (parsedVisit) {
-    return trimInboxSnippet(buildVisitCapturePostPreviewText(parsedVisit));
+    const preview = trimInboxSnippet(buildVisitCapturePostPreviewText(parsedVisit));
+    if (post.careCalendarEntryId?.trim()) {
+      return trimInboxSnippet(`${t('circle.captureFromAppointment')} · ${preview}`);
+    }
+    return preview;
   }
   if (isAppointmentInviteThreadPost(post)) {
     const parsed = parseAppointmentInvitePost(post);

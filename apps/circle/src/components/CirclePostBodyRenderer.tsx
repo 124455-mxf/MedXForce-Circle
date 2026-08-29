@@ -118,6 +118,10 @@ export function CirclePostBodyRenderer({
         t={t}
         disableTruncate={disableTruncate}
         capturedByDisplayName={authorDisplayName}
+        db={db}
+        patientId={patientId}
+        careCalendarEntryId={post.careCalendarEntryId}
+        onOpenAppointment={onTakeNotes}
       />
     );
   }

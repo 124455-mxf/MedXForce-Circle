@@ -54,6 +54,8 @@ export type VisitCaptureFlowProps = {
   capturedBy: VisitCaptureCapturedBy;
   /** When set, links this capture to a schedule appointment. */
   careCalendarEntryId?: string | null;
+  /** Appointment already has a published recording that a new share would replace. */
+  replacesExistingRecording?: boolean;
 };
 
 function formatElapsed(ms: number): string {
@@ -70,6 +72,7 @@ export function VisitCaptureFlow({
   patientId,
   capturedBy,
   careCalendarEntryId = null,
+  replacesExistingRecording = false,
 }: VisitCaptureFlowProps) {
   const apiConfigured = isVisitCaptureApiConfigured();
   const { language: recorderLanguage, t } = useCircleI18nContext();
@@ -323,6 +326,16 @@ export function VisitCaptureFlow({
                   {t(fromAppointment ? 'visitCapture.subtitleAppointment' : 'visitCapture.subtitle')}
                 </p>
               </div>
+
+              {fromAppointment && replacesExistingRecording && (step === 'consent' || step === 'preview') ? (
+                <p className="text-sm text-amber-950 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 leading-relaxed">
+                  {t(
+                    step === 'preview'
+                      ? 'visitCapture.replaceExistingShareHint'
+                      : 'visitCapture.replaceExistingWarning',
+                  )}
+                </p>
+              ) : null}
 
               {!apiConfigured && (
                 <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
 import type { AnalyticsMetricId, CircleMemberThreadKind, CirclePatientSummary } from '@medxforce/shared';
 import type { CircleMessagesAnalyticsFocus } from './CircleMessagesAnalyticsDetail';
@@ -10,7 +11,9 @@ import {
   canStartVisitCapture,
   canViewRemoteSettingsTab,
   circleDisplayFirstName,
+  isRecordedVisitDebrief,
   normalizeMemberRole,
+  parseCareCalendarVisitDebrief,
   parseCircleDropInAccessConfig,
   repairInactiveAcceptedMemberDocsForUser,
   repairOrphanAcceptedInvitesForUser,
@@ -143,6 +146,7 @@ export function CircleMainShell({
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [visitCaptureOpen, setVisitCaptureOpen] = useState(false);
   const [visitCaptureEntryId, setVisitCaptureEntryId] = useState<string | null>(null);
+  const [visitCaptureReplacesExisting, setVisitCaptureReplacesExisting] = useState(false);
   const [circleInboxIntent, setCircleInboxIntent] = useState<{
     thread: CircleMemberThreadKind;
     view: CirclePostInboxView;
@@ -439,6 +443,29 @@ export function CircleMainShell({
       setScheduleAppointmentFocus(restore);
     }
   }, []);
+
+  useEffect(() => {
+    if (!visitCaptureOpen || !visitCaptureEntryId || !selectedPatient?.patientId) {
+      setVisitCaptureReplacesExisting(false);
+      return;
+    }
+    const ref = doc(
+      db,
+      'patients',
+      selectedPatient.patientId,
+      'care_calendar',
+      visitCaptureEntryId,
+    );
+    return onSnapshot(
+      ref,
+      (snap) => {
+        setVisitCaptureReplacesExisting(
+          isRecordedVisitDebrief(parseCareCalendarVisitDebrief(snap.data()?.visitDebrief)),
+        );
+      },
+      () => setVisitCaptureReplacesExisting(false),
+    );
+  }, [db, selectedPatient?.patientId, visitCaptureEntryId, visitCaptureOpen]);
 
   const handleOpenCircleFolder = useCallback(
     (thread: CircleMemberThreadKind, folder: CirclePostInboxView) => {
@@ -1030,6 +1057,7 @@ export function CircleMainShell({
               app: 'circle',
             }}
             careCalendarEntryId={visitCaptureEntryId}
+            replacesExistingRecording={visitCaptureReplacesExisting}
           />
         ) : null}
 
