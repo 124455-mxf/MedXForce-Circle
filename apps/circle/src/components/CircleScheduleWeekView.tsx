@@ -92,7 +92,10 @@ type CircleScheduleWeekViewProps = {
   assessmentSchedule?: CircleAssessmentScheduleContext;
   assessmentLabel: (event: AssessmentScheduleDayEvent) => string;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
-  onRecordVisit?: (entryId: string) => void;
+  onRecordVisit?: (
+    entryId: string,
+    restoreSheet?: import('../lib/circleSchedulePreferences').CircleScheduleAppointmentFocus,
+  ) => void;
   viewerTimezoneId?: string;
 };
 
@@ -351,7 +354,7 @@ export function CircleScheduleAppointmentDetailSheet({
   memberRole?: string;
   assessmentSchedule?: CircleAssessmentScheduleContext;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
-  onRecordVisit?: (entryId: string) => void;
+  onRecordVisit?: CircleScheduleWeekViewProps['onRecordVisit'];
   viewerTimezoneId?: string;
 }) {
   useEffect(() => {
@@ -400,7 +403,19 @@ export function CircleScheduleAppointmentDetailSheet({
             memberRole={memberRole}
             assessmentSchedule={assessmentSchedule}
             onOpenAssessment={onOpenAssessment}
-            onRecordVisit={onRecordVisit}
+            onRecordVisit={
+              onRecordVisit
+                ? (entryId: string) => {
+                    onClose();
+                    onRecordVisit(entryId, {
+                      entryId,
+                      dateKey: selection.dateKey,
+                      episodeTab: selection.episodeTab,
+                      preserveView: true,
+                    });
+                  }
+                : undefined
+            }
             viewerTimezoneId={viewerTimezoneId}
           />
         </div>

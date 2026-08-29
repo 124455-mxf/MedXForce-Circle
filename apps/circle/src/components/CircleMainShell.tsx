@@ -417,14 +417,27 @@ export function CircleMainShell({
     handleTabChange('circle');
   }, [handleTabChange, memberRole, visitCaptureEntryId]);
 
-  const handleOpenVisitCapture = useCallback((careCalendarEntryId?: string) => {
+  const visitCaptureSheetRestoreRef = useRef<CircleScheduleAppointmentFocus | null>(null);
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+
+  const handleOpenVisitCapture = useCallback((
+    careCalendarEntryId?: string,
+    restoreSheet?: CircleScheduleAppointmentFocus | null,
+  ) => {
+    visitCaptureSheetRestoreRef.current = restoreSheet ?? null;
     setVisitCaptureEntryId(careCalendarEntryId?.trim() || null);
     setVisitCaptureOpen(true);
   }, []);
 
   const handleCloseVisitCapture = useCallback(() => {
+    const restore = visitCaptureSheetRestoreRef.current;
+    visitCaptureSheetRestoreRef.current = null;
     setVisitCaptureOpen(false);
     setVisitCaptureEntryId(null);
+    if (restore?.entryId && activeTabRef.current === 'schedule') {
+      setScheduleAppointmentFocus(restore);
+    }
   }, []);
 
   const handleOpenCircleFolder = useCallback(
@@ -875,7 +888,8 @@ export function CircleMainShell({
                 onOpenAssessment={handleOpenAnalyticsDetail}
                 onRecordVisit={
                   showVisitCapture
-                    ? (entryId: string) => handleOpenVisitCapture(entryId)
+                    ? (entryId: string, restoreSheet?: CircleScheduleAppointmentFocus) =>
+                        handleOpenVisitCapture(entryId, restoreSheet)
                     : undefined
                 }
                 onManageClinicalReferences={

@@ -32,7 +32,7 @@ type CircleScheduleScreenProps = {
   onAppointmentFocusConsumed?: () => void;
   onOpenCountChange?: (count: number) => void;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
-  onRecordVisit?: (entryId: string) => void;
+  onRecordVisit?: (entryId: string, restoreSheet?: CircleScheduleAppointmentFocus) => void;
   onManageClinicalReferences?: () => void;
 };
 

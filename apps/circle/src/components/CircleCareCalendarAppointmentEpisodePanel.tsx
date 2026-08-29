@@ -10,6 +10,7 @@ import {
   canOfferVisitNotesForAppointment,
   careCalendarDateKey,
   getCareCalendarAssessmentNudges,
+  isCareCalendarAppointmentPast,
   isManualVisitNotesDebrief,
   isRecordedVisitDebrief,
   openAppointmentTaskCount,
@@ -176,6 +177,15 @@ export function CircleCareCalendarAppointmentEpisodePanel({
     [appointmentDateKey, event],
   );
   const isAppointmentToday = appointmentDateKey === careCalendarDateKey(new Date());
+  const isPastAppointment =
+    event.status === 'past' ||
+    isCareCalendarAppointmentPast(
+      appointmentDateKey,
+      event.startTimeMinutes,
+      event.endTimeMinutes,
+      undefined,
+      event.timezoneId,
+    );
 
   const showRecordVisit = useMemo(() => {
     if (!onRecordVisit) return false;
@@ -230,7 +240,7 @@ export function CircleCareCalendarAppointmentEpisodePanel({
             <button
               type="button"
               onClick={() => onRecordVisit?.(event.entryId)}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200/80 py-3 px-4"
+              className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-emerald-200 bg-white text-emerald-800 text-sm font-bold hover:bg-emerald-50 transition-colors py-3 px-4"
             >
               <Mic size={16} className="shrink-0" aria-hidden />
               {ct('episode.recordVisit')}
@@ -349,7 +359,7 @@ export function CircleCareCalendarAppointmentEpisodePanel({
               }}
             />
           ) : null}
-          {patientId ? (
+          {patientId && !isPastAppointment ? (
             <CircleCareCalendarVisitBriefPanel
               patientId={patientId}
               entryId={event.entryId}

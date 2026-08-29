@@ -214,7 +214,9 @@ export function CircleAssessmentScheduleCalendar({
     const dayEvents = getCareCalendarByDay([entry], day, day).get(dateKey) ?? [];
     const event = dayEvents.find((item) => item.entryId === appointmentFocus.entryId);
     if (!event) return;
-    setViewMode('today');
+    if (!appointmentFocus.preserveView) {
+      setViewMode('today');
+    }
     setSelectedDateKey(dateKey);
     setViewYear(day.getFullYear());
     setViewMonth(day.getMonth());

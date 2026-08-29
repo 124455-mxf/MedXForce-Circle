@@ -276,7 +276,7 @@ export function CircleAppointmentInvitePost({
           <button
             type="button"
             onClick={() => onRecordVisit?.(entryId)}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200/80"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-emerald-200 bg-white px-4 py-3 text-sm font-bold text-emerald-800 hover:bg-emerald-50 transition-colors"
           >
             <Mic size={16} className="shrink-0" aria-hidden />
             {ct('episode.recordVisit')}

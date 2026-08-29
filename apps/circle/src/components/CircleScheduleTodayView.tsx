@@ -654,7 +654,7 @@ export function CircleScheduleDayAppointmentCard({
               <button
                 type="button"
                 onClick={() => onRecordVisit?.(event.entryId)}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200/80"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border-2 border-emerald-200 bg-white px-4 py-2.5 text-emerald-800 text-xs font-bold hover:bg-emerald-50 transition-colors"
               >
                 <Mic size={16} className="shrink-0" aria-hidden />
                 {ct('episode.recordVisit')}

@@ -293,7 +293,10 @@ export function VisitCaptureFlow({
   if (!open || typeof document === 'undefined') return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[260] flex items-center justify-center p-4 sm:p-6 bg-slate-900/55 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-[500] flex items-center justify-center p-4 sm:p-6 bg-slate-900/55 backdrop-blur-sm"
+      style={{ zIndex: 500 }}
+    >
       <div
         className="bg-white w-full max-w-lg rounded-[28px] shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}

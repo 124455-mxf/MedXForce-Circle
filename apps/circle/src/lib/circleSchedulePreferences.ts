@@ -19,6 +19,8 @@ export type CircleScheduleAppointmentFocus = {
   entryId: string;
   dateKey?: string;
   episodeTab?: 'details' | 'prepare' | 'followup';
+  /** Keep Week/Month instead of switching to Day (used when restoring after Record visit). */
+  preserveView?: boolean;
 };
 
 export const CIRCLE_SCHEDULE_DEFAULT_VIEW_OPTIONS: CircleScheduleDefaultView[] = [
