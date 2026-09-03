@@ -100,9 +100,10 @@ export function inviteStatusLabelI18n(
 
 export function contactInvitePeopleStatusLabelI18n(
   t: CircleTranslator,
-  status: 'pending' | 'missing',
+  status: 'pending' | 'missing' | 'revoked',
 ): string {
   if (status === 'pending') return t('admin.users.peopleInvitePending');
+  if (status === 'revoked') return t('admin.users.peopleInviteRevoked');
   return t('admin.users.peopleInviteMissing');
 }
 

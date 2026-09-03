@@ -5,6 +5,8 @@ import {
   careTransitionPackRemainingCount,
   careTransitionVisiblePackItems,
   EMPTY_CARE_TRANSITION_STATE,
+  planCareTransitionDraftForPhase,
+  suggestedPackForPhaseTransition,
   type CareTransitionReadinessState,
   type CircleHelpTask,
 } from './careTransitionReadiness';
@@ -46,5 +48,44 @@ const draftWithHelp = draftIcuToWard({ circleHelpTasks: [openHelp] });
 assert.equal(careTransitionPackRemainingCount(draftWithHelp, 'proxy'), 0);
 assert.equal(careTransitionOpenItemCount(draftWithHelp, 'proxy'), 1);
 assert.deepEqual(careTransitionFolderCounts(draftWithHelp, 'proxy'), { total: 1, unread: 1 });
+
+assert.equal(suggestedPackForPhaseTransition('', 'icu'), 'crisis-icu');
+assert.equal(suggestedPackForPhaseTransition('', 'acute'), 'ward-to-acute');
+assert.equal(suggestedPackForPhaseTransition('icu', 'acute'), 'icu-to-ward');
+assert.equal(suggestedPackForPhaseTransition('', 'maintenance'), 'home-settle');
+assert.equal(suggestedPackForPhaseTransition('rehab', 'maintenance'), 'rehab-to-home');
+assert.equal(suggestedPackForPhaseTransition('', ''), null);
+
+const firstSetup = planCareTransitionDraftForPhase(EMPTY_CARE_TRANSITION_STATE, '', 'icu', {
+  skipIfLive: true,
+  country: 'DE',
+});
+assert.equal('packId' in firstSetup && firstSetup.packId, 'crisis-icu');
+assert.equal('next' in firstSetup && firstSetup.next.packLive, false);
+assert.equal('next' in firstSetup && firstSetup.next.region, 'de');
+
+const skipLive = planCareTransitionDraftForPhase(
+  { ...EMPTY_CARE_TRANSITION_STATE, activePackId: 'crisis-icu', packLive: true },
+  '',
+  'acute',
+  { skipIfLive: true },
+);
+assert.deepEqual(skipLive, { skip: 'live-pack' });
+
+const skipSameDraft = planCareTransitionDraftForPhase(
+  { ...EMPTY_CARE_TRANSITION_STATE, activePackId: 'crisis-icu', packLive: false },
+  'icu',
+  'icu',
+  { skipIfLive: true },
+);
+assert.deepEqual(skipSameDraft, { skip: 'same-draft' });
+
+const circleReplacesLive = planCareTransitionDraftForPhase(
+  { ...EMPTY_CARE_TRANSITION_STATE, activePackId: 'crisis-icu', packLive: true },
+  'icu',
+  'acute',
+);
+assert.equal('packId' in circleReplacesLive && circleReplacesLive.packId, 'icu-to-ward');
+assert.equal('next' in circleReplacesLive && circleReplacesLive.next.packLive, false);
 
 console.log('careTransitionReadiness.test.ts: ok');

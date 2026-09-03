@@ -15,7 +15,6 @@ import {
   parseCircleProfileSnapshot,
   updateCirclePatientProfileFromProxy,
   recordCareDiaryMilestones,
-  suggestedPackForPhaseTransition,
   canManageCareTransitionPack,
   careTransitionRegionFromCountry,
   canonicalizeProfileCountry,
@@ -24,7 +23,7 @@ import {
   normalizeMemberRole,
   readCareTransitionReadinessState,
   writeCareTransitionReadinessState,
-  beginCareTransitionPackReview,
+  ensureDraftCareTransitionPackForPhase,
   type CirclePatientProfileSnapshot,
   type CirclePatientSummary,
 } from '@medxforce/shared';
@@ -262,21 +261,14 @@ export function CirclePatientProfilePanel({
           options?.startCareTransitionPack !== false &&
           canManageCareTransitionPack(normalizeMemberRole(patient.role))
         ) {
-          const packId = suggestedPackForPhaseTransition(previousPhase, nextPhase);
-          if (packId) {
-            void readCareTransitionReadinessState(db, targetPatientId)
-              .then(async (current) => {
-                if (targetPatientId !== patient.patientId) return;
-                const written = await writeCareTransitionReadinessState(
-                  db,
-                  targetPatientId,
-                  beginCareTransitionPackReview(current, packId),
-                  user.uid,
-                );
-                return written;
-              })
-              .catch((err) => console.warn('[careTransitionReadiness]', err));
-          }
+          void ensureDraftCareTransitionPackForPhase(
+            db,
+            targetPatientId,
+            previousPhase,
+            nextPhase,
+            user.uid,
+            { country: normalizedNext.identity.country, skipIfSameDraft: false },
+          ).catch((err) => console.warn('[careTransitionReadiness]', err));
         }
 
         // Keep care-transition region aligned with profile country unless manually overridden.

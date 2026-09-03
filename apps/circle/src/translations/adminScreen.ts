@@ -185,6 +185,8 @@ const usersEnglish = {
   you: 'You',
   revoke: 'Revoke',
   pastAccess: 'Past access',
+  pastAccessHint:
+    'They cannot sign in. They stay on People and the Circle Map until you delete them.',
   unnamed: 'Unnamed',
   noEmail: 'No email',
   editAria: 'Edit',
@@ -194,6 +196,7 @@ const usersEnglish = {
   statusPending: 'Pending',
   peopleInvitePending: 'Invite pending',
   peopleInviteMissing: 'Invite not sent',
+  peopleInviteRevoked: 'Access revoked',
   loadFailed: 'Could not load. Try refresh.',
   revokeFailed: 'Could not revoke access.',
   deleteFailed: 'Could not delete contact.',
@@ -206,9 +209,11 @@ const usersEnglish = {
   duplicateEmail: '{{email}} is already used by {{name}}. Edit that person instead of adding a duplicate.',
   staleBeforeSave: 'Load the latest version before saving.',
   revokeModalTitle: 'Revoke access?',
-  revokeModalDescription: '{{name}} will no longer sign in for this circle.',
+  revokeModalDescription:
+    '{{name}} will no longer be able to sign in to this circle. They stay on People and the Circle Map until you delete them.',
   deleteModalTitle: 'Remove person?',
-  deleteModalDescription: "Remove {{name}} from {{patient}}'s lists?",
+  deleteModalDescription:
+    "Remove {{name}} from {{patient}}'s People list and Circle Map? This also removes their Circle sign-in if they still have it.",
   deletePerson: 'Delete person',
   removeAccess: 'Remove access',
   thisPerson: 'this person',
@@ -243,7 +248,7 @@ const usersEnglish = {
   sendContactAddedEmailAgain: 'Send contact email again',
   sendContactAddedEmailAgainAria: 'Send contact notification email again',
   inviteConfirmRevokeDescription:
-    'This will revoke Circle sign-in for the email below. They will no longer access this circle. Check the address carefully before continuing.',
+    'This removes Circle sign-in for the email below. They stay on People and the Circle Map until you delete them. Check the address carefully before continuing.',
   inviteConfirmMixedDescription:
     'Review grant and remove access changes below before continuing.',
   inviteConfirmGrantAccess: 'Grant access',
@@ -563,6 +568,8 @@ const usersGerman = {
   you: 'Sie',
   revoke: 'Entziehen',
   pastAccess: 'Früherer Zugang',
+  pastAccessHint:
+    'Keine Anmeldung mehr. Die Person bleibt unter Personen und auf der Circle-Karte, bis Sie sie löschen.',
   unnamed: 'Unbenannt',
   noEmail: 'Keine E-Mail',
   editAria: 'Bearbeiten',
@@ -572,6 +579,7 @@ const usersGerman = {
   statusPending: 'Ausstehend',
   peopleInvitePending: 'Einladung ausstehend',
   peopleInviteMissing: 'Einladung nicht gesendet',
+  peopleInviteRevoked: 'Zugang entzogen',
   loadFailed: 'Laden fehlgeschlagen. Aktualisieren Sie die Seite.',
   revokeFailed: 'Zugang konnte nicht entzogen werden.',
   deleteFailed: 'Kontakt konnte nicht gelöscht werden.',
@@ -587,9 +595,11 @@ const usersGerman = {
     '{{email}} wird bereits von {{name}} verwendet. Bearbeiten Sie diese Person statt ein Duplikat hinzuzufügen.',
   staleBeforeSave: 'Laden Sie die neueste Version, bevor Sie speichern.',
   revokeModalTitle: 'Zugang entziehen?',
-  revokeModalDescription: '{{name}} kann sich für diesen Circle nicht mehr anmelden.',
+  revokeModalDescription:
+    '{{name}} kann sich für diesen Circle nicht mehr anmelden. Die Person bleibt unter Personen und auf der Circle-Karte, bis Sie sie löschen.',
   deleteModalTitle: 'Person entfernen?',
-  deleteModalDescription: '{{name}} aus den Listen von {{patient}} entfernen?',
+  deleteModalDescription:
+    '{{name}} aus der Personenliste und der Circle-Karte von {{patient}} entfernen? Dadurch wird auch die Circle-Anmeldung entfernt, falls sie noch besteht.',
   deletePerson: 'Person löschen',
   removeAccess: 'Zugang entfernen',
   thisPerson: 'diese Person',
@@ -624,7 +634,7 @@ const usersGerman = {
   sendContactAddedEmailAgain: 'Kontakt-E-Mail erneut senden',
   sendContactAddedEmailAgainAria: 'Kontakt-Benachrichtigung erneut senden',
   inviteConfirmRevokeDescription:
-    'Dies entzieht die Circle-Anmeldung für die unten stehende E-Mail. Sie haben keinen Zugang mehr zu diesem Circle. Prüfen Sie die Adresse sorgfältig.',
+    'Dies entfernt die Circle-Anmeldung für die unten stehende E-Mail. Die Person bleibt unter Personen und auf der Circle-Karte, bis Sie sie löschen. Prüfen Sie die Adresse sorgfältig.',
   inviteConfirmMixedDescription:
     'Prüfen Sie die unten stehenden Zugriffsänderungen, bevor Sie fortfahren.',
   inviteConfirmGrantAccess: 'Zugang gewähren',
@@ -949,6 +959,8 @@ const usersSpanish = {
   you: 'Usted',
   revoke: 'Revocar',
   pastAccess: 'Acceso anterior',
+  pastAccessHint:
+    'Ya no pueden iniciar sesión. Siguen en Personas y en el mapa del Circle hasta que las elimine.',
   unnamed: 'Sin nombre',
   noEmail: 'Sin correo',
   editAria: 'Editar',
@@ -958,6 +970,7 @@ const usersSpanish = {
   statusPending: 'Pendiente',
   peopleInvitePending: 'Invitación pendiente',
   peopleInviteMissing: 'Invitación no enviada',
+  peopleInviteRevoked: 'Acceso revocado',
   loadFailed: 'No se pudo cargar. Intente actualizar.',
   revokeFailed: 'No se pudo revocar el acceso.',
   deleteFailed: 'No se pudo eliminar el contacto.',
@@ -973,9 +986,11 @@ const usersSpanish = {
     '{{email}} ya está en uso por {{name}}. Edite a esa persona en lugar de añadir un duplicado.',
   staleBeforeSave: 'Cargue la versión más reciente antes de guardar.',
   revokeModalTitle: '¿Revocar acceso?',
-  revokeModalDescription: '{{name}} ya no podrá iniciar sesión en este circle.',
+  revokeModalDescription:
+    '{{name}} ya no podrá iniciar sesión en este circle. Seguirá en Personas y en el mapa del Circle hasta que la elimine.',
   deleteModalTitle: '¿Eliminar persona?',
-  deleteModalDescription: '¿Eliminar a {{name}} de las listas de {{patient}}?',
+  deleteModalDescription:
+    '¿Eliminar a {{name}} de la lista de Personas y del mapa del Circle de {{patient}}? También se quita su inicio de sesión en Circle si aún lo tiene.',
   deletePerson: 'Eliminar persona',
   removeAccess: 'Quitar acceso',
   thisPerson: 'esta persona',
@@ -1010,7 +1025,7 @@ const usersSpanish = {
   sendContactAddedEmailAgain: 'Enviar correo de contacto de nuevo',
   sendContactAddedEmailAgainAria: 'Enviar notificación de contacto de nuevo',
   inviteConfirmRevokeDescription:
-    'Esto revocará el inicio de sesión en Circle para el correo indicado abajo. Ya no tendrá acceso a este circle. Compruebe la dirección con cuidado.',
+    'Esto quita el inicio de sesión en Circle para el correo indicado abajo. Seguirá en Personas y en el mapa del Circle hasta que la elimine. Compruebe la dirección con cuidado.',
   inviteConfirmMixedDescription:
     'Revise los cambios de acceso abajo antes de continuar.',
   inviteConfirmGrantAccess: 'Conceder acceso',
@@ -1335,6 +1350,8 @@ const usersPolish = {
   you: 'Ty',
   revoke: 'Cofnij',
   pastAccess: 'Poprzedni dostęp',
+  pastAccessHint:
+    'Nie mogą się już zalogować. Zostaną na liście Osoby i na mapie Circle, dopóki ich nie usuniesz.',
   unnamed: 'Bez nazwy',
   noEmail: 'Brak e-maila',
   editAria: 'Edytuj',
@@ -1344,6 +1361,7 @@ const usersPolish = {
   statusPending: 'Oczekujący',
   peopleInvitePending: 'Zaproszenie oczekujące',
   peopleInviteMissing: 'Nie wysłano zaproszenia',
+  peopleInviteRevoked: 'Dostęp cofnięty',
   loadFailed: 'Nie udało się wczytać. Odśwież stronę.',
   revokeFailed: 'Nie udało się cofnąć dostępu.',
   deleteFailed: 'Nie udało się usunąć kontaktu.',
@@ -1359,9 +1377,11 @@ const usersPolish = {
     '{{email}} jest już używany przez {{name}}. Edytuj tę osobę zamiast dodawać duplikat.',
   staleBeforeSave: 'Wczytaj najnowszą wersję przed zapisem.',
   revokeModalTitle: 'Cofnąć dostęp?',
-  revokeModalDescription: '{{name}} nie będzie już mógł/mogła logować się do tego circle.',
+  revokeModalDescription:
+    '{{name}} nie będzie już mógł/mogła logować się do tego circle. Zostanie na liście Osoby i na mapie Circle, dopóki jej nie usuniesz.',
   deleteModalTitle: 'Usunąć osobę?',
-  deleteModalDescription: 'Usunąć {{name}} z list {{patient}}?',
+  deleteModalDescription:
+    'Usunąć {{name}} z listy Osoby i z mapy Circle {{patient}}? To także usuwa logowanie do Circle, jeśli nadal je ma.',
   deletePerson: 'Usuń osobę',
   removeAccess: 'Usuń dostęp',
   thisPerson: 'tę osobę',
@@ -1396,7 +1416,7 @@ const usersPolish = {
   sendContactAddedEmailAgain: 'Wyślij e-mail kontaktu ponownie',
   sendContactAddedEmailAgainAria: 'Wyślij powiadomienie kontaktu ponownie',
   inviteConfirmRevokeDescription:
-    'To cofnie logowanie do Circle dla poniższego e-maila. Nie będzie już miała dostępu do tego circle. Sprawdź adres dokładnie.',
+    'To usuwa logowanie do Circle dla poniższego e-maila. Osoba zostanie na liście Osoby i na mapie Circle, dopóki jej nie usuniesz. Sprawdź adres dokładnie.',
   inviteConfirmMixedDescription:
     'Przejrzyj zmiany dostępu poniżej przed kontynuowaniem.',
   inviteConfirmGrantAccess: 'Przyznaj dostęp',

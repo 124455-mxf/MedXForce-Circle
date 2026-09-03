@@ -8,7 +8,7 @@ import { circleMemberRoleFromManagedContact, normalizeInviteEmail } from '@medxf
 import type { CircleTranslator } from './circleI18nContext';
 import { translateCircleMemberAccessLabel, contactKindLabelI18n } from './adminScreenI18n';
 
-export type ContactInvitePeopleStatus = 'pending' | 'missing';
+export type ContactInvitePeopleStatus = 'pending' | 'missing' | 'revoked';
 
 export const CONTACT_KIND_BADGE: Record<CircleContactKind, string> = {
   caregiver: 'bg-violet-50 text-violet-700 border-violet-100',
@@ -51,7 +51,7 @@ function contactHasInvitableCircleAccess(contact: CircleManagedContact): boolean
   return !!email && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 }
 
-/** People-tab hint: pending invite or missing invite after contact save. */
+/** People-tab hint: pending invite, revoked access, or missing invite after contact save. */
 export function resolveContactInvitePeopleStatus(
   contact: CircleManagedContact,
   members: CircleInviteListItem[],
@@ -64,6 +64,7 @@ export function resolveContactInvitePeopleStatus(
   );
   if (invite?.status === 'pending') return 'pending';
   if (invite?.status === 'accepted') return null;
+  if (invite?.status === 'revoked') return 'revoked';
   return 'missing';
 }
 
@@ -72,6 +73,9 @@ export function contactInvitePeopleStatusBadgeClass(
 ): string {
   if (status === 'pending') {
     return 'bg-amber-50 text-amber-800 border-amber-100';
+  }
+  if (status === 'revoked') {
+    return 'bg-slate-100 text-slate-600 border-slate-200';
   }
   return 'bg-rose-50 text-rose-700 border-rose-100';
 }

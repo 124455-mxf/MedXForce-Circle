@@ -27,9 +27,11 @@ const SCHEDULE_ID_TO_METRIC: Partial<Record<AssessmentScheduleId, AnalyticsMetri
   mobility: 'mobility',
   numbness: 'numbness',
   temperature: 'temperature',
+  balance: 'balance',
   vision: 'vision',
   speech: 'speech',
   neurological: 'neurological',
+  physiological: 'physiological',
   psychological: 'psychological',
 };
 
@@ -40,9 +42,11 @@ const METRIC_ID_TO_SCHEDULE: Partial<Record<AnalyticsMetricId, AssessmentSchedul
   mobility: 'mobility',
   numbness: 'numbness',
   temperature: 'temperature',
+  balance: 'balance',
   vision: 'vision',
   speech: 'speech',
   neurological: 'neurological',
+  physiological: 'physiological',
   psychological: 'psychological',
 };
 

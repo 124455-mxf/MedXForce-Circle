@@ -335,7 +335,9 @@ export function CircleCircleScreen({
     onboardingEnabled,
   );
 
-  const [activeThread, setActiveThread] = useState<CircleMemberThreadKind>('open');
+  const [activeThread, setActiveThread] = useState<CircleMemberThreadKind>(
+    canRestricted ? 'restricted' : 'open',
+  );
   const [inboxView, setInboxView] = useState<CirclePostInboxView>('discussion');
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -1497,6 +1499,22 @@ export function CircleCircleScreen({
             <button
               type="button"
               role="tab"
+              aria-selected={activeThread === 'restricted'}
+              onClick={() => setActiveThread('restricted')}
+              className={circleTabButtonClass(activeThread === 'restricted')}
+            >
+              <span className="inline-flex items-center justify-center gap-1.5">
+                <Shield size={14} className="shrink-0 [@media(max-height:740px)]:hidden" />
+                <ResponsiveTabLabel
+                  long={t('circle.tabCareCoordinationLong')}
+                  compact={t('circle.tabCareCoordinationCompact')}
+                />
+                <CircleTabCountBadge count={restrictedUnreadCount} />
+              </span>
+            </button>
+            <button
+              type="button"
+              role="tab"
               aria-selected={activeThread === 'open'}
               onClick={() => setActiveThread('open')}
               className={circleTabButtonClass(activeThread === 'open')}
@@ -1513,22 +1531,6 @@ export function CircleCircleScreen({
                     (inboxViews.includes('care_transition') ? careTransitionOpenCount : 0)
                   }
                 />
-              </span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeThread === 'restricted'}
-              onClick={() => setActiveThread('restricted')}
-              className={circleTabButtonClass(activeThread === 'restricted')}
-            >
-              <span className="inline-flex items-center justify-center gap-1.5">
-                <Shield size={14} className="shrink-0 [@media(max-height:740px)]:hidden" />
-                <ResponsiveTabLabel
-                  long={t('circle.tabCareCoordinationLong')}
-                  compact={t('circle.tabCareCoordinationCompact')}
-                />
-                <CircleTabCountBadge count={restrictedUnreadCount} />
               </span>
             </button>
           </div>

@@ -969,6 +969,12 @@ export function CircleRemoteSettingsScreen({
                       onClick={() => toggleIcuOptionalFeature('doctorQuickAnswers')}
                     />
                     <OptionalChipButton
+                      label={t('remoteSettings.icuOptBoardLanguage')}
+                      active={icuOptionalFeatures.boardLanguage}
+                      onClick={() => toggleIcuOptionalFeature('boardLanguage')}
+                      className="col-span-2"
+                    />
+                    <OptionalChipButton
                       label={t('remoteSettings.icuOptSoulMusic')}
                       active={icuOptionalFeatures.soulMusic}
                       onClick={() => toggleIcuOptionalFeature('soulMusic')}
@@ -1497,6 +1503,17 @@ export function CircleRemoteSettingsScreen({
                           doctorQuickAnswers: !prev.doctorQuickAnswers,
                         }))
                       }
+                    />
+                    <OptionalChipButton
+                      label={t('remoteSettings.icuOptBoardLanguage')}
+                      active={pendingIcuFeatures.boardLanguage}
+                      onClick={() =>
+                        setPendingIcuFeatures((prev) => ({
+                          ...prev,
+                          boardLanguage: !prev.boardLanguage,
+                        }))
+                      }
+                      className="col-span-2"
                     />
                     <OptionalChipButton
                       label={t('remoteSettings.icuOptSoulMusic')}

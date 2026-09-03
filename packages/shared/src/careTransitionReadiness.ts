@@ -4,6 +4,7 @@ import type { CircleMemberRole } from './patientPermissions';
 import { normalizeMemberRole } from './patientPermissions';
 import type { TreatmentPhaseValue } from './treatmentPhase';
 import { normalizeTreatmentPhaseForSchedule } from './treatmentPhase';
+import { careTransitionRegionFromCountry } from './countries';
 import {
   canPostCircleAnnouncement,
   createCircleMemberThreadPost,
@@ -869,6 +870,49 @@ export function suggestedPackForPhaseTransition(
   return suggestedPackForTreatmentPhase(to);
 }
 
+export type CareTransitionDraftPlanSkip = 'no-pack' | 'live-pack' | 'same-draft';
+
+export type CareTransitionDraftPlan =
+  | { skip: CareTransitionDraftPlanSkip }
+  | { packId: CareTransitionPackId; next: CareTransitionReadinessState };
+
+/**
+ * Plan a proxy-only draft pack for a recovery-stage save.
+ * Circle profile saves keep skipIfLive false (archive live, start the new draft).
+ * Patient setup uses skipIfLive so a running pack is not interrupted.
+ */
+export function planCareTransitionDraftForPhase(
+  state: CareTransitionReadinessState,
+  fromPhase: string | null | undefined,
+  toPhase: string | null | undefined,
+  options?: {
+    skipIfLive?: boolean;
+    skipIfSameDraft?: boolean;
+    country?: string | null;
+  },
+): CareTransitionDraftPlan {
+  const packId = suggestedPackForPhaseTransition(fromPhase, toPhase);
+  if (!packId) return { skip: 'no-pack' };
+  if (options?.skipIfLive && isCareTransitionPackLive(state)) {
+    return { skip: 'live-pack' };
+  }
+  if (
+    options?.skipIfSameDraft !== false &&
+    isCareTransitionPackDraft(state) &&
+    state.activePackId === packId
+  ) {
+    return { skip: 'same-draft' };
+  }
+  let next = beginCareTransitionPackReview(state, packId);
+  if (!next.regionManual) {
+    const country = options?.country?.trim();
+    if (country) {
+      next = { ...next, region: careTransitionRegionFromCountry(country) };
+    }
+  }
+  return { packId, next };
+}
+
 function asStringArray(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   return raw.filter((x): x is string => typeof x === 'string' && x.length > 0 && x.length <= 200);
@@ -1259,6 +1303,35 @@ export async function writeCareTransitionReadinessState(
     throw err;
   }
   return next;
+}
+
+export async function ensureDraftCareTransitionPackForPhase(
+  db: Firestore,
+  patientId: string,
+  fromPhase: string | null | undefined,
+  toPhase: string | null | undefined,
+  updatedByUid?: string,
+  options?: {
+    skipIfLive?: boolean;
+    skipIfSameDraft?: boolean;
+    country?: string | null;
+  },
+): Promise<
+  | { status: 'skipped'; reason: CareTransitionDraftPlanSkip }
+  | { status: 'written'; packId: CareTransitionPackId; state: CareTransitionReadinessState }
+> {
+  const current = await readCareTransitionReadinessState(db, patientId);
+  const planned = planCareTransitionDraftForPhase(current, fromPhase, toPhase, options);
+  if ('skip' in planned) {
+    return { status: 'skipped', reason: planned.skip };
+  }
+  const written = await writeCareTransitionReadinessState(
+    db,
+    patientId,
+    planned.next,
+    updatedByUid,
+  );
+  return { status: 'written', packId: planned.packId, state: written };
 }
 
 export function careTransitionPackRemainingCount(

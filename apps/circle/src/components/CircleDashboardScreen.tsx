@@ -64,6 +64,7 @@ import { CircleMessageExpandOverlay } from './CircleMessageExpandOverlay';
 import { CircleDashboardWelcomeSection } from './CircleDashboardWelcomeSection';
 import { CirclePatientInsightsSection } from './CirclePatientInsightsSection';
 import { CircleDashboardCelebrationSection } from './CircleDashboardCelebrationSection';
+import { CircleMissedAssessmentsSheet } from './CircleMissedAssessmentsSheet';
 import { CircleDashboardAttentionTiles } from './CircleDashboardAttentionTiles';
 import { CircleDashboardPatientOfflineTile } from './CircleDashboardPatientOfflineTile';
 import type { CircleInboxFolder } from './CircleDashboardAttentionTiles';
@@ -1090,6 +1091,7 @@ export function CircleDashboardScreen({
   } = useCareTransitionReadiness(db, patient.patientId, user.uid, memberRole, t);
   const [careTransitionOpen, setCareTransitionOpen] = useState(false);
   const [careTransitionReviewOpen, setCareTransitionReviewOpen] = useState(false);
+  const [missedAssessmentsOpen, setMissedAssessmentsOpen] = useState(false);
   useEffect(() => {
     if (!careTransitionOpen || !careTransitionState) return;
     if (!careTransitionState.activePackId) {
@@ -2196,6 +2198,7 @@ export function CircleDashboardScreen({
           onOpenRemoteSettingsCircleInitiate={onOpenRemoteSettingsCircleInitiate}
           onOpenRemoteSettingsDropIn={onOpenRemoteSettingsDropIn}
           onOpenRemoteSettingsApplicationMode={onOpenRemoteSettingsApplicationMode}
+          onOpenMissedAssessments={() => setMissedAssessmentsOpen(true)}
         />
 
         {showPatientLocale && !showPatientLocaleUnderLive ? (
@@ -2318,6 +2321,19 @@ export function CircleDashboardScreen({
           onPackStarterOpenChange={setCareTransitionReviewOpen}
         />
       ) : null}
+
+      <CircleMissedAssessmentsSheet
+        open={missedAssessmentsOpen}
+        patient={patient}
+        byMetricId={byMetricId}
+        schedulePreferences={assessmentScheduleContext.preferences}
+        remoteAssessmentSchedule={assessmentScheduleContext.remoteAssessmentSchedule}
+        onOpenMetric={(metricId) => {
+          setMissedAssessmentsOpen(false);
+          onOpenAnalyticsDetail(metricId);
+        }}
+        onClose={() => setMissedAssessmentsOpen(false)}
+      />
 
       <CircleMessageExpandOverlay
         open={careTransitionOpen}

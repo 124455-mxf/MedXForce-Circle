@@ -1530,6 +1530,9 @@ export function CircleSettingsUserManagementPanel({
                       </span>
                     </summary>
                     <div className="px-4 pb-4 space-y-2">
+                      <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                        {t('admin.users.pastAccessHint')}
+                      </p>
                       {pastMembers.map((item) => (
                         <div
                           key={item.id}

@@ -351,6 +351,7 @@ export function CircleDashboardCelebrationSection({
   onOpenRemoteSettingsCircleInitiate,
   onOpenRemoteSettingsDropIn,
   onOpenRemoteSettingsApplicationMode,
+  onOpenMissedAssessments,
 }: {
   db: Firestore;
   user: User;
@@ -380,6 +381,8 @@ export function CircleDashboardCelebrationSection({
   onOpenRemoteSettingsDropIn?: () => void;
   /** Opens Remote Settings on Application mode. */
   onOpenRemoteSettingsApplicationMode?: () => void;
+  /** Opens the missed scheduled-assessment list (Last 7 days layout). */
+  onOpenMissedAssessments?: () => void;
 }) {
   const t = useCircleT();
   const { language } = useCircleI18nContext();
@@ -796,7 +799,7 @@ export function CircleDashboardCelebrationSection({
       headline: copy.headline,
       body: copy.body,
       dismissKind: 'scheduledAssessmentMissed',
-      onOpen: () => onGoToTab('analytics'),
+      onOpen: () => (onOpenMissedAssessments ? onOpenMissedAssessments() : onGoToTab('analytics')),
     });
   } else if (previewReminders && careRemindersEnabled) {
     const preview = localizePreviewScheduledAssessmentMissedReminder(t, friendlyName);
@@ -807,7 +810,7 @@ export function CircleDashboardCelebrationSection({
       headline: preview.headline,
       body: preview.body,
       isPreview: true,
-      onOpen: () => onGoToTab('analytics'),
+      onOpen: () => (onOpenMissedAssessments ? onOpenMissedAssessments() : onGoToTab('analytics')),
     });
   }
 

@@ -122,7 +122,7 @@ export type RemoteFeaturesVisibility = {
   activity?: RemoteActivityVisibility;
   /** ICU optional: Pain Assessment shortcut. */
   intensiveCarePainAssessment?: boolean;
-  /** ICU optional: Doctor Quick Answers shortcut. */
+  /** ICU optional: Quick Answers shortcut. */
   intensiveCareDoctorQuickAnswers?: boolean;
   /** ICU optional: Soul Music (Apple Music). */
   intensiveCareSoulMusic?: boolean;
@@ -1558,6 +1558,8 @@ export function setRemoteIntensiveCareExperience(
 export type RemoteIntensiveCareOptionalFeatures = {
   painAssessment: boolean;
   doctorQuickAnswers: boolean;
+  /** Sentences + words + AI suggestions as one ICU shortcut. */
+  boardLanguage: boolean;
   soulMusic: boolean;
   soulMediaLibrary: boolean;
 };
@@ -1565,6 +1567,7 @@ export type RemoteIntensiveCareOptionalFeatures = {
 export const REMOTE_ICU_OPTIONAL_FEATURES_DEFAULTS: RemoteIntensiveCareOptionalFeatures = {
   painAssessment: true,
   doctorQuickAnswers: true,
+  boardLanguage: false,
   soulMusic: false,
   soulMediaLibrary: false,
 };
@@ -1573,6 +1576,7 @@ export function readRemoteIntensiveCareOptionalFeatures(
   doc: PatientRemoteSettingsDoc | null | undefined,
 ): RemoteIntensiveCareOptionalFeatures {
   const fv = doc?.featuresVisibility;
+  const visibleAreas = doc?.visibleAreas;
   return {
     painAssessment:
       fv?.intensiveCarePainAssessment !== undefined
@@ -1582,6 +1586,10 @@ export function readRemoteIntensiveCareOptionalFeatures(
       fv?.intensiveCareDoctorQuickAnswers !== undefined
         ? !!fv.intensiveCareDoctorQuickAnswers
         : REMOTE_ICU_OPTIONAL_FEATURES_DEFAULTS.doctorQuickAnswers,
+    boardLanguage:
+      visibleAreas?.phrases === true &&
+      visibleAreas?.categories === true &&
+      doc?.showAiSuggestions === true,
     soulMusic: !!fv?.intensiveCareSoulMusic,
     soulMediaLibrary: !!fv?.intensiveCareSoulMediaLibrary,
   };
@@ -1602,6 +1610,9 @@ export function applyRemoteIntensiveCareOptionalFeatures(
     'featuresVisibility.intensiveCareDoctorQuickAnswers',
     state.doctorQuickAnswers,
   );
+  next = setRemoteSettingValue(next, 'showAiSuggestions', state.boardLanguage);
+  next = setRemoteVisibleArea(next, 'phrases', state.boardLanguage);
+  next = setRemoteVisibleArea(next, 'categories', state.boardLanguage);
   next = setRemoteSettingValue(next, 'featuresVisibility.intensiveCareSoulMusic', state.soulMusic);
   next = setRemoteSettingValue(
     next,

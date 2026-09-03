@@ -4,13 +4,18 @@ import {
   graceDaysForRecurrence,
   isRecurrenceActiveOnDate,
   isSameCalendarDay,
+  SCHEDULABLE_ASSESSMENTS,
+  type AnalyticsMetricId,
   type AssessmentRecurrence,
   type AssessmentScheduleId,
   type AssessmentScheduleRule,
   type PatientAnalyticsSummary,
 } from '@medxforce/shared';
 import { CIRCLE_ANALYTICS_WINDOW_DAYS, timelinePointToTimestamp } from './circleAnalyticsChart';
-import { analyticsMetricIdToAssessmentScheduleId } from './circleAssessmentScheduleMetrics';
+import {
+  analyticsMetricIdToAssessmentScheduleId,
+  assessmentScheduleIdToAnalyticsMetric,
+} from './circleAssessmentScheduleMetrics';
 
 export type AnalyticsAdherenceTimelinePoint = {
   date: string;
@@ -31,6 +36,8 @@ export type AssessmentScheduleAdherence = {
   graceDays: number;
   takenTimeline: AssessmentScheduleAdherencePoint[];
   missedTimeline: AssessmentScheduleAdherencePoint[];
+  /** Start-of-slot timestamps for past scheduled days that were not taken. */
+  missedAt: number[];
 };
 
 function startOfLocalDay(date: Date): Date {
@@ -96,6 +103,7 @@ export function buildAssessmentScheduleAdherence(params: {
 
   const takenTimeline: AssessmentScheduleAdherencePoint[] = [];
   const missedTimeline: AssessmentScheduleAdherencePoint[] = [];
+  const missedAt: number[] = [];
   let scheduled = 0;
   let taken = 0;
   let missed = 0;
@@ -128,6 +136,7 @@ export function buildAssessmentScheduleAdherence(params: {
     } else if (isPast) {
       missed += 1;
       missedValue = 1;
+      missedAt.push(day.getTime());
     } else if (isToday) {
       dueToday += 1;
     }
@@ -144,6 +153,7 @@ export function buildAssessmentScheduleAdherence(params: {
     graceDays,
     takenTimeline,
     missedTimeline,
+    missedAt,
   };
 }
 
@@ -201,4 +211,45 @@ export function summarizeScheduledAssessmentAdherence(params: {
     pastScheduled,
     missRate: pastScheduled > 0 ? missed / pastScheduled : 0,
   };
+}
+
+export type MissedScheduledAssessmentRow = {
+  assessmentId: AssessmentScheduleId;
+  metricId: AnalyticsMetricId | null;
+  missed: number;
+  taken: number;
+  pastScheduled: number;
+  missedAt: number[];
+};
+
+/** Enabled scheduled assessments that had at least one missed past slot in the window. */
+export function listMissedScheduledAssessments(params: {
+  rules: Partial<Record<AssessmentScheduleId, AssessmentScheduleRule>>;
+  completionsByScheduleId: Partial<Record<AssessmentScheduleId, number[]>>;
+  now?: Date;
+  windowDays?: number;
+}): MissedScheduledAssessmentRow[] {
+  const windowDays = params.windowDays ?? SCHEDULED_ASSESSMENT_MISS_WINDOW_DAYS;
+  const rows: MissedScheduledAssessmentRow[] = [];
+  for (const meta of SCHEDULABLE_ASSESSMENTS) {
+    const rule = params.rules[meta.id];
+    if (!rule?.enabled) continue;
+    const completions = params.completionsByScheduleId[rule.assessmentId] ?? [];
+    const adherence = buildAssessmentScheduleAdherence({
+      recurrence: rule.recurrence,
+      completions,
+      now: params.now,
+      windowDays,
+    });
+    if (adherence.missed <= 0) continue;
+    rows.push({
+      assessmentId: rule.assessmentId,
+      metricId: assessmentScheduleIdToAnalyticsMetric(rule.assessmentId),
+      missed: adherence.missed,
+      taken: adherence.taken,
+      pastScheduled: adherence.taken + adherence.missed,
+      missedAt: adherence.missedAt,
+    });
+  }
+  return rows;
 }
