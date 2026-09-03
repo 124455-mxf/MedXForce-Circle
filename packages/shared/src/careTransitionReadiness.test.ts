@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  careTransitionDraftReviewCount,
   careTransitionFolderCounts,
   careTransitionOpenItemCount,
   careTransitionPackRemainingCount,
@@ -36,18 +37,26 @@ const openHelp: CircleHelpTask = {
 const draft = draftIcuToWard();
 assert.equal(careTransitionVisiblePackItems(draft, 'proxy').length, 4);
 assert.equal(careTransitionPackRemainingCount(draft, 'proxy'), 0);
-assert.equal(careTransitionOpenItemCount(draft, 'proxy'), 0);
-assert.deepEqual(careTransitionFolderCounts(draft, 'proxy'), { total: 0, unread: 0 });
+assert.equal(careTransitionDraftReviewCount(draft, 'proxy'), 1);
+assert.equal(careTransitionOpenItemCount(draft, 'proxy'), 1);
+assert.deepEqual(careTransitionFolderCounts(draft, 'proxy'), { total: 1, unread: 1 });
+assert.equal(careTransitionDraftReviewCount(draft, 'caregiver'), 0);
+assert.equal(careTransitionOpenItemCount(draft, 'caregiver'), 0);
+assert.deepEqual(careTransitionFolderCounts(draft, 'caregiver'), { total: 0, unread: 0 });
+assert.equal(careTransitionOpenItemCount(draft, 'family'), 0);
 
 const live = draftIcuToWard({ packLive: true });
 assert.equal(careTransitionPackRemainingCount(live, 'proxy'), 4);
+assert.equal(careTransitionDraftReviewCount(live, 'proxy'), 0);
 assert.equal(careTransitionOpenItemCount(live, 'proxy'), 4);
 assert.deepEqual(careTransitionFolderCounts(live, 'proxy'), { total: 4, unread: 4 });
 
 const draftWithHelp = draftIcuToWard({ circleHelpTasks: [openHelp] });
 assert.equal(careTransitionPackRemainingCount(draftWithHelp, 'proxy'), 0);
-assert.equal(careTransitionOpenItemCount(draftWithHelp, 'proxy'), 1);
-assert.deepEqual(careTransitionFolderCounts(draftWithHelp, 'proxy'), { total: 1, unread: 1 });
+assert.equal(careTransitionOpenItemCount(draftWithHelp, 'proxy'), 2);
+assert.deepEqual(careTransitionFolderCounts(draftWithHelp, 'proxy'), { total: 2, unread: 2 });
+assert.equal(careTransitionOpenItemCount(draftWithHelp, 'caregiver'), 1);
+assert.deepEqual(careTransitionFolderCounts(draftWithHelp, 'caregiver'), { total: 1, unread: 1 });
 
 assert.equal(suggestedPackForPhaseTransition('', 'icu'), 'crisis-icu');
 assert.equal(suggestedPackForPhaseTransition('', 'acute'), 'ward-to-acute');

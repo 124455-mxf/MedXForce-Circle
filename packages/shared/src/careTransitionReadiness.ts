@@ -1338,11 +1338,20 @@ export function careTransitionPackRemainingCount(
   state: CareTransitionReadinessState,
   role: CircleMemberRole,
 ): number {
-  // Draft packs stay on the proxy review UI, but must not badge as open tasks.
+  // Draft checklist items are not open work until the proxy shares the pack.
   if (!isCareTransitionPackLive(state)) return 0;
   const items = careTransitionVisiblePackItems(state, role);
   const done = new Set(state.doneIds);
   return items.filter((item) => !done.has(item.id)).length;
+}
+
+/** Proxy-only: one badge for a draft pack (continue review), not the checklist size. */
+export function careTransitionDraftReviewCount(
+  state: CareTransitionReadinessState,
+  role: CircleMemberRole | string,
+): number {
+  if (!isCareTransitionPackDraft(state)) return 0;
+  return canManageCareTransitionPack(role) ? 1 : 0;
 }
 
 /** Pack checklist the viewer may work. Proxy still sees a draft for review. */
@@ -1365,21 +1374,23 @@ export function careTransitionOpenItemCount(
   state: CareTransitionReadinessState,
   role: CircleMemberRole,
 ): number {
-  return circleHelpOpenCount(state.circleHelpTasks ?? []) + careTransitionPackRemainingCount(state, role);
+  return (
+    circleHelpOpenCount(state.circleHelpTasks ?? []) +
+    careTransitionPackRemainingCount(state, role) +
+    careTransitionDraftReviewCount(state, role)
+  );
 }
 
 /**
  * Tasks folder: open Circle-help plus remaining items on a live pack.
- * Draft pack items stay off the badge until the proxy shares the pack.
+ * A draft pack badges 1 for the proxy (review/share), 0 for everyone else.
  * Completed Circle-help and completed pack items stay on the list, not on the badge.
  */
 export function careTransitionFolderCounts(
   state: CareTransitionReadinessState,
   role: CircleMemberRole,
 ): { total: number; unread: number } {
-  const helpOpen = circleHelpOpenCount(state.circleHelpTasks ?? []);
-  const packRemaining = careTransitionPackRemainingCount(state, role);
-  const remaining = helpOpen + packRemaining;
+  const remaining = careTransitionOpenItemCount(state, role);
   return {
     total: remaining,
     unread: remaining,
