@@ -89,7 +89,7 @@ import {
   localizePreviewIcuProgressionReminder,
   localizeTeamCoverageReminder,
   formatMissingCoreProfileFieldsT,
-  patientFriendlyDisplayName,
+  circlePatientFirstName,
 } from '../lib/dashboardI18n';
 import { dashboardSectionTitleClass } from '../lib/circleSectionStyles';
 import { cn } from '../lib/utils';
@@ -402,10 +402,10 @@ export function CircleDashboardCelebrationSection({
     HospitalFeatureReminderKind | IcuProgressionReminderKind | 'icuDailyCheckIn' | null
   >(null);
 
-  const friendlyName = patientFriendlyDisplayName(snapshot, patient.displayName);
+  const patientFirstName = circlePatientFirstName(snapshot, patient.displayName);
   const birthday = localizeBirthdayReminder(t, language, snapshot, patient.displayName);
   const onsetMilestone = localizeOnsetMilestone(t, snapshot);
-  const previewBirthday = previewReminders ? localizePreviewBirthdayReminder(t, friendlyName) : null;
+  const previewBirthday = previewReminders ? localizePreviewBirthdayReminder(t, patientFirstName) : null;
   const previewOnsetFiveYear = previewReminders ? localizePreviewOnsetMilestoneFiveYear(t) : null;
   const previewOnsetOneYear = previewReminders ? localizePreviewOnsetMilestoneOneYear(t) : null;
 
@@ -791,7 +791,7 @@ export function CircleDashboardCelebrationSection({
   }
 
   if (showScheduledAssessmentMissedReminder) {
-    const copy = localizeScheduledAssessmentMissedReminder(t, friendlyName);
+    const copy = localizeScheduledAssessmentMissedReminder(t, patientFirstName);
     tiles.push({
       key: 'scheduled-assessment-missed',
       tone: 'care',
@@ -802,7 +802,7 @@ export function CircleDashboardCelebrationSection({
       onOpen: () => (onOpenMissedAssessments ? onOpenMissedAssessments() : onGoToTab('analytics')),
     });
   } else if (previewReminders && careRemindersEnabled) {
-    const preview = localizePreviewScheduledAssessmentMissedReminder(t, friendlyName);
+    const preview = localizePreviewScheduledAssessmentMissedReminder(t, patientFirstName);
     tiles.push({
       key: 'preview-scheduled-assessment-missed',
       tone: 'care',
@@ -821,7 +821,7 @@ export function CircleDashboardCelebrationSection({
     );
     const copy = localizeCareProfileReminder(
       t,
-      friendlyName,
+      patientFirstName,
       canOpenPatientProfile,
       missingFieldsLabel,
     );
@@ -835,7 +835,7 @@ export function CircleDashboardCelebrationSection({
       onOpen: canOpenPatientProfile ? () => onGoToTab('patient-profile') : undefined,
     });
   } else if (previewReminders && careRemindersEnabled) {
-    const preview = localizePreviewCareProfileReminder(t, friendlyName);
+    const preview = localizePreviewCareProfileReminder(t, patientFirstName);
     tiles.push({
       key: 'preview-profile-incomplete',
       tone: 'care',

@@ -365,7 +365,7 @@ export function localizeBirthdayReminder(
   // Match patient dashboard window: up to 7 days before, 2 days after.
   if (daysFromBirthday < -7 || daysFromBirthday > 2) return null;
 
-  const name = patientFriendlyDisplayName(snapshot, patientDisplayName);
+  const name = circlePatientFirstName(snapshot, patientDisplayName);
   const ageOnBirthday = thisYearBirthday.getFullYear() - dob.getFullYear();
   const birthdayLabel = formatMonthDay(language, thisYearBirthday);
   const daysUntil = daysFromBirthday < 0 ? -daysFromBirthday : 0;
