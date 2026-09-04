@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2, LayoutDashboard, Shield, SlidersHorizontal, FileText } from 'lucide-react';
+import { CircleIcuUnicodeEmojiManagement } from './CircleIcuUnicodeEmojiManagement';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -986,6 +987,7 @@ export function CircleRemoteSettingsScreen({
                     />
                   </div>
                 </div>
+                <CircleIcuUnicodeEmojiManagement t={t} settings={settings} onPatch={patch} />
               </div>
             ) : null}
 
@@ -1536,6 +1538,7 @@ export function CircleRemoteSettingsScreen({
                       }
                     />
                   </div>
+                  <CircleIcuUnicodeEmojiManagement t={t} settings={settings} onPatch={patch} />
                 </div>
               ) : null}
 

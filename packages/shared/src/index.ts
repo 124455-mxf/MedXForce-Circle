@@ -80,3 +80,5 @@ export * from './careCalendarAppointmentDisplay';
 export * from './careCalendarScheduleTasks';
 export * from './careCalendarEntryFormSnapshot';
 export * from './dailyCheckIn';
+export * from './unicodeEmojiCatalog';
+export * from './modeUnicodeEmojiContent';

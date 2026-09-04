@@ -18,6 +18,10 @@ import {
 } from './dailyCheckIn';
 import { stripUndefinedDeep } from './firestoreSanitize';
 import {
+  sanitizeModeUnicodeEmojiContent,
+  type ModeUnicodeEmojiContentStore,
+} from './modeUnicodeEmojiContent';
+import {
   extractCircleInitiateMessagesForRemote,
   parseCircleInitiateMessagesConfig,
   type CircleInitiateMessageGroup,
@@ -240,6 +244,8 @@ export type RemoteSettingsPayload = {
   dailyCheckInIcuDefaultOffV1?: boolean;
   /** One-time: Daily Life restores stage assessment cadences after ICU/Hospital all-off. */
   assessmentScheduleDailyLifeRestoredV1?: boolean;
+  /** ICU communication-board Unicode emoji overlay (visibility + order). */
+  modeUnicodeEmojiContent?: ModeUnicodeEmojiContentStore;
 };
 
 export type RemoteSettingsSource = 'patient' | 'circle';
@@ -921,6 +927,10 @@ export function parsePatientRemoteSettings(
     dailyCheckInIcuDefaultOffV1: data.dailyCheckInIcuDefaultOffV1 === true ? true : undefined,
     assessmentScheduleDailyLifeRestoredV1:
       data.assessmentScheduleDailyLifeRestoredV1 === true ? true : undefined,
+    modeUnicodeEmojiContent:
+      data.modeUnicodeEmojiContent !== undefined
+        ? (sanitizeModeUnicodeEmojiContent(data.modeUnicodeEmojiContent) ?? {})
+        : undefined,
     updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : 0,
     updatedByUid: asString(data.updatedByUid) ?? '',
     updatedByName: asString(data.updatedByName) ?? '',
@@ -1033,6 +1043,8 @@ export function extractRemoteSettingsFromPreferences(
       preferences.dailyCheckInDefaultOnAllStagesV1 === true ? true : undefined,
     dailyCheckInIcuDefaultOffV1:
       preferences.dailyCheckInIcuDefaultOffV1 === true ? true : undefined,
+    modeUnicodeEmojiContent:
+      sanitizeModeUnicodeEmojiContent(preferences.modeUnicodeEmojiContent) ?? {},
     updatedAt: Date.now(),
     updatedByUid: meta.uid,
     updatedByName: meta.displayName,
