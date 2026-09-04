@@ -501,6 +501,10 @@ export const appShellEnglish = {
     liveApplicationMode: 'Application mode: {{label}}',
     liveApplicationModeLoading: 'Application mode: …',
     livePhaseLoading: 'Phase: …',
+    identityMismatchTitle: 'Contact details differ',
+    identityMismatchBody:
+      'Your first name, last name, display name, or date of birth is different for {{names}}. Open My contact details to update them for each person you support.',
+    identityMismatchDismiss: 'Dismiss this notice',
     getToKnow: 'Get to know {{name}}',
     insightsAvailable: '{{count}}/{{total}} insights available',
     insightsTap: 'Tap to view hobbies, goals, diagnosis, and more.',
@@ -1884,6 +1888,10 @@ export const appShellGerman = {
     liveApplicationMode: 'Anwendungsmodus: {{label}}',
     liveApplicationModeLoading: 'Anwendungsmodus: …',
     livePhaseLoading: 'Phase: …',
+    identityMismatchTitle: 'Kontaktdaten unterscheiden sich',
+    identityMismatchBody:
+      'Vorname, Nachname, Anzeigename oder Geburtsdatum unterscheiden sich für {{names}}. Öffnen Sie „Meine Kontaktdaten“, um sie für jede Person zu aktualisieren.',
+    identityMismatchDismiss: 'Diesen Hinweis schließen',
     getToKnow: '{{name}} kennenlernen',
     insightsAvailable: '{{count}}/{{total}} Einblicke verfügbar',
     insightsTap: 'Tipps für Hobbys, Ziele, Diagnose und mehr.',
@@ -3260,6 +3268,10 @@ export const appShellSpanish = {
     liveApplicationMode: 'Modo de aplicación: {{label}}',
     liveApplicationModeLoading: 'Modo de aplicación: …',
     livePhaseLoading: 'Fase: …',
+    identityMismatchTitle: 'Los datos de contacto difieren',
+    identityMismatchBody:
+      'Su nombre, apellido, nombre para mostrar o fecha de nacimiento es diferente para {{names}}. Abra Mis datos de contacto para actualizarlos para cada persona a la que apoya.',
+    identityMismatchDismiss: 'Cerrar este aviso',
     getToKnow: 'Conocer a {{name}}',
     insightsAvailable: '{{count}}/{{total}} datos disponibles',
     insightsTap: 'Toque para ver aficiones, metas, diagnóstico y más.',
@@ -4636,6 +4648,10 @@ export const appShellPolish = {
     liveApplicationMode: 'Tryb aplikacji: {{label}}',
     liveApplicationModeLoading: 'Tryb aplikacji: …',
     livePhaseLoading: 'Faza: …',
+    identityMismatchTitle: 'Dane kontaktowe się różnią',
+    identityMismatchBody:
+      'Imię, nazwisko, nazwa wyświetlana lub data urodzenia różnią się dla {{names}}. Otwórz Moje dane kontaktowe, aby zaktualizować je dla każdej osoby, którą wspierasz.',
+    identityMismatchDismiss: 'Ukryj ten komunikat',
     getToKnow: 'Poznaj {{name}}',
     insightsAvailable: '{{count}}/{{total}} informacji dostępnych',
     insightsTap: 'Dotknij, aby zobaczyć hobby, cele, diagnozę i więcej.',

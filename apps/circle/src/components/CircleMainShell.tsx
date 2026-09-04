@@ -834,6 +834,7 @@ export function CircleMainShell({
               user={user}
               db={db}
               patient={selectedPatient}
+              patients={patients}
               unreadCount={threadState.unreadCount}
               messageCount={threadState.messages.length}
               circleUnreadCount={circleThreadUnread.unreadCount}

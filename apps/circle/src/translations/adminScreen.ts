@@ -368,6 +368,9 @@ const myContactPanelEnglish = {
   lockedReachOutNone: 'To update yours, reach out to your proxy.',
   or: 'or',
   saveFailed: 'Could not save your contact details.',
+  identityMismatchTitle: 'Different details across patients',
+  identityMismatchNotice:
+    'We detected different contact details across patients ({{names}}): first name, last name, name, or date of birth. You can edit yours for {{name}} below. Relationship is not included.',
 };
 
 export const adminScreenEnglish = {
@@ -759,6 +762,9 @@ const myContactPanelGerman = {
   lockedReachOutNone: 'Um Ihre Daten zu ändern, wenden Sie sich an Ihren Vertreter.',
   or: 'oder',
   saveFailed: 'Ihre Kontaktdaten konnten nicht gespeichert werden.',
+  identityMismatchTitle: 'Unterschiedliche Angaben bei Patienten',
+  identityMismatchNotice:
+    'Wir haben unterschiedliche Kontaktdaten bei Patienten erkannt ({{names}}): Vorname, Nachname, Name oder Geburtsdatum. Unten können Sie Ihre Angaben für {{name}} bearbeiten. Die Beziehung ist nicht enthalten.',
 };
 
 export const adminScreenGerman = {
@@ -1150,6 +1156,9 @@ const myContactPanelSpanish = {
   lockedReachOutNone: 'Para actualizar los suyos, contacte a su representante.',
   or: 'o',
   saveFailed: 'No se pudieron guardar sus datos de contacto.',
+  identityMismatchTitle: 'Datos distintos entre pacientes',
+  identityMismatchNotice:
+    'Detectamos datos de contacto distintos entre pacientes ({{names}}): nombre, apellido, nombre para mostrar o fecha de nacimiento. Puede editar los suyos para {{name}} abajo. La relación no se incluye.',
 };
 
 export const adminScreenSpanish = {
@@ -1541,6 +1550,9 @@ const myContactPanelPolish = {
   lockedReachOutNone: 'Aby zaktualizować swoje dane, skontaktuj się ze swoim pełnomocnikiem.',
   or: 'lub',
   saveFailed: 'Nie udało się zapisać Twoich danych kontaktowych.',
+  identityMismatchTitle: 'Różne dane u pacjentów',
+  identityMismatchNotice:
+    'Wykryliśmy różne dane kontaktowe u pacjentów ({{names}}): imię, nazwisko, nazwa lub data urodzenia. Poniżej możesz edytować swoje dane dla {{name}}. Relacja nie jest uwzględniona.',
 };
 
 export const adminScreenPolish = {

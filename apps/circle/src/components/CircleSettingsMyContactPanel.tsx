@@ -33,6 +33,10 @@ import { normalizeCircleUiLanguage } from '../lib/circleLanguages';
 import { useCircleMemberTimeZone } from '../hooks/useCircleMemberTimeZone';
 import { CircleTimeZoneSelect } from './CircleTimeZoneSelect';
 import {
+  notifyCircleIdentityMismatchChanged,
+  useCircleMemberIdentityMismatch,
+} from '../hooks/useCircleMemberIdentityMismatch';
+import {
   relationshipLabelI18n,
   translateCircleMemberAccessLabel,
 } from '../lib/adminScreenI18n';
@@ -41,12 +45,13 @@ type CircleSettingsMyContactPanelProps = {
   user: User;
   db: Firestore;
   patient: CirclePatientSummary | null;
+  patients?: CirclePatientSummary[];
   onProfileSaved?: (displayName: string) => void;
   onDirtyChange?: (dirty: boolean) => void;
 };
 
 const editableFieldClass =
-  'w-full px-4 py-3.5 bg-white border-2 border-blue-200 rounded-xl text-sm font-semibold text-slate-800 shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all';
+  'w-full min-w-0 max-w-full box-border px-4 py-3.5 bg-white border-2 border-blue-200 rounded-xl text-sm font-semibold text-slate-800 shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all';
 
 const readOnlyValueClass =
   'w-full px-4 py-3 bg-slate-100/80 border border-slate-200 rounded-xl text-sm font-medium text-slate-500';
@@ -141,6 +146,7 @@ export function CircleSettingsMyContactPanel({
   user,
   db,
   patient,
+  patients = [],
   onProfileSaved,
   onDirtyChange,
 }: CircleSettingsMyContactPanelProps) {
@@ -150,6 +156,7 @@ export function CircleSettingsMyContactPanel({
     db,
     user,
   );
+  const identityMismatch = useCircleMemberIdentityMismatch(db, user, patients);
   const [contact, setContact] = useState<CircleManagedContact | null>(null);
   const [name, setName] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -375,6 +382,7 @@ export function CircleSettingsMyContactPanel({
       setIsDirty(false);
       setSaved(true);
       onProfileSaved?.(trimmedName);
+      notifyCircleIdentityMismatchChanged();
     } catch (err) {
       console.warn('[CircleSettingsMyContactPanel] save', err);
       setError(
@@ -409,6 +417,20 @@ export function CircleSettingsMyContactPanel({
         </div>
       </div>
 
+      {identityMismatch.hasMismatch ? (
+        <div className="p-4 rounded-2xl border border-sky-100 bg-sky-50/90">
+          <p className="text-xs font-bold text-sky-800 uppercase tracking-wide">
+            {t('admin.myContactPanel.identityMismatchTitle')}
+          </p>
+          <p className="text-sm text-slate-700 mt-1 leading-relaxed">
+            {t('admin.myContactPanel.identityMismatchNotice', {
+              name: patient.displayName,
+              names: identityMismatch.patientNames.join(', '),
+            })}
+          </p>
+        </div>
+      ) : null}
+
       {loading ? (
         <div className="py-10 flex justify-center text-slate-400">
           <Loader2 size={24} className="animate-spin" />
@@ -433,7 +455,7 @@ export function CircleSettingsMyContactPanel({
             </div>
           )}
 
-          <section className="space-y-4 p-4 bg-gradient-to-b from-blue-50 to-white rounded-2xl border-2 border-blue-200 shadow-sm">
+          <section className="space-y-4 p-4 min-w-0 overflow-x-hidden bg-gradient-to-b from-blue-50 to-white rounded-2xl border-2 border-blue-200 shadow-sm">
             <div className="flex items-center justify-between gap-2">
               <h4 className="text-xs font-bold text-blue-700 uppercase tracking-wider">
                 {t('admin.myContactPanel.youCanEdit')}
@@ -509,7 +531,7 @@ export function CircleSettingsMyContactPanel({
                 {t('admin.myContactPanel.displayNameHint')}
               </p>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 min-w-0 max-w-full">
               <label className="text-xs font-bold text-blue-800 uppercase tracking-wider block">
                 {t('admin.contact.fieldDob')}
               </label>
@@ -520,7 +542,7 @@ export function CircleSettingsMyContactPanel({
                   setDateOfBirth(e.target.value);
                   markDirty();
                 }}
-                className={editableFieldClass}
+                className={`${editableFieldClass} circle-date-input`}
                 autoComplete="bday"
               />
             </div>

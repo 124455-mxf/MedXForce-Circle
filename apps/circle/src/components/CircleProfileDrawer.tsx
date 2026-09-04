@@ -270,7 +270,7 @@ export function CircleProfileDrawer({
         aria-label={t('common.closeMenu')}
         onClick={requestCloseDrawer}
       />
-      <aside className="w-full max-w-sm bg-white shadow-2xl flex flex-col h-full">
+      <aside className="w-full max-w-sm min-w-0 overflow-x-hidden bg-white shadow-2xl flex flex-col h-full">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 gap-2">
           {drawerView !== 'account' ? (
             <button
@@ -561,6 +561,7 @@ export function CircleProfileDrawer({
               user={user}
               db={db}
               patient={patient}
+              patients={patients}
               onDirtyChange={setMyContactDirty}
               onProfileSaved={(nextName) => {
                 setProfileDisplayName(nextName);

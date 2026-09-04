@@ -20,6 +20,8 @@ export interface CircleUserProfile {
   startupPatientId?: string;
   /** Circle UI text size: small | medium | large. */
   textSize?: string;
+  /** Fingerprint of a dismissed cross-patient identity mismatch notice. */
+  identityMismatchNoticeFingerprint?: string;
   updatedAt: number;
 }
 
@@ -50,6 +52,11 @@ export async function getCircleUserProfile(
         ? data.startupPatientId.trim()
         : undefined,
     textSize: typeof data.textSize === 'string' ? data.textSize : undefined,
+    identityMismatchNoticeFingerprint:
+      typeof data.identityMismatchNoticeFingerprint === 'string' &&
+      data.identityMismatchNoticeFingerprint.trim()
+        ? data.identityMismatchNoticeFingerprint.trim()
+        : undefined,
     updatedAt: data.updatedAt ?? 0,
   };
 }
@@ -77,6 +84,7 @@ export async function saveCircleUserProfile(
       | 'managedPatientId'
       | 'hideOnlineStatusFromPatient'
       | 'textSize'
+      | 'identityMismatchNoticeFingerprint'
     >
   > & {
     /** Pass null to clear the synced startup patient preference. */

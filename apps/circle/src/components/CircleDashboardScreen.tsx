@@ -56,6 +56,7 @@ import {
 import type { CircleMainTab } from './CircleBottomNav';
 
 import { CircleProfileChangeBanner } from './CircleProfileChangeBanner';
+import { CircleIdentityMismatchBanner } from './CircleIdentityMismatchBanner';
 import { CircleCareTransitionReadinessBanner } from './CircleCareTransitionReadinessBanner';
 import { CircleHomePollBanner } from './CircleHomePollBanner';
 import { CircleHomeTasksBanner } from './CircleHomeTasksBanner';
@@ -86,6 +87,7 @@ import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfil
 
 import { useCircleDashboardLayout } from '../hooks/useCircleDashboardLayout';
 import { useCareTransitionReadiness } from '../hooks/useCareTransitionReadiness';
+import { useCircleMemberIdentityMismatch } from '../hooks/useCircleMemberIdentityMismatch';
 import { CARE_TRANSITION_HOME_BANNER_MAX_AGE_MS } from '../lib/careTransitionBannerDismiss';
 import {
   useCircleGalleryDashboardFromShell,
@@ -231,6 +233,7 @@ interface CircleDashboardScreenProps {
   /** When false, Drop-in is shown disabled with a Remote Settings hint. */
   dropInFeatureEnabled?: boolean;
   remoteCommandAwaiting: CirclePatientRemoteCommandAwaiting;
+  patients: CirclePatientSummary[];
 }
 
 const DASHBOARD_WIDGET_BASE_CLASS =
@@ -1052,9 +1055,11 @@ export function CircleDashboardScreen({
   dropInChatOpen,
   dropInFeatureEnabled = true,
   remoteCommandAwaiting,
+  patients = [],
 }: CircleDashboardScreenProps) {
   const t = useCircleT();
   const { language } = useCircleI18nContext();
+  const identityMismatch = useCircleMemberIdentityMismatch(db, user, patients);
   const patientPresence = useCirclePatientPresenceFromShell();
   const {
     settings: remoteSettings,
@@ -2028,6 +2033,13 @@ export function CircleDashboardScreen({
       ) : null}
 
       <CircleProfileChangeBanner user={user} db={db} patient={patient} />
+
+      {identityMismatch.showDashboardNotice ? (
+        <CircleIdentityMismatchBanner
+          patientNames={identityMismatch.patientNames}
+          onDismiss={() => void identityMismatch.dismissDashboardNotice()}
+        />
+      ) : null}
 
       <CircleCareTransitionReadinessBanner
         patient={patient}

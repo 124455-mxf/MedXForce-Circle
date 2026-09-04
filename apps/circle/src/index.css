@@ -238,3 +238,25 @@ body {
   animation: prep-border-pulse 1.6s ease-in-out infinite;
 }
 
+/* iOS Safari: native date pickers keep a wide min-content size unless constrained. */
+input[type='date'] {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.circle-date-input {
+  display: block;
+}
+
+.circle-date-input::-webkit-datetime-edit,
+.circle-date-input::-webkit-datetime-edit-fields-wrapper {
+  min-width: 0;
+  padding: 0;
+}
+
+.circle-date-input::-webkit-calendar-picker-indicator {
+  margin-inline-start: 0.25rem;
+  flex-shrink: 0;
+}
+

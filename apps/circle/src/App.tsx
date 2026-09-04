@@ -55,6 +55,7 @@ import {
 } from './lib/circlePatientSelection';
 import { useCircleAccountPhoto } from './hooks/useCircleAccountPhoto';
 import { clearCircleActiveSessionStorage } from './lib/circleSessionStorage';
+import { cn } from './lib/utils';
 import {
   clearStartupPatientId,
   loadStartupPatientId,
@@ -427,6 +428,7 @@ export default function App() {
   const appReady = !authLoading && (!user || !patientsHydrating);
   const startup = useCircleStartupSequence(appReady);
   const accountPhotoUrl = useCircleAccountPhoto(firebase.db, user);
+  const accessPlaceholderLayout = patients.length === 0;
 
   const handleSignOut = async () => {
     clearCircleActiveSessionStorage();
@@ -504,19 +506,18 @@ export default function App() {
       </div>
     </div>
   ) : (
-    <div className="flex flex-col h-dvh max-h-dvh overflow-hidden box-border max-w-2xl mx-auto w-full pt-4 px-3 pb-2.5 sm:pt-5 sm:px-4 sm:pb-3 [@media(max-height:740px)]:pt-3.5 [@media(max-height:740px)]:px-2.5 [@media(max-height:740px)]:pb-2">
+    <div
+      className={cn(
+        'flex flex-col h-dvh max-h-dvh box-border max-w-2xl mx-auto w-full min-w-0',
+        'pt-[max(1rem,env(safe-area-inset-top))] pb-[max(0.625rem,env(safe-area-inset-bottom))]',
+        'pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]',
+        accessPlaceholderLayout ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden',
+      )}
+    >
       {patientsHydrating && patients.length === 0 ? (
         <>
-          <div className="flex items-center gap-3 shrink-0 mb-6">
-            <div className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shrink-0">
-              <MedXForceBrandLogo />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-bold text-slate-800">{t('auth.title')}</h1>
-              <p className="text-xs text-slate-500 truncate">{t('common.friendsFamily')}</p>
-            </div>
-          </div>
-          <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-5">
+          <CircleAccessBrandHeader title={t('auth.title')} subtitle={t('common.friendsFamily')} />
+          <div className="min-w-0 w-full overflow-hidden bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-5">
             <div className="flex items-center gap-2 text-slate-700">
               <Users size={18} />
               <h2 className="font-bold">{t('patients.yourPatients')}</h2>
@@ -549,16 +550,8 @@ export default function App() {
         </>
       ) : patients.length === 0 ? (
         <>
-          <div className="flex items-center gap-3 shrink-0 mb-6">
-            <div className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shrink-0">
-              <MedXForceBrandLogo />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-bold text-slate-800">{t('auth.title')}</h1>
-              <p className="text-xs text-slate-500 truncate">{t('common.friendsFamily')}</p>
-            </div>
-          </div>
-          <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-4">
+          <CircleAccessBrandHeader title={t('auth.title')} subtitle={t('common.friendsFamily')} />
+          <div className="min-w-0 w-full overflow-hidden bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-4">
             <div className="flex items-center justify-between gap-2 text-slate-700">
               <div className="flex items-center gap-2">
                 <Users size={18} />
@@ -731,6 +724,22 @@ export default function App() {
         <CircleAppToast message={toast?.message ?? null} tone={toast?.tone} />
       </CircleTextSizeProvider>
     </CircleI18nProvider>
+  );
+}
+
+function CircleAccessBrandHeader({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="flex items-center gap-3 shrink-0 sticky top-0 z-10 mb-6 bg-[#F8FAFC] py-1">
+      <div className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shrink-0">
+        <MedXForceBrandLogo />
+      </div>
+      <div className="min-w-0 flex-1">
+        <h1 className="text-xl font-bold text-slate-800 leading-tight break-words [overflow-wrap:anywhere]">
+          {title}
+        </h1>
+        <p className="text-xs text-slate-500 truncate">{subtitle}</p>
+      </div>
+    </div>
   );
 }
 

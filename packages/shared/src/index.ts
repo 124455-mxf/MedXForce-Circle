@@ -32,6 +32,7 @@ export * from './circleIcuProgressionReminders';
 export * from './circleDashboardLayout';
 export * from './circlePatientLocation';
 export * from './circleMemberContactProfile';
+export * from './circleMemberIdentityMismatch';
 export * from './circleInvitePreview';
 export * from './circlePatientProfile';
 export * from './circlePatientProfileService';
