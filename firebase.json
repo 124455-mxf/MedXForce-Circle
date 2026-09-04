@@ -24,7 +24,7 @@
     ],
     "rewrites": [
       {
-        "source": "**",
+        "regex": "^/[^.]*$",
         "destination": "/index.html"
       }
     ]
