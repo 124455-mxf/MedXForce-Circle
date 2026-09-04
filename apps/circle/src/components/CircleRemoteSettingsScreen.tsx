@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2, LayoutDashboard, Shield, SlidersHorizontal, FileText } from 'lucide-react';
 import { CircleIcuUnicodeEmojiManagement } from './CircleIcuUnicodeEmojiManagement';
 import type { User } from 'firebase/auth';
@@ -78,7 +78,10 @@ import {
   circleWorkTabPanelClass,
   dashboardSectionTitleClass,
 } from '../lib/circleSectionStyles';
-import { useCircleRemoteSettingsFromShell } from '../context/CircleSelectedPatientContext';
+import {
+  useCircleGalleryDashboardFromShell,
+  useCircleRemoteSettingsFromShell,
+} from '../context/CircleSelectedPatientContext';
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
 import { useCircleT } from '../lib/circleI18nContext';
 import {
@@ -531,21 +534,33 @@ function OptionalChipButton({
   active,
   onClick,
   className,
+  disabled = false,
+  disabledHint,
 }: {
   label: string;
   active: boolean;
   onClick: () => void;
   className?: string;
+  disabled?: boolean;
+  disabledHint?: string;
 }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={() => {
+        if (disabled) return;
+        onClick();
+      }}
+      disabled={disabled}
+      title={disabled ? disabledHint : undefined}
+      aria-disabled={disabled}
       className={cn(
         'w-full px-3 py-2.5 rounded-2xl text-sm font-bold transition-all border-2 text-center',
-        active
-          ? 'border-blue-600 bg-white text-blue-900 shadow-sm'
-          : 'border-slate-200 bg-white/80 text-slate-700 hover:border-blue-300',
+        disabled
+          ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+          : active
+            ? 'border-blue-600 bg-white text-blue-900 shadow-sm'
+            : 'border-slate-200 bg-white/80 text-slate-700 hover:border-blue-300',
         className,
       )}
     >
@@ -621,6 +636,8 @@ export function CircleRemoteSettingsScreen({
   onFocusConsumed?: () => void;
 }) {
   const { settings, loading, saving, error, savedAt, persist } = useCircleRemoteSettingsFromShell();
+  const galleryDashboard = useCircleGalleryDashboardFromShell();
+  const soulMediaAvailable = !galleryDashboard.loading && galleryDashboard.photoCount > 0;
   const compactChrome = useCircleCompactChrome();
   const t = useCircleT();
   const [pendingMode, setPendingMode] = useState<RemoteAppMode | null>(null);
@@ -639,9 +656,12 @@ export function CircleRemoteSettingsScreen({
   const { overview, loading: overviewLoading } = useCircleApplicationOverview(db, patient.patientId);
   const treatmentPhase = profileSnapshot?.clinical?.treatmentPhase;
 
-  const patch = (next: PatientRemoteSettingsDoc) => {
-    persist({ ...next, patientId: patient.patientId });
-  };
+  const patch = useCallback(
+    (next: PatientRemoteSettingsDoc) => {
+      persist({ ...next, patientId: patient.patientId });
+    },
+    [persist, patient.patientId],
+  );
 
   const openPendingMode = (mode: RemoteAppMode) => {
     if (mode === 'intensive_care') {
@@ -706,6 +726,24 @@ export function CircleRemoteSettingsScreen({
       }),
     );
   };
+
+  useEffect(() => {
+    if (!settings || galleryDashboard.loading || soulMediaAvailable) return;
+    if (!icuOptionalFeatures.soulMediaLibrary) return;
+    patch(
+      applyRemoteIntensiveCareOptionalFeatures(settings, {
+        ...icuOptionalFeatures,
+        soulMediaLibrary: false,
+      }),
+    );
+  }, [galleryDashboard.loading, icuOptionalFeatures.soulMediaLibrary, patch, settings, soulMediaAvailable]);
+
+  useEffect(() => {
+    if (soulMediaAvailable) return;
+    setPendingIcuFeatures((prev) =>
+      prev.soulMediaLibrary ? { ...prev, soulMediaLibrary: false } : prev,
+    );
+  }, [soulMediaAvailable]);
 
   const toggleHospitalOptionalFeature = (key: keyof RemoteHospitalOptionalFeatures) => {
     if (!settings) return;
@@ -983,6 +1021,8 @@ export function CircleRemoteSettingsScreen({
                     <OptionalChipButton
                       label={t('remoteSettings.icuOptSoulMedia')}
                       active={icuOptionalFeatures.soulMediaLibrary}
+                      disabled={!soulMediaAvailable}
+                      disabledHint={t('remoteSettings.icuOptSoulMediaNeedsPhotos')}
                       onClick={() => toggleIcuOptionalFeature('soulMediaLibrary')}
                     />
                   </div>
@@ -1451,7 +1491,7 @@ export function CircleRemoteSettingsScreen({
       {pendingMode && (
         <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white w-full sm:max-w-md max-h-[min(92dvh,100%)] flex flex-col rounded-t-[28px] sm:rounded-[28px] border border-slate-100 shadow-2xl overflow-hidden">
-            <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-6 space-y-4">
               <h3 className="text-lg font-bold text-slate-800">{t('remoteSettings.changeModeTitle')}</h3>
               <p className="text-sm text-slate-600 leading-relaxed">
                 {t('remoteSettings.changeModeBody', {
@@ -1530,6 +1570,8 @@ export function CircleRemoteSettingsScreen({
                     <OptionalChipButton
                       label={t('remoteSettings.icuOptSoulMedia')}
                       active={pendingIcuFeatures.soulMediaLibrary}
+                      disabled={!soulMediaAvailable}
+                      disabledHint={t('remoteSettings.icuOptSoulMediaNeedsPhotos')}
                       onClick={() =>
                         setPendingIcuFeatures((prev) => ({
                           ...prev,

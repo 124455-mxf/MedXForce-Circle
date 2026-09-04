@@ -23,6 +23,7 @@ const remoteSettingsEnglish = {
   icuOptBoardLanguage: 'Sentences & words',
   icuOptSoulMusic: 'Soul Music',
   icuOptSoulMedia: 'Soul Media',
+  icuOptSoulMediaNeedsPhotos: 'Share a photo or video first',
   icuEmoji: {
     heading: 'Unicode emojis for ICU',
     desc: 'Choose categories, emojis, and order shown on the communication board in ICU mode.',
@@ -388,6 +389,7 @@ const remoteSettingsGerman = {
   icuOptBoardLanguage: 'Sätze & Wörter',
   icuOptSoulMusic: 'Soul-Musik',
   icuOptSoulMedia: 'Soul-Medien',
+  icuOptSoulMediaNeedsPhotos: 'Zuerst ein Foto oder Video teilen',
   icuEmoji: {
     heading: 'Unicode-Emojis für ICU',
     desc: 'Kategorien, Emojis und Reihenfolge für die Kommunikationstafel im ICU-Modus festlegen.',
@@ -756,6 +758,7 @@ const remoteSettingsSpanish = {
   icuOptBoardLanguage: 'Frases y palabras',
   icuOptSoulMusic: 'Música Soul',
   icuOptSoulMedia: 'Medios Soul',
+  icuOptSoulMediaNeedsPhotos: 'Comparta una foto o un vídeo primero',
   icuEmoji: {
     heading: 'Emojis Unicode para UCI',
     desc: 'Elija categorías, emojis y orden para el tablero de comunicación en modo UCI.',
@@ -1122,6 +1125,7 @@ const remoteSettingsPolish = {
   icuOptBoardLanguage: 'Zdania i słowa',
   icuOptSoulMusic: 'Muzyka Soul',
   icuOptSoulMedia: 'Media Soul',
+  icuOptSoulMediaNeedsPhotos: 'Najpierw udostępnij zdjęcie lub film',
   icuEmoji: {
     heading: 'Emoji Unicode dla OIOM',
     desc: 'Wybierz kategorie, emoji i kolejność na tablicy komunikacji w trybie OIOM.',

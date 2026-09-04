@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { AnimatePresence, motion, Reorder } from 'motion/react';
+import { useMemo, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { AnimatePresence, motion, Reorder, useDragControls } from 'motion/react';
 import { ChevronLeft, Eye, EyeOff, GripVertical, RotateCcw, Smile } from 'lucide-react';
 import {
   UNICODE_EMOJI_CATEGORIES,
@@ -70,6 +70,32 @@ type CircleIcuUnicodeEmojiManagementProps = {
   onPatch: (next: PatientRemoteSettingsDoc) => void;
 };
 
+function GripReorderItem<T>({
+  value,
+  className,
+  children,
+}: {
+  value: T;
+  className?: string;
+  children: (startDrag: (event: ReactPointerEvent) => void) => ReactNode;
+}) {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item
+      value={value}
+      dragListener={false}
+      dragControls={controls}
+      className={className}
+      style={{ touchAction: 'pan-y' }}
+    >
+      {children((event) => {
+        event.stopPropagation();
+        controls.start(event);
+      })}
+    </Reorder.Item>
+  );
+}
+
 export function CircleIcuUnicodeEmojiManagement({
   t,
   settings,
@@ -132,7 +158,7 @@ export function CircleIcuUnicodeEmojiManagement({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="px-4 pb-4 space-y-4 border-t border-blue-100"
+            className="overflow-hidden px-4 pb-4 space-y-4 border-t border-blue-100"
           >
             <p className="text-sm text-slate-600 leading-snug pt-3">{t('remoteSettings.icuEmoji.hint')}</p>
 
@@ -159,20 +185,28 @@ export function CircleIcuUnicodeEmojiManagement({
               onReorder={(newOrder) =>
                 persistStore(updateModeUnicodeCategoryOrder(store, newOrder.map((c) => c.id)))
               }
-              className="space-y-4 max-h-[min(50vh,480px)] overflow-y-auto pr-1"
+              className="space-y-4 touch-pan-y"
             >
               {categories.map((cat) => {
                 const catVisible = cat.visible !== false;
                 const emojis = emojisByCategory[cat.id] || [];
                 return (
-                  <Reorder.Item
+                  <GripReorderItem
                     key={cat.id}
                     value={cat}
                     className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3"
                   >
+                    {(startCategoryDrag) => (
+                      <>
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <GripVertical size={18} className="text-slate-300 shrink-0 cursor-grab" />
+                        <button
+                          type="button"
+                          onPointerDown={startCategoryDrag}
+                          className="touch-none shrink-0 p-1 -ml-1 rounded-lg text-slate-300 cursor-grab active:cursor-grabbing"
+                        >
+                          <GripVertical size={18} />
+                        </button>
                         <span className="font-bold text-slate-800 truncate">
                           {categoryLabel(cat.id, cat.label)}
                         </span>
@@ -196,17 +230,25 @@ export function CircleIcuUnicodeEmojiManagement({
                       onReorder={(newOrder) =>
                         persistStore(updateModeUnicodeEmojiOrder(store, cat.id, newOrder.map((e) => e.id)))
                       }
-                      className="space-y-2 pl-6"
+                      className="space-y-2 pl-6 touch-pan-y"
                     >
                       {emojis.map((emoji) => {
                         const emojiVisible = emoji.visible !== false;
                         return (
-                          <Reorder.Item
+                          <GripReorderItem
                             key={emoji.id}
                             value={emoji}
-                            className="flex items-center gap-3 p-2 bg-white rounded-xl border border-slate-100 cursor-grab active:cursor-grabbing"
+                            className="flex items-center gap-3 p-2 bg-white rounded-xl border border-slate-100"
                           >
-                            <GripVertical size={16} className="text-slate-300 shrink-0" />
+                            {(startEmojiDrag) => (
+                              <>
+                            <button
+                              type="button"
+                              onPointerDown={startEmojiDrag}
+                              className="touch-none shrink-0 p-1 -ml-1 rounded-lg text-slate-300 cursor-grab active:cursor-grabbing"
+                            >
+                              <GripVertical size={16} />
+                            </button>
                             <span className="text-2xl w-10 text-center shrink-0">{emoji.char}</span>
                             <span className="flex-1 text-sm font-medium text-slate-600 truncate">
                               {emojiLabel(emoji.label)}
@@ -227,11 +269,15 @@ export function CircleIcuUnicodeEmojiManagement({
                             >
                               {emojiVisible ? <Eye size={16} /> : <EyeOff size={16} />}
                             </button>
-                          </Reorder.Item>
+                              </>
+                            )}
+                          </GripReorderItem>
                         );
                       })}
                     </Reorder.Group>
-                  </Reorder.Item>
+                      </>
+                    )}
+                  </GripReorderItem>
                 );
               })}
             </Reorder.Group>
