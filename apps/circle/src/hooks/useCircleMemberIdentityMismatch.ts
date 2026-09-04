@@ -17,11 +17,43 @@ export function notifyCircleIdentityMismatchChanged() {
   window.dispatchEvent(new Event(CIRCLE_IDENTITY_MISMATCH_CHANGED));
 }
 
+type UseCircleMemberIdentityMismatchOptions = {
+  /**
+   * Wait until the UI is idle before fetching (Home).
+   * My contact details should leave this off so the notice is ready on that screen.
+   */
+  deferUntilIdle?: boolean;
+};
+
+function scheduleWhenIdle(run: () => void, timeoutMs: number): () => void {
+  let done = false;
+  const once = () => {
+    if (done) return;
+    done = true;
+    run();
+  };
+  const timeoutId = window.setTimeout(once, timeoutMs);
+  let idleId = 0;
+  if (typeof requestIdleCallback === 'function') {
+    idleId = requestIdleCallback(once, { timeout: timeoutMs });
+  }
+  return () => {
+    done = true;
+    window.clearTimeout(timeoutId);
+    if (idleId && typeof cancelIdleCallback === 'function') {
+      cancelIdleCallback(idleId);
+    }
+  };
+}
+
 export function useCircleMemberIdentityMismatch(
   db: Firestore,
   user: User | null,
   patients: CirclePatientSummary[],
+  options?: UseCircleMemberIdentityMismatchOptions,
 ) {
+  const deferUntilIdle = options?.deferUntilIdle === true;
+  const [gateOpen, setGateOpen] = useState(!deferUntilIdle);
   const [snapshots, setSnapshots] = useState<CircleMemberIdentitySnapshot[]>([]);
   const [dismissedFingerprint, setDismissedFingerprint] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -39,7 +71,17 @@ export function useCircleMemberIdentityMismatch(
   }, []);
 
   useEffect(() => {
-    if (!user?.uid || !user.email || patients.length < 2) {
+    if (!deferUntilIdle) {
+      setGateOpen(true);
+      return;
+    }
+    setGateOpen(false);
+    return scheduleWhenIdle(() => setGateOpen(true), 3500);
+  }, [deferUntilIdle, patientKey, user?.uid]);
+
+  useEffect(() => {
+    if (!gateOpen || !user?.uid || !user.email || patients.length < 2) {
+      if (!gateOpen) return;
       setSnapshots([]);
       setDismissedFingerprint(null);
       setLoading(false);
@@ -75,7 +117,7 @@ export function useCircleMemberIdentityMismatch(
     };
     // patientKey captures ids + display names without depending on the array identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db, patientKey, reloadToken, user?.email, user?.uid]);
+  }, [db, gateOpen, patientKey, reloadToken, user?.email, user?.uid]);
 
   const hasMismatch = useMemo(
     () => circleMemberIdentityHasMismatch(snapshots),

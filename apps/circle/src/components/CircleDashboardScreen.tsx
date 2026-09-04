@@ -1059,7 +1059,9 @@ export function CircleDashboardScreen({
 }: CircleDashboardScreenProps) {
   const t = useCircleT();
   const { language } = useCircleI18nContext();
-  const identityMismatch = useCircleMemberIdentityMismatch(db, user, patients);
+  const identityMismatch = useCircleMemberIdentityMismatch(db, user, patients, {
+    deferUntilIdle: true,
+  });
   const patientPresence = useCirclePatientPresenceFromShell();
   const {
     settings: remoteSettings,
