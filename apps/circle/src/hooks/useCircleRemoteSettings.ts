@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Firestore } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import {
+  applyDailyCheckInDefaultOnAllStages,
+  applyDailyLifeAssessmentScheduleIfNeeded,
   createDefaultRemoteSettings,
   subscribeRemoteSettings,
   syncCirclePatientProfileLanguageFromRemoteSettings,
@@ -110,6 +112,14 @@ export function useCircleRemoteSettings(
     },
     [db, patient, settings?.primaryLanguage, user],
   );
+
+  useEffect(() => {
+    if (!settings || !fromFirestore || !user || !patient) return;
+    if (pendingSaveRef.current || savingRef.current) return;
+    const checkIn = applyDailyCheckInDefaultOnAllStages(settings);
+    const schedule = applyDailyLifeAssessmentScheduleIfNeeded(checkIn.next);
+    if (checkIn.changed || schedule.changed) persist(schedule.next);
+  }, [settings, fromFirestore, user, patient, persist]);
 
   useEffect(
     () => () => {

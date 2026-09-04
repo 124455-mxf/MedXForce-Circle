@@ -3,6 +3,7 @@ import { DASHBOARD_RECENCY_TINT_CLASSES } from '../lib/circleDashboardStats';
 import { patientOfflineAlertRecencyTint } from '../lib/patientPresenceAlert';
 import { formatPatientLastSeenT } from '../lib/dashboardI18n';
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
+import { dashboardSectionTitleClass } from '../lib/circleSectionStyles';
 import { cn } from '../lib/utils';
 import { formatCircleBadgeCount } from './CircleCountBadge';
 
@@ -24,7 +25,7 @@ export function CircleDashboardPatientOfflineTile({
 
   return (
     <section className="space-y-2">
-      <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5">
+      <h3 className={dashboardSectionTitleClass}>
         {t('dashboard.sectionPatientReachability')}
       </h3>
       {isPreview ? (

@@ -56,3 +56,30 @@ export function resolveCircleReplySenderLabel(
 
   return 'Circle member';
 }
+
+export function resolveCircleThreadAuthorName(
+  post: { authorUid?: string; authorName?: string },
+  maps: { byUid: Record<string, string>; byEmail: Record<string, string> },
+): string {
+  const uid = String(post.authorUid ?? '').trim();
+  if (uid && maps.byUid[uid]) return maps.byUid[uid];
+
+  const rawName = String(post.authorName ?? '').trim();
+  const email = normalizeInviteEmail(rawName);
+  if (email && maps.byEmail[email]) return maps.byEmail[email];
+
+  if (rawName && !isLikelyEmail(rawName)) return rawName;
+  if (rawName && isLikelyEmail(rawName)) return humanizeEmailLocalPart(rawName);
+  return rawName || 'Circle member';
+}
+
+export function visitCaptureStartedByLineWithName(
+  startedByLine: string,
+  recordedBy: string,
+  displayName: string,
+): string {
+  if (!startedByLine || !displayName) return startedByLine;
+  const namePart = recordedBy.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  if (!namePart || namePart === displayName) return startedByLine;
+  return startedByLine.replace(namePart, displayName);
+}

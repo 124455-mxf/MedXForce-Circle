@@ -7,12 +7,14 @@ import {
   Camera,
   ChevronLeft,
   ChevronRight,
+  Calendar,
   Globe,
   HeartHandshake,
   LayoutGrid,
   LogOut,
   Image as ImageIcon,
   MessageSquare,
+  Radio,
   Settings,
   User as UserIcon,
   UserPlus,
@@ -22,6 +24,8 @@ import {
 import { CircleSettingsMessagingPanel } from './CircleSettingsMessagingPanel';
 import { CircleSettingsMediaPanel } from './CircleSettingsMediaPanel';
 import { CircleSettingsLocalePanel } from './CircleSettingsLocalePanel';
+import { CircleSettingsOnlineStatusPanel } from './CircleSettingsOnlineStatusPanel';
+import { CircleSettingsSchedulePanel } from './CircleSettingsSchedulePanel';
 import { CircleSettingsCareRelationshipPanel } from './CircleSettingsCareRelationshipPanel';
 import { CircleSettingsUserManagementPanel } from './CircleSettingsUserManagementPanel';
 import { CircleSettingsNotificationPreferencesPanel } from './CircleSettingsNotificationPreferencesPanel';
@@ -98,6 +102,8 @@ export function CircleProfileDrawer({
     | 'messaging'
     | 'media'
     | 'localeDisplay'
+    | 'onlineStatus'
+    | 'schedule'
     | 'careRelationship'
     | 'userManagement'
     | 'notifications'
@@ -214,6 +220,8 @@ export function CircleProfileDrawer({
       drawerView === 'messaging' ||
       drawerView === 'media' ||
       drawerView === 'localeDisplay' ||
+      drawerView === 'onlineStatus' ||
+      drawerView === 'schedule' ||
       drawerView === 'careRelationship' ||
       drawerView === 'userManagement' ||
       drawerView === 'switchPatient' ||
@@ -262,7 +270,7 @@ export function CircleProfileDrawer({
         aria-label={t('common.closeMenu')}
         onClick={requestCloseDrawer}
       />
-      <aside className="w-full max-w-sm bg-white shadow-2xl flex flex-col h-full">
+      <aside className="w-full max-w-sm min-w-0 overflow-x-hidden bg-white shadow-2xl flex flex-col h-full">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 gap-2">
           {drawerView !== 'account' ? (
             <button
@@ -282,6 +290,8 @@ export function CircleProfileDrawer({
             {drawerView === 'messaging' && t('drawer.messaging')}
             {drawerView === 'media' && t('drawer.media')}
             {drawerView === 'localeDisplay' && t('drawer.localeDisplay')}
+            {drawerView === 'onlineStatus' && t('drawer.onlineStatus')}
+            {drawerView === 'schedule' && t('drawer.schedule')}
             {drawerView === 'careRelationship' && t('drawer.careRelationship')}
             {drawerView === 'userManagement' && t('drawer.userManagement')}
             {drawerView === 'notifications' && t('drawer.notifications')}
@@ -402,6 +412,30 @@ export function CircleProfileDrawer({
               </div>
               <ChevronRight size={16} className="text-slate-300 shrink-0" />
             </button>
+            <button
+              type="button"
+              onClick={() => setDrawerView('onlineStatus')}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+            >
+              <Radio size={20} className="text-emerald-600" />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-800 text-sm">{t('drawer.onlineStatus')}</p>
+                <p className="text-xs text-slate-400">{t('drawer.onlineStatusHint')}</p>
+              </div>
+              <ChevronRight size={16} className="text-slate-300 shrink-0" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setDrawerView('schedule')}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+            >
+              <Calendar size={20} className="text-violet-600" />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-800 text-sm">{t('drawer.schedule')}</p>
+                <p className="text-xs text-slate-400">{t('drawer.scheduleHint')}</p>
+              </div>
+              <ChevronRight size={16} className="text-slate-300 shrink-0" />
+            </button>
           </div>
         )}
 
@@ -419,7 +453,23 @@ export function CircleProfileDrawer({
 
         {drawerView === 'localeDisplay' && (
           <div className="flex-1 overflow-y-auto">
-            <CircleSettingsLocalePanel />
+            <CircleSettingsLocalePanel
+              user={user}
+              db={db}
+              patientId={patient?.patientId}
+            />
+          </div>
+        )}
+
+        {drawerView === 'onlineStatus' && (
+          <div className="flex-1 overflow-y-auto">
+            <CircleSettingsOnlineStatusPanel user={user} db={db} patient={patient} />
+          </div>
+        )}
+
+        {drawerView === 'schedule' && (
+          <div className="flex-1 overflow-y-auto">
+            <CircleSettingsSchedulePanel />
           </div>
         )}
 
@@ -511,6 +561,7 @@ export function CircleProfileDrawer({
               user={user}
               db={db}
               patient={patient}
+              patients={patients}
               onDirtyChange={setMyContactDirty}
               onProfileSaved={(nextName) => {
                 setProfileDisplayName(nextName);
@@ -685,8 +736,9 @@ export function CircleProfileDrawer({
         />
       )}
 
-      <CircleDiscardChangesModal
+        <CircleDiscardChangesModal
         open={discardPrompt !== null}
+        title={t('drawer.discardTitle')}
         message={t('drawer.discardMessage')}
         onDiscard={confirmDiscardChanges}
         onKeepEditing={() => setDiscardPrompt(null)}

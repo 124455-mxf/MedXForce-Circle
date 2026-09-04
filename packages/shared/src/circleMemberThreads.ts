@@ -23,6 +23,10 @@ export type CircleMemberThreadPostTranslation = {
   language: string;
   text: string;
   isAuto?: boolean;
+  /** Poll option labels in this language, aligned by index with `pollOptions`. */
+  pollOptions?: string[];
+  /** Poll description in this language. */
+  pollDescription?: string;
 };
 
 export interface CircleMemberThreadPost {
@@ -37,7 +41,13 @@ export interface CircleMemberThreadPost {
   translations?: CircleMemberThreadPostTranslation[];
   /** Set when another member posts after this one — blocks delete-for-everyone. */
   respondLocked?: boolean;
-  postKind?: 'discussion' | 'announcement' | 'visit_capture' | 'drop_in' | 'appointment_invite';
+  postKind?:
+    | 'discussion'
+    | 'announcement'
+    | 'visit_capture'
+    | 'drop_in'
+    | 'appointment_invite'
+    | 'poll';
   visitCaptureId?: string;
   careCalendarEntryId?: string;
   inviteTargetUids?: string[];
@@ -47,6 +57,22 @@ export interface CircleMemberThreadPost {
   lastReplyAuthorUid?: string;
   lastReplyAuthorName?: string;
   lastReplyPreviewText?: string;
+  pollOptions?: string[];
+  /** Optional explanation of why the poll is being asked. */
+  pollDescription?: string;
+  pollClosedAt?: number;
+  /** Scheduled close time (epoch ms). Voting stops at or after this instant. */
+  pollClosesAt?: number;
+  /** Number of distinct voters. Used to lock option edits after the first vote. */
+  pollVoteCount?: number;
+}
+
+function parseTranslationPollOptions(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out = raw.slice(0, 5).map((item) =>
+    typeof item === 'string' ? item.trim().slice(0, 80) : '',
+  );
+  return out.some((label) => label.length > 0) ? out : undefined;
 }
 
 function parseCircleMemberThreadPostTranslations(
@@ -54,20 +80,22 @@ function parseCircleMemberThreadPostTranslations(
 ): CircleMemberThreadPostTranslation[] | undefined {
   const raw = data.translations;
   if (!Array.isArray(raw)) return undefined;
-  const parsed = raw
-    .map((entry) => {
-      if (!entry || typeof entry !== 'object') return null;
-      const row = entry as Record<string, unknown>;
-      const language = typeof row.language === 'string' ? row.language.trim() : '';
-      const text = typeof row.text === 'string' ? row.text.trim() : '';
-      if (!language || !text) return null;
-      return {
-        language,
-        text,
-        ...(row.isAuto === true ? { isAuto: true as const } : {}),
-      };
-    })
-    .filter((entry): entry is CircleMemberThreadPostTranslation => entry !== null);
+  const parsed: CircleMemberThreadPostTranslation[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const row = entry as Record<string, unknown>;
+    const language = typeof row.language === 'string' ? row.language.trim() : '';
+    const text = typeof row.text === 'string' ? row.text.trim() : '';
+    if (!language || !text) continue;
+    const item: CircleMemberThreadPostTranslation = { language, text };
+    if (row.isAuto === true) item.isAuto = true;
+    const pollOptions = parseTranslationPollOptions(row.pollOptions);
+    if (pollOptions) item.pollOptions = pollOptions;
+    const pollDescription =
+      typeof row.pollDescription === 'string' ? row.pollDescription.trim().slice(0, 1000) : '';
+    if (pollDescription) item.pollDescription = pollDescription;
+    parsed.push(item);
+  }
   return parsed.length > 0 ? parsed : undefined;
 }
 
@@ -109,6 +137,11 @@ const PERSONAL_CIRCLE_DROP_IN_ROLES = new Set<CircleMemberRole>([
   'friend',
   'facility_staff',
 ]);
+
+/** Family, friends, and facility staff start drop-in from Everybody, not Care team. */
+export function canStartDropInFromOpenThread(role: string): boolean {
+  return PERSONAL_CIRCLE_DROP_IN_ROLES.has(role as CircleMemberRole);
+}
 
 /** Where a drop-in transcript belongs based on who joined the live chat. */
 export function circleMemberThreadKindsForDropInShare(
@@ -204,7 +237,7 @@ export async function resolveCircleThreadAudienceUids(
 }
 
 export function circleMemberThreadLabel(kind: CircleMemberThreadKind): string {
-  return kind === 'open' ? 'Circle conversation' : 'Care coordination';
+  return kind === 'open' ? 'Everybody' : 'Care team';
 }
 
 export function circleMemberThreadDescription(kind: CircleMemberThreadKind): string {
@@ -238,7 +271,12 @@ export function circleThreadPostBoldTitleLine(post: {
   text: string;
   postKind?: string;
 }): boolean {
-  return isVisitCaptureThreadPost(post) || isDropInThreadPost(post) || isAppointmentInviteThreadPost(post);
+  return (
+    isVisitCaptureThreadPost(post) ||
+    isDropInThreadPost(post) ||
+    isAppointmentInviteThreadPost(post) ||
+    post.postKind === 'poll'
+  );
 }
 
 export function isAnnouncementThreadPost(post: { postKind?: string }): boolean {
@@ -258,7 +296,7 @@ export function isDiscussionThreadPost(post: {
   ) {
     return false;
   }
-  return post.postKind === 'discussion' || !post.postKind;
+  return post.postKind === 'discussion' || post.postKind === 'poll' || !post.postKind;
 }
 
 /** Proxies and caregivers may post one-way announcements. */
@@ -300,8 +338,10 @@ export function parseCircleMemberThreadPost(
             ? 'announcement'
             : data.postKind === 'appointment_invite'
               ? 'appointment_invite'
-              : data.postKind === 'discussion'
-                ? 'discussion'
+            : data.postKind === 'discussion'
+              ? 'discussion'
+              : data.postKind === 'poll'
+                ? 'poll'
                 : undefined,
     visitCaptureId: data.visitCaptureId ? String(data.visitCaptureId) : undefined,
     careCalendarEntryId: data.careCalendarEntryId ? String(data.careCalendarEntryId) : undefined,
@@ -319,7 +359,49 @@ export function parseCircleMemberThreadPost(
       typeof data.lastReplyAuthorName === 'string' ? data.lastReplyAuthorName : undefined,
     lastReplyPreviewText:
       typeof data.lastReplyPreviewText === 'string' ? data.lastReplyPreviewText : undefined,
+    pollOptions: parseCirclePollOptionsFromData(data),
+    pollDescription: parsePollDescription(data.pollDescription),
+    pollClosedAt:
+      typeof data.pollClosedAt === 'number' && data.pollClosedAt > 0 ? data.pollClosedAt : undefined,
+    pollClosesAt:
+      typeof data.pollClosesAt === 'number' && data.pollClosesAt > 0 ? data.pollClosesAt : undefined,
+    pollVoteCount:
+      typeof data.pollVoteCount === 'number' && data.pollVoteCount >= 0
+        ? data.pollVoteCount
+        : undefined,
   };
+}
+
+function parsePollDescription(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const trimmed = raw.trim().slice(0, 1000);
+  return trimmed || undefined;
+}
+
+function parseCirclePollOptionsFromData(data: Record<string, unknown>): string[] | undefined {
+  const options = Array.isArray(data.pollOptions)
+    ? data.pollOptions
+        .map((item) => (typeof item === 'string' ? item.trim() : ''))
+        .filter(Boolean)
+        .map((item) => item.slice(0, 80))
+        .slice(0, 5)
+    : [];
+  return options.length >= 2 ? options : undefined;
+}
+
+function sanitizeCreatePollOptions(options: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of options) {
+    const label = raw.trim().slice(0, 80);
+    if (!label) continue;
+    const key = label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(label);
+    if (out.length >= 5) break;
+  }
+  return out;
 }
 
 export function isWithinCircleThreadDeleteWindow(createdAt: number, now = Date.now()): boolean {
@@ -355,8 +437,11 @@ export async function createCircleMemberThreadPost(
     authorRole: CircleMemberRole;
     text: string;
     translations?: CircleMemberThreadPostTranslation[];
-    postKind?: 'discussion' | 'announcement' | 'visit_capture' | 'drop_in';
+    postKind?: 'discussion' | 'announcement' | 'visit_capture' | 'drop_in' | 'poll';
     visitCaptureId?: string;
+    pollOptions?: string[];
+    pollDescription?: string;
+    pollClosesAt?: number;
   },
 ): Promise<string> {
   const body = params.text.trim();
@@ -365,6 +450,10 @@ export async function createCircleMemberThreadPost(
   const kind = params.postKind ?? 'discussion';
   if (kind === 'announcement' && !canPostCircleAnnouncement(params.authorRole)) {
     throw new Error('Only proxies and caregivers can post announcements.');
+  }
+  const pollOptions = sanitizeCreatePollOptions(params.pollOptions ?? []);
+  if (kind === 'poll' && pollOptions.length < 2) {
+    throw new Error('Add at least two poll options.');
   }
 
   const now = Date.now();
@@ -380,6 +469,7 @@ export async function createCircleMemberThreadPost(
     }
   }
 
+  const pollDescription = kind === 'poll' ? parsePollDescription(params.pollDescription) : undefined;
   const postRef = doc(col);
   batch.set(postRef, {
     patientId: params.patientId,
@@ -393,6 +483,11 @@ export async function createCircleMemberThreadPost(
     postKind: kind,
     ...(params.translations?.length ? { translations: params.translations } : {}),
     ...(params.visitCaptureId ? { visitCaptureId: params.visitCaptureId } : {}),
+    ...(pollOptions.length >= 2 ? { pollOptions, pollVoteCount: 0 } : {}),
+    ...(pollDescription ? { pollDescription } : {}),
+    ...(typeof params.pollClosesAt === 'number' && params.pollClosesAt > now
+      ? { pollClosesAt: params.pollClosesAt }
+      : {}),
   });
 
   await batch.commit();

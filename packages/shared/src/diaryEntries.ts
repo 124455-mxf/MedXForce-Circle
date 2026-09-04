@@ -3,6 +3,8 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -11,6 +13,17 @@ import {
   type Firestore,
   type Unsubscribe,
 } from 'firebase/firestore';
+import {
+  careDiaryMilestoneSourceRef,
+  normalizeAppModeForMilestone,
+  normalizeTreatmentPhaseForMilestone,
+  resolveCareDiaryMilestoneCopy,
+  shouldRecordCareDiaryMilestone,
+} from './diaryCareMilestones';
+import type { DiaryEntryTranslation } from './diaryTranslationDisplay';
+
+export type { DiaryEntryTranslation } from './diaryTranslationDisplay';
+export { resolveDiaryEntryText } from './diaryTranslationDisplay';
 
 /** Who can see the entry — private stays with the author (and patient); circle is visible to all members. */
 export type DiaryEntryVisibility = 'private' | 'circle' | 'shared_with_patient';
@@ -37,7 +50,13 @@ export interface CircleDiaryEntry {
   /** When the moment happened (may differ from createdAt). */
   experienceAt: number;
   visibility: DiaryEntryVisibility;
+  entryKind: 'human' | 'system';
   isMilestone: boolean;
+  sourceRef?: string | null;
+  /** Detected language of the original title/body. */
+  sourceLanguage?: string;
+  /** Auto-translations for other viewer languages (patient / circle members). */
+  translations?: DiaryEntryTranslation[];
   createdAt: number;
   updatedAt: number;
 }
@@ -81,6 +100,10 @@ function parseDiaryVisibility(value: unknown): DiaryEntryVisibility {
 export function parseDiaryEntry(id: string, data: Record<string, unknown>): CircleDiaryEntry {
   const moodRaw = String(data.mood || '');
   const mood = DIARY_MOOD_VALUES.has(moodRaw) ? (moodRaw as DiaryEntryMood) : undefined;
+  const translations = parseDiaryTranslations(data.translations);
+  const sourceLanguage = data.sourceLanguage
+    ? String(data.sourceLanguage).trim()
+    : undefined;
   return {
     id,
     patientId: String(data.patientId || ''),
@@ -91,10 +114,34 @@ export function parseDiaryEntry(id: string, data: Record<string, unknown>): Circ
     mood,
     experienceAt: Number(data.experienceAt || data.createdAt || 0),
     visibility: parseDiaryVisibility(data.visibility),
+    entryKind: data.entryKind === 'system' ? 'system' : 'human',
     isMilestone: !!data.isMilestone,
+    sourceRef: data.sourceRef ? String(data.sourceRef) : null,
+    ...(sourceLanguage ? { sourceLanguage } : {}),
+    ...(translations.length > 0 ? { translations } : {}),
     createdAt: Number(data.createdAt || 0),
     updatedAt: Number(data.updatedAt || data.createdAt || 0),
   };
+}
+
+function parseDiaryTranslations(raw: unknown): DiaryEntryTranslation[] {
+  if (!Array.isArray(raw)) return [];
+  const out: DiaryEntryTranslation[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Record<string, unknown>;
+    const language = String(row.language || '').trim();
+    const text = String(row.text || '').trim();
+    if (!language || !text) continue;
+    const title = row.title != null ? String(row.title).trim() : undefined;
+    out.push({
+      language,
+      text,
+      ...(title ? { title } : {}),
+      ...(row.isAuto ? { isAuto: true } : {}),
+    });
+  }
+  return out;
 }
 
 export function emptyDiaryDraft(experienceAt = Date.now()): CircleDiaryEntryDraft {
@@ -187,6 +234,8 @@ export async function createDiaryEntry(
     authorUid: string;
     authorName: string;
     draft: CircleDiaryEntryDraft;
+    sourceLanguage?: string;
+    translations?: DiaryEntryTranslation[];
   },
 ): Promise<string> {
   const now = Date.now();
@@ -205,6 +254,10 @@ export async function createDiaryEntry(
     visibility: params.draft.visibility,
     entryKind: 'human',
     isMilestone: !!params.draft.isMilestone,
+    ...(params.sourceLanguage ? { sourceLanguage: params.sourceLanguage } : {}),
+    ...(params.translations && params.translations.length > 0
+      ? { translations: params.translations }
+      : {}),
     createdAt: now,
     updatedAt: now,
   });
@@ -217,6 +270,8 @@ export async function updateDiaryEntry(
     patientId: string;
     entryId: string;
     draft: CircleDiaryEntryDraft;
+    sourceLanguage?: string;
+    translations?: DiaryEntryTranslation[];
   },
 ): Promise<void> {
   const now = Date.now();
@@ -231,6 +286,10 @@ export async function updateDiaryEntry(
     experienceAt: params.draft.experienceAt || now,
     visibility: params.draft.visibility,
     isMilestone: !!params.draft.isMilestone,
+    ...(params.sourceLanguage != null
+      ? { sourceLanguage: params.sourceLanguage || '' }
+      : {}),
+    ...(params.translations != null ? { translations: params.translations } : {}),
     updatedAt: now,
   });
 }
@@ -250,4 +309,116 @@ export function diaryMoodLabel(mood?: DiaryEntryMood): string | undefined {
 
 export function isDiaryEntrySharedWithCircle(entry: CircleDiaryEntry): boolean {
   return entry.visibility === 'circle' || entry.visibility === 'shared_with_patient';
+}
+
+/** Private journal entries — visible only to the author in My journal. */
+export function isDiaryEntryPrivate(entry: CircleDiaryEntry): boolean {
+  return entry.visibility === 'private';
+}
+
+async function diaryMilestoneAlreadyRecorded(
+  db: Firestore,
+  patientId: string,
+  sourceRef: string,
+): Promise<boolean> {
+  const snap = await getDocs(
+    query(
+      diaryEntriesCollection(db, patientId),
+      where('sourceRef', '==', sourceRef),
+      limit(1),
+    ),
+  );
+  return !snap.empty;
+}
+
+async function writeCareDiaryMilestone(
+  db: Firestore,
+  params: {
+    patientId: string;
+    authorUid: string;
+    kind: 'appMode' | 'treatmentPhase';
+    from: string;
+    to: string;
+    language?: string | null;
+  },
+): Promise<void> {
+  if (!shouldRecordCareDiaryMilestone(params.from, params.to)) return;
+
+  const copy = resolveCareDiaryMilestoneCopy(
+    params.kind,
+    params.from,
+    params.to,
+    params.language,
+  );
+  if (!copy) return;
+
+  const now = Date.now();
+  const sourceRef = careDiaryMilestoneSourceRef(params.kind, params.from, params.to, now);
+  if (await diaryMilestoneAlreadyRecorded(db, params.patientId, sourceRef)) return;
+
+  await addDoc(diaryEntriesCollection(db, params.patientId), {
+    patientId: params.patientId,
+    authorUid: params.authorUid,
+    authorName: 'Care milestone',
+    title: copy.title,
+    body: copy.body,
+    mood: '',
+    experienceAt: now,
+    visibility: 'circle',
+    entryKind: 'system',
+    isMilestone: true,
+    sourceRef,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
+
+/** Record human-readable system diary milestones for care-setting transitions. */
+export async function recordCareDiaryMilestones(
+  db: Firestore,
+  params: {
+    patientId: string;
+    authorUid: string;
+    language?: string | null;
+    appMode?: { from: string; to: string };
+    treatmentPhase?: { from: string; to: string };
+  },
+): Promise<void> {
+  const tasks: Promise<void>[] = [];
+
+  if (params.appMode) {
+    const from = normalizeAppModeForMilestone(params.appMode.from);
+    const to = normalizeAppModeForMilestone(params.appMode.to);
+    if (shouldRecordCareDiaryMilestone(from, to)) {
+      tasks.push(
+        writeCareDiaryMilestone(db, {
+          patientId: params.patientId,
+          authorUid: params.authorUid,
+          kind: 'appMode',
+          from,
+          to,
+          language: params.language,
+        }),
+      );
+    }
+  }
+
+  if (params.treatmentPhase) {
+    const from = normalizeTreatmentPhaseForMilestone(params.treatmentPhase.from);
+    const to = normalizeTreatmentPhaseForMilestone(params.treatmentPhase.to);
+    if (shouldRecordCareDiaryMilestone(from, to)) {
+      tasks.push(
+        writeCareDiaryMilestone(db, {
+          patientId: params.patientId,
+          authorUid: params.authorUid,
+          kind: 'treatmentPhase',
+          from,
+          to,
+          language: params.language,
+        }),
+      );
+    }
+  }
+
+  await Promise.all(tasks);
 }

@@ -20,6 +20,7 @@ import {
   type CareCalendarVisitSubtype,
 } from './careCalendarAppointment';
 import { SCHEDULE_PREP_TASK_HORIZON_DAYS } from './careCalendarScheduleActions';
+import { isScheduleEnabled } from './activeTab';
 
 export type CareCalendarAssessmentNudgePhase = 'pre' | 'post';
 
@@ -68,8 +69,9 @@ export function isAppointmentInPreVisitNudgeWindow(
   endTimeMinutes: number | undefined,
   now = new Date(),
   horizonDays = SCHEDULE_PREP_TASK_HORIZON_DAYS,
+  timeZoneId?: string | null,
 ): boolean {
-  if (isCareCalendarAppointmentPast(dateKey, startTimeMinutes, endTimeMinutes, now)) {
+  if (isCareCalendarAppointmentPast(dateKey, startTimeMinutes, endTimeMinutes, now, timeZoneId)) {
     return false;
   }
   const todayKey = careCalendarDateKey(now);
@@ -83,8 +85,9 @@ export function isAppointmentInPostVisitNudgeWindow(
   endTimeMinutes: number | undefined,
   now = new Date(),
   horizonDays = SCHEDULE_PREP_TASK_HORIZON_DAYS,
+  timeZoneId?: string | null,
 ): boolean {
-  if (!isCareCalendarAppointmentPast(dateKey, startTimeMinutes, endTimeMinutes, now)) {
+  if (!isCareCalendarAppointmentPast(dateKey, startTimeMinutes, endTimeMinutes, now, timeZoneId)) {
     return false;
   }
   const todayKey = careCalendarDateKey(now);
@@ -128,7 +131,7 @@ export function getCareCalendarAssessmentNudges(
   remoteAssessmentSchedule?: RemoteAssessmentSchedule,
   now = new Date(),
 ): CareCalendarAssessmentNudge[] {
-  if (!preferences.featuresVisibility?.healthAssessments) return [];
+  if (!isScheduleEnabled(preferences)) return [];
   if (!supportsCareCalendarAppointmentEpisode(event.kind)) return [];
   if (!event.visitSubtype) return [];
 
@@ -139,12 +142,16 @@ export function getCareCalendarAssessmentNudges(
           event.startTimeMinutes,
           event.endTimeMinutes,
           now,
+          SCHEDULE_PREP_TASK_HORIZON_DAYS,
+          event.timezoneId,
         )
       : isAppointmentInPostVisitNudgeWindow(
           dateKey,
           event.startTimeMinutes,
           event.endTimeMinutes,
           now,
+          SCHEDULE_PREP_TASK_HORIZON_DAYS,
+          event.timezoneId,
         );
   if (!inWindow) return [];
 

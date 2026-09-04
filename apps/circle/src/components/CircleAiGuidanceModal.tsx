@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Mic, MicOff, Sparkles, X } from 'lucide-react';
+import { Check, Copy, Loader2, Mic, MicOff, Sparkles, X } from 'lucide-react';
 import type { CircleMemberRole } from '@medxforce/shared';
-import { askCircleAiGuidance, isCircleAiAssistAvailable } from '../lib/circleAiAssist';
-import { CIRCLE_AI_PRIVACY_DISCLOSURE } from '../lib/circleAiGuardrails';
+import { writeFormattedTextToClipboard } from '../lib/formattedClipboard';
 import { useDictation } from '../hooks/useDictation';
 import { cn } from '../lib/utils';
 import { CircleAiGuidanceContent } from './CircleAiGuidanceContent';
@@ -31,6 +30,7 @@ export function CircleAiGuidanceModal({
   const [answer, setAnswer] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const { isRecording, micError, setMicError, toggleRecording, stopRecording } = useDictation();
 
   const canIncludeContext = Boolean(recentContext?.trim());
@@ -46,6 +46,7 @@ export function CircleAiGuidanceModal({
       setError(null);
       setIncludeRecentMessages(false);
       setLoading(false);
+      setCopied(false);
       setMicError(null);
       stopRecording();
     }
@@ -67,6 +68,21 @@ export function CircleAiGuidanceModal({
     void toggleRecording(() => question, setQuestionText);
   };
 
+  const handleCopyGuidance = useCallback(async () => {
+    if (!answer?.trim()) return;
+    const q = question.trim();
+    const text = q
+      ? `${t('circle.aiGuidanceYourQuestion')}:\n${q}\n\n${t('circle.aiGuidanceLabel')}:\n${answer.trim()}`
+      : answer.trim();
+    try {
+      await writeFormattedTextToClipboard(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard unavailable */
+    }
+  }, [answer, question, t]);
+
   const handleAsk = async () => {
     const q = question.trim();
     if (!q || loading) return;
@@ -74,6 +90,7 @@ export function CircleAiGuidanceModal({
     setLoading(true);
     setError(null);
     setAnswer(null);
+    setCopied(false);
     try {
       const result = await askCircleAiGuidance({
         question: q,
@@ -84,7 +101,7 @@ export function CircleAiGuidanceModal({
       });
       setAnswer(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not get guidance.');
+      setError(err instanceof Error ? err.message : t('circle.aiGuidanceFailed'));
     } finally {
       setLoading(false);
     }
@@ -95,6 +112,7 @@ export function CircleAiGuidanceModal({
     setMicError(null);
     setAnswer(null);
     setError(null);
+    setCopied(false);
     setQuestion('');
     setIncludeRecentMessages(false);
   };
@@ -112,9 +130,9 @@ export function CircleAiGuidanceModal({
           <div className="min-w-0">
             <h3 className="font-bold text-slate-800 flex items-center gap-2">
               <Sparkles size={18} className="text-violet-600 shrink-0" />
-              Private AI guidance
+              {t('circle.aiGuidanceTitle')}
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">Not posted to the circle thread</p>
+            <p className="text-xs text-slate-500 mt-0.5">{t('circle.aiGuidanceSubtitle')}</p>
           </div>
           <button
             type="button"
@@ -138,7 +156,7 @@ export function CircleAiGuidanceModal({
           {!answer && (
             <>
               <p className="text-xs text-slate-500 leading-relaxed shrink-0">
-                {CIRCLE_AI_PRIVACY_DISCLOSURE}
+                {t('circle.aiGuidancePrivacy')}
               </p>
 
               {canIncludeContext && (
@@ -151,14 +169,16 @@ export function CircleAiGuidanceModal({
                     className="mt-0.5 rounded border-violet-300 text-violet-600"
                   />
                   <span className="text-xs text-slate-600 leading-relaxed">
-                    Include recent messages from this thread as background (off by default)
+                    {t('circle.aiGuidanceIncludeRecent')}
                   </span>
                 </label>
               )}
 
               <label className="flex flex-col flex-1 min-h-0 gap-1.5">
                 <div className="flex items-center justify-between gap-2 shrink-0">
-                  <span className="text-xs font-bold text-slate-500 uppercase">Your question</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase">
+                    {t('circle.aiGuidanceYourQuestion')}
+                  </span>
                   <button
                     type="button"
                     onClick={handleQuestionDictation}
@@ -175,13 +195,13 @@ export function CircleAiGuidanceModal({
                     aria-pressed={isRecording}
                   >
                     {isRecording ? <MicOff size={14} /> : <Mic size={14} />}
-                    {isRecording ? 'Stop' : 'Dictate'}
+                    {isRecording ? t('circle.aiGuidanceDictateStop') : t('circle.aiGuidanceDictate')}
                   </button>
                 </div>
                 <textarea
                   value={question}
                   onChange={(e) => setQuestionText(e.target.value)}
-                  placeholder="e.g. How can I encourage my father to do his daily check-ins?"
+                  placeholder={t('circle.aiGuidancePlaceholder')}
                   className={cn(
                     'w-full flex-1 min-h-[120px] px-4 py-3 rounded-xl border text-sm resize-none outline-none focus:outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-500/15',
                     isRecording ? 'border-red-200 ring-2 ring-red-100' : 'border-slate-200',
@@ -191,7 +211,7 @@ export function CircleAiGuidanceModal({
                 />
                 {isRecording && (
                   <p className="text-xs text-red-600 font-medium shrink-0">
-                    Listening… speak your question, then tap Stop.
+                    {t('circle.aiGuidanceListening')}
                   </p>
                 )}
                 {micError && (
@@ -207,7 +227,7 @@ export function CircleAiGuidanceModal({
             <div className="space-y-4">
               <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1">
-                  Your question
+                  {t('circle.aiGuidanceYourQuestion')}
                 </p>
                 <p className="text-sm text-slate-600 leading-relaxed">{question}</p>
               </div>
@@ -221,10 +241,19 @@ export function CircleAiGuidanceModal({
                 )}
               >
                 <p className="text-[10px] font-bold uppercase tracking-wide text-violet-600 mb-3">
-                  Guidance
+                  {t('circle.aiGuidanceLabel')}
                 </p>
                 <CircleAiGuidanceContent text={answer} />
               </div>
+
+              <button
+                type="button"
+                onClick={() => void handleCopyGuidance()}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
+              >
+                {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                {copied ? t('circle.copied') : t('circle.copyMessage')}
+              </button>
             </div>
           )}
 
@@ -243,14 +272,14 @@ export function CircleAiGuidanceModal({
                 onClick={askAnother}
                 className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-700 font-bold text-sm hover:bg-slate-50"
               >
-                Ask another
+                {t('circle.aiGuidanceAskAnother')}
               </button>
               <button
                 type="button"
                 onClick={handleClose}
                 className="flex-1 py-3 rounded-2xl bg-violet-600 text-white font-bold text-sm hover:bg-violet-700"
               >
-                Done
+                {t('circle.aiGuidanceDone')}
               </button>
             </>
           ) : (
@@ -261,7 +290,7 @@ export function CircleAiGuidanceModal({
                 disabled={loading}
                 className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 disabled:opacity-50"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -270,7 +299,7 @@ export function CircleAiGuidanceModal({
                 className="flex-1 py-3 rounded-2xl bg-violet-600 text-white font-bold text-sm hover:bg-violet-700 disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                Get guidance
+                {t('circle.aiGuidanceGet')}
               </button>
             </>
           )}

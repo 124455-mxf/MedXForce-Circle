@@ -8,6 +8,7 @@ import {
   Pencil,
   Plus,
   ScrollText,
+  Sparkles,
   Star,
   Trash2,
   Users,
@@ -39,11 +40,17 @@ import {
   circleWorkTabPanelClass,
 } from '../lib/circleSectionStyles';
 import { useCircleDiaryEntries, type DiaryListFilter } from '../hooks/useCircleDiaryEntries';
+import { useCirclePatientMemberDisplayNames } from '../hooks/useCirclePatientMemberDisplayNames';
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
 import { useCircleToast } from '../hooks/useCircleToast';
 import { CircleAppToast } from './CircleAppToast';
 import { CircleDiaryEntryModal } from './CircleDiaryEntryModal';
-import { CircleDiaryEntryBodyPreview } from './CircleDiaryEntryBodyPreview';
+import { CircleDiaryTranslatedContent } from './CircleDiaryTranslatedContent';
+import { useCircleRemoteSettingsFromShell } from '../context/CircleSelectedPatientContext';
+import { useCircleI18nContext } from '../lib/circleI18nContext';
+import { normalizeCircleUiLanguage } from '../lib/circleLanguages';
+import { resolveCircleDiaryAuthorLabel } from '../lib/resolveCircleDiaryAuthorLabel';
+import { buildCircleDiaryTranslations } from '../lib/buildCircleDiaryTranslations';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 import { CircleFolderCountBadge } from './CircleCountBadge';
 import { DiaryEntryDeleteConfirmModal } from './DiaryEntryDeleteConfirmModal';
@@ -69,48 +76,109 @@ function DiaryTimelineEntry({
   entry,
   isOwn,
   patientDisplayName,
+  displayNameByUid,
+  viewerLanguage,
   onEdit,
   onDelete,
 }: {
   entry: CircleDiaryEntry;
   isOwn: boolean;
   patientDisplayName: string;
+  displayNameByUid: Record<string, string>;
+  viewerLanguage: ReturnType<typeof normalizeCircleUiLanguage>;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const t = useCircleT();
-  const isPatientAuthor = entry.authorUid === entry.patientId;
-  const isCareTeamEntry = !isPatientAuthor;
+  const isSystem = entry.entryKind === 'system';
+  const isPatientAuthor = !isSystem && entry.authorUid === entry.patientId;
+  const isCareTeamEntry = !isSystem && !isPatientAuthor;
   const mood = diaryMoodLabelI18n(t, entry.mood);
   const shared = isDiaryEntrySharedWithCircle(entry);
-  const authorLabel = isPatientAuthor ? patientDisplayName : entry.authorName;
+  const showMilestone = isSystem || entry.isMilestone;
+  const authorLabel = resolveCircleDiaryAuthorLabel(entry, {
+    patientDisplayName,
+    displayNameByUid,
+    systemAuthorLabel: t('diary.badgeCareMilestone'),
+  });
 
   return (
     <li className="relative pl-6">
       <span
         className={cn(
           'absolute top-2 rounded-full border-2 border-white shadow',
-          entry.isMilestone
+          showMilestone
             ? '-left-[11px] w-5 h-5 bg-rose-500 ring-2 ring-rose-300 shadow-md animate-pulse'
             : '-left-[8px] w-3.5 h-3.5',
-          !entry.isMilestone && (isPatientAuthor ? 'bg-violet-500' : isOwn ? 'bg-blue-500' : 'bg-slate-400'),
+          !showMilestone && (isSystem ? 'bg-violet-500' : isPatientAuthor ? 'bg-violet-500' : isOwn ? 'bg-blue-500' : 'bg-slate-400'),
         )}
       />
       <article
         className={cn(
           'rounded-2xl border shadow-sm p-4 space-y-3 [@media(max-height:740px)]:p-3 [@media(max-height:740px)]:space-y-2',
-          entry.isMilestone
+          showMilestone
             ? 'bg-violet-50/50 border-violet-200'
             : 'bg-white border-slate-100',
           isCareTeamEntry && 'ml-2 sm:ml-4 border-l-4 border-l-blue-200',
         )}
       >
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-blue-700">
               {formatDiaryDate(entry.experienceAt)}
             </p>
-            <p className="text-sm font-semibold text-slate-800 mt-0.5">{authorLabel}</p>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold uppercase shrink-0',
+                  shared ? 'bg-violet-50 text-violet-600' : 'bg-slate-100 text-slate-500',
+                )}
+              >
+                {shared ? (
+                  isPatientAuthor ? (
+                    <Heart size={12} />
+                  ) : (
+                    <Users size={12} />
+                  )
+                ) : (
+                  <Lock size={12} />
+                )}
+                {shared
+                  ? isPatientAuthor
+                    ? t('diary.badgePatientStory')
+                    : t('diary.badgeShared')
+                  : t('diary.badgePrivate')}
+              </span>
+              {isOwn && !isSystem && (
+                <div className="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={onEdit}
+                    className="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                    aria-label={t('diary.editEntryAria')}
+                  >
+                    <Pencil size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onDelete}
+                    className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50"
+                    aria-label={t('diary.deleteEntryAria')}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-slate-800">{authorLabel}</p>
+            {isSystem && (
+              <p className="text-[10px] font-bold uppercase tracking-wide text-violet-500 mt-0.5">
+                {t('diary.badgeMilestone')}
+              </p>
+            )}
             {isCareTeamEntry && (
               <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mt-0.5">
                 {t('diary.badgeCircleMember')}
@@ -122,66 +190,31 @@ function DiaryTimelineEntry({
               </p>
             )}
           </div>
-          <div className="flex items-center gap-1.5 flex-wrap justify-end">
-            {mood && (
-              <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold uppercase">
-                {mood}
-              </span>
-            )}
-            {entry.isMilestone && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 text-[10px] font-bold uppercase">
-                <Star size={10} />
-                {t('diary.badgeMilestone')}
-              </span>
-            )}
-            <span
-              className={cn(
-                'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold uppercase shrink-0',
-                shared ? 'bg-violet-50 text-violet-600' : 'bg-slate-100 text-slate-500',
+
+          {(mood || showMilestone) && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {mood && (
+                <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold uppercase">
+                  {mood}
+                </span>
               )}
-            >
-              {shared ? (
-                isPatientAuthor ? (
-                  <Heart size={12} />
-                ) : (
-                  <Users size={12} />
-                )
-              ) : (
-                <Lock size={12} />
+              {showMilestone && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 text-[10px] font-bold uppercase">
+                  {isSystem ? <Sparkles size={10} /> : <Star size={10} />}
+                  {t('diary.badgeMilestone')}
+                </span>
               )}
-              {shared
-                ? isPatientAuthor
-                  ? t('diary.badgePatientStory')
-                  : t('diary.badgeShared')
-                : t('diary.badgePrivate')}
-            </span>
-            {isOwn && (
-              <div className="flex items-center gap-0.5">
-                <button
-                  type="button"
-                  onClick={onEdit}
-                  className="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50"
-                  aria-label={t('diary.editEntryAria')}
-                >
-                  <Pencil size={15} />
-                </button>
-                <button
-                  type="button"
-                  onClick={onDelete}
-                  className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50"
-                  aria-label={t('diary.deleteEntryAria')}
-                >
-                  <Trash2 size={15} />
-                </button>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
-        {entry.title?.trim() && (
-          <h3 className="font-bold text-slate-800 text-sm">{entry.title.trim()}</h3>
-        )}
-        <CircleDiaryEntryBodyPreview text={entry.body} />
+        <CircleDiaryTranslatedContent
+          title={entry.title}
+          body={entry.body}
+          translations={entry.translations}
+          viewerLanguage={viewerLanguage}
+          translateIfMissing={!isSystem}
+        />
       </article>
     </li>
   );
@@ -189,6 +222,11 @@ function DiaryTimelineEntry({
 
 export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps) {
   const t = useCircleT();
+  const { language: viewerLanguage } = useCircleI18nContext();
+  const { settings: remoteSettings } = useCircleRemoteSettingsFromShell();
+  const patientLanguage = normalizeCircleUiLanguage(
+    remoteSettings?.primaryLanguage || 'English',
+  );
   const [filter, setFilter] = useState<DiaryListFilter>('circle');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<CircleDiaryEntry | null>(null);
@@ -205,6 +243,7 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
     user,
     filter,
   );
+  const memberDisplayNames = useCirclePatientMemberDisplayNames(db, patient.patientId);
 
   const authorName = useMemo(() => {
     return user.displayName?.trim() || user.email?.split('@')[0] || t('circle.circleMemberFallback');
@@ -236,11 +275,19 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
       setSaving(true);
       setError(null);
       try {
+        const { sourceLanguage, translations } = await buildCircleDiaryTranslations({
+          title: draft.title,
+          body: draft.body,
+          targetLanguages: [patientLanguage, viewerLanguage],
+          fallbackSourceLanguage: viewerLanguage,
+        });
         if (editingEntry) {
           await updateDiaryEntry(db, {
             patientId: patient.patientId,
             entryId: editingEntry.id,
             draft,
+            sourceLanguage,
+            translations,
           });
           showToast(t('diary.toastUpdated'));
         } else {
@@ -249,9 +296,13 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
             authorUid: user.uid,
             authorName,
             draft,
+            sourceLanguage,
+            translations,
           });
           showToast(t('diary.toastSaved'));
         }
+        // Keep the active tab aligned with where the entry now lives.
+        setFilter(draft.visibility === 'private' ? 'mine' : 'circle');
         setModalOpen(false);
         setEditingEntry(null);
       } catch (err) {
@@ -260,7 +311,17 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
         setSaving(false);
       }
     },
-    [authorName, db, editingEntry, patient.patientId, showToast, t, user.uid],
+    [
+      authorName,
+      db,
+      editingEntry,
+      patient.patientId,
+      patientLanguage,
+      showToast,
+      t,
+      user.uid,
+      viewerLanguage,
+    ],
   );
 
   const confirmDeleteEntry = useCallback(async () => {
@@ -363,6 +424,8 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
                     entry={entry}
                     isOwn={entry.authorUid === user.uid}
                     patientDisplayName={patient.displayName}
+                    displayNameByUid={memberDisplayNames.byUid}
+                    viewerLanguage={viewerLanguage}
                     onEdit={() => openEdit(entry)}
                     onDelete={() => setDeleteTarget(entry)}
                   />

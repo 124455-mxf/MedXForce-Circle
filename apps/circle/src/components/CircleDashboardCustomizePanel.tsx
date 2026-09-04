@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import type { User } from 'firebase/auth';
-import { LayoutGrid, Loader2 } from 'lucide-react';
+import { ChevronDown, LayoutGrid, Loader2 } from 'lucide-react';
 import type { Firestore } from 'firebase/firestore';
 import {
   CIRCLE_DASHBOARD_WIDGET_SECTIONS,
   isCircleDashboardWidgetAvailable,
+  isPatientActivityCompactVisible,
   normalizeMemberRole,
+  type CircleDashboardLayoutPreset,
   type CircleDashboardLayoutSection,
   type CircleDashboardWidgetKey,
   type CirclePatientSummary,
@@ -24,45 +26,81 @@ type CircleDashboardCustomizePanelProps = {
   patient: CirclePatientSummary | null;
 };
 
+function PatientActivityDensityPicker({
+  compact,
+  saving,
+  onSelect,
+}: {
+  compact: boolean;
+  saving: boolean;
+  onSelect: (compact: boolean) => void;
+}) {
+  const t = useCircleT();
+  return (
+    <div className="space-y-2 rounded-2xl border border-slate-100 bg-white px-4 py-3.5">
+      <div className="min-w-0">
+        <p className="font-semibold text-slate-800 text-sm">
+          {t('dashboard.sectionPatientActivity')}
+        </p>
+        <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+          {t('dashboard.customizePatientActivityHint')}
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {([
+          { id: 'compact' as const, label: t('dashboard.customizePatientActivityCompact') },
+          { id: 'expanded' as const, label: t('dashboard.customizePatientActivityExpanded') },
+        ]).map((option) => {
+          const active = option.id === 'compact' ? compact : !compact;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              disabled={saving}
+              onClick={() => onSelect(option.id === 'compact')}
+              className={cn(
+                'py-2.5 rounded-2xl border text-sm font-semibold transition-colors disabled:opacity-60',
+                active
+                  ? 'border-blue-600 bg-blue-50 text-blue-800'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+              )}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function DashboardWidgetToggle({
   title,
   visible,
-  disabled,
-  disabledHint,
   saving,
   onToggle,
 }: {
   title: string;
   visible: boolean;
-  disabled?: boolean;
-  disabledHint?: string;
   saving: boolean;
   onToggle: () => void;
 }) {
   return (
-    <div
-      className={cn(
-        'flex items-start justify-between gap-4 px-4 py-3.5 rounded-2xl border',
-        disabled ? 'border-slate-100 bg-slate-50/80 opacity-70' : 'border-slate-100 bg-white',
-      )}
-    >
+    <div className="flex items-start justify-between gap-4 px-4 py-3.5 rounded-2xl border border-slate-100 bg-white">
       <div className="min-w-0 flex-1">
         <p className="font-semibold text-slate-800 text-sm">{title}</p>
-        {disabled && disabledHint ? (
-          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{disabledHint}</p>
-        ) : null}
       </div>
       <button
         type="button"
         role="switch"
         aria-checked={visible}
         aria-label={title}
-        disabled={disabled || saving}
+        disabled={saving}
         onClick={onToggle}
         className={cn(
           'w-14 h-8 rounded-full transition-all duration-300 relative shrink-0 mt-0.5',
           visible ? 'bg-blue-600' : 'bg-slate-300',
-          (disabled || saving) && 'opacity-60 cursor-not-allowed',
+          saving && 'opacity-60 cursor-not-allowed',
         )}
       >
         <span
@@ -90,35 +128,58 @@ function DashboardSectionToggles({
   onToggle: (key: CircleDashboardWidgetKey, visible: boolean) => void;
 }) {
   const t = useCircleT();
-  const keys = CIRCLE_DASHBOARD_WIDGET_SECTIONS[section].filter((key) => {
-    if (key === 'circle-map' && normalizeMemberRole(patient.role) === 'friend') return false;
-    if (key === 'check-in-wellness-ring' && normalizeMemberRole(patient.role) === 'friend') return false;
-    if (key === 'assessment-schedule-calendar') return false;
-    return true;
-  });
+  const [collapsed, setCollapsed] = useState(true);
+  const role = normalizeMemberRole(patient.role);
+  const keys = CIRCLE_DASHBOARD_WIDGET_SECTIONS[section].filter((key) =>
+    isCircleDashboardWidgetAvailable(key, patient.capabilities, role),
+  );
+  if (keys.length === 0) return null;
+
+  const onCount = keys.filter((key) => !hiddenWidgets.has(key)).length;
 
   return (
     <section className="space-y-2">
-      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">
-        {t(DASHBOARD_LAYOUT_SECTION_TITLE_KEYS[section])}
-      </h4>
-      <div className="space-y-2">
-        {keys.map((key) => {
-          const available = isCircleDashboardWidgetAvailable(key, patient.capabilities);
-          const visible = available && !hiddenWidgets.has(key);
-          return (
-            <DashboardWidgetToggle
-              key={key}
-              title={t(DASHBOARD_WIDGET_TITLE_KEYS[key])}
-              visible={visible}
-              disabled={!available}
-              disabledHint={!available ? t('settings.dashboardWidgetUnavailable') : undefined}
-              saving={saving}
-              onToggle={() => onToggle(key, !visible)}
-            />
-          );
-        })}
-      </div>
+      <button
+        type="button"
+        onClick={() => setCollapsed((open) => !open)}
+        className="w-full flex items-center justify-between gap-2 px-1 py-1 text-left"
+        aria-expanded={!collapsed}
+      >
+        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          {t(DASHBOARD_LAYOUT_SECTION_TITLE_KEYS[section])}
+        </h4>
+        <span className="flex items-center gap-1.5 shrink-0">
+          {collapsed ? (
+            <span className="text-[11px] font-medium text-slate-400 tabular-nums">
+              {t('settings.dashboardCustomizeSectionOnCount', { count: onCount })}
+            </span>
+          ) : null}
+          <ChevronDown
+            size={16}
+            className={cn(
+              'text-slate-400 transition-transform',
+              collapsed && '-rotate-90',
+            )}
+            aria-hidden
+          />
+        </span>
+      </button>
+      {collapsed ? null : (
+        <div className="space-y-2">
+          {keys.map((key) => {
+            const visible = !hiddenWidgets.has(key);
+            return (
+              <DashboardWidgetToggle
+                key={key}
+                title={t(DASHBOARD_WIDGET_TITLE_KEYS[key])}
+                visible={visible}
+                saving={saving}
+                onToggle={() => onToggle(key, !visible)}
+              />
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
@@ -134,7 +195,7 @@ export function CircleDashboardCustomizePanel({
   const [saved, setSaved] = useState(false);
 
   const memberRole = normalizeMemberRole(patient?.role ?? 'caregiver');
-  const { hiddenWidgets, loading, setWidgetVisible, resetToRoleDefaults } =
+  const { hiddenWidgets, activePreset, loading, setWidgetVisible, applyLayoutPreset, resetToRoleDefaults } =
     useCircleDashboardLayout(
       db,
       patient?.patientId,
@@ -152,7 +213,35 @@ export function CircleDashboardCustomizePanel({
       setSaved(true);
     } catch (err) {
       console.warn('[CircleDashboardCustomizePanel]', err);
-      setError(t('settings.dashboardCustomizeSaveFailed'));
+      const detail =
+        err && typeof err === 'object' && 'code' in err && typeof (err as { code: unknown }).code === 'string'
+          ? ` (${(err as { code: string }).code})`
+          : err instanceof Error && err.message
+            ? ` (${err.message})`
+            : '';
+      setError(`${t('settings.dashboardCustomizeSaveFailed')}${detail}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleApplyPreset = async (preset: CircleDashboardLayoutPreset) => {
+    if (!patient || saving) return;
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      await applyLayoutPreset(preset);
+      setSaved(true);
+    } catch (err) {
+      console.warn('[CircleDashboardCustomizePanel] preset', err);
+      const detail =
+        err && typeof err === 'object' && 'code' in err && typeof (err as { code: unknown }).code === 'string'
+          ? ` (${(err as { code: string }).code})`
+          : err instanceof Error && err.message
+            ? ` (${err.message})`
+            : '';
+      setError(`${t('settings.dashboardCustomizeSaveFailed')}${detail}`);
     } finally {
       setSaving(false);
     }
@@ -168,7 +257,13 @@ export function CircleDashboardCustomizePanel({
       setSaved(true);
     } catch (err) {
       console.warn('[CircleDashboardCustomizePanel] reset', err);
-      setError(t('settings.dashboardCustomizeSaveFailed'));
+      const detail =
+        err && typeof err === 'object' && 'code' in err && typeof (err as { code: unknown }).code === 'string'
+          ? ` (${(err as { code: string }).code})`
+          : err instanceof Error && err.message
+            ? ` (${err.message})`
+            : '';
+      setError(`${t('settings.dashboardCustomizeSaveFailed')}${detail}`);
     } finally {
       setSaving(false);
     }
@@ -200,12 +295,62 @@ export function CircleDashboardCustomizePanel({
         {t('settings.dashboardCustomizeMandatoryHint')}
       </p>
 
+      <div className="space-y-2">
+        <p className="text-xs text-slate-500 leading-relaxed px-1">
+          {t('settings.dashboardCustomizePresetHint')}
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {(['compact', 'detailed'] as const).map((preset) => {
+            const active = activePreset === preset;
+            return (
+              <button
+                key={preset}
+                type="button"
+                disabled={saving || loading}
+                onClick={() => void handleApplyPreset(preset)}
+                className={cn(
+                  'py-3 rounded-2xl border text-sm font-semibold transition-colors disabled:opacity-60',
+                  active
+                    ? 'border-blue-600 bg-blue-50 text-blue-800'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+                )}
+              >
+                {preset === 'compact'
+                  ? t('settings.dashboardCustomizePresetCompact')
+                  : t('settings.dashboardCustomizePresetDetailed')}
+              </button>
+            );
+          })}
+        </div>
+        {activePreset === 'custom' ? (
+          <p className="text-[11px] text-slate-400 px-1">
+            {t('settings.dashboardCustomizePresetCustom')}
+          </p>
+        ) : null}
+      </div>
+
       {loading ? (
         <div className="py-10 flex justify-center text-slate-400">
           <Loader2 size={24} className="animate-spin" />
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-2">
+          {isCircleDashboardWidgetAvailable(
+            'patient-activity',
+            patient.capabilities,
+            memberRole,
+          ) ? (
+            <PatientActivityDensityPicker
+              compact={isPatientActivityCompactVisible(hiddenWidgets)}
+              saving={saving}
+              onSelect={(compact) =>
+                void handleToggle(
+                  compact ? 'patient-activity-compact' : 'patient-activity',
+                  true,
+                )
+              }
+            />
+          ) : null}
           {(Object.keys(CIRCLE_DASHBOARD_WIDGET_SECTIONS) as CircleDashboardLayoutSection[]).map(
             (section) => (
               <DashboardSectionToggles

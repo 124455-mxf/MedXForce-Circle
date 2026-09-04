@@ -1,11 +1,12 @@
 import type {
+  AnalyticsDetailRangeId,
   AnalyticsMetricId,
   AnalyticsSectionId,
   AnalyticsTrendDirection,
   PatientAnalyticsSummary,
 } from '@medxforce/shared';
-import type { CircleUiLanguage } from './circleLanguages';
 import type { CircleTranslator } from './circleI18nContext';
+import { circleUiLanguageToLocale, type CircleUiLanguage } from './circleLanguages';
 
 const METRIC_TITLE_KEYS: Record<AnalyticsMetricId, string> = {
   'alert-attention': 'analytics.metrics.alertAttention',
@@ -20,7 +21,6 @@ const METRIC_TITLE_KEYS: Record<AnalyticsMetricId, string> = {
   temperature: 'analytics.metrics.temperature',
   balance: 'analytics.metrics.balance',
   vision: 'analytics.metrics.vision',
-  hearing: 'analytics.metrics.hearing',
   speech: 'analytics.metrics.speech',
   neurological: 'analytics.metrics.neurological',
   physiological: 'analytics.metrics.physiological',
@@ -44,12 +44,26 @@ const SECTION_TITLE_KEYS: Record<AnalyticsSectionId, string> = {
 const SUMMARY_TEXT_KEYS: Record<string, string> = {
   'To be released': 'analytics.summaryToBeReleased',
   'No data yet': 'analytics.summaryNoDataYet',
-  'No assessments yet': 'analytics.summaryNoAssessmentsYet',
+  'No assessments yet': 'analytics.summaryNoDataYet',
+  'No assessment data yet': 'analytics.summaryNoDataYet',
   'No check-ins yet': 'analytics.summaryNoCheckInsYet',
   'Not enabled for patient': 'analytics.summaryNotEnabled',
   'No shared family media yet': 'analytics.summaryNoFamilyMedia',
   'No shared diary entries yet': 'analytics.summaryNoDiaryEntries',
 };
+
+const ENGAGEMENT_METRIC_IDS = new Set<AnalyticsMetricId>([
+  'alert-attention',
+  'speech-history',
+  'ai-conversation',
+  'daily-check-in',
+]);
+
+const ENGAGEMENT_EMPTY_SUMMARY_TEXTS = new Set([
+  'No data yet',
+  'No assessments yet',
+  'No check-ins yet',
+]);
 
 const LATEST_PREFIX = /^Latest:\s*(.+)$/i;
 const LAST_ON_PREFIX = /^Last on\s+(.+)$/i;
@@ -57,15 +71,8 @@ const SKIP_RATE_PREFIX = /^Skip Rate:\s*(\d+)%$/i;
 const SHARED_ITEMS_PREFIX = /^(\d+)\s+shared items?$/i;
 const SHARED_ENTRIES_PREFIX = /^(\d+)\s+shared entries?$/i;
 
-function circleLanguageToLocale(language: CircleUiLanguage): string {
-  if (language === 'German') return 'de';
-  if (language === 'Spanish') return 'es';
-  if (language === 'Polish') return 'pl';
-  return 'en';
-}
-
 export function formatAnalyticsShortDate(ts: number, language: CircleUiLanguage): string {
-  return new Date(ts).toLocaleDateString(circleLanguageToLocale(language), {
+  return new Date(ts).toLocaleDateString(circleUiLanguageToLocale(language), {
     day: 'numeric',
     month: 'short',
   });
@@ -191,6 +198,13 @@ export function analyticsSummaryFooterText(
     return t('analytics.summaryToBeReleased');
   }
 
+  if (
+    ENGAGEMENT_METRIC_IDS.has(summary.metricId) &&
+    ENGAGEMENT_EMPTY_SUMMARY_TEXTS.has(summary.summaryText.trim())
+  ) {
+    return t('analytics.summaryNoDataYet');
+  }
+
   const mapped = SUMMARY_TEXT_KEYS[summary.summaryText.trim()];
   if (mapped) return t(mapped);
 
@@ -202,6 +216,16 @@ export function analyticsSummaryFooterText(
 
 export function analyticsWindowDaysLabel(t: CircleTranslator, days: number): string {
   return t('analytics.windowDays', { days });
+}
+
+export function analyticsDetailRangeWindowLabel(
+  t: CircleTranslator,
+  rangeId: AnalyticsDetailRangeId,
+  windowDays?: number,
+): string {
+  if (rangeId === 'all') return t('analytics.windowSinceStart');
+  if (rangeId === '180') return t('analytics.window6Months');
+  return t('analytics.windowDays', { days: windowDays ?? (rangeId === '90' ? 90 : 30) });
 }
 
 export function analyticsLastDaysLabel(t: CircleTranslator, days: number): string {

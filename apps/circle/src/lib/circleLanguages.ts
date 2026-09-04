@@ -28,9 +28,49 @@ export function resolveIdentityPrimaryLanguage(
   return 'English';
 }
 
+/** Stored profile language label — keep English so remote settings stay language-stable. */
 export function identityLanguageLabel(value: RemotePrimaryLanguage): string {
   return (
     REMOTE_PRIMARY_LANGUAGE_OPTIONS.find((option) => option.value === value)?.label ??
     'English (EN)'
   );
+}
+
+const UI_LANGUAGE_LABEL_KEYS: Record<string, string> = {
+  English: 'common.languageEnglish',
+  German: 'common.languageGerman',
+  Spanish: 'common.languageSpanish',
+  Polish: 'common.languagePolish',
+};
+
+/** Localized label for a stored language value (`English`, `German`, or `English (EN)`). */
+export function circleUiLanguageLabel(
+  t: (path: string) => string,
+  value: string | undefined | null,
+): string {
+  const short = String(value || '').split(' ')[0];
+  const key = UI_LANGUAGE_LABEL_KEYS[short];
+  return key ? t(key) : String(value || '').trim() || t('common.languageEnglish');
+}
+
+/** BCP 47 locale for `toLocaleDateString` / `toLocaleString` from the Circle UI language. */
+export function circleUiLanguageToLocale(language: CircleUiLanguage): string {
+  switch (language) {
+    case 'German':
+      return 'de';
+    case 'Spanish':
+      return 'es';
+    case 'Polish':
+      return 'pl';
+    default:
+      return 'en';
+  }
+}
+
+export function formatCircleDate(
+  date: Date,
+  language: CircleUiLanguage,
+  options: Intl.DateTimeFormatOptions,
+): string {
+  return date.toLocaleDateString(circleUiLanguageToLocale(language), options);
 }

@@ -1,12 +1,20 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
 import type { AnalyticsMetricId, CircleMemberThreadKind, CirclePatientSummary } from '@medxforce/shared';
+import type { CircleMessagesAnalyticsFocus } from './CircleMessagesAnalyticsDetail';
 import {
+  canCircleMemberUseDropIn,
   canSendPatientRemoteCommands,
   canStartVisitCapture,
+  canViewRemoteSettingsTab,
+  circleDisplayFirstName,
+  isRecordedVisitDebrief,
   normalizeMemberRole,
+  parseCareCalendarVisitDebrief,
+  parseCircleDropInAccessConfig,
   repairInactiveAcceptedMemberDocsForUser,
   repairOrphanAcceptedInvitesForUser,
   visitCapturePublishThreadKind,
@@ -15,6 +23,7 @@ import { cn } from '../lib/utils';
 import { CircleChromeProvider } from '../lib/circleChromeContext';
 
 import { CircleAdminScreen } from './CircleAdminScreen';
+import { CirclePatientProfileScreen } from './CirclePatientProfileScreen';
 import { CircleAppHeader } from './CircleAppHeader';
 import {
   CircleBottomNav,
@@ -24,7 +33,7 @@ import {
   primaryNavItemsForPatient,
   type CircleMainTab,
 } from './CircleBottomNav';
-import { useCircleI18nContext } from '../lib/circleI18nContext';
+import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import { CircleDiaryScreen } from './CircleDiaryScreen';
 import { CircleScheduleScreen } from './CircleScheduleScreen';
 import { CircleKnowScreen } from './CircleKnowScreen';
@@ -47,10 +56,11 @@ const CircleRemoteSettingsScreen = lazy(() =>
 );
 import { useCircleOwnManagedContact } from '../hooks/useCircleOwnManagedContact';
 import { useCircleOnlineVisibility } from '../hooks/useCircleOnlineVisibility';
-import { startCircleMemberPresenceHeartbeat } from '../services/circleMemberPresenceService';
+import { startCircleMemberLastOpenHeartbeat, startCircleMemberPresenceHeartbeat } from '../services/circleMemberPresenceService';
 import { useCircleAlertAttentionState } from '../hooks/useCircleAlertAttentionState';
 import { useFamilyGalleryDashboard } from '../hooks/useFamilyGalleryDashboard';
 import { DASHBOARD_STATS_DAYS } from '../lib/circleDashboardStats';
+import { useCircleInboxReadSync } from '../hooks/useCircleInboxReadSync';
 import { useCircleMemberThreadUnread } from '../hooks/useCircleMemberThreadUnread';
 import { useScheduleActionBadgeCount } from '../hooks/useScheduleActionBadgeCount';
 import { useCirclePatientThreads } from '../hooks/useCirclePatientThreads';
@@ -78,9 +88,15 @@ import { CircleSelectedPatientProvider } from '../context/CircleSelectedPatientC
 import { normalizeCircleUiLanguage } from '../lib/circleLanguages';
 import type { CirclePostInboxView } from '../lib/circlePostInboxViews';
 import type { CircleGalleryIntent } from '../lib/circleGalleryIntent';
+import type { CircleScheduleAppointmentFocus, CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
 
 function TabLoadingFallback() {
-  return <div className="flex flex-1 items-center justify-center p-6 text-sm text-slate-500">Loading…</div>;
+  const t = useCircleT();
+  return (
+    <div className="flex flex-1 items-center justify-center p-6 text-sm text-slate-500">
+      {t('common.loading')}
+    </div>
+  );
 }
 
 interface CircleMainShellProps {
@@ -116,20 +132,59 @@ export function CircleMainShell({
   const [activeTab, setActiveTab] = useState<CircleMainTab>('dashboard');
   const [initialAnalyticsMetricId, setInitialAnalyticsMetricId] =
     useState<AnalyticsMetricId | null>(null);
+  const [initialMessagesFocus, setInitialMessagesFocus] =
+    useState<CircleMessagesAnalyticsFocus | null>(null);
+  const [initialAssessmentsOverview, setInitialAssessmentsOverview] = useState(false);
+  const [initialPeriodOverviewDays, setInitialPeriodOverviewDays] = useState<7 | 30 | null>(null);
+  const [initialAdminUsersTab, setInitialAdminUsersTab] = useState<'people' | 'access' | null>(
+    null,
+  );
+  const [remoteSettingsFocus, setRemoteSettingsFocus] = useState<
+    'circle-initiate' | 'circle-drop-in' | 'application-mode' | null
+  >(null);
   const { language, t } = useCircleI18nContext();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [visitCaptureOpen, setVisitCaptureOpen] = useState(false);
   const [visitCaptureEntryId, setVisitCaptureEntryId] = useState<string | null>(null);
+  const [visitCaptureReplacesExisting, setVisitCaptureReplacesExisting] = useState(false);
   const [circleInboxIntent, setCircleInboxIntent] = useState<{
     thread: CircleMemberThreadKind;
     view: CirclePostInboxView;
   } | null>(null);
+  const [messagesInboxIntent, setMessagesInboxIntent] = useState<
+    'communication_log' | 'in_out' | null
+  >(null);
   const [galleryIntent, setGalleryIntent] = useState<CircleGalleryIntent | null>(null);
+  const [scheduleViewIntent, setScheduleViewIntent] = useState<CircleScheduleViewIntent | null>(
+    null,
+  );
+  const [scheduleAppointmentFocus, setScheduleAppointmentFocus] =
+    useState<CircleScheduleAppointmentFocus | null>(null);
   const [dropInConfirmOpen, setDropInConfirmOpen] = useState(false);
   const [dropInSentThisOpen, setDropInSentThisOpen] = useState(false);
   const replyDraftGuardRef = useRef<UnsavedReplyDraftGuard | null>(null);
+  const analyticsOriginTabRef = useRef<CircleMainTab | null>(null);
+  const mainRef = useRef<HTMLElement>(null);
 
   const compactChrome = activeTab !== 'dashboard';
+
+  useEffect(() => {
+    if (activeTab !== 'schedule') {
+      setScheduleViewIntent(null);
+      setScheduleAppointmentFocus(null);
+    }
+  }, [activeTab]);
+
+  useLayoutEffect(() => {
+    const el = mainRef.current;
+    if (el) el.scrollTop = 0;
+    window.scrollTo(0, 0);
+    const frame = requestAnimationFrame(() => {
+      if (el) el.scrollTop = 0;
+      window.scrollTo(0, 0);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeTab]);
 
   const guardedNavigate = useCallback(
     (proceed: () => void) => {
@@ -151,6 +206,11 @@ export function CircleMainShell({
         }
         return;
       }
+      analyticsOriginTabRef.current = null;
+      setInitialAssessmentsOverview(false);
+      setInitialPeriodOverviewDays(null);
+      setScheduleViewIntent(null);
+      setRemoteSettingsFocus(null);
       guardedNavigate(() => setActiveTab(tab));
     },
     [activeTab, guardedNavigate],
@@ -158,34 +218,172 @@ export function CircleMainShell({
 
   const handleGoToTab = handleTabChange;
 
-  const handleBackToDashboard = useCallback(() => {
-    guardedNavigate(() => setActiveTab('dashboard'));
-  }, [guardedNavigate]);
-
-  const handleOpenAnalyticsDetail = useCallback(
-    (metricId: AnalyticsMetricId) => {
-      setInitialAnalyticsMetricId(metricId);
-      guardedNavigate(() => setActiveTab('analytics'));
+  const handleOpenSchedule = useCallback(
+    (view?: CircleScheduleViewIntent) => {
+      analyticsOriginTabRef.current = null;
+      setInitialAssessmentsOverview(false);
+      setInitialPeriodOverviewDays(null);
+      guardedNavigate(() => {
+        setScheduleViewIntent(view ?? null);
+        setActiveTab('schedule');
+      });
     },
     [guardedNavigate],
   );
 
+  const handleOpenAppointmentNotes = useCallback(
+    (entryId: string, dateKey?: string) => {
+      analyticsOriginTabRef.current = null;
+      setInitialAssessmentsOverview(false);
+      setInitialPeriodOverviewDays(null);
+      guardedNavigate(() => {
+        setScheduleAppointmentFocus({
+          entryId,
+          dateKey: dateKey?.trim() || undefined,
+          episodeTab: 'followup',
+        });
+        setScheduleViewIntent('today');
+        setActiveTab('schedule');
+      });
+    },
+    [guardedNavigate],
+  );
+
+  const handleAppointmentFocusConsumed = useCallback(() => {
+    setScheduleAppointmentFocus(null);
+  }, []);
+
+  const handleBackToDashboard = useCallback(() => {
+    setScheduleViewIntent(null);
+    setScheduleAppointmentFocus(null);
+    guardedNavigate(() => setActiveTab('dashboard'));
+  }, [guardedNavigate]);
+
+  const handleOpenAnalyticsDetail = useCallback(
+    (metricId: AnalyticsMetricId, messagesFocus?: CircleMessagesAnalyticsFocus) => {
+      analyticsOriginTabRef.current = activeTab;
+      setInitialAssessmentsOverview(false);
+      setInitialPeriodOverviewDays(null);
+      setInitialAnalyticsMetricId(metricId);
+      setInitialMessagesFocus(
+        metricId === 'speech-history' ? (messagesFocus ?? 'messaging') : null,
+      );
+      guardedNavigate(() => setActiveTab('analytics'));
+    },
+    [activeTab, guardedNavigate],
+  );
+
+  const handleOpenAssessmentsOverview = useCallback(() => {
+    analyticsOriginTabRef.current = activeTab;
+    setInitialAnalyticsMetricId(null);
+    setInitialMessagesFocus(null);
+    setInitialPeriodOverviewDays(null);
+    setInitialAssessmentsOverview(true);
+    guardedNavigate(() => setActiveTab('analytics'));
+  }, [activeTab, guardedNavigate]);
+
+  const handleOpenAnalyticsPeriodOverview = useCallback(
+    (days: 7 | 30) => {
+      analyticsOriginTabRef.current = activeTab;
+      setInitialAnalyticsMetricId(null);
+      setInitialMessagesFocus(null);
+      setInitialAssessmentsOverview(false);
+      setInitialPeriodOverviewDays(days);
+      guardedNavigate(() => setActiveTab('analytics'));
+    },
+    [activeTab, guardedNavigate],
+  );
+
   const handleAnalyticsInitialMetricConsumed = useCallback(() => {
     setInitialAnalyticsMetricId(null);
+    setInitialMessagesFocus(null);
+    setInitialAssessmentsOverview(false);
+    setInitialPeriodOverviewDays(null);
+  }, []);
+
+  const handleAnalyticsDetailClosedToOrigin = useCallback(() => {
+    const origin = analyticsOriginTabRef.current;
+    analyticsOriginTabRef.current = null;
+    if (origin && origin !== 'analytics') {
+      guardedNavigate(() => setActiveTab(origin));
+    }
+  }, [guardedNavigate]);
+
+  const handleOpenAdminAccess = useCallback(() => {
+    setInitialAdminUsersTab('access');
+    guardedNavigate(() => setActiveTab('admin'));
+  }, [guardedNavigate]);
+
+  const handleOpenRemoteSettingsCircleInitiate = useCallback(() => {
+    analyticsOriginTabRef.current = null;
+    setInitialAssessmentsOverview(false);
+    setInitialPeriodOverviewDays(null);
+    setScheduleViewIntent(null);
+    guardedNavigate(() => {
+      setRemoteSettingsFocus('circle-initiate');
+      setActiveTab('remote-settings');
+    });
+  }, [guardedNavigate]);
+
+  const handleOpenRemoteSettingsDropIn = useCallback(() => {
+    analyticsOriginTabRef.current = null;
+    setInitialAssessmentsOverview(false);
+    setInitialPeriodOverviewDays(null);
+    setScheduleViewIntent(null);
+    guardedNavigate(() => {
+      setRemoteSettingsFocus('circle-drop-in');
+      setActiveTab('remote-settings');
+    });
+  }, [guardedNavigate]);
+
+  const handleOpenRemoteSettingsApplicationMode = useCallback(() => {
+    analyticsOriginTabRef.current = null;
+    setInitialAssessmentsOverview(false);
+    setInitialPeriodOverviewDays(null);
+    setScheduleViewIntent(null);
+    guardedNavigate(() => {
+      setRemoteSettingsFocus('application-mode');
+      setActiveTab('remote-settings');
+    });
+  }, [guardedNavigate]);
+
+  const handleRemoteSettingsFocusConsumed = useCallback(() => {
+    setRemoteSettingsFocus(null);
+  }, []);
+
+  const handleAdminInitialUsersTabConsumed = useCallback(() => {
+    setInitialAdminUsersTab(null);
   }, []);
 
   const handleCircleInboxIntentConsumed = useCallback(() => {
     setCircleInboxIntent(null);
   }, []);
 
+  const handleOpenMessagesInbox = useCallback(
+    (view: 'communication_log' | 'in_out') => {
+      setMessagesInboxIntent(view);
+      handleTabChange('messages');
+    },
+    [handleTabChange],
+  );
+
+  const handleMessagesInboxIntentConsumed = useCallback(() => {
+    setMessagesInboxIntent(null);
+  }, []);
+
   const handleGalleryIntentConsumed = useCallback(() => {
     setGalleryIntent(null);
   }, []);
 
-  const handleOpenRichMediaReactions = useCallback(() => {
+  const handleOpenGalleryReactions = useCallback(() => {
     setGalleryIntent({ type: 'open-album', albumKind: 'reactions' });
-    handleTabChange('media');
-  }, [handleTabChange]);
+    guardedNavigate(() => setActiveTab('media'));
+  }, [guardedNavigate]);
+
+  const handleOpenGalleryMyAlbums = useCallback(() => {
+    setGalleryIntent({ type: 'open-my-albums' });
+    guardedNavigate(() => setActiveTab('media'));
+  }, [guardedNavigate]);
 
   const selectedPatient = useMemo((): CirclePatientSummary | null => {
     if (patients.length === 0) return null;
@@ -198,37 +396,76 @@ export function CircleMainShell({
 
   useEffect(() => {
     if (!selectedPatient?.patientId || !user.uid) return;
+    if (selectedPatient.isPendingProvision === true) return;
     void (async () => {
-      await repairOrphanAcceptedInvitesForUser(db, user.uid);
-      await repairInactiveAcceptedMemberDocsForUser(db, user.uid);
+      try {
+        await repairOrphanAcceptedInvitesForUser(db, user.uid);
+        await repairInactiveAcceptedMemberDocsForUser(db, user.uid);
+      } catch (err) {
+        console.warn('[CircleMainShell] member repair skipped', err);
+      }
     })();
-  }, [db, selectedPatient?.patientId, user.uid]);
+  }, [db, selectedPatient?.isPendingProvision, selectedPatient?.patientId, user.uid]);
 
   const memberRole = selectedPatient ? normalizeMemberRole(selectedPatient.role) : 'friend';
   const showVisitCapture = !!selectedPatient && canStartVisitCapture(memberRole);
   const canReceiveRemoteCommandResponses =
     !!selectedPatient && canSendPatientRemoteCommands(selectedPatient.role);
-  const circleDropInEnabled = !!selectedPatient?.capabilities.remoteSettings;
 
   const handleVisitCapturePublished = useCallback(() => {
-    setVisitCaptureEntryId(null);
-    setVisitCaptureOpen(false);
+    if (visitCaptureEntryId) return;
     setCircleInboxIntent({
       thread: visitCapturePublishThreadKind(memberRole),
       view: 'visit_captures',
     });
     handleTabChange('circle');
-  }, [handleTabChange, memberRole]);
+  }, [handleTabChange, memberRole, visitCaptureEntryId]);
 
-  const handleOpenVisitCapture = useCallback((careCalendarEntryId?: string) => {
+  const visitCaptureSheetRestoreRef = useRef<CircleScheduleAppointmentFocus | null>(null);
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+
+  const handleOpenVisitCapture = useCallback((
+    careCalendarEntryId?: string,
+    restoreSheet?: CircleScheduleAppointmentFocus | null,
+  ) => {
+    visitCaptureSheetRestoreRef.current = restoreSheet ?? null;
     setVisitCaptureEntryId(careCalendarEntryId?.trim() || null);
     setVisitCaptureOpen(true);
   }, []);
 
   const handleCloseVisitCapture = useCallback(() => {
+    const restore = visitCaptureSheetRestoreRef.current;
+    visitCaptureSheetRestoreRef.current = null;
     setVisitCaptureOpen(false);
     setVisitCaptureEntryId(null);
+    if (restore?.entryId && activeTabRef.current === 'schedule') {
+      setScheduleAppointmentFocus(restore);
+    }
   }, []);
+
+  useEffect(() => {
+    if (!visitCaptureOpen || !visitCaptureEntryId || !selectedPatient?.patientId) {
+      setVisitCaptureReplacesExisting(false);
+      return;
+    }
+    const ref = doc(
+      db,
+      'patients',
+      selectedPatient.patientId,
+      'care_calendar',
+      visitCaptureEntryId,
+    );
+    return onSnapshot(
+      ref,
+      (snap) => {
+        setVisitCaptureReplacesExisting(
+          isRecordedVisitDebrief(parseCareCalendarVisitDebrief(snap.data()?.visitDebrief)),
+        );
+      },
+      () => setVisitCaptureReplacesExisting(false),
+    );
+  }, [db, selectedPatient?.patientId, visitCaptureEntryId, visitCaptureOpen]);
 
   const handleOpenCircleFolder = useCallback(
     (thread: CircleMemberThreadKind, folder: CirclePostInboxView) => {
@@ -250,13 +487,34 @@ export function CircleMainShell({
 
   const { contact: ownManagedContact } = useCircleOwnManagedContact(db, user, selectedPatient);
   const memberDisplayName = ownManagedContact?.name?.trim() || caregiverDisplayName;
+  const memberFirstName =
+    ownManagedContact?.firstName?.trim() ||
+    circleDisplayFirstName(memberDisplayName);
 
   const patientPresence = usePatientOnlinePresence(db, selectedPatient?.patientId);
 
-  const memberLanguages = useCirclePatientMemberLanguages(db, selectedPatient?.patientId, user.uid);
+  const memberLanguages = useCirclePatientMemberLanguages(db, selectedPatient?.patientId, user.uid, {
+    pendingProvision: selectedPatient?.isPendingProvision === true,
+  });
   const remoteSettingsState = useCircleRemoteSettings(db, selectedPatient, user);
   const { settings: remoteSettings } = remoteSettingsState;
   const patientLanguage = normalizeCircleUiLanguage(remoteSettings?.primaryLanguage);
+  // Match patient tablet: wait for settings, then follow featuresVisibility.dropIn.
+  const patientDropInFeatureEnabled =
+    remoteSettings != null && remoteSettings.featuresVisibility?.dropIn !== false;
+  const canUseDropIn =
+    !!selectedPatient &&
+    canCircleMemberUseDropIn(
+      patientDropInFeatureEnabled,
+      parseCircleDropInAccessConfig(remoteSettings ?? {}),
+      remoteSettings?.appMode,
+      { uid: user.uid, role: memberRole },
+    );
+  const circleDropInEnabled = canUseDropIn;
+  const canStartDropInRequest =
+    canUseDropIn &&
+    patientPresence.online &&
+    !isPatientDoNotDisturbSection(patientPresence.activeSection);
 
   const circleDropIn = useCircleDropIn(
     db,
@@ -271,13 +529,14 @@ export function CircleMainShell({
     t,
     memberLanguages.byUid,
     patientLanguage,
-    canReceiveRemoteCommandResponses,
+    canUseDropIn,
   );
 
   const openDropInConfirmModal = useCallback(() => {
+    if (!canUseDropIn) return;
     setDropInSentThisOpen(false);
     setDropInConfirmOpen(true);
-  }, []);
+  }, [canUseDropIn]);
 
   const closeDropInConfirmModal = useCallback(() => {
     setDropInConfirmOpen(false);
@@ -341,9 +600,8 @@ export function CircleMainShell({
   const navBuildOptions = useMemo(
     () => ({
       memberRole,
-      healthAssessmentsEnabled: remoteSettings?.featuresVisibility?.healthAssessments,
     }),
-    [memberRole, remoteSettings?.featuresVisibility?.healthAssessments],
+    [memberRole],
   );
 
   const primaryNavItems = useMemo(() => {
@@ -356,19 +614,26 @@ export function CircleMainShell({
 
   const moreNavItems = useMemo(() => {
     if (!selectedPatient) return [];
-    return localizeNavItems(moreNavItemsForPatient(selectedPatient.capabilities), t);
-  }, [selectedPatient, t]);
+    return localizeNavItems(moreNavItemsForPatient(selectedPatient.capabilities, navBuildOptions), t);
+  }, [selectedPatient, navBuildOptions, t]);
 
   const allNavItems = useMemo(() => {
     if (!selectedPatient) return [];
     return allNavItemsForPatient(selectedPatient.capabilities, navBuildOptions);
   }, [selectedPatient, navBuildOptions]);
 
+  useCircleInboxReadSync(
+    db,
+    selectedPatient?.isPendingProvision === true ? undefined : selectedPatient?.patientId,
+    user.uid,
+  );
+
   const threadState = useCirclePatientThreads(
     db,
     selectedPatient?.patientId ?? '',
     user,
     selectedPatient?.role ?? 'friend',
+    remoteSettings,
   );
 
   const alertAttention = useCircleAlertAttentionState(
@@ -411,6 +676,7 @@ export function CircleMainShell({
     user,
     selectedPatient,
   );
+  const scheduleNavBadge = scheduleActionBadgeCount;
 
   const galleryDashboard = useFamilyGalleryDashboard(
     db,
@@ -431,19 +697,30 @@ export function CircleMainShell({
     const messagesUnread = selectedPatient?.capabilities.messaging
       ? threadState.unreadCount
       : 0;
+    const mediaUnseen = galleryDashboard.unseenMediaCount;
+    const mediaInMore = moreNavItems.some((item) => item.id === 'media');
 
     return {
       messages: messagesUnread,
       circle: circleThreadUnread.unreadCount,
-      schedule: scheduleActionBadgeCount,
+      schedule: scheduleNavBadge,
+      media: mediaUnseen,
       more: 0,
+      moreDot: mediaInMore && mediaUnseen > 0,
     };
   }, [
     circleThreadUnread.unreadCount,
-    scheduleActionBadgeCount,
+    galleryDashboard.unseenMediaCount,
+    moreNavItems,
+    scheduleNavBadge,
     selectedPatient?.capabilities.messaging,
     threadState.unreadCount,
   ]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    return startCircleMemberLastOpenHeartbeat(db, user.uid);
+  }, [db, user?.uid]);
 
   useEffect(() => {
     if (!selectedPatient?.patientId || !user?.uid || hideOnlineStatusFromPatient) return;
@@ -460,6 +737,7 @@ export function CircleMainShell({
 
   const handleSelectPatient = (patient: CirclePatientSummary) => {
     guardedNavigate(() => {
+      setScheduleViewIntent(null);
       onSelectPatient(patient);
       setActiveTab('dashboard');
     });
@@ -486,6 +764,7 @@ export function CircleMainShell({
           onOpenProfile={onOpenProfile}
           selectedPatient={selectedPatient}
           memberDisplayName={memberDisplayName}
+          memberFirstName={memberFirstName}
           patientOnline={patientPresence.online}
           patientLastSeen={patientPresence.lastSeen}
           onOpenPatientSwitcher={
@@ -520,6 +799,7 @@ export function CircleMainShell({
               onSetStartupPatient={onSetStartupPatient}
               onCancelPending={onCancelPending}
               memberDisplayName={memberDisplayName}
+              memberFirstName={memberFirstName}
               patientOnline={patientPresence.online}
               patientLastSeen={patientPresence.lastSeen}
               db={db}
@@ -534,6 +814,7 @@ export function CircleMainShell({
         )}
 
         <main
+          ref={mainRef}
           className={cn(
             'flex-1 min-h-0',
             activeTab === 'messages' ||
@@ -542,6 +823,7 @@ export function CircleMainShell({
               activeTab === 'diary' ||
               activeTab === 'circle' ||
               activeTab === 'analytics' ||
+              activeTab === 'patient-profile' ||
               activeTab === 'remote-settings'
               ? 'flex flex-col overflow-hidden'
               : 'space-y-4 overflow-y-auto',
@@ -552,6 +834,7 @@ export function CircleMainShell({
               user={user}
               db={db}
               patient={selectedPatient}
+              patients={patients}
               unreadCount={threadState.unreadCount}
               messageCount={threadState.messages.length}
               circleUnreadCount={circleThreadUnread.unreadCount}
@@ -566,6 +849,8 @@ export function CircleMainShell({
                 circleThreadUnread.discussionsRestrictedUnreadCount
               }
               circleDropInsUnreadCount={circleThreadUnread.dropInsUnreadCount}
+              circleDropInsOpenUnreadCount={circleThreadUnread.dropInsOpenUnreadCount}
+              circleDropInsRestrictedUnreadCount={circleThreadUnread.dropInsRestrictedUnreadCount}
               circleVisitCapturesUnreadCount={circleThreadUnread.visitCapturesUnreadCount}
               circleVisitCapturesOpenUnreadCount={circleThreadUnread.visitCapturesOpenUnreadCount}
               circleVisitCapturesRestrictedUnreadCount={
@@ -575,19 +860,23 @@ export function CircleMainShell({
               urgentAlertAttention={alertAttention.urgentItems}
               subduedAlertAttention={alertAttention.subduedItems}
               onGoToTab={handleGoToTab}
+              onOpenAdminAccess={handleOpenAdminAccess}
+              onOpenRemoteSettingsCircleInitiate={handleOpenRemoteSettingsCircleInitiate}
+              onOpenRemoteSettingsDropIn={handleOpenRemoteSettingsDropIn}
+              onOpenRemoteSettingsApplicationMode={handleOpenRemoteSettingsApplicationMode}
               onOpenCircleFolder={handleOpenCircleFolder}
-              onOpenRichMediaReactions={handleOpenRichMediaReactions}
+              onOpenMessagesInbox={handleOpenMessagesInbox}
               onOpenAnalyticsDetail={handleOpenAnalyticsDetail}
+              onOpenAssessmentsOverview={handleOpenAssessmentsOverview}
+              onOpenAnalyticsPeriodOverview={handleOpenAnalyticsPeriodOverview}
+              onOpenGalleryReactions={handleOpenGalleryReactions}
+              onOpenGalleryMyAlbums={handleOpenGalleryMyAlbums}
+              onOpenSchedule={handleOpenSchedule}
               onOpenVisitCapture={
                 showVisitCapture ? () => handleOpenVisitCapture() : undefined
               }
-              onRequestDropIn={
-                canReceiveRemoteCommandResponses &&
-                patientPresence.online &&
-                !isPatientDoNotDisturbSection(patientPresence.activeSection)
-                  ? openDropInConfirmModal
-                  : undefined
-              }
+              onRequestDropIn={canStartDropInRequest ? openDropInConfirmModal : undefined}
+              dropInFeatureEnabled={patientDropInFeatureEnabled}
               onResumeDropIn={circleDropIn.resumeChat}
               dropInActive={!!circleDropIn.activeSession}
               dropInChatOpen={circleDropIn.chatOpen}
@@ -608,6 +897,8 @@ export function CircleMainShell({
                 hiddenAtByMessageId={threadState.hiddenAtByMessageId}
                 unreadCount={threadState.unreadCount}
                 draftGuardRef={replyDraftGuardRef}
+                messagesInboxIntent={messagesInboxIntent}
+                onMessagesInboxIntentConsumed={handleMessagesInboxIntentConsumed}
               />
               </Suspense>
             </div>
@@ -618,10 +909,20 @@ export function CircleMainShell({
                 user={user}
                 db={db}
                 patient={selectedPatient}
+                actionBadgeCount={scheduleActionBadgeCount}
+                viewIntent={scheduleViewIntent}
+                appointmentFocus={scheduleAppointmentFocus}
+                onAppointmentFocusConsumed={handleAppointmentFocusConsumed}
                 onOpenAssessment={handleOpenAnalyticsDetail}
                 onRecordVisit={
                   showVisitCapture
-                    ? (entryId: string) => handleOpenVisitCapture(entryId)
+                    ? (entryId: string, restoreSheet?: CircleScheduleAppointmentFocus) =>
+                        handleOpenVisitCapture(entryId, restoreSheet)
+                    : undefined
+                }
+                onManageClinicalReferences={
+                  canViewRemoteSettingsTab(selectedPatient.capabilities)
+                    ? () => handleGoToTab('patient-profile')
                     : undefined
                 }
               />
@@ -650,10 +951,11 @@ export function CircleMainShell({
                 unreadCount={circleThreadUnread.unreadCount}
                 openUnreadCount={circleThreadUnread.openUnreadCount}
                 restrictedUnreadCount={circleThreadUnread.restrictedUnreadCount}
-                canInitiateDropIn={canReceiveRemoteCommandResponses}
+                canInitiateDropIn={canUseDropIn}
+                patientDropInFeatureEnabled={patientDropInFeatureEnabled}
                 patientOnline={patientPresence.online}
                 patientDoNotDisturb={isPatientDoNotDisturbSection(patientPresence.activeSection)}
-                onStartDropIn={openDropInConfirmModal}
+                onStartDropIn={canStartDropInRequest ? openDropInConfirmModal : undefined}
                 onResumeDropIn={circleDropIn.resumeChat}
                 dropInActive={!!circleDropIn.activeSession}
                 dropInChatOpen={circleDropIn.chatOpen}
@@ -662,13 +964,33 @@ export function CircleMainShell({
                     ? (entryId?: string) => handleOpenVisitCapture(entryId)
                     : undefined
                 }
+                onTakeNotes={handleOpenAppointmentNotes}
+                onOpenSchedule={handleOpenSchedule}
                 circleInboxIntent={circleInboxIntent}
                 onCircleInboxIntentConsumed={handleCircleInboxIntentConsumed}
               />
             </div>
           )}
+          {activeTab === 'patient-profile' && (
+            <div className="flex flex-col flex-1 min-h-0">
+              <CirclePatientProfileScreen
+                user={user}
+                db={db}
+                storage={storage}
+                patient={selectedPatient}
+                onOpenCircleHelp={() => handleOpenCircleFolder('open', 'care_transition')}
+                onOpenRemoteSettingsApplicationMode={handleOpenRemoteSettingsApplicationMode}
+              />
+            </div>
+          )}
           {activeTab === 'admin' && (
-            <CircleAdminScreen user={user} db={db} storage={storage} patient={selectedPatient} />
+            <CircleAdminScreen
+              user={user}
+              db={db}
+              patient={selectedPatient}
+              initialUsersTab={initialAdminUsersTab}
+              onInitialUsersTabConsumed={handleAdminInitialUsersTabConsumed}
+            />
           )}
           {activeTab === 'analytics' && (
             <div className="flex flex-col flex-1 min-h-0">
@@ -676,7 +998,11 @@ export function CircleMainShell({
                 <CircleAnalyticsScreen
                 patient={selectedPatient}
                 initialMetricId={initialAnalyticsMetricId}
+                initialMessagesFocus={initialMessagesFocus}
+                initialAssessmentsOverview={initialAssessmentsOverview}
+                initialPeriodOverviewDays={initialPeriodOverviewDays}
                 onInitialMetricConsumed={handleAnalyticsInitialMetricConsumed}
+                onCloseToOrigin={handleAnalyticsDetailClosedToOrigin}
               />
               </Suspense>
             </div>
@@ -691,7 +1017,13 @@ export function CircleMainShell({
           {activeTab === 'remote-settings' && (
             <div className="flex flex-col flex-1 min-h-0">
               <Suspense fallback={<TabLoadingFallback />}>
-                <CircleRemoteSettingsScreen db={db} user={user} patient={selectedPatient} />
+                <CircleRemoteSettingsScreen
+                  db={db}
+                  user={user}
+                  patient={selectedPatient}
+                  focusSection={remoteSettingsFocus}
+                  onFocusConsumed={handleRemoteSettingsFocusConsumed}
+                />
               </Suspense>
             </div>
           )}
@@ -721,11 +1053,12 @@ export function CircleMainShell({
             patientId={selectedPatient.patientId}
             capturedBy={{
               uid: user.uid,
-              name: user.displayName || user.email || 'Circle member',
+              name: memberDisplayName,
               role: memberRole,
               app: 'circle',
             }}
             careCalendarEntryId={visitCaptureEntryId}
+            replacesExistingRecording={visitCaptureReplacesExisting}
           />
         ) : null}
 

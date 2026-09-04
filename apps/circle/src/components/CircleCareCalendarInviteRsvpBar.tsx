@@ -30,8 +30,9 @@ function entryTimingSignature(timing: {
   startDateKey: string;
   startTimeMinutes?: number;
   endTimeMinutes?: number;
+  timezoneId?: string;
 }): string {
-  return `${timing.startDateKey}|${timing.startTimeMinutes ?? ''}|${timing.endTimeMinutes ?? ''}`;
+  return `${timing.startDateKey}|${timing.startTimeMinutes ?? ''}|${timing.endTimeMinutes ?? ''}|${timing.timezoneId ?? ''}`;
 }
 
 export function CircleCareCalendarInviteRsvpBar({
@@ -50,9 +51,11 @@ export function CircleCareCalendarInviteRsvpBar({
   startDateKey,
   startTimeMinutes,
   endTimeMinutes,
+  timezoneId,
   eventStatus,
   t,
   className,
+  compact = false,
 }: {
   db: Firestore;
   patientId: string;
@@ -69,9 +72,12 @@ export function CircleCareCalendarInviteRsvpBar({
   startDateKey?: string;
   startTimeMinutes?: number;
   endTimeMinutes?: number;
+  timezoneId?: string | null;
   eventStatus?: 'past' | 'today' | 'upcoming';
   t: (path: string, params?: Record<string, unknown>) => string;
   className?: string;
+  /** Compact schedule cards: only show interactive prompt when response is still outstanding. */
+  compact?: boolean;
 }) {
   const inviteContext = useMemo<CareCalendarMemberInviteContext>(
     () => ({
@@ -92,6 +98,7 @@ export function CircleCareCalendarInviteRsvpBar({
     startDateKey: startDateKey ?? '',
     startTimeMinutes,
     endTimeMinutes,
+    timezoneId: timezoneId ?? undefined,
   });
 
   const inviteContextRef = useRef(inviteContext);
@@ -100,8 +107,8 @@ export function CircleCareCalendarInviteRsvpBar({
   attendeesFallbackRef.current = attendees;
   const inviteeUidMapRef = useRef(inviteeMemberUidByContactId);
   inviteeUidMapRef.current = inviteeMemberUidByContactId;
-  const timingPropsRef = useRef({ startDateKey, startTimeMinutes, endTimeMinutes });
-  timingPropsRef.current = { startDateKey, startTimeMinutes, endTimeMinutes };
+  const timingPropsRef = useRef({ startDateKey, startTimeMinutes, endTimeMinutes, timezoneId });
+  timingPropsRef.current = { startDateKey, startTimeMinutes, endTimeMinutes, timezoneId };
   const liveAttendeesSigRef = useRef(attendeesSignature(attendees));
   const entryTimingSigRef = useRef(entryTimingSignature(entryTiming));
   const responseRef = useRef<CareCalendarAttendeeResponse>('pending');
@@ -121,7 +128,11 @@ export function CircleCareCalendarInviteRsvpBar({
     [inviteContext, inviteeContactIds, inviteeMemberUidByContactId, mergedAttendees],
   );
 
-  const self = findCareCalendarAttendeeForMember(mergedAttendees, inviteContext);
+  const self = findCareCalendarAttendeeForMember(
+    mergedAttendees,
+    inviteContext,
+    inviteeMemberUidByContactId,
+  );
 
   useEffect(() => {
     if (!entryId) return;
@@ -152,7 +163,11 @@ export function CircleCareCalendarInviteRsvpBar({
           setLiveAttendees(merged);
         }
 
-        const liveSelf = findCareCalendarAttendeeForMember(merged, inviteContextRef.current);
+        const liveSelf = findCareCalendarAttendeeForMember(
+          merged,
+          inviteContextRef.current,
+          uidMap,
+        );
         const liveResponse = liveSelf?.response ?? 'pending';
         if (liveResponse !== responseRef.current) {
           responseRef.current = liveResponse;
@@ -166,6 +181,10 @@ export function CircleCareCalendarInviteRsvpBar({
             data.startTimeMinutes != null ? Number(data.startTimeMinutes) : timingProps.startTimeMinutes,
           endTimeMinutes:
             data.endTimeMinutes != null ? Number(data.endTimeMinutes) : timingProps.endTimeMinutes,
+          timezoneId:
+            typeof data.timezoneId === 'string' && data.timezoneId.trim()
+              ? data.timezoneId.trim()
+              : timingProps.timezoneId ?? undefined,
         };
         const nextTimingSig = entryTimingSignature(nextTiming);
         if (nextTimingSig !== entryTimingSigRef.current) {
@@ -186,6 +205,8 @@ export function CircleCareCalendarInviteRsvpBar({
           entryTiming.startDateKey,
           entryTiming.startTimeMinutes,
           entryTiming.endTimeMinutes,
+          undefined,
+          entryTiming.timezoneId,
         )
       : false);
 
@@ -229,27 +250,34 @@ export function CircleCareCalendarInviteRsvpBar({
   };
 
   if (response === 'accepted' || response === 'declined') {
-    return (
-      <p className={cn('text-sm font-semibold text-slate-700', className)}>
-        {response === 'accepted'
-          ? t('circle.appointmentInviteYouAccepted')
-          : t('circle.appointmentInviteYouDeclined')}
-      </p>
-    );
+    // Status is already shown on cards / Going-with badges — avoid duplicate copy.
+    return null;
   }
 
   return (
-    <div className={cn('space-y-2 rounded-xl border border-violet-100 bg-violet-50/70 p-3', className)}>
-      <p className="text-xs font-bold uppercase tracking-wide text-violet-800">
-        {t('dashboard.careCalendar.legendAppointment')}
+    <div
+      className={cn(
+        'space-y-2 rounded-xl border',
+        compact
+          ? 'border-blue-200 bg-blue-50/80 p-2.5'
+          : 'border-blue-100 bg-blue-50/70 p-3',
+        className,
+      )}
+    >
+      <p
+        className={cn(
+          'font-bold uppercase tracking-wide',
+          compact ? 'text-[10px] text-blue-900' : 'text-xs text-blue-800',
+        )}
+      >
+        {t('schedulePage.views.yourRsvpPending')}
       </p>
-      <p className="text-sm text-slate-700">{t('circle.appointmentInviteRespondPrompt')}</p>
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
           disabled={busy}
           onClick={() => void handleRespond('accepted')}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-3 py-2 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-60"
         >
           {busy ? <Loader2 size={12} className="animate-spin" /> : null}
           {t('circle.appointmentInviteAccept')}

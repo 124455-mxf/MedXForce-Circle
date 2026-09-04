@@ -34,6 +34,19 @@ export function CircleNavBadge({
   );
 }
 
+/** Red attention dot (no number) — e.g. More when Media has unseen items. */
+export function CircleNavDot({ onActive = false }: { onActive?: boolean }) {
+  return (
+    <span
+      className={cn(
+        'absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 pointer-events-none ring-2',
+        onActive ? 'ring-blue-600' : 'ring-white',
+      )}
+      aria-hidden
+    />
+  );
+}
+
 /** Inline tab label badge (In/Out, Archived, etc.). */
 export function CircleTabCountBadge({ count }: { count: number }) {
   if (count <= 0) return null;
@@ -57,6 +70,8 @@ type CircleFolderCountBadgeProps = {
   placement?: 'inline' | 'overlay';
   /** Active primary pill (e.g. blue browse tab). */
   onPrimary?: boolean;
+  /** When set, show total and use red only as the attention color. */
+  showTotalWhenUnread?: boolean;
 };
 
 /** Red when unread > 0; otherwise gray total for the folder. Hidden when empty. */
@@ -65,9 +80,16 @@ export function CircleFolderCountBadge({
   total,
   placement = 'inline',
   onPrimary = false,
+  showTotalWhenUnread = false,
 }: CircleFolderCountBadgeProps) {
   const showUnread = unread > 0;
-  const count = showUnread ? unread : total;
+  const count = showTotalWhenUnread
+    ? total > 0
+      ? total
+      : unread
+    : showUnread
+      ? unread
+      : total;
   if (count <= 0) return null;
 
   const label = formatCircleBadgeCount(count);

@@ -6,16 +6,19 @@ export const messagesScreenEnglish = {
   emptyLoadError: 'We could not load messages. Try refreshing the page.',
   emptyHint: 'When your loved one sends you something in MedXForce, it will appear here.',
   subtitleCommunicationLog:
-    'Daily spoken and saved notes from Intensive Care mode — read only.',
+    'Daily spoken and saved notes from ICU mode — read only.',
   subtitleArchived: 'Archived on the patient tablet — you can still reply.',
   subtitleDeleted: 'Deleted on the patient tablet — read only, no replies.',
   subtitleAlert: 'Unread alerts also appear in In/Out until you acknowledge them.',
   subtitleAttention: 'Unread attention requests also appear in In/Out until you acknowledge them.',
-  subtitleInOut: 'Tap a conversation to read and reply. Tap Alert or Attention to acknowledge.',
+  subtitleAlertsAttention:
+    'Unread alerts and attention requests also appear in In/Out until you acknowledge them.',
+  subtitleInOut: 'Tap a conversation to read and reply.',
   tabBucketsAria: 'Message buckets',
   tabCommunicationLog: 'Communication log',
   tabAlerts: 'Alerts',
   tabAttention: 'Attention',
+  tabAlertsAttention: 'Alerts & attention',
   tabInOut: 'In/Out',
   tabArchived: 'Archived',
   tabDeleted: 'Deleted',
@@ -23,14 +26,17 @@ export const messagesScreenEnglish = {
   markAllRead: 'Mark all read',
   sectionAlerts: 'Alerts',
   sectionAttention: 'Attention',
+  sectionAlertsAttention: 'Alerts & attention',
   sectionDirectMessages: 'Direct messages',
   emptyCommunicationLog:
-    'No communication summaries yet. These appear when your loved one uses Intensive Care mode with auto-send enabled and speaks or saves notes during the day.',
+    'No communication summaries yet. These appear when your loved one uses ICU mode with auto-send enabled and speaks or saves notes during the day.',
   emptyArchived: 'No archived conversations.',
   emptyDeleted: 'No deleted conversations.',
   emptyAlert: 'No alerts yet. New alerts appear in In/Out until you acknowledge them.',
   emptyAttention:
     'No attention requests yet. New ones appear in In/Out until you acknowledge them.',
+  emptyAlertsAttention:
+    'No alerts or attention requests yet. New ones appear in In/Out until you acknowledge them.',
   emptyInOut: 'No messages in In/Out.',
   backToInbox: 'Back to inbox',
   patientMessage: 'Patient message',
@@ -68,11 +74,17 @@ export const messagesScreenEnglish = {
   hiddenFromInbox: 'Earlier messages in this conversation are hidden from your inbox.',
   repliesClosed: 'Replies are closed — the patient deleted this conversation on their tablet.',
   readOnlyAlertHint: 'This is a one-way alert — use Messages to reply to your loved one.',
+  alertAttentionHistory: 'Recent alerts & attention',
   showEarlierReplies: 'Show {{count}} earlier replies',
   showOlderReplies: 'Show {{count}} older replies',
   replyPlaceholder: 'Type your reply…',
   clear: 'Clear',
   sendReply: 'Send reply',
+  sendReplyToAll: 'Send reply to all',
+  reply: 'Reply',
+  replyToAll: 'Reply to all',
+  to: 'To',
+  toRecipients: 'To: {{names}}',
   sending: 'Sending…',
   expandReplyTitle: 'Reply to patient message',
   discardTitle: 'Discard unsent reply?',
@@ -93,7 +105,28 @@ export const messagesScreenEnglish = {
   translating: 'Translating…',
   patientLanguagePillTitle: 'Patient app language',
   familyMemberFallback: 'Family member',
+  composeToPatient: 'New message',
+  composePlaceholder: 'Write a message to {{patient}}…',
+  composeSubjectPlaceholder: 'Subject (optional)',
+  sendToPatient: 'Send',
+  expandComposeTitle: 'New message to {{patient}}',
+  sendFailed: 'Could not send this message. Try again.',
+  sendFailedPermissions:
+    'Could not send. Firestore rules need to be published from the patient app repo: firebase deploy --only firestore:rules',
+  unansweredWaiting: 'Reply here first — you already have a message waiting for a response.',
+  unansweredWaitingTitle: 'Waiting for a reply',
+  unansweredWaitingBody:
+    '{{name}} has not answered your last message yet. You can only reply until they respond.',
   showMoreInbox: 'Show {{remaining}} more',
+  sectionRecent: 'Last 7 days',
+  inboxOlderUnread: '{{count}} unread',
+  inboxOlderAlert_one: '{{count}} older alert',
+  inboxOlderAlert_other: '{{count}} older alerts',
+  inboxOlderAttention_one: '{{count}} older attention request',
+  inboxOlderAttention_other: '{{count}} older attention requests',
+  inboxOlderAlertAttention_one: '{{count}} older item',
+  inboxOlderAlertAttention_other: '{{count}} older items',
+  inboxHideOlder: 'Hide',
 };
 
 export const messagesScreenGerman = {
@@ -103,7 +136,7 @@ export const messagesScreenGerman = {
   emptyHint:
     'Wenn Ihr Angehöriger Ihnen etwas in MedXForce sendet, erscheint es hier.',
   subtitleCommunicationLog:
-    'Tägliche gesprochene und gespeicherte Notizen aus dem Intensivmodus — nur lesen.',
+    'Tägliche gesprochene und gespeicherte Notizen aus dem ICU-Modus — nur lesen.',
   subtitleArchived:
     'Auf dem Patienten-Tablet archiviert — Sie können weiter antworten.',
   subtitleDeleted:
@@ -112,12 +145,14 @@ export const messagesScreenGerman = {
     'Ungelesene Alarme erscheinen auch unter Ein/Aus, bis Sie sie bestätigen.',
   subtitleAttention:
     'Ungelesene Aufmerksamkeitsanfragen erscheinen auch unter Ein/Aus, bis Sie sie bestätigen.',
-  subtitleInOut:
-    'Tippen Sie auf eine Unterhaltung zum Lesen und Antworten. Tippen Sie auf Alarm oder Aufmerksamkeit zum Bestätigen.',
+  subtitleAlertsAttention:
+    'Ungelesene Alarme und Aufmerksamkeitsanfragen erscheinen auch unter Ein/Aus, bis Sie sie bestätigen.',
+  subtitleInOut: 'Tippen Sie auf eine Unterhaltung zum Lesen und Antworten.',
   tabBucketsAria: 'Nachrichtenordner',
   tabCommunicationLog: 'Kommunikationsprotokoll',
   tabAlerts: 'Alarme',
   tabAttention: 'Aufmerksamkeit',
+  tabAlertsAttention: 'Alarme & Aufmerksamkeit',
   tabInOut: 'Ein/Aus',
   tabArchived: 'Archiviert',
   tabDeleted: 'Gelöscht',
@@ -125,15 +160,18 @@ export const messagesScreenGerman = {
   markAllRead: 'Alle gelesen',
   sectionAlerts: 'Alarme',
   sectionAttention: 'Aufmerksamkeit',
+  sectionAlertsAttention: 'Alarme & Aufmerksamkeit',
   sectionDirectMessages: 'Direktnachrichten',
   emptyCommunicationLog:
-    'Noch keine Kommunikationszusammenfassungen. Diese erscheinen, wenn Ihr Angehöriger den Intensivmodus mit Auto-Senden nutzt und tagsüber spricht oder Notizen speichert.',
+    'Noch keine Kommunikationszusammenfassungen. Diese erscheinen, wenn Ihr Angehöriger den ICU-Modus mit Auto-Senden nutzt und tagsüber spricht oder Notizen speichert.',
   emptyArchived: 'Keine archivierten Unterhaltungen.',
   emptyDeleted: 'Keine gelöschten Unterhaltungen.',
   emptyAlert:
     'Noch keine Alarme. Neue Alarme erscheinen unter Ein/Aus, bis Sie sie bestätigen.',
   emptyAttention:
     'Noch keine Aufmerksamkeitsanfragen. Neue erscheinen unter Ein/Aus, bis Sie sie bestätigen.',
+  emptyAlertsAttention:
+    'Noch keine Alarme oder Aufmerksamkeitsanfragen. Neue erscheinen unter Ein/Aus, bis Sie sie bestätigen.',
   emptyInOut: 'Keine Nachrichten unter Ein/Aus.',
   backToInbox: 'Zurück zum Posteingang',
   patientMessage: 'Patientennachricht',
@@ -174,11 +212,17 @@ export const messagesScreenGerman = {
     'Antworten geschlossen — der Patient hat diese Unterhaltung auf dem Tablet gelöscht.',
   readOnlyAlertHint:
     'Dies ist ein Einweg-Alarm — antworten Sie über Nachrichten an Ihren Angehörigen.',
+  alertAttentionHistory: 'Aktuelle Alarme & Aufmerksamkeit',
   showEarlierReplies: '{{count}} frühere Antworten anzeigen',
   showOlderReplies: '{{count}} ältere Antworten anzeigen',
   replyPlaceholder: 'Antwort eingeben…',
   clear: 'Löschen',
   sendReply: 'Antwort senden',
+  sendReplyToAll: 'Allen antworten',
+  reply: 'Antworten',
+  replyToAll: 'Allen antworten',
+  to: 'An',
+  toRecipients: 'An: {{names}}',
   sending: 'Senden…',
   expandReplyTitle: 'Auf Patientennachricht antworten',
   discardTitle: 'Nicht gesendete Antwort verwerfen?',
@@ -200,7 +244,28 @@ export const messagesScreenGerman = {
   translating: 'Übersetze…',
   patientLanguagePillTitle: 'Patienten-App-Sprache',
   familyMemberFallback: 'Familienmitglied',
+  composeToPatient: 'Neue Nachricht',
+  composePlaceholder: 'Nachricht an {{patient}} schreiben…',
+  composeSubjectPlaceholder: 'Betreff (optional)',
+  sendToPatient: 'Senden',
+  expandComposeTitle: 'Neue Nachricht an {{patient}}',
+  sendFailed: 'Nachricht konnte nicht gesendet werden. Bitte erneut versuchen.',
+  sendFailedPermissions:
+    'Senden nicht möglich. Firestore-Regeln müssen aus dem Patienten-App-Repo veröffentlicht werden: firebase deploy --only firestore:rules',
+  unansweredWaiting: 'Antworten Sie zuerst hier — Sie haben bereits eine Nachricht ohne Antwort.',
+  unansweredWaitingTitle: 'Warten auf eine Antwort',
+  unansweredWaitingBody:
+    '{{name}} hat Ihre letzte Nachricht noch nicht beantwortet. Bis dahin können Sie nur auf diese Nachricht antworten.',
   showMoreInbox: '{{remaining}} weitere anzeigen',
+  sectionRecent: 'Letzte 7 Tage',
+  inboxOlderUnread: '{{count}} ungelesen',
+  inboxOlderAlert_one: '{{count}} älterer Alarm',
+  inboxOlderAlert_other: '{{count}} ältere Alarme',
+  inboxOlderAttention_one: '{{count}} ältere Aufmerksamkeitsanfrage',
+  inboxOlderAttention_other: '{{count}} ältere Aufmerksamkeitsanfragen',
+  inboxOlderAlertAttention_one: '{{count}} älterer Eintrag',
+  inboxOlderAlertAttention_other: '{{count}} ältere Einträge',
+  inboxHideOlder: 'Ausblenden',
 };
 
 export const messagesScreenSpanish = {
@@ -209,7 +274,7 @@ export const messagesScreenSpanish = {
   emptyLoadError: 'No se pudieron cargar los mensajes. Intente actualizar la página.',
   emptyHint: 'Cuando su ser querido le envíe algo en MedXForce, aparecerá aquí.',
   subtitleCommunicationLog:
-    'Notas diarias habladas y guardadas del modo de cuidados intensivos — solo lectura.',
+    'Notas diarias habladas y guardadas del modo UCI — solo lectura.',
   subtitleArchived:
     'Archivado en la tableta del paciente — aún puede responder.',
   subtitleDeleted:
@@ -218,12 +283,14 @@ export const messagesScreenSpanish = {
     'Las alertas no leídas también aparecen en Entrada/Salida hasta que las confirme.',
   subtitleAttention:
     'Las solicitudes de atención no leídas también aparecen en Entrada/Salida hasta que las confirme.',
-  subtitleInOut:
-    'Toque una conversación para leer y responder. Toque Alerta o Atención para confirmar.',
+  subtitleAlertsAttention:
+    'Las alertas y solicitudes de atención no leídas también aparecen en Entrada/Salida hasta que las confirme.',
+  subtitleInOut: 'Toque una conversación para leer y responder.',
   tabBucketsAria: 'Carpetas de mensajes',
   tabCommunicationLog: 'Registro de comunicación',
   tabAlerts: 'Alertas',
   tabAttention: 'Atención',
+  tabAlertsAttention: 'Alertas y atención',
   tabInOut: 'Entrada/Salida',
   tabArchived: 'Archivados',
   tabDeleted: 'Eliminados',
@@ -231,15 +298,18 @@ export const messagesScreenSpanish = {
   markAllRead: 'Marcar todo leído',
   sectionAlerts: 'Alertas',
   sectionAttention: 'Atención',
+  sectionAlertsAttention: 'Alertas y atención',
   sectionDirectMessages: 'Mensajes directos',
   emptyCommunicationLog:
-    'Aún no hay resúmenes de comunicación. Aparecen cuando su ser querido usa el modo de cuidados intensivos con envío automático y habla o guarda notas durante el día.',
+    'Aún no hay resúmenes de comunicación. Aparecen cuando su ser querido usa el modo UCI con envío automático y habla o guarda notas durante el día.',
   emptyArchived: 'No hay conversaciones archivadas.',
   emptyDeleted: 'No hay conversaciones eliminadas.',
   emptyAlert:
     'Aún no hay alertas. Las nuevas aparecen en Entrada/Salida hasta que las confirme.',
   emptyAttention:
     'Aún no hay solicitudes de atención. Las nuevas aparecen en Entrada/Salida hasta que las confirme.',
+  emptyAlertsAttention:
+    'Aún no hay alertas ni solicitudes de atención. Las nuevas aparecen en Entrada/Salida hasta que las confirme.',
   emptyInOut: 'No hay mensajes en Entrada/Salida.',
   backToInbox: 'Volver a la bandeja',
   patientMessage: 'Mensaje del paciente',
@@ -280,11 +350,17 @@ export const messagesScreenSpanish = {
     'Respuestas cerradas — el paciente eliminó esta conversación en su tableta.',
   readOnlyAlertHint:
     'Esta es una alerta unidireccional — use Mensajes para responder a su ser querido.',
+  alertAttentionHistory: 'Alertas y atención recientes',
   showEarlierReplies: 'Mostrar {{count}} respuestas anteriores',
   showOlderReplies: 'Mostrar {{count}} respuestas más antiguas',
   replyPlaceholder: 'Escriba su respuesta…',
   clear: 'Borrar',
   sendReply: 'Enviar respuesta',
+  sendReplyToAll: 'Responder a todos',
+  reply: 'Responder',
+  replyToAll: 'Responder a todos',
+  to: 'Para',
+  toRecipients: 'Para: {{names}}',
   sending: 'Enviando…',
   expandReplyTitle: 'Responder al mensaje del paciente',
   discardTitle: '¿Descartar respuesta no enviada?',
@@ -306,7 +382,28 @@ export const messagesScreenSpanish = {
   translating: 'Traduciendo…',
   patientLanguagePillTitle: 'Idioma de la app del paciente',
   familyMemberFallback: 'Familiar',
+  composeToPatient: 'Nuevo mensaje',
+  composePlaceholder: 'Escriba un mensaje a {{patient}}…',
+  composeSubjectPlaceholder: 'Asunto (opcional)',
+  sendToPatient: 'Enviar',
+  expandComposeTitle: 'Nuevo mensaje a {{patient}}',
+  sendFailed: 'No se pudo enviar este mensaje. Inténtelo de nuevo.',
+  sendFailedPermissions:
+    'No se pudo enviar. Hay que publicar las reglas de Firestore desde el repositorio de la app del paciente: firebase deploy --only firestore:rules',
+  unansweredWaiting: 'Responda aquí primero: ya tiene un mensaje esperando respuesta.',
+  unansweredWaitingTitle: 'Esperando una respuesta',
+  unansweredWaitingBody:
+    '{{name}} aún no ha respondido a su último mensaje. Hasta entonces solo puede responder a esa conversación.',
   showMoreInbox: 'Mostrar {{remaining}} más',
+  sectionRecent: 'Últimos 7 días',
+  inboxOlderUnread: '{{count}} sin leer',
+  inboxOlderAlert_one: '{{count}} alerta anterior',
+  inboxOlderAlert_other: '{{count}} alertas anteriores',
+  inboxOlderAttention_one: '{{count}} solicitud de atención anterior',
+  inboxOlderAttention_other: '{{count}} solicitudes de atención anteriores',
+  inboxOlderAlertAttention_one: '{{count}} más antiguo',
+  inboxOlderAlertAttention_other: '{{count}} más antiguos',
+  inboxHideOlder: 'Ocultar',
 };
 
 export const messagesScreenPolish = {
@@ -315,7 +412,7 @@ export const messagesScreenPolish = {
   emptyLoadError: 'Nie udało się załadować wiadomości. Odśwież stronę.',
   emptyHint: 'Gdy bliska osoba wyśle Ci coś w MedXForce, pojawi się to tutaj.',
   subtitleCommunicationLog:
-    'Codzienne notatki mówione i zapisane z trybu intensywnej opieki — tylko do odczytu.',
+    'Codzienne notatki mówione i zapisane z trybu OIOM — tylko do odczytu.',
   subtitleArchived:
     'Zarchiwizowane na tablecie pacjenta — nadal możesz odpowiadać.',
   subtitleDeleted:
@@ -324,12 +421,14 @@ export const messagesScreenPolish = {
     'Nieprzeczytane alarmy pojawiają się też w Przych./Wych., dopóki ich nie potwierdzisz.',
   subtitleAttention:
     'Nieprzeczytane prośby o uwagę pojawiają się też w Przych./Wych., dopóki ich nie potwierdzisz.',
-  subtitleInOut:
-    'Dotknij rozmowy, aby czytać i odpowiadać. Dotknij Alarm lub Uwaga, aby potwierdzić.',
+  subtitleAlertsAttention:
+    'Nieprzeczytane alarmy i prośby o uwagę pojawiają się też w Przych./Wych., dopóki ich nie potwierdzisz.',
+  subtitleInOut: 'Dotknij rozmowy, aby czytać i odpowiadać.',
   tabBucketsAria: 'Foldery wiadomości',
   tabCommunicationLog: 'Dziennik komunikacji',
   tabAlerts: 'Alarmy',
   tabAttention: 'Uwaga',
+  tabAlertsAttention: 'Alarmy i uwaga',
   tabInOut: 'Przych./Wych.',
   tabArchived: 'Zarchiwizowane',
   tabDeleted: 'Usunięte',
@@ -337,15 +436,18 @@ export const messagesScreenPolish = {
   markAllRead: 'Oznacz wszystkie jako przeczytane',
   sectionAlerts: 'Alarmy',
   sectionAttention: 'Uwaga',
+  sectionAlertsAttention: 'Alarmy i uwaga',
   sectionDirectMessages: 'Wiadomości bezpośrednie',
   emptyCommunicationLog:
-    'Brak podsumowań komunikacji. Pojawiają się, gdy bliska osoba używa trybu intensywnej opieki z auto-wysyłką i mówi lub zapisuje notatki w ciągu dnia.',
+    'Brak podsumowań komunikacji. Pojawiają się, gdy bliska osoba używa trybu OIOM z auto-wysyłką i mówi lub zapisuje notatki w ciągu dnia.',
   emptyArchived: 'Brak zarchiwizowanych rozmów.',
   emptyDeleted: 'Brak usuniętych rozmów.',
   emptyAlert:
     'Brak alarmów. Nowe pojawiają się w Przych./Wych., dopóki ich nie potwierdzisz.',
   emptyAttention:
     'Brak próśb o uwagę. Nowe pojawiają się w Przych./Wych., dopóki ich nie potwierdzisz.',
+  emptyAlertsAttention:
+    'Brak alarmów i próśb o uwagę. Nowe pojawiają się w Przych./Wych., dopóki ich nie potwierdzisz.',
   emptyInOut: 'Brak wiadomości w Przych./Wych.',
   backToInbox: 'Wróć do skrzynki',
   patientMessage: 'Wiadomość pacjenta',
@@ -385,11 +487,17 @@ export const messagesScreenPolish = {
     'Odpowiedzi zamknięte — pacient usunął tę rozmowę na tablecie.',
   readOnlyAlertHint:
     'To jednokierunkowy alarm — odpowiedz przez Wiadomości do bliskiej osoby.',
+  alertAttentionHistory: 'Ostatnie alarmy i uwaga',
   showEarlierReplies: 'Pokaż {{count}} wcześniejszych odpowiedzi',
   showOlderReplies: 'Pokaż {{count}} starszych odpowiedzi',
   replyPlaceholder: 'Wpisz odpowiedź…',
   clear: 'Wyczyść',
   sendReply: 'Wyślij odpowiedź',
+  sendReplyToAll: 'Odpowiedz wszystkim',
+  reply: 'Odpowiedz',
+  replyToAll: 'Odpowiedz wszystkim',
+  to: 'Do',
+  toRecipients: 'Do: {{names}}',
   sending: 'Wysyłanie…',
   expandReplyTitle: 'Odpowiedz na wiadomość pacjenta',
   discardTitle: 'Odrzucić niewysłaną odpowiedź?',
@@ -411,5 +519,26 @@ export const messagesScreenPolish = {
   translating: 'Tłumaczenie…',
   patientLanguagePillTitle: 'Język aplikacji pacjenta',
   familyMemberFallback: 'Członek rodziny',
+  composeToPatient: 'Nowa wiadomość',
+  composePlaceholder: 'Napisz wiadomość do {{patient}}…',
+  composeSubjectPlaceholder: 'Temat (opcjonalnie)',
+  sendToPatient: 'Wyślij',
+  expandComposeTitle: 'Nowa wiadomość do {{patient}}',
+  sendFailed: 'Nie udało się wysłać wiadomości. Spróbuj ponownie.',
+  sendFailedPermissions:
+    'Nie udało się wysłać. Trzeba opublikować reguły Firestore z repozytorium aplikacji pacjenta: firebase deploy --only firestore:rules',
+  unansweredWaiting: 'Najpierw odpowiedz tutaj — masz już wiadomość bez odpowiedzi.',
+  unansweredWaitingTitle: 'Oczekiwanie na odpowiedź',
+  unansweredWaitingBody:
+    'Brak odpowiedzi od {{name}} na Twoją ostatnią wiadomość. Do tego czasu możesz tylko odpisać.',
   showMoreInbox: 'Pokaż jeszcze {{remaining}}',
+  sectionRecent: 'Ostatnie 7 dni',
+  inboxOlderUnread: '{{count}} nieprzeczytanych',
+  inboxOlderAlert_one: '{{count}} starszy alarm',
+  inboxOlderAlert_other: '{{count}} starszych alarmów',
+  inboxOlderAttention_one: '{{count}} starsza prośba o uwagę',
+  inboxOlderAttention_other: '{{count}} starszych próśb o uwagę',
+  inboxOlderAlertAttention_one: '{{count}} starszy wpis',
+  inboxOlderAlertAttention_other: '{{count}} starszych wpisów',
+  inboxHideOlder: 'Ukryj',
 };

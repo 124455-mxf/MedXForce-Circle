@@ -1,30 +1,75 @@
-import { useMemo } from 'react';
-import { Cake, Camera, ClipboardList, Flag, PartyPopper, PenLine, UserRound, Users, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import {
+  Activity,
+  Cake,
+  Calendar,
+  Camera,
+  ClipboardCheck,
+  ClipboardList,
+  Flag,
+  LayoutDashboard,
+  Loader2,
+  MessageCircle,
+  MessageSquare,
+  Music,
+  PartyPopper,
+  PenLine,
+  UserRound,
+  Users,
+  UserPlus,
+  X,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { Firestore } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import {
   ASSESSMENT_AFTER_FIRST_COMMUNICATION_MS,
+  HOSPITAL_FEATURE_REMINDER_KINDS,
+  ICU_PROGRESSION_REMINDER_KINDS,
+  formatStalePendingInviteNames,
   hasAssessmentInWindow,
+  hospitalFeatureRemotePath,
+  isHospitalFeatureReminderKind,
+  isIcuProgressionReminderKind,
   isParticipationReminderSnoozed,
+  isScheduleEnabled,
+  resolveEffectiveAssessmentScheduleRules,
   isPatientInsightsPreviewRemindersEnabled,
+  listHospitalFeatureRemindersToShow,
+  listIcuProgressionRemindersToShow,
+  listStalePendingInvites,
+  parseCircleInitiateMessagesConfig,
+  getRemoteSettingValue,
+  setRemoteAppMode,
+  setRemoteDailyCheckIn,
+  setRemoteIntensiveCareExperience,
+  setRemoteSettingValue,
   shouldShowAssessmentAfterFirstCommReminder,
+  shouldShowCircleDropInReminder,
+  shouldShowCircleInitiateMessagesReminder,
   shouldShowDiaryEntryReminder,
   shouldShowGalleryUploadReminder,
+  shouldShowIcuDailyCheckInReminder,
+  shouldShowPendingInviteReminder,
   shouldShowProfileIncompleteReminder,
+  shouldShowScheduledAssessmentMissedReminder,
   shouldShowTeamCoverageReminder,
   type CircleParticipationReminderKind,
   type CirclePatientProfileSnapshot,
   type CirclePatientSummary,
+  type HospitalFeatureReminderKind,
+  type IcuProgressionReminderKind,
   type PatientAnalyticsSummary,
+  type PatientRemoteSettingsDoc,
 } from '@medxforce/shared';
-import { isCoreCircleProfileComplete } from '../lib/circleProfileDashboard';
+import { isCoreCircleProfileComplete, getMissingCoreCircleProfileFields } from '../lib/circleProfileDashboard';
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import {
   localizeBirthdayReminder,
   localizeOnsetMilestone,
   localizeParticipationDiaryReminder,
   localizeParticipationGalleryReminder,
+  localizePendingInviteReminder,
   localizePreviewBirthdayReminder,
   localizePreviewOnsetMilestoneFiveYear,
   localizePreviewOnsetMilestoneOneYear,
@@ -32,16 +77,31 @@ import {
   localizePreviewParticipationGalleryReminder,
   localizePreviewCareAssessmentReminder,
   localizePreviewCareProfileReminder,
+  localizePreviewPendingInviteReminder,
   localizePreviewTeamCoverageReminder,
   localizeCareAssessmentReminder,
+  localizeScheduledAssessmentMissedReminder,
+  localizePreviewScheduledAssessmentMissedReminder,
   localizeCareProfileReminder,
+  localizeHospitalFeatureReminder,
+  localizePreviewHospitalFeatureReminder,
+  localizeIcuProgressionReminder,
+  localizePreviewIcuProgressionReminder,
   localizeTeamCoverageReminder,
+  formatMissingCoreProfileFieldsT,
   patientFriendlyDisplayName,
 } from '../lib/dashboardI18n';
+import { dashboardSectionTitleClass } from '../lib/circleSectionStyles';
 import { cn } from '../lib/utils';
 import type { CircleMainTab } from './CircleBottomNav';
 import { useCircleParticipationReminderSnoozes } from '../hooks/useCircleParticipationReminderSnoozes';
 import { useCircleTeamCoverageFromDashboard } from '../context/CircleTeamCoverageContext';
+import {
+  completionsByScheduleIdFromAnalytics,
+  SCHEDULED_ASSESSMENT_MISS_WINDOW_DAYS,
+  summarizeScheduledAssessmentAdherence,
+} from '../lib/circleAssessmentAdherence';
+import { buildCircleAssessmentSchedulePreferences } from '../lib/circleAssessmentScheduleMetrics';
 
 type CelebrationTileTone = 'birthday' | 'milestone' | 'participation' | 'care';
 
@@ -54,7 +114,67 @@ type CelebrationTile = {
   isPreview?: boolean;
   dismissKind?: CircleParticipationReminderKind;
   onOpen?: () => void;
+  /** In-place enable action (Hospital / ICU progression nudges). */
+  actionLabel?: string;
+  onAction?: () => void;
+  actionUpdating?: boolean;
+  actionDisabled?: boolean;
+  /** Non-interactive footer (e.g. caregiver: ask proxy) — matches action-button height. */
+  footerNote?: string;
+  secondaryLabel?: string;
+  onSecondary?: () => void;
+  secondaryDisabled?: boolean;
 };
+
+function hospitalFeatureIcon(kind: HospitalFeatureReminderKind): LucideIcon {
+  if (kind === 'hospitalFeatureMessaging') return MessageSquare;
+  if (kind === 'hospitalFeatureDashboard') return LayoutDashboard;
+  if (kind === 'hospitalFeatureVitality') return Activity;
+  return ClipboardCheck;
+}
+
+function hospitalFeatureTurnOnLabelKey(kind: HospitalFeatureReminderKind): string {
+  if (kind === 'hospitalFeatureMessaging') return 'dashboard.reminders.hospitalFeatureTurnOnMessaging';
+  if (kind === 'hospitalFeatureDashboard') return 'dashboard.reminders.hospitalFeatureTurnOnDashboard';
+  if (kind === 'hospitalFeatureVitality') return 'dashboard.reminders.hospitalFeatureTurnOnVitality';
+  return 'dashboard.reminders.hospitalFeatureTurnOnAssessments';
+}
+
+function icuProgressionIcon(kind: IcuProgressionReminderKind): LucideIcon {
+  if (kind === 'modeStepUpStandard' || kind === 'modeStepUpHospital') return Flag;
+  if (kind === 'icuSoulMusic') return Music;
+  return Camera;
+}
+
+function icuProgressionTurnOnLabelKey(kind: IcuProgressionReminderKind): string {
+  if (kind === 'modeStepUpStandard') return 'dashboard.reminders.modeStepUpTurnOnStandard';
+  if (kind === 'modeStepUpHospital') return 'dashboard.reminders.modeStepUpTurnOnHospital';
+  if (kind === 'icuSoulMusic') return 'dashboard.reminders.icuSoulTurnOnMusic';
+  return 'dashboard.reminders.icuSoulTurnOnMediaLibrary';
+}
+
+function isCareStyleDismissKind(kind: CircleParticipationReminderKind): boolean {
+  return (
+    kind === 'teamCoverage' ||
+    kind === 'pendingInvites' ||
+    kind === 'profileIncomplete' ||
+    kind === 'icuDailyCheckIn' ||
+    kind === 'scheduledAssessmentMissed' ||
+    isHospitalFeatureReminderKind(kind) ||
+    isIcuProgressionReminderKind(kind) ||
+    kind === 'circleInitiateMessages' ||
+    kind === 'circleDropIn'
+  );
+}
+
+function dismissReminderAriaKey(kind: CircleParticipationReminderKind): string {
+  if (kind === 'scheduledAssessmentMissed') return 'dashboard.reminders.dismissCareReminder14Days';
+  if (isCareStyleDismissKind(kind)) return 'dashboard.reminders.dismissCareReminder';
+  if (kind === 'birthday' || kind === 'onsetMilestone') {
+    return 'dashboard.reminders.dismissCelebrationReminder';
+  }
+  return 'dashboard.reminders.dismissReminder';
+}
 
 function CelebrationCard({
   tone,
@@ -65,17 +185,28 @@ function CelebrationCard({
   dismissKind,
   onDismiss,
   onOpen,
+  actionLabel,
+  onAction,
+  actionUpdating = false,
+  actionDisabled = false,
+  footerNote,
+  secondaryLabel,
+  onSecondary,
+  secondaryDisabled = false,
   t,
 }: Omit<CelebrationTile, 'key'> & {
   t: ReturnType<typeof useCircleT>;
   onDismiss?: (kind: CircleParticipationReminderKind) => void;
 }) {
-  const interactive = !!onOpen;
+  const hasAction = !!actionLabel;
+  const hasSecondary = !!secondaryLabel;
+  const hasFooter = hasAction || hasSecondary || !!footerNote;
+  const interactive = !!onOpen && !hasAction;
 
   return (
     <div
       className={cn(
-        'w-full h-full text-left p-3 sm:p-4 rounded-2xl border shadow-sm transition-colors relative',
+        'w-full h-full text-left p-3 sm:p-4 rounded-2xl border shadow-sm transition-colors relative flex flex-col gap-2.5',
         tone === 'birthday'
           ? 'bg-gradient-to-r from-violet-50 via-pink-50 to-amber-50 border-violet-200'
           : tone === 'milestone'
@@ -85,6 +216,25 @@ function CelebrationCard({
               : 'bg-gradient-to-r from-amber-50 via-orange-50 to-rose-50 border-amber-200',
         interactive && 'cursor-pointer hover:brightness-[0.98] active:scale-[0.99]',
       )}
+      onClick={
+        interactive
+          ? () => {
+              onOpen?.();
+            }
+          : undefined
+      }
+      onKeyDown={
+        interactive
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onOpen?.();
+              }
+            }
+          : undefined
+      }
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
     >
       {isPreview ? (
         <span className="absolute top-3 right-3 inline-flex rounded-full bg-slate-900/75 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
@@ -94,30 +244,21 @@ function CelebrationCard({
       {dismissKind && onDismiss && !isPreview ? (
         <button
           type="button"
-          aria-label={t(
-            dismissKind === 'teamCoverage' || dismissKind === 'profileIncomplete'
-              ? 'dashboard.reminders.dismissCareReminder'
-              : dismissKind === 'birthday' || dismissKind === 'onsetMilestone'
-                ? 'dashboard.reminders.dismissCelebrationReminder'
-                : 'dashboard.reminders.dismissReminder',
-          )}
+          aria-label={t(dismissReminderAriaKey(dismissKind))}
           onClick={(event) => {
             event.stopPropagation();
             onDismiss(dismissKind);
           }}
-          className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-white/90 border border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-white flex items-center justify-center shadow-sm"
+          className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-white/90 border border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-white flex items-center justify-center shadow-sm z-10"
         >
           <X size={14} />
         </button>
       ) : null}
-      <button
-        type="button"
-        disabled={!interactive}
-        onClick={(event) => {
-          event.stopPropagation();
-          onOpen?.();
-        }}
-        className={cn('flex h-full w-full flex-col gap-2.5 text-left', !interactive && 'cursor-default')}
+      <div
+        className={cn(
+          'flex flex-1 flex-col gap-2.5 text-left',
+          (isPreview || dismissKind) && 'pr-8',
+        )}
       >
         <div
           className={cn(
@@ -133,20 +274,54 @@ function CelebrationCard({
         >
           <Icon size={18} />
         </div>
-        <div
-          className={cn(
-            'min-w-0 flex-1 flex flex-col gap-1.5',
-            (isPreview || dismissKind) && 'pr-8',
-          )}
-        >
-          <p className="font-bold text-slate-800 text-xs sm:text-sm leading-snug line-clamp-2">
+        <div className="min-w-0 flex flex-col gap-1">
+          <p className="font-bold text-slate-800 text-xs sm:text-sm leading-snug">
             {headline}
           </p>
-          <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed line-clamp-3">
+          <p
+            className={cn(
+              'text-[11px] sm:text-xs text-slate-600 leading-relaxed',
+              // Soft clamp only when a footer/action steals vertical space.
+              hasFooter ? 'line-clamp-4' : '',
+            )}
+          >
             {body}
           </p>
         </div>
-      </button>
+      </div>
+      {hasAction ? (
+        <div className="mt-auto flex flex-col gap-1.5 shrink-0">
+          <button
+            type="button"
+            disabled={actionDisabled || actionUpdating || !onAction}
+            onClick={(event) => {
+              event.stopPropagation();
+              onAction?.();
+            }}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-[11px] sm:text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-60"
+          >
+            {actionUpdating ? <Loader2 size={14} className="animate-spin" /> : null}
+            {actionUpdating ? t('dashboard.reminders.hospitalFeatureUpdating') : actionLabel}
+          </button>
+          {hasSecondary ? (
+            <button
+              type="button"
+              disabled={secondaryDisabled || !onSecondary}
+              onClick={(event) => {
+                event.stopPropagation();
+                onSecondary?.();
+              }}
+              className="inline-flex w-full items-center justify-center rounded-xl px-3 py-1.5 text-[11px] sm:text-xs font-semibold text-blue-700 hover:bg-white/70 disabled:opacity-60"
+            >
+              {secondaryLabel}
+            </button>
+          ) : null}
+        </div>
+      ) : footerNote ? (
+        <p className="mt-auto inline-flex w-full items-center justify-center rounded-xl border border-sky-200 bg-white/80 px-3 py-2 text-center text-[11px] sm:text-xs font-bold text-sky-800 shrink-0 leading-snug">
+          {footerNote}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -167,7 +342,16 @@ export function CircleDashboardCelebrationSection({
   analyticsByMetricId,
   analyticsLoading,
   canOpenPatientProfile,
+  remoteSettings,
+  remoteSettingsReady,
+  canOpenRemoteSettings,
+  onPersistRemoteSettings,
   onGoToTab,
+  onOpenAdminAccess,
+  onOpenRemoteSettingsCircleInitiate,
+  onOpenRemoteSettingsDropIn,
+  onOpenRemoteSettingsApplicationMode,
+  onOpenMissedAssessments,
 }: {
   db: Firestore;
   user: User;
@@ -184,7 +368,21 @@ export function CircleDashboardCelebrationSection({
   analyticsByMetricId: Map<string, PatientAnalyticsSummary>;
   analyticsLoading: boolean;
   canOpenPatientProfile: boolean;
+  remoteSettings: PatientRemoteSettingsDoc | null;
+  remoteSettingsReady: boolean;
+  canOpenRemoteSettings: boolean;
+  onPersistRemoteSettings: (next: PatientRemoteSettingsDoc) => void;
   onGoToTab: (tab: CircleMainTab) => void;
+  /** Opens Admin → Circle access (pending invites). */
+  onOpenAdminAccess?: () => void;
+  /** Opens Remote Settings on Circle can message the patient. */
+  onOpenRemoteSettingsCircleInitiate?: () => void;
+  /** Opens Remote Settings on Drop-in who can drop in. */
+  onOpenRemoteSettingsDropIn?: () => void;
+  /** Opens Remote Settings on Application mode. */
+  onOpenRemoteSettingsApplicationMode?: () => void;
+  /** Opens the missed scheduled-assessment list (Last 7 days layout). */
+  onOpenMissedAssessments?: () => void;
 }) {
   const t = useCircleT();
   const { language } = useCircleI18nContext();
@@ -194,8 +392,15 @@ export function CircleDashboardCelebrationSection({
     patient.patientId,
     user.uid,
   );
-  const { analysis: teamCoverage, loading: teamCoverageLoading } = useCircleTeamCoverageFromDashboard();
+  const {
+    analysis: teamCoverage,
+    invites,
+    loading: teamCoverageLoading,
+  } = useCircleTeamCoverageFromDashboard();
   const canManageTeam = patient.capabilities.inviteMembers === true;
+  const [enablingKind, setEnablingKind] = useState<
+    HospitalFeatureReminderKind | IcuProgressionReminderKind | 'icuDailyCheckIn' | null
+  >(null);
 
   const friendlyName = patientFriendlyDisplayName(snapshot, patient.displayName);
   const birthday = localizeBirthdayReminder(t, language, snapshot, patient.displayName);
@@ -250,6 +455,44 @@ export function CircleDashboardCelebrationSection({
       hasAssessmentInInitialWindow,
       snoozedUntil: snoozes.assessmentAfterFirstComm,
     });
+  const schedulePreferences = useMemo(
+    () =>
+      buildCircleAssessmentSchedulePreferences({
+        treatmentPhase: snapshot?.clinical?.treatmentPhase,
+        appMode: remoteSettings?.appMode,
+        scheduleEnabled: remoteSettings?.featuresVisibility?.schedule !== false,
+        featuresVisibility: remoteSettings?.featuresVisibility,
+      }),
+    [remoteSettings?.appMode, remoteSettings?.featuresVisibility, snapshot?.clinical?.treatmentPhase],
+  );
+  const scheduledAssessmentMissSummary = useMemo(() => {
+    if (!careRemindersEnabled || analyticsLoading || !remoteSettingsReady) {
+      return { taken: 0, missed: 0, pastScheduled: 0, missRate: 0 };
+    }
+    const rules = resolveEffectiveAssessmentScheduleRules({
+      preferences: schedulePreferences,
+      remoteAssessmentSchedule: remoteSettings?.assessmentSchedule,
+    });
+    return summarizeScheduledAssessmentAdherence({
+      rules,
+      completionsByScheduleId: completionsByScheduleIdFromAnalytics(analyticsByMetricId),
+      windowDays: SCHEDULED_ASSESSMENT_MISS_WINDOW_DAYS,
+    });
+  }, [
+    analyticsByMetricId,
+    analyticsLoading,
+    careRemindersEnabled,
+    remoteSettings?.assessmentSchedule,
+    remoteSettingsReady,
+    schedulePreferences,
+  ]);
+  const showScheduledAssessmentMissedReminder = shouldShowScheduledAssessmentMissedReminder({
+    enabled: careRemindersEnabled && !analyticsLoading && !snoozeLoading && remoteSettingsReady,
+    scheduleEnabled: isScheduleEnabled(schedulePreferences),
+    pastScheduled: scheduledAssessmentMissSummary.pastScheduled,
+    missed: scheduledAssessmentMissSummary.missed,
+    snoozedUntil: snoozes.scheduledAssessmentMissed,
+  });
   const showProfileReminder =
     careRemindersEnabled &&
     !snoozeLoading &&
@@ -269,6 +512,158 @@ export function CircleDashboardCelebrationSection({
       snoozedUntil: snoozes.teamCoverage,
     });
 
+  const stalePendingInvites = useMemo(
+    () => (teamCoverageLoading ? [] : listStalePendingInvites(invites)),
+    [invites, teamCoverageLoading],
+  );
+  const openAdminAccess = () => {
+    if (onOpenAdminAccess) onOpenAdminAccess();
+    else onGoToTab('admin');
+  };
+  const showPendingInviteReminder = shouldShowPendingInviteReminder({
+    enabled: canManageTeam,
+    staleInvites: stalePendingInvites,
+    loading: teamCoverageLoading || snoozeLoading,
+    snoozes,
+  });
+
+  const circleInitiateConfig = useMemo(
+    () => parseCircleInitiateMessagesConfig(remoteSettings),
+    [remoteSettings],
+  );
+  const showCircleInitiateReminder = shouldShowCircleInitiateMessagesReminder({
+    enabled: careRemindersEnabled && remoteSettingsReady,
+    canManageRemoteSettings: canOpenRemoteSettings,
+    appMode: remoteSettings?.appMode,
+    messagingEnabled: remoteSettings
+      ? getRemoteSettingValue(remoteSettings, 'featuresVisibility.messaging') === true
+      : false,
+    allowCircleInitiateMessages: circleInitiateConfig.allowCircleInitiateMessages,
+    snoozes,
+    snoozeLoading,
+  });
+  const showCircleDropInReminder = shouldShowCircleDropInReminder({
+    enabled: careRemindersEnabled && remoteSettingsReady,
+    canManageRemoteSettings: canOpenRemoteSettings,
+    dropInEnabled: remoteSettings
+      ? getRemoteSettingValue(remoteSettings, 'featuresVisibility.dropIn') === true
+      : false,
+    firstEngagementAt,
+    snoozes,
+    snoozeLoading,
+    firstEngagementLoading,
+  });
+
+  const hospitalFeatureKinds = listHospitalFeatureRemindersToShow({
+    enabled: careRemindersEnabled,
+    settings: remoteSettings,
+    settingsReady: remoteSettingsReady,
+    firstEngagementAt,
+    firstEngagementLoading,
+    snoozes,
+    snoozeLoading,
+  });
+
+  const icuProgressionKinds = listIcuProgressionRemindersToShow({
+    enabled: careRemindersEnabled,
+    settings: remoteSettings,
+    settingsReady: remoteSettingsReady,
+    firstEngagementAt,
+    firstEngagementLoading,
+    snoozes,
+    snoozeLoading,
+  });
+
+  const enableHospitalFeature = (kind: HospitalFeatureReminderKind) => {
+    if (!remoteSettings || !canOpenRemoteSettings || enablingKind) return;
+    setEnablingKind(kind);
+    try {
+      const path = hospitalFeatureRemotePath(kind);
+      let next = setRemoteSettingValue(remoteSettings, path, true);
+      // Match Remote Settings Vitality master toggle: unlock Mind/Soul pillars too.
+      if (kind === 'hospitalFeatureVitality') {
+        next = setRemoteSettingValue(next, 'featuresVisibility.activity.mind', true);
+        next = setRemoteSettingValue(next, 'featuresVisibility.activity.soul', true);
+      }
+      onPersistRemoteSettings({
+        ...next,
+        patientId: patient.patientId,
+      });
+      void dismissReminder(kind).catch((err) => {
+        console.warn('[Circle] Reminder dismiss after enable failed:', err);
+      });
+    } finally {
+      window.setTimeout(() => setEnablingKind(null), 600);
+    }
+  };
+
+  const enableIcuProgression = (kind: IcuProgressionReminderKind) => {
+    if (!remoteSettings || !canOpenRemoteSettings || enablingKind) return;
+    setEnablingKind(kind);
+    try {
+      let next: PatientRemoteSettingsDoc = remoteSettings;
+      if (kind === 'modeStepUpStandard') {
+        next = setRemoteIntensiveCareExperience(remoteSettings, 'standard');
+      } else if (kind === 'modeStepUpHospital') {
+        next = setRemoteAppMode(remoteSettings, 'hospital');
+      } else if (kind === 'icuSoulMusic') {
+        next = setRemoteSettingValue(
+          remoteSettings,
+          'featuresVisibility.intensiveCareSoulMusic',
+          true,
+        );
+        next = setRemoteSettingValue(next, 'featuresVisibility.activity.enabled', true);
+        next = setRemoteSettingValue(next, 'featuresVisibility.activity.soul', true);
+      } else {
+        next = setRemoteSettingValue(
+          remoteSettings,
+          'featuresVisibility.intensiveCareSoulMediaLibrary',
+          true,
+        );
+        next = setRemoteSettingValue(next, 'featuresVisibility.activity.enabled', true);
+        next = setRemoteSettingValue(next, 'featuresVisibility.activity.soul', true);
+      }
+      onPersistRemoteSettings({
+        ...next,
+        patientId: patient.patientId,
+      });
+      void dismissReminder(kind).catch((err) => {
+        console.warn('[Circle] Reminder dismiss after enable failed:', err);
+      });
+    } finally {
+      window.setTimeout(() => setEnablingKind(null), 600);
+    }
+  };
+
+  const icuDailyCheckInOn = remoteSettings?.dailyCheckIn?.enabled === true;
+  const showIcuDailyCheckInReminder = shouldShowIcuDailyCheckInReminder({
+    enabled: careRemindersEnabled && canOpenRemoteSettings,
+    settings: remoteSettings,
+    settingsReady: remoteSettingsReady,
+    snoozes,
+    snoozeLoading,
+  });
+
+  const toggleIcuDailyCheckIn = () => {
+    if (!remoteSettings || !canOpenRemoteSettings || enablingKind) return;
+    setEnablingKind('icuDailyCheckIn');
+    try {
+      const nextEnabled = !icuDailyCheckInOn;
+      onPersistRemoteSettings({
+        ...setRemoteDailyCheckIn(remoteSettings, { enabled: nextEnabled }),
+        patientId: patient.patientId,
+      });
+      // After turning check-in on, snooze so the "off" nudge doesn't linger.
+      if (nextEnabled) {
+        void dismissReminder('icuDailyCheckIn').catch((err) => {
+          console.warn('[Circle] Reminder dismiss after check-in toggle failed:', err);
+        });
+      }
+    } finally {
+      window.setTimeout(() => setEnablingKind(null), 600);
+    }
+  };
+
   const tiles: CelebrationTile[] = [];
   if (birthday && !isParticipationReminderSnoozed('birthday', snoozes)) {
     tiles.push({
@@ -278,6 +673,8 @@ export function CircleDashboardCelebrationSection({
       headline: birthday.headline,
       body: birthday.body,
       dismissKind: 'birthday',
+      // Circle members may wish the patient a birthday in Messages when initiate is on.
+      onOpen: () => onGoToTab('diary'),
     });
   } else if (previewBirthday) {
     tiles.push({
@@ -287,6 +684,7 @@ export function CircleDashboardCelebrationSection({
       headline: previewBirthday.headline,
       body: previewBirthday.body,
       isPreview: true,
+      onOpen: () => onGoToTab('diary'),
     });
   }
 
@@ -392,8 +790,41 @@ export function CircleDashboardCelebrationSection({
     });
   }
 
+  if (showScheduledAssessmentMissedReminder) {
+    const copy = localizeScheduledAssessmentMissedReminder(t, friendlyName);
+    tiles.push({
+      key: 'scheduled-assessment-missed',
+      tone: 'care',
+      icon: ClipboardCheck,
+      headline: copy.headline,
+      body: copy.body,
+      dismissKind: 'scheduledAssessmentMissed',
+      onOpen: () => (onOpenMissedAssessments ? onOpenMissedAssessments() : onGoToTab('analytics')),
+    });
+  } else if (previewReminders && careRemindersEnabled) {
+    const preview = localizePreviewScheduledAssessmentMissedReminder(t, friendlyName);
+    tiles.push({
+      key: 'preview-scheduled-assessment-missed',
+      tone: 'care',
+      icon: ClipboardCheck,
+      headline: preview.headline,
+      body: preview.body,
+      isPreview: true,
+      onOpen: () => (onOpenMissedAssessments ? onOpenMissedAssessments() : onGoToTab('analytics')),
+    });
+  }
+
   if (showProfileReminder) {
-    const copy = localizeCareProfileReminder(t, friendlyName, canOpenPatientProfile);
+    const missingFieldsLabel = formatMissingCoreProfileFieldsT(
+      t,
+      getMissingCoreCircleProfileFields(snapshot),
+    );
+    const copy = localizeCareProfileReminder(
+      t,
+      friendlyName,
+      canOpenPatientProfile,
+      missingFieldsLabel,
+    );
     tiles.push({
       key: 'profile-incomplete',
       tone: 'care',
@@ -401,7 +832,7 @@ export function CircleDashboardCelebrationSection({
       headline: copy.headline,
       body: copy.body,
       dismissKind: 'profileIncomplete',
-      onOpen: canOpenPatientProfile ? () => onGoToTab('admin') : undefined,
+      onOpen: canOpenPatientProfile ? () => onGoToTab('patient-profile') : undefined,
     });
   } else if (previewReminders && careRemindersEnabled) {
     const preview = localizePreviewCareProfileReminder(t, friendlyName);
@@ -412,7 +843,7 @@ export function CircleDashboardCelebrationSection({
       headline: preview.headline,
       body: preview.body,
       isPreview: true,
-      onOpen: canOpenPatientProfile ? () => onGoToTab('admin') : undefined,
+      onOpen: canOpenPatientProfile ? () => onGoToTab('patient-profile') : undefined,
     });
   }
 
@@ -425,7 +856,14 @@ export function CircleDashboardCelebrationSection({
       headline: copy.headline,
       body: copy.body,
       dismissKind: 'teamCoverage',
-      onOpen: canManageTeam ? () => onGoToTab('admin') : undefined,
+      ...(canManageTeam
+        ? {
+            actionLabel: t('dashboard.reminders.careTeamCoverageOpenAdmin'),
+            onAction: () => onGoToTab('admin'),
+          }
+        : {
+            footerNote: t('dashboard.reminders.careTeamCoverageAskProxyFooter'),
+          }),
     });
   } else if (previewReminders && careRemindersEnabled) {
     const preview = localizePreviewTeamCoverageReminder(t);
@@ -436,7 +874,188 @@ export function CircleDashboardCelebrationSection({
       headline: preview.headline,
       body: preview.body,
       isPreview: true,
-      onOpen: canManageTeam ? () => onGoToTab('admin') : undefined,
+      ...(canManageTeam
+        ? {
+            actionLabel: t('dashboard.reminders.careTeamCoverageOpenAdmin'),
+            onAction: () => onGoToTab('admin'),
+            actionDisabled: true,
+          }
+        : {
+            footerNote: t('dashboard.reminders.careTeamCoverageAskProxyFooter'),
+          }),
+    });
+  }
+
+  if (showPendingInviteReminder) {
+    const names = formatStalePendingInviteNames(stalePendingInvites, (count) =>
+      count === 1
+        ? t('dashboard.insightList.andOneMore')
+        : t('dashboard.insightList.andMore', { count }),
+    );
+    const copy = localizePendingInviteReminder(t, stalePendingInvites.length, names);
+    tiles.push({
+      key: 'pending-invites',
+      tone: 'care',
+      icon: UserPlus,
+      headline: copy.headline,
+      body: copy.body,
+      dismissKind: 'pendingInvites',
+      onOpen: openAdminAccess,
+    });
+  } else if (previewReminders && canManageTeam) {
+    const preview = localizePreviewPendingInviteReminder(t);
+    tiles.push({
+      key: 'preview-pending-invites',
+      tone: 'care',
+      icon: UserPlus,
+      headline: preview.headline,
+      body: preview.body,
+      isPreview: true,
+      onOpen: openAdminAccess,
+    });
+  }
+
+  if (hospitalFeatureKinds.length > 0) {
+    for (const kind of hospitalFeatureKinds) {
+      const copy = localizeHospitalFeatureReminder(t, kind);
+      tiles.push({
+        key: kind,
+        tone: 'care',
+        icon: hospitalFeatureIcon(kind),
+        headline: copy.headline,
+        body: copy.body,
+        dismissKind: kind,
+        actionLabel: t(hospitalFeatureTurnOnLabelKey(kind)),
+        onAction: canOpenRemoteSettings ? () => enableHospitalFeature(kind) : undefined,
+        actionUpdating: enablingKind === kind,
+        actionDisabled: !canOpenRemoteSettings || !remoteSettings,
+      });
+    }
+  } else if (previewReminders && careRemindersEnabled) {
+    for (const kind of HOSPITAL_FEATURE_REMINDER_KINDS) {
+      const preview = localizePreviewHospitalFeatureReminder(t, kind);
+      tiles.push({
+        key: `preview-${kind}`,
+        tone: 'care',
+        icon: hospitalFeatureIcon(kind),
+        headline: preview.headline,
+        body: preview.body,
+        isPreview: true,
+        actionLabel: t(hospitalFeatureTurnOnLabelKey(kind)),
+        actionDisabled: true,
+      });
+    }
+  }
+
+  if (showCircleInitiateReminder) {
+    tiles.push({
+      key: 'circle-initiate-messages',
+      tone: 'care',
+      icon: MessageSquare,
+      headline: t('dashboard.reminders.circleInitiateHeadline'),
+      body: t('dashboard.reminders.circleInitiateBody'),
+      dismissKind: 'circleInitiateMessages',
+      actionLabel: t('dashboard.reminders.circleInitiateTurnOn'),
+      onAction: onOpenRemoteSettingsCircleInitiate,
+      actionDisabled: !canOpenRemoteSettings || !onOpenRemoteSettingsCircleInitiate,
+    });
+  }
+
+  if (showCircleDropInReminder) {
+    tiles.push({
+      key: 'circle-drop-in',
+      tone: 'care',
+      icon: MessageCircle,
+      headline: t('dashboard.reminders.circleDropInHeadline'),
+      body: t('dashboard.reminders.circleDropInBody'),
+      dismissKind: 'circleDropIn',
+      actionLabel: t('dashboard.reminders.circleDropInChooseWho'),
+      onAction: onOpenRemoteSettingsDropIn,
+      actionDisabled: !canOpenRemoteSettings || !onOpenRemoteSettingsDropIn,
+    });
+  } else if (previewReminders && careRemindersEnabled) {
+    tiles.push({
+      key: 'preview-circle-drop-in',
+      tone: 'care',
+      icon: MessageCircle,
+      headline: t('dashboard.reminders.previewCircleDropInHeadline'),
+      body: t('dashboard.reminders.previewCircleDropInBody'),
+      isPreview: true,
+      actionLabel: t('dashboard.reminders.circleDropInChooseWho'),
+      actionDisabled: true,
+    });
+  }
+
+  if (icuProgressionKinds.length > 0) {
+    for (const kind of icuProgressionKinds) {
+      const copy = localizeIcuProgressionReminder(t, kind);
+      tiles.push({
+        key: kind,
+        tone: 'care',
+        icon: icuProgressionIcon(kind),
+        headline: copy.headline,
+        body: copy.body,
+        dismissKind: kind,
+        actionLabel: t(icuProgressionTurnOnLabelKey(kind)),
+        onAction: canOpenRemoteSettings ? () => enableIcuProgression(kind) : undefined,
+        actionUpdating: enablingKind === kind,
+        actionDisabled: !canOpenRemoteSettings || !remoteSettings,
+      });
+    }
+  } else if (previewReminders && careRemindersEnabled) {
+    for (const kind of ICU_PROGRESSION_REMINDER_KINDS) {
+      const preview = localizePreviewIcuProgressionReminder(t, kind);
+      tiles.push({
+        key: `preview-${kind}`,
+        tone: 'care',
+        icon: icuProgressionIcon(kind),
+        headline: preview.headline,
+        body: preview.body,
+        isPreview: true,
+        actionLabel: t(icuProgressionTurnOnLabelKey(kind)),
+        actionDisabled: true,
+      });
+    }
+  }
+
+  if (showIcuDailyCheckInReminder) {
+    tiles.push({
+      key: 'icu-daily-check-in',
+      tone: 'care',
+      icon: Calendar,
+      headline: t(
+        icuDailyCheckInOn
+          ? 'dashboard.icuCheckInBannerTitle'
+          : 'dashboard.icuCheckInBannerTitleOff',
+      ),
+      body: t(
+        icuDailyCheckInOn
+          ? 'dashboard.icuCheckInBannerBody'
+          : 'dashboard.icuCheckInBannerBodyOff',
+      ),
+      dismissKind: 'icuDailyCheckIn',
+      actionLabel: t(
+        icuDailyCheckInOn ? 'dashboard.icuCheckInTurnOff' : 'dashboard.icuCheckInTurnOn',
+      ),
+      onAction: toggleIcuDailyCheckIn,
+      actionUpdating: enablingKind === 'icuDailyCheckIn',
+      actionDisabled: !canOpenRemoteSettings || !remoteSettings,
+      secondaryLabel: t('dashboard.icuCheckInOpenApplicationSettings'),
+      onSecondary: onOpenRemoteSettingsApplicationMode,
+      secondaryDisabled: !canOpenRemoteSettings || !onOpenRemoteSettingsApplicationMode,
+    });
+  } else if (previewReminders && careRemindersEnabled) {
+    tiles.push({
+      key: 'preview-icu-daily-check-in',
+      tone: 'care',
+      icon: Calendar,
+      headline: t('dashboard.icuCheckInBannerTitleOff'),
+      body: t('dashboard.icuCheckInBannerBodyOff'),
+      isPreview: true,
+      actionLabel: t('dashboard.icuCheckInTurnOn'),
+      actionDisabled: true,
+      secondaryLabel: t('dashboard.icuCheckInOpenApplicationSettings'),
+      secondaryDisabled: true,
     });
   }
 
@@ -444,7 +1063,7 @@ export function CircleDashboardCelebrationSection({
 
   return (
     <section className="space-y-2">
-      <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5">
+      <h3 className={dashboardSectionTitleClass}>
         {t('dashboard.sectionReminders')}
       </h3>
       {previewReminders ? (
@@ -452,9 +1071,17 @@ export function CircleDashboardCelebrationSection({
           {t('dashboard.previewRemindersHint')}
         </p>
       ) : null}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 items-stretch">
         {tiles.map((tile) => (
-          <div key={tile.key} className="h-[10rem] sm:h-[10.5rem]">
+          <div
+            key={tile.key}
+            className={cn(
+              'h-full',
+              tile.actionLabel || tile.footerNote || tile.secondaryLabel
+                ? 'min-h-[12rem] sm:min-h-[12.5rem]'
+                : 'min-h-[10rem] sm:min-h-[10.5rem]',
+            )}
+          >
             <CelebrationCard
               tone={tile.tone}
               icon={tile.icon}
@@ -463,6 +1090,14 @@ export function CircleDashboardCelebrationSection({
               isPreview={tile.isPreview}
               dismissKind={tile.dismissKind}
               onOpen={tile.onOpen}
+              actionLabel={tile.actionLabel}
+              onAction={tile.onAction}
+              actionUpdating={tile.actionUpdating}
+              actionDisabled={tile.actionDisabled}
+              footerNote={tile.footerNote}
+              secondaryLabel={tile.secondaryLabel}
+              onSecondary={tile.onSecondary}
+              secondaryDisabled={tile.secondaryDisabled}
               t={t}
               onDismiss={(kind) => {
                 void dismissReminder(kind).catch((err) => {

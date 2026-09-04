@@ -71,8 +71,28 @@ import {
   dailyCheckInScreenPolish,
   dailyCheckInScreenSpanish,
 } from './translations/dailyCheckInScreen';
+import {
+  clinicalReferencesScreenEnglish,
+  clinicalReferencesScreenGerman,
+  clinicalReferencesScreenPolish,
+  clinicalReferencesScreenSpanish,
+} from './translations/clinicalReferences';
+import {
+  visitBriefScreenEnglish,
+  visitBriefScreenGerman,
+  visitBriefScreenPolish,
+  visitBriefScreenSpanish,
+} from './translations/visitBrief';
+import {
+  careTransitionContentEnglish,
+  careTransitionContentGerman,
+  careTransitionContentPolish,
+  careTransitionContentSpanish,
+} from './translations/careTransitionContent';
 
-type TranslationTree = Record<string, string | TranslationTree>;
+interface TranslationTree {
+  [key: string]: string | TranslationTree;
+}
 
 export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
   English: {
@@ -106,11 +126,17 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     patients: {
       yourPatients: 'Your patients',
+      checkingAccess: 'Checking your Circle access…',
+      checkingAccessHint: 'Looking up invites and patient links for this account. This can take a moment.',
       noInvitesYet:
         'No active invites yet. In the patient app, open Settings → Family & Friends, confirm your email is saved, click Done, then tap Refresh here.',
     },
     brand: {
       startupTagline: 'MedXForce Circle — Family & Friends',
+      motto: 'Communication made possible',
+      startupBoot: 'Starting MedXForce Circle',
+      startupAccess: 'Checking your access',
+      startupWorkspace: 'Preparing your workspace',
     },
     ...appShellEnglish,
     messages: messagesScreenEnglish,
@@ -124,6 +150,9 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     remoteSettings: remoteSettingsScreenEnglish,
     provision: provisionScreenEnglish,
     dailyCheckIn: dailyCheckInScreenEnglish,
+    ...clinicalReferencesScreenEnglish,
+    ...visitBriefScreenEnglish,
+    careTransitionContent: careTransitionContentEnglish,
     common: {
       refresh: 'Refresh',
       refreshing: 'Refreshing…',
@@ -165,11 +194,18 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     patients: {
       yourPatients: 'Ihre Patienten',
+      checkingAccess: 'Circle-Zugang wird geprüft…',
+      checkingAccessHint:
+        'Einladungen und Patientenverknüpfungen für dieses Konto werden gesucht. Das kann einen Moment dauern.',
       noInvitesYet:
         'Noch keine aktiven Einladungen. Öffnen Sie in der Patienten-App Einstellungen → Familie & Freunde, speichern Sie Ihre E-Mail, tippen Sie auf Fertig und dann hier auf Aktualisieren.',
     },
     brand: {
       startupTagline: 'MedXForce Circle — Familie & Freunde',
+      motto: 'Kommunikation, die verbindet',
+      startupBoot: 'MedXForce Circle wird gestartet',
+      startupAccess: 'Zugang wird geprüft',
+      startupWorkspace: 'Arbeitsbereich wird vorbereitet',
     },
     ...appShellGerman,
     messages: messagesScreenGerman,
@@ -183,6 +219,9 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     remoteSettings: remoteSettingsScreenGerman,
     provision: provisionScreenGerman,
     dailyCheckIn: dailyCheckInScreenGerman,
+    ...clinicalReferencesScreenGerman,
+    ...visitBriefScreenGerman,
+    careTransitionContent: careTransitionContentGerman,
     common: {
       refresh: 'Aktualisieren',
       refreshing: 'Aktualisiere…',
@@ -224,11 +263,18 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     patients: {
       yourPatients: 'Sus pacientes',
+      checkingAccess: 'Comprobando su acceso a Circle…',
+      checkingAccessHint:
+        'Buscando invitaciones y vínculos de pacientes para esta cuenta. Puede tardar un momento.',
       noInvitesYet:
         'Aún no hay invitaciones activas. En la app del paciente, abra Ajustes → Familia y amigos, confirme su correo, pulse Hecho y luego Actualizar aquí.',
     },
     brand: {
       startupTagline: 'MedXForce Circle — Familia y amigos',
+      motto: 'Comunicación hecha posible',
+      startupBoot: 'Iniciando MedXForce Circle',
+      startupAccess: 'Comprobando su acceso',
+      startupWorkspace: 'Preparando su espacio de trabajo',
     },
     ...appShellSpanish,
     messages: messagesScreenSpanish,
@@ -242,6 +288,9 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     remoteSettings: remoteSettingsScreenSpanish,
     provision: provisionScreenSpanish,
     dailyCheckIn: dailyCheckInScreenSpanish,
+    ...clinicalReferencesScreenSpanish,
+    ...visitBriefScreenSpanish,
+    careTransitionContent: careTransitionContentSpanish,
     common: {
       refresh: 'Actualizar',
       refreshing: 'Actualizando…',
@@ -283,11 +332,18 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     patients: {
       yourPatients: 'Twoi pacjenci',
+      checkingAccess: 'Sprawdzanie dostępu do Circle…',
+      checkingAccessHint:
+        'Szukamy zaproszeń i powiązań z pacjentami dla tego konta. To może chwilę potrwać.',
       noInvitesYet:
         'Brak aktywnych zaproszeń. W aplikacji pacjenta otwórz Ustawienia → Rodzina i przyjaciele, zapisz e-mail, naciśnij Gotowe, a potem Odśwież tutaj.',
     },
     brand: {
       startupTagline: 'MedXForce Circle — Rodzina i przyjaciele',
+      motto: 'Komunikacja staje się możliwa',
+      startupBoot: 'Uruchamianie MedXForce Circle',
+      startupAccess: 'Sprawdzanie dostępu',
+      startupWorkspace: 'Przygotowywanie obszaru roboczego',
     },
     ...appShellPolish,
     messages: messagesScreenPolish,
@@ -301,6 +357,9 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     remoteSettings: remoteSettingsScreenPolish,
     provision: provisionScreenPolish,
     dailyCheckIn: dailyCheckInScreenPolish,
+    ...clinicalReferencesScreenPolish,
+    ...visitBriefScreenPolish,
+    careTransitionContent: careTransitionContentPolish,
     common: {
       refresh: 'Odśwież',
       refreshing: 'Odświeżanie…',
@@ -324,12 +383,13 @@ function resolvePath(tree: TranslationTree, path: string): string | undefined {
 }
 
 export function createCircleTranslator(language: CircleUiLanguage) {
-  return (path: string, params?: Record<string, string | number>) => {
+  return (path: string, params?: Record<string, unknown>) => {
     const primary = resolvePath(CIRCLE_TRANSLATIONS[language], path);
     const english = resolvePath(CIRCLE_TRANSLATIONS.English, path);
     let text = primary ?? english ?? path;
     if (params) {
       for (const [key, value] of Object.entries(params)) {
+        if (value == null) continue;
         text = text.replaceAll(`{{${key}}}`, String(value));
       }
     }

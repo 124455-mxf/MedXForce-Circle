@@ -1,7 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Plus, Trash2, X } from 'lucide-react';
 import {
   REMOTE_PRIMARY_LANGUAGE_OPTIONS,
+  TREATMENT_PHASE_VALUES,
+  canonicalizeProfileCountry,
+  getCareTransitionPack,
+  listProfileCountryOptions,
+  normalizeCountryCode,
+  recommendRemoteSettingsForTreatmentPhase,
+  getBrowserTimeZone,
+  normalizeTimeZoneId,
+  suggestedPackForPhaseTransition,
   type CirclePatientProfileSnapshot,
   type CircleProfileMedItem,
   type RemotePrimaryLanguage,
@@ -9,11 +18,33 @@ import {
 import { CircleProfileFieldLabel } from '../lib/circleProfileAiDiscovery';
 import {
   identityLanguageLabel,
+  circleUiLanguageLabel,
   resolveIdentityPrimaryLanguage,
 } from '../lib/circleLanguages';
 import { CirclePatientLanguageConfirmModal } from './CirclePatientLanguageConfirmModal';
-import { useCircleT } from '../lib/circleI18nContext';
-import { profileEditorSectionTitleI18n } from '../lib/adminScreenI18n';
+import { CirclePatientRecoveryPhaseConfirmModal } from './CirclePatientRecoveryPhaseConfirmModal';
+import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
+import { CircleTimeZoneSelect } from './CircleTimeZoneSelect';
+import { treatmentPhaseLabelT } from '../lib/dashboardI18n';
+import {
+  profileEditorSectionTitleI18n,
+  ASSISTIVE_DEVICE_PRESETS,
+  assistiveDeviceLabelI18n,
+  fitnessLevelLabelI18n,
+  sexLabelI18n,
+  handednessLabelI18n,
+  raceLabelI18n,
+} from '../lib/adminScreenI18n';
+import { localizeCareTransitionPack } from '../lib/localizeCareTransition';
+import { cn } from '../lib/utils';
+import {
+  remoteSettingsAppModeLabel,
+  remoteSettingsDashboardPresetLabel,
+} from '../lib/remoteSettingsScreenI18n';
+import {
+  treatmentPhaseBadgeClass,
+  treatmentPhaseCardClass,
+} from '../lib/appModeUi';
 
 type EditableSection =
   | 'identity'
@@ -30,7 +61,10 @@ interface CirclePatientProfileEditorModalProps {
   patientDisplayName?: string;
   saving?: boolean;
   onClose: () => void;
-  onSave: (next: CirclePatientProfileSnapshot) => void;
+  onSave: (
+    next: CirclePatientProfileSnapshot,
+    options?: { applyRecommendedTabletLayout?: boolean; startCareTransitionPack?: boolean },
+  ) => void;
 }
 
 function parseListInput(raw: string): string[] {
@@ -106,13 +140,16 @@ function ListFieldEditor({
   onChange,
   snapshot,
   discoveryKey,
+  presets,
 }: {
   label: string;
   value: string[];
   onChange: (next: string[]) => void;
   snapshot: CirclePatientProfileSnapshot;
   discoveryKey: string;
+  presets?: readonly string[];
 }) {
+  const t = useCircleT();
   return (
     <label className="block space-y-1">
       <CircleProfileFieldLabel
@@ -121,12 +158,38 @@ function ListFieldEditor({
         discoveryKey={discoveryKey}
         values={value}
       />
+      {presets?.length ? (
+        <div className="flex flex-wrap gap-2 pb-1">
+          {presets.map((device) => {
+            const selected = value.includes(device);
+            return (
+              <button
+                key={device}
+                type="button"
+                onClick={() =>
+                  onChange(
+                    selected ? value.filter((item) => item !== device) : [...value, device],
+                  )
+                }
+                className={cn(
+                  'px-3 py-1.5 rounded-full text-xs font-bold transition-all border-2',
+                  selected
+                    ? 'bg-emerald-600 border-emerald-600 text-white'
+                    : 'bg-white border-slate-100 text-slate-400 hover:border-emerald-100',
+                )}
+              >
+                {assistiveDeviceLabelI18n(t, device)}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
       <textarea
         className="w-full px-4 py-3 rounded-xl border border-slate-200 min-h-[72px]"
         value={listInput(value)}
         onChange={(e) => onChange(parseListInput(e.target.value))}
       />
-      <span className="text-[10px] text-slate-400">Separate items with commas</span>
+      <span className="text-[10px] text-slate-400">{t('admin.profile.listSeparateHint')}</span>
     </label>
   );
 }
@@ -140,6 +203,7 @@ function MedListEditor({
   items: CircleProfileMedItem[];
   onChange: (next: CircleProfileMedItem[]) => void;
 }) {
+  const t = useCircleT();
   const updateItem = (index: number, field: keyof CircleProfileMedItem, value: string) => {
     onChange(
       items.map((item, idx) => (idx === index ? { ...item, [field]: value } : item)),
@@ -156,41 +220,43 @@ function MedListEditor({
           className="inline-flex items-center gap-1 text-xs font-bold text-blue-600"
         >
           <Plus size={14} />
-          Add
+          {t('admin.profile.medAdd')}
         </button>
       </div>
       {items.length === 0 ? (
-        <p className="text-sm text-slate-400">No entries yet.</p>
+        <p className="text-sm text-slate-400">{t('admin.profile.medEmpty')}</p>
       ) : (
         <div className="space-y-3">
           {items.map((item, index) => (
             <div key={`${label}-${index}`} className="p-3 rounded-xl border border-slate-200 space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Entry {index + 1}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">
+                  {t('admin.profile.medEntry', { n: index + 1 })}
+                </span>
                 <button
                   type="button"
                   onClick={() => onChange(items.filter((_, idx) => idx !== index))}
                   className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600"
-                  aria-label={`Remove ${label} entry`}
+                  aria-label={t('admin.profile.medRemoveAria', { label })}
                 >
                   <Trash2 size={14} />
                 </button>
               </div>
               <input
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
-                placeholder="Name"
+                placeholder={t('admin.profile.medName')}
                 value={item.name}
                 onChange={(e) => updateItem(index, 'name', e.target.value)}
               />
               <input
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
-                placeholder="Dosage"
+                placeholder={t('admin.profile.medDosage')}
                 value={item.dosage}
                 onChange={(e) => updateItem(index, 'dosage', e.target.value)}
               />
               <input
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
-                placeholder="Schedule"
+                placeholder={t('admin.profile.medSchedule')}
                 value={item.schedule}
                 onChange={(e) => updateItem(index, 'schedule', e.target.value)}
               />
@@ -212,19 +278,87 @@ export function CirclePatientProfileEditorModal({
   onSave,
 }: CirclePatientProfileEditorModalProps) {
   const t = useCircleT();
+  const { language } = useCircleI18nContext();
   const [draft, setDraft] = useState(snapshot);
   const [pendingLanguage, setPendingLanguage] = useState<RemotePrimaryLanguage | null>(null);
+  const [pendingRecoveryPhase, setPendingRecoveryPhase] = useState<string | null>(null);
+  const countryOptions = useMemo(() => listProfileCountryOptions(language), [language]);
+  const selectedCountryCode = normalizeCountryCode(draft.identity.country) ?? '';
 
   useEffect(() => {
     if (!open) return;
     setDraft(snapshot);
     setPendingLanguage(null);
+    setPendingRecoveryPhase(null);
     // Only seed draft when the modal opens — not on every Firestore snapshot echo.
   }, [open]);
 
   if (!open) return null;
 
   const title = profileEditorSectionTitleI18n(t, section);
+  const patientName =
+    patientDisplayName?.trim() ||
+    `${draft.identity.firstName || ''} ${draft.identity.lastName || ''}`.trim() ||
+    t('admin.profile.thePatient');
+
+  const buildDraftToSave = (): CirclePatientProfileSnapshot => {
+    const withTimezone: CirclePatientProfileSnapshot = {
+      ...draft,
+      identity: {
+        ...draft.identity,
+        timezoneId: normalizeTimeZoneId(draft.identity.timezoneId, getBrowserTimeZone()),
+      },
+    };
+    if (!pendingLanguage) return withTimezone;
+    return {
+      ...withTimezone,
+      identity: {
+        ...withTimezone.identity,
+        language: identityLanguageLabel(pendingLanguage),
+      },
+    };
+  };
+
+  const shouldConfirmRecoveryPhase = (draftToSave: CirclePatientProfileSnapshot): boolean => {
+    const newPhase = draftToSave.clinical.treatmentPhase.trim();
+    if (!newPhase) return false;
+    if (String(snapshot.clinical.treatmentPhase ?? '').trim() === newPhase) return false;
+    return !!recommendRemoteSettingsForTreatmentPhase(newPhase);
+  };
+
+  const commitSave = (
+    draftToSave: CirclePatientProfileSnapshot,
+    applyRecommendedTabletLayout = true,
+    startCareTransitionPack = true,
+  ) => {
+    setPendingLanguage(null);
+    setPendingRecoveryPhase(null);
+    onSave(draftToSave, { applyRecommendedTabletLayout, startCareTransitionPack });
+  };
+
+  const attemptSave = () => {
+    const draftToSave = buildDraftToSave();
+    if (shouldConfirmRecoveryPhase(draftToSave)) {
+      setPendingRecoveryPhase(draftToSave.clinical.treatmentPhase.trim());
+      return;
+    }
+    commitSave(draftToSave);
+  };
+
+  const recoveryRecommendation = pendingRecoveryPhase
+    ? recommendRemoteSettingsForTreatmentPhase(pendingRecoveryPhase)
+    : null;
+  const suggestedCareTransitionPack = pendingRecoveryPhase
+    ? getCareTransitionPack(
+        suggestedPackForPhaseTransition(snapshot.clinical.treatmentPhase, pendingRecoveryPhase),
+      )
+    : null;
+  const careTransitionLabel = suggestedCareTransitionPack
+    ? (() => {
+        const localized = localizeCareTransitionPack(t, suggestedCareTransitionPack);
+        return `${localized.fromLabel} → ${localized.toLabel}`;
+      })()
+    : null;
 
   return (
     <div className="fixed inset-0 z-[140] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/50 backdrop-blur-sm">
@@ -245,7 +379,7 @@ export function CirclePatientProfileEditorModal({
           {section === 'identity' && (
             <>
               <label className="block space-y-1">
-                <span className="text-xs font-bold text-slate-500 uppercase">First name</span>
+                <span className="text-xs font-bold text-slate-500 uppercase">{t('admin.profile.fieldFirstName')}</span>
                 <input
                   className="w-full px-4 py-3 rounded-xl border border-slate-200"
                   value={draft.identity.firstName}
@@ -258,7 +392,7 @@ export function CirclePatientProfileEditorModal({
                 />
               </label>
               <label className="block space-y-1">
-                <span className="text-xs font-bold text-slate-500 uppercase">Last name</span>
+                <span className="text-xs font-bold text-slate-500 uppercase">{t('admin.profile.fieldLastName')}</span>
                 <input
                   className="w-full px-4 py-3 rounded-xl border border-slate-200"
                   value={draft.identity.lastName}
@@ -272,7 +406,7 @@ export function CirclePatientProfileEditorModal({
               </label>
               <label className="block space-y-1">
                 <CircleProfileFieldLabel
-                  label="Nickname"
+                  label={t('admin.profile.fieldNickname')}
                   snapshot={draft}
                   discoveryKey="nick_name"
                   values={draft.identity.nickName ? [draft.identity.nickName] : []}
@@ -289,7 +423,7 @@ export function CirclePatientProfileEditorModal({
                 />
               </label>
               <label className="block space-y-1">
-                <span className="text-xs font-bold text-slate-500 uppercase">Email</span>
+                <span className="text-xs font-bold text-slate-500 uppercase">{t('admin.profile.fieldEmail')}</span>
                 <input
                   type="email"
                   className="w-full px-4 py-3 rounded-xl border border-slate-200"
@@ -303,8 +437,9 @@ export function CirclePatientProfileEditorModal({
                 />
               </label>
               <label className="block space-y-1">
-                <span className="text-xs font-bold text-slate-500 uppercase">Date of birth</span>
+                <span className="text-xs font-bold text-slate-500 uppercase">{t('admin.profile.fieldDob')}</span>
                 <input
+                  type="date"
                   className="w-full px-4 py-3 rounded-xl border border-slate-200"
                   value={draft.identity.dob}
                   onChange={(e) =>
@@ -316,7 +451,7 @@ export function CirclePatientProfileEditorModal({
                 />
               </label>
               <label className="block space-y-1">
-                <span className="text-xs font-bold text-slate-500 uppercase">Language</span>
+                <span className="text-xs font-bold text-slate-500 uppercase">{t('admin.profile.fieldLanguage')}</span>
                 <select
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
                   value={
@@ -331,14 +466,14 @@ export function CirclePatientProfileEditorModal({
                 >
                   {REMOTE_PRIMARY_LANGUAGE_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
-                      {option.label}
+                      {circleUiLanguageLabel(t, option.value)}
                     </option>
                   ))}
                 </select>
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="block space-y-1">
-                  <span className="text-xs font-bold text-slate-500 uppercase">City</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase">{t('admin.profile.fieldCity')}</span>
                   <input
                     className="w-full px-4 py-3 rounded-xl border border-slate-200"
                     value={draft.identity.city}
@@ -351,29 +486,65 @@ export function CirclePatientProfileEditorModal({
                   />
                 </label>
                 <label className="block space-y-1">
-                  <span className="text-xs font-bold text-slate-500 uppercase">Country</span>
-                  <input
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200"
-                    value={draft.identity.country}
+                  <span className="text-xs font-bold text-slate-500 uppercase">
+                    {t('admin.profile.fieldCountry')}
+                  </span>
+                  <select
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
+                    value={selectedCountryCode}
                     onChange={(e) =>
                       setDraft({
                         ...draft,
-                        identity: { ...draft.identity, country: e.target.value },
+                        identity: {
+                          ...draft.identity,
+                          country: canonicalizeProfileCountry(e.target.value),
+                        },
                       })
                     }
-                  />
+                  >
+                    <option value="">{t('careTransition.countryNotSet')}</option>
+                    {draft.identity.country.trim() && !selectedCountryCode ? (
+                      <option value={draft.identity.country}>
+                        {draft.identity.country} ({t('careTransition.countryLegacy')})
+                      </option>
+                    ) : null}
+                    {countryOptions.map((option) => (
+                      <option key={option.code} value={option.code}>
+                        {option.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
+              <label className="block space-y-1">
+                <span className="text-xs font-bold text-slate-500 uppercase">
+                  {t('admin.profile.fieldTimeZone')}
+                </span>
+                <CircleTimeZoneSelect
+                  value={draft.identity.timezoneId}
+                  onChange={(next) =>
+                    setDraft({
+                      ...draft,
+                      identity: { ...draft.identity, timezoneId: next },
+                    })
+                  }
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
+                  aria-label={t('admin.profile.fieldTimeZone')}
+                />
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {t('admin.profile.fieldTimeZoneHint')}
+                </p>
+              </label>
             </>
           )}
 
           {section === 'extended' && (
             <>
               <OptionPills
-                label="Sex"
+                label={t('admin.profile.fieldSex')}
                 options={SEX_OPTIONS.map((id) => ({
                   id,
-                  label: id.charAt(0).toUpperCase() + id.slice(1),
+                  label: sexLabelI18n(t, id),
                 }))}
                 value={draft.extended.sex}
                 onChange={(sex) =>
@@ -381,10 +552,10 @@ export function CirclePatientProfileEditorModal({
                 }
               />
               <OptionPills
-                label="Handedness"
+                label={t('admin.profile.fieldHandedness')}
                 options={HANDEDNESS_OPTIONS.map((id) => ({
                   id,
-                  label: id.charAt(0).toUpperCase() + id.slice(1),
+                  label: handednessLabelI18n(t, id),
                 }))}
                 value={draft.extended.handedness}
                 onChange={(handedness) =>
@@ -393,7 +564,7 @@ export function CirclePatientProfileEditorModal({
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="block space-y-1">
-                  <span className="text-xs font-bold text-slate-500 uppercase">Height</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase">{t('admin.profile.fieldHeight')}</span>
                   <input
                     className="w-full px-4 py-3 rounded-xl border border-slate-200"
                     value={draft.extended.height}
@@ -406,7 +577,7 @@ export function CirclePatientProfileEditorModal({
                   />
                 </label>
                 <label className="block space-y-1">
-                  <span className="text-xs font-bold text-slate-500 uppercase">Height unit</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase">{t('admin.profile.fieldHeightUnit')}</span>
                   <select
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
                     value={draft.extended.heightUnit || 'cm'}
@@ -424,7 +595,7 @@ export function CirclePatientProfileEditorModal({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="block space-y-1">
-                  <span className="text-xs font-bold text-slate-500 uppercase">Weight</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase">{t('admin.profile.fieldWeight')}</span>
                   <input
                     className="w-full px-4 py-3 rounded-xl border border-slate-200"
                     value={draft.extended.weight}
@@ -437,7 +608,7 @@ export function CirclePatientProfileEditorModal({
                   />
                 </label>
                 <label className="block space-y-1">
-                  <span className="text-xs font-bold text-slate-500 uppercase">Weight unit</span>
+                  <span className="text-xs font-bold text-slate-500 uppercase">{t('admin.profile.fieldWeightUnit')}</span>
                   <select
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
                     value={draft.extended.weightUnit || 'kg'}
@@ -454,7 +625,7 @@ export function CirclePatientProfileEditorModal({
                 </label>
               </div>
               <label className="block space-y-1">
-                <span className="text-xs font-bold text-slate-500 uppercase">Race / ethnicity</span>
+                <span className="text-xs font-bold text-slate-500 uppercase">{t('admin.profile.fieldRace')}</span>
                 <select
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
                   value={draft.extended.race}
@@ -467,13 +638,13 @@ export function CirclePatientProfileEditorModal({
                 >
                   {RACE_OPTIONS.map((option) => (
                     <option key={option.id || 'none'} value={option.id}>
-                      {option.label}
+                      {option.id ? raceLabelI18n(t, option.id) : t('admin.profile.notProvided')}
                     </option>
                   ))}
                 </select>
               </label>
               <ListFieldEditor
-                label="Languages spoken"
+                label={t('admin.profile.fieldLanguagesSpoken')}
                 snapshot={draft}
                 discoveryKey="language"
                 value={draft.extended.languagesSpoken}
@@ -487,7 +658,7 @@ export function CirclePatientProfileEditorModal({
           {section === 'engagement' && (
             <>
               <ListFieldEditor
-                label="Active hobbies"
+                label={t('admin.profile.fieldActiveHobbies')}
                 snapshot={draft}
                 discoveryKey="hobby_active"
                 value={draft.engagement.activeHobbies}
@@ -496,7 +667,7 @@ export function CirclePatientProfileEditorModal({
                 }
               />
               <ListFieldEditor
-                label="Passive hobbies"
+                label={t('admin.profile.fieldPassiveHobbies')}
                 snapshot={draft}
                 discoveryKey="hobby_passive"
                 value={draft.engagement.passiveHobbies}
@@ -505,7 +676,7 @@ export function CirclePatientProfileEditorModal({
                 }
               />
               <ListFieldEditor
-                label="Social anchors"
+                label={t('admin.profile.fieldSocialAnchors')}
                 snapshot={draft}
                 discoveryKey="social_anchors"
                 value={draft.engagement.socialAnchors}
@@ -514,7 +685,7 @@ export function CirclePatientProfileEditorModal({
                 }
               />
               <ListFieldEditor
-                label="Topic triggers"
+                label={t('admin.profile.fieldTopicTriggers')}
                 snapshot={draft}
                 discoveryKey="topic_triggers"
                 value={draft.engagement.topicTriggers}
@@ -523,7 +694,7 @@ export function CirclePatientProfileEditorModal({
                 }
               />
               <ListFieldEditor
-                label="Personal goals"
+                label={t('admin.profile.fieldPersonalGoals')}
                 snapshot={draft}
                 discoveryKey="personal_goals"
                 value={draft.engagement.personalGoals}
@@ -532,7 +703,7 @@ export function CirclePatientProfileEditorModal({
                 }
               />
               <ListFieldEditor
-                label="Daily rituals"
+                label={t('admin.profile.fieldDailyRituals')}
                 snapshot={draft}
                 discoveryKey="daily_rituals"
                 value={draft.engagement.dailyRituals}
@@ -542,7 +713,7 @@ export function CirclePatientProfileEditorModal({
               />
               <label className="block space-y-1">
                 <CircleProfileFieldLabel
-                  label="Fitness level"
+                  label={t('admin.profile.fieldFitnessLevel')}
                   snapshot={draft}
                   discoveryKey="fitness_level"
                   values={draft.engagement.fitnessLevel ? [draft.engagement.fitnessLevel] : []}
@@ -559,7 +730,7 @@ export function CirclePatientProfileEditorModal({
                 >
                   {FITNESS_LEVEL_OPTIONS.map((level) => (
                     <option key={level.id || 'none'} value={level.id}>
-                      {level.label}
+                      {level.id ? fitnessLevelLabelI18n(t, level.id) : t('admin.profile.notProvided')}
                     </option>
                   ))}
                 </select>
@@ -571,13 +742,13 @@ export function CirclePatientProfileEditorModal({
             <>
               <label className="block space-y-1">
                 <CircleProfileFieldLabel
-                  label="Occupation"
+                  label={t('admin.profile.fieldOccupation')}
                   snapshot={draft}
                   discoveryKey="occupation"
                   values={draft.lifestyle.occupation ? [draft.lifestyle.occupation] : []}
                 />
-                <input
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200"
+                <textarea
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 min-h-[80px]"
                   value={draft.lifestyle.occupation}
                   onChange={(e) =>
                     setDraft({
@@ -589,13 +760,13 @@ export function CirclePatientProfileEditorModal({
               </label>
               <label className="block space-y-1">
                 <CircleProfileFieldLabel
-                  label="Living situation"
+                  label={t('admin.profile.fieldLivingSituation')}
                   snapshot={draft}
                   discoveryKey="living_situation"
                   values={draft.lifestyle.livingSituation ? [draft.lifestyle.livingSituation] : []}
                 />
-                <input
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200"
+                <textarea
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 min-h-[80px]"
                   value={draft.lifestyle.livingSituation}
                   onChange={(e) =>
                     setDraft({
@@ -607,13 +778,13 @@ export function CirclePatientProfileEditorModal({
               </label>
               <label className="block space-y-1">
                 <CircleProfileFieldLabel
-                  label="Sleep profile"
+                  label={t('admin.profile.fieldSleepProfile')}
                   snapshot={draft}
                   discoveryKey="sleep_profile"
                   values={draft.lifestyle.sleepProfile ? [draft.lifestyle.sleepProfile] : []}
                 />
-                <input
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200"
+                <textarea
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 min-h-[80px]"
                   value={draft.lifestyle.sleepProfile}
                   onChange={(e) =>
                     setDraft({
@@ -624,18 +795,19 @@ export function CirclePatientProfileEditorModal({
                 />
               </label>
               <ListFieldEditor
-                label="Assistive devices"
+                label={t('admin.profile.fieldAssistiveDevices')}
                 snapshot={draft}
                 discoveryKey="assistive_devices"
                 value={draft.lifestyle.assistiveDevices}
                 onChange={(assistiveDevices) =>
                   setDraft({ ...draft, lifestyle: { ...draft.lifestyle, assistiveDevices } })
                 }
+                presets={ASSISTIVE_DEVICE_PRESETS}
               />
               <div className="pt-2 border-t border-slate-100 space-y-3">
-                <p className="text-xs font-bold text-slate-500 uppercase">Substance use</p>
+                <p className="text-xs font-bold text-slate-500 uppercase">{t('admin.profile.fieldSubstanceUse')}</p>
                 <label className="block space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">Smoking</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">{t('admin.profile.fieldSmoking')}</span>
                   <select
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
                     value={draft.lifestyle.substanceUse.smoking}
@@ -649,14 +821,14 @@ export function CirclePatientProfileEditorModal({
                       })
                     }
                   >
-                    <option value="">Not provided</option>
-                    <option value="yes">Yes</option>
-                    <option value="no">No</option>
+                    <option value="">{t('admin.profile.notProvided')}</option>
+                    <option value="yes">{t('admin.profile.yes')}</option>
+                    <option value="no">{t('admin.profile.no')}</option>
                   </select>
                 </label>
                 {draft.lifestyle.substanceUse.smoking === 'yes' && (
                   <label className="block space-y-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Cigarettes per day</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">{t('admin.profile.fieldCigarettesPerDay')}</span>
                     <input
                       className="w-full px-4 py-3 rounded-xl border border-slate-200"
                       value={draft.lifestyle.substanceUse.cigarettesPerDay}
@@ -676,7 +848,7 @@ export function CirclePatientProfileEditorModal({
                   </label>
                 )}
                 <label className="block space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">Vaping</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">{t('admin.profile.fieldVaping')}</span>
                   <select
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
                     value={draft.lifestyle.substanceUse.vaping}
@@ -690,15 +862,15 @@ export function CirclePatientProfileEditorModal({
                       })
                     }
                   >
-                    <option value="">Not provided</option>
-                    <option value="yes">Yes</option>
-                    <option value="no">No</option>
+                    <option value="">{t('admin.profile.notProvided')}</option>
+                    <option value="yes">{t('admin.profile.yes')}</option>
+                    <option value="no">{t('admin.profile.no')}</option>
                   </select>
                 </label>
                 <label className="block space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">Alcohol frequency</span>
-                  <input
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200"
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">{t('admin.profile.fieldAlcoholFrequency')}</span>
+                  <select
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white"
                     value={draft.lifestyle.substanceUse.alcoholFreq}
                     onChange={(e) =>
                       setDraft({
@@ -709,10 +881,24 @@ export function CirclePatientProfileEditorModal({
                         },
                       })
                     }
-                  />
+                  >
+                    <option value="">{t('admin.profile.notProvided')}</option>
+                    <option value="none">{t('admin.profile.alcoholNone')}</option>
+                    <option value="occasionally">{t('admin.profile.alcoholOccasionally')}</option>
+                    <option value="once_a_week">{t('admin.profile.alcoholOnceAWeek')}</option>
+                    <option value="every_day">{t('admin.profile.alcoholEveryDay')}</option>
+                    {draft.lifestyle.substanceUse.alcoholFreq &&
+                    !['none', 'occasionally', 'once_a_week', 'every_day'].includes(
+                      draft.lifestyle.substanceUse.alcoholFreq,
+                    ) ? (
+                      <option value={draft.lifestyle.substanceUse.alcoholFreq}>
+                        {draft.lifestyle.substanceUse.alcoholFreq}
+                      </option>
+                    ) : null}
+                  </select>
                 </label>
                 <label className="block space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">Recreational drugs</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">{t('admin.profile.fieldRecreationalDrugs')}</span>
                   <input
                     className="w-full px-4 py-3 rounded-xl border border-slate-200"
                     value={draft.lifestyle.substanceUse.recreationalDrugs}
@@ -738,7 +924,7 @@ export function CirclePatientProfileEditorModal({
             <>
               <label className="block space-y-1">
                 <CircleProfileFieldLabel
-                  label="Primary diagnosis"
+                  label={t('admin.profile.fieldPrimaryDiagnosis')}
                   snapshot={draft}
                   discoveryKey="primary_diagnosis"
                   values={draft.clinical.primaryDiagnosis ? [draft.clinical.primaryDiagnosis] : []}
@@ -755,8 +941,9 @@ export function CirclePatientProfileEditorModal({
                 />
               </label>
               <label className="block space-y-1">
-                <span className="text-xs font-bold text-slate-500 uppercase">Date of onset</span>
+                <span className="text-xs font-bold text-slate-500 uppercase">{t('admin.profile.fieldDateOfOnset')}</span>
                 <input
+                  type="date"
                   className="w-full px-4 py-3 rounded-xl border border-slate-200"
                   value={draft.clinical.dateOfOnset}
                   onChange={(e) =>
@@ -767,21 +954,53 @@ export function CirclePatientProfileEditorModal({
                   }
                 />
               </label>
-              <label className="block space-y-1">
-                <span className="text-xs font-bold text-slate-500 uppercase">Treatment phase</span>
-                <input
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200"
-                  value={draft.clinical.treatmentPhase}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      clinical: { ...draft.clinical, treatmentPhase: e.target.value },
-                    })
-                  }
-                />
+              <label className="block space-y-2 sm:col-span-2">
+                <span className="text-xs font-bold text-slate-500 uppercase">
+                  {t('admin.profile.fieldTreatmentPhase')}
+                </span>
+                <p className="text-[11px] text-slate-500 leading-snug -mt-1">
+                  {t('admin.profile.treatmentPhaseDrivesAppHint')}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {TREATMENT_PHASE_VALUES.map((phase) => {
+                    const active = draft.clinical.treatmentPhase === phase;
+                    return (
+                      <button
+                        key={phase}
+                        type="button"
+                        onClick={() =>
+                          setDraft({
+                            ...draft,
+                            clinical: { ...draft.clinical, treatmentPhase: phase },
+                          })
+                        }
+                        className={cn(
+                          'w-full text-left px-3 py-3 rounded-2xl border transition-colors',
+                          treatmentPhaseCardClass(phase, active),
+                        )}
+                      >
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className={cn(
+                              'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                              treatmentPhaseBadgeClass(phase),
+                            )}
+                          >
+                            {treatmentPhaseLabelT(t, phase)}
+                          </span>
+                          {active ? (
+                            <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                              {t('remoteSettings.current')}
+                            </span>
+                          ) : null}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </label>
               <label className="block space-y-1">
-                <span className="text-xs font-bold text-slate-500 uppercase">Surgical history</span>
+                <span className="text-xs font-bold text-slate-500 uppercase">{t('admin.profile.fieldSurgicalHistory')}</span>
                 <textarea
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 min-h-[80px]"
                   value={draft.clinical.surgicalHistory}
@@ -794,7 +1013,7 @@ export function CirclePatientProfileEditorModal({
                 />
               </label>
               <label className="block space-y-1">
-                <span className="text-xs font-bold text-slate-500 uppercase">Comorbidities</span>
+                <span className="text-xs font-bold text-slate-500 uppercase">{t('admin.profile.fieldComorbidities')}</span>
                 <textarea
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 min-h-[80px]"
                   value={draft.clinical.comorbidities}
@@ -807,7 +1026,7 @@ export function CirclePatientProfileEditorModal({
                 />
               </label>
               <MedListEditor
-                label="Medications"
+                label={t('admin.profile.fieldMedications')}
                 items={draft.clinical.medications}
                 onChange={(medications) =>
                   setDraft({
@@ -817,7 +1036,7 @@ export function CirclePatientProfileEditorModal({
                 }
               />
               <MedListEditor
-                label="Supplements"
+                label={t('admin.profile.fieldSupplements')}
                 items={draft.clinical.supplements}
                 onChange={(supplements) =>
                   setDraft({
@@ -828,7 +1047,7 @@ export function CirclePatientProfileEditorModal({
               />
               <label className="block space-y-1">
                 <CircleProfileFieldLabel
-                  label="Allergies"
+                  label={t('admin.profile.fieldAllergies')}
                   snapshot={draft}
                   discoveryKey="allergies"
                   values={draft.clinical.allergies ? [draft.clinical.allergies] : []}
@@ -936,22 +1155,9 @@ export function CirclePatientProfileEditorModal({
           </button>
           <button
             type="button"
-            onClick={() => {
-              let draftToSave = draft;
-              if (pendingLanguage) {
-                draftToSave = {
-                  ...draft,
-                  identity: {
-                    ...draft.identity,
-                    language: identityLanguageLabel(pendingLanguage),
-                  },
-                };
-                setPendingLanguage(null);
-              }
-              onSave(draftToSave);
-            }}
+            onClick={attemptSave}
             disabled={saving}
-            className="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : null}
             {saving ? t('admin.contact.saving') : t('admin.contact.save')}
@@ -962,12 +1168,8 @@ export function CirclePatientProfileEditorModal({
       <CirclePatientLanguageConfirmModal
         open={pendingLanguage !== null}
         saving={saving}
-        patientName={
-          patientDisplayName?.trim() ||
-          `${draft.identity.firstName || ''} ${draft.identity.lastName || ''}`.trim() ||
-          'the patient'
-        }
-        languageLabel={pendingLanguage ? identityLanguageLabel(pendingLanguage) : ''}
+        patientName={patientName}
+        languageLabel={pendingLanguage ? circleUiLanguageLabel(t, pendingLanguage) : ''}
         onCancel={() => setPendingLanguage(null)}
         onConfirm={() => {
           if (!pendingLanguage || saving) return;
@@ -980,8 +1182,43 @@ export function CirclePatientProfileEditorModal({
           };
           setPendingLanguage(null);
           setDraft(next);
+          if (shouldConfirmRecoveryPhase(next)) {
+            setPendingRecoveryPhase(next.clinical.treatmentPhase.trim());
+            return;
+          }
           onSave(next);
         }}
+      />
+
+      <CirclePatientRecoveryPhaseConfirmModal
+        open={pendingRecoveryPhase !== null && !!recoveryRecommendation}
+        saving={saving}
+        patientName={patientName}
+        phaseLabel={
+          pendingRecoveryPhase ? treatmentPhaseLabelT(t, pendingRecoveryPhase) : ''
+        }
+        appModeLabel={
+          recoveryRecommendation
+            ? remoteSettingsAppModeLabel(t, recoveryRecommendation.appMode)
+            : ''
+        }
+        dashboardLabel={
+          recoveryRecommendation
+            ? recoveryRecommendation.dashboardEnabled
+              ? remoteSettingsDashboardPresetLabel(t, recoveryRecommendation.dashboardPreset)
+              : t('remoteSettings.dashboardPresets.none')
+            : ''
+        }
+        careTransitionLabel={careTransitionLabel}
+        onUpdateTablet={(startCareTransitionPack) => {
+          if (!pendingRecoveryPhase || saving) return;
+          commitSave(buildDraftToSave(), true, startCareTransitionPack);
+        }}
+        onKeepTablet={(startCareTransitionPack) => {
+          if (!pendingRecoveryPhase || saving) return;
+          commitSave(buildDraftToSave(), false, startCareTransitionPack);
+        }}
+        onCancel={() => setPendingRecoveryPhase(null)}
       />
     </div>
   );

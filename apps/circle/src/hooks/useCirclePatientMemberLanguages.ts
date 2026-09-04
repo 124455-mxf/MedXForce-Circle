@@ -3,6 +3,7 @@ import type { Firestore, QuerySnapshot } from 'firebase/firestore';
 import { collection, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import {
   listPatientManagedContacts,
+  listProvisionManagedContacts,
   normalizeInviteEmail,
   parseMemberContactProfile,
   repairInactiveAcceptedMemberDocsForUser,
@@ -15,19 +16,27 @@ export type CircleMemberLanguageMaps = {
   byEmail: Record<string, CircleUiLanguage>;
 };
 
+function isPermissionDenied(err: unknown): boolean {
+  return (err as { code?: string })?.code === 'permission-denied';
+}
+
 /** Preferred languages for each Circle member (patient contact card + member self-service overrides). */
 export function useCirclePatientMemberLanguages(
   db: Firestore,
   patientId: string | undefined,
   userId?: string,
+  options?: { pendingProvision?: boolean },
 ): CircleMemberLanguageMaps {
   const [maps, setMaps] = useState<CircleMemberLanguageMaps>({ byUid: {}, byEmail: {} });
   const [listenerKey, setListenerKey] = useState(0);
   const repairAttemptedRef = useRef(false);
+  const pendingProvision = options?.pendingProvision === true;
+  const contactsDeniedRef = useRef(false);
 
   useEffect(() => {
     repairAttemptedRef.current = false;
-  }, [patientId, userId]);
+    contactsDeniedRef.current = false;
+  }, [patientId, userId, pendingProvision]);
 
   useEffect(() => {
     if (!patientId) {
@@ -41,8 +50,11 @@ export function useCirclePatientMemberLanguages(
     let pendingMembers: QuerySnapshot | null = null;
 
     const loadContacts = async () => {
+      if (contactsDeniedRef.current) return;
       try {
-        const contacts = await listPatientManagedContacts(db, patientId);
+        const contacts = pendingProvision
+          ? await listProvisionManagedContacts(db, patientId)
+          : await listPatientManagedContacts(db, patientId);
         if (!active) return;
 
         contactsByEmail = new Map(
@@ -57,6 +69,9 @@ export function useCirclePatientMemberLanguages(
           await rebuildFromMembers(pendingMembers);
         }
       } catch (err) {
+        if (isPermissionDenied(err)) {
+          contactsDeniedRef.current = true;
+        }
         console.warn('[useCirclePatientMemberLanguages] contacts load failed', err);
       }
     };
@@ -106,8 +121,12 @@ export function useCirclePatientMemberLanguages(
 
     void loadContacts();
 
+    const membersCollection = pendingProvision
+      ? collection(db, 'patient_provisions', patientId, 'members')
+      : collection(db, 'patients', patientId, 'members');
+
     const unsub = onSnapshot(
-      collection(db, 'patients', patientId, 'members'),
+      membersCollection,
       (snap) => {
         pendingMembers = snap;
         void maybeRebuild();
@@ -119,6 +138,7 @@ export function useCirclePatientMemberLanguages(
           userId
           && code === 'permission-denied'
           && !repairAttemptedRef.current
+          && !pendingProvision
         ) {
           repairAttemptedRef.current = true;
           void (async () => {
@@ -139,7 +159,7 @@ export function useCirclePatientMemberLanguages(
       unsub();
       window.clearInterval(interval);
     };
-  }, [db, patientId, userId, listenerKey]);
+  }, [db, patientId, userId, listenerKey, pendingProvision]);
 
   return maps;
 }

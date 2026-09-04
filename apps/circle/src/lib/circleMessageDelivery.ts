@@ -11,13 +11,26 @@ export function parseMessageDeliveryPreference(
   return value === 'email' ? 'email' : DEFAULT_CIRCLE_MESSAGE_DELIVERY;
 }
 
+function memberMessagingPrefsRef(db: Firestore, patientId: string, memberUid: string) {
+  return doc(db, 'patients', patientId, 'members', memberUid, 'prefs', 'messaging');
+}
+
+function memberRootRef(db: Firestore, patientId: string, memberUid: string) {
+  return doc(db, 'patients', patientId, 'members', memberUid);
+}
+
 export async function loadMemberMessageDeliveryPreference(
   db: Firestore,
   patientId: string,
   memberUid: string,
 ): Promise<CircleMessageDeliveryPreference> {
-  const snap = await getDoc(doc(db, 'patients', patientId, 'members', memberUid));
-  return parseMessageDeliveryPreference(snap.data()?.messageDelivery);
+  const prefsSnap = await getDoc(memberMessagingPrefsRef(db, patientId, memberUid));
+  if (prefsSnap.exists()) {
+    return parseMessageDeliveryPreference(prefsSnap.data()?.messageDelivery);
+  }
+  // Legacy: preference lived on the member root doc.
+  const rootSnap = await getDoc(memberRootRef(db, patientId, memberUid));
+  return parseMessageDeliveryPreference(rootSnap.data()?.messageDelivery);
 }
 
 export async function saveMemberMessageDeliveryPreference(
@@ -27,7 +40,7 @@ export async function saveMemberMessageDeliveryPreference(
   preference: CircleMessageDeliveryPreference,
 ): Promise<void> {
   await setDoc(
-    doc(db, 'patients', patientId, 'members', memberUid),
+    memberMessagingPrefsRef(db, patientId, memberUid),
     { messageDelivery: preference, updatedAt: Date.now() },
     { merge: true },
   );

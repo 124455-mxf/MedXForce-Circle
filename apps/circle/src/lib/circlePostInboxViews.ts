@@ -2,8 +2,10 @@ import {
   isAnnouncementThreadPost,
   isAppointmentInviteThreadPost,
   isAppointmentInviteVisibleToMember,
+  isCirclePollClosed,
   isCircleThreadPostHiddenForUser,
   isDropInThreadPost,
+  isPollThreadPost,
   isVisitCaptureThreadPost,
   canParticipateInCircleOpenThread,
   canViewCircleAppointmentInvites,
@@ -16,6 +18,7 @@ import {
 export type CirclePostInboxView =
   | 'discussion'
   | 'announcements'
+  | 'care_transition'
   | 'appointments'
   | 'drop_ins'
   | 'visit_captures'
@@ -26,6 +29,7 @@ export type CirclePostCategory = Exclude<CirclePostInboxView, 'hidden'>;
 /** Folders shown as icon-only tabs at the start of the Circle inbox strip. */
 export const CIRCLE_POST_INBOX_ICON_VIEWS: readonly CirclePostInboxView[] = [
   'announcements',
+  'care_transition',
   'visit_captures',
   'appointments',
   'drop_ins',
@@ -61,17 +65,18 @@ export function circlePostInboxViewsForThread(
   memberRole: string,
 ): CirclePostInboxView[] {
   if (threadKind === 'open') {
-    const views: CirclePostInboxView[] = ['discussion', 'announcements'];
+    const views: CirclePostInboxView[] = ['discussion', 'announcements', 'care_transition'];
     if (canViewCircleAppointmentInvites(memberRole)) {
       views.push('appointments');
     }
     if (canParticipateInCircleOpenThread(memberRole)) {
       views.push('visit_captures');
     }
+    views.push('drop_ins');
     views.push('hidden');
     return views;
   }
-  return ['discussion', 'announcements', 'drop_ins', 'visit_captures', 'hidden'];
+  return ['discussion', 'announcements', 'care_transition', 'drop_ins', 'visit_captures', 'hidden'];
 }
 
 export function postMatchesInboxView(
@@ -86,6 +91,8 @@ export function postMatchesInboxView(
   >,
   memberRole?: string,
 ): boolean {
+  // Care transition readiness is checklist-driven, not a post category.
+  if (view === 'care_transition') return false;
   if (!isAppointmentInviteVisibleToMember(post, viewerUid, inviteContext, memberRole)) return false;
   const isHidden = isCircleThreadPostHiddenForUser(hiddenByPostId, post.id, threadKind);
   if (view === 'hidden') return isHidden;
@@ -152,7 +159,9 @@ export function isCirclePostUnread(
   options?: { suppressUnread?: boolean },
 ): boolean {
   if (options?.suppressUnread) return false;
-  if (post.authorUid !== userUid && post.createdAt > lastReadAt) return true;
+  const closedPoll = isPollThreadPost(post) && isCirclePollClosed(post);
+  // Closed polls stay out of unread unless someone else replied (results notice).
+  if (!closedPoll && post.authorUid !== userUid && post.createdAt > lastReadAt) return true;
   if (
     post.lastReplyAt &&
     post.lastReplyAt > lastReadAt &&
@@ -234,6 +243,7 @@ export function summarizeUnreadInboxFolders(
   const views: CirclePostCategory[] = [
     'discussion',
     'announcements',
+    'care_transition',
     'appointments',
     'visit_captures',
     'drop_ins',

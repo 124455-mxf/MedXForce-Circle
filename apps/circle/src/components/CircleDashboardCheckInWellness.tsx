@@ -66,7 +66,7 @@ export function CircleDashboardCheckInWellnessModal({
                   {t('dashboard.checkInWellnessRing.subtitle', { days: averages.windowDays })}
                 </p>
                 <p className="text-xs text-emerald-700/90 font-medium max-w-md">
-                  {t('dashboard.checkInWellnessRing.replayHint', { days: averages.windowDays })}
+                  {t('dashboard.checkInWellnessRing.selectWeekHint')}
                 </p>
               </div>
               <button

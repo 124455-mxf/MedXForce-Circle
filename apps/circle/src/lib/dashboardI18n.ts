@@ -10,15 +10,12 @@ import {
 } from '@medxforce/shared';
 import { formatPatientOnlineDurationMinutes } from '../hooks/usePatientOnlinePresence';
 import type { CircleTranslator } from './circleI18nContext';
-import type { CircleUiLanguage } from './circleLanguages';
-import { identityLanguageLabel, resolveIdentityPrimaryLanguage } from './circleLanguages';
-
-const LOCALE_BY_LANGUAGE: Record<CircleUiLanguage, string> = {
-  English: 'en',
-  German: 'de',
-  Spanish: 'es',
-  Polish: 'pl',
-};
+import {
+  circleUiLanguageToLocale,
+  circleUiLanguageLabel,
+  resolveIdentityPrimaryLanguage,
+  type CircleUiLanguage,
+} from './circleLanguages';
 
 export function dashboardPlural(
   t: CircleTranslator,
@@ -46,7 +43,7 @@ export function formatDashboardTimestamp(
   if (!ts) return t('dashboard.notRecordedYet');
 
   const d = new Date(ts);
-  const locale = LOCALE_BY_LANGUAGE[language];
+  const locale = circleUiLanguageToLocale(language);
   const time = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
   const today = new Date();
 
@@ -137,13 +134,35 @@ export function profileCompletenessLabelT(
   return isComplete ? t('dashboard.dataComplete') : t('dashboard.dataIncomplete');
 }
 
+export function coreProfileFieldLabelT(
+  t: CircleTranslator,
+  field: 'firstName' | 'lastName' | 'dob' | 'language' | 'sex',
+): string {
+  return t(`dashboard.coreProfileFields.${field}`);
+}
+
+export function formatMissingCoreProfileFieldsT(
+  t: CircleTranslator,
+  fields: Array<'firstName' | 'lastName' | 'dob' | 'language' | 'sex'>,
+): string {
+  if (!fields.length) return '';
+  return fields.map((field) => coreProfileFieldLabelT(t, field)).join(', ');
+}
+
+export function profileGapSectionLabelT(
+  t: CircleTranslator,
+  section: 'diagnosis' | 'dailyAbilities' | 'homeLife' | 'interests',
+): string {
+  return t(`dashboard.profileGap.${section}`);
+}
+
 export function treatmentPhaseLabelT(t: CircleTranslator, phase: string | undefined | null): string {
   const raw = phase?.trim() ?? '';
   if (!raw) return t('dashboard.notSet');
-  const key = raw.toLowerCase().replace(/\s+/g, '-');
-  const path = `dashboard.treatmentPhase.${key}`;
+  const path = `dashboard.treatmentPhase.${raw}`;
   const translated = t(path);
-  return translated === path ? raw : translated;
+  if (translated !== path) return translated;
+  return raw;
 }
 
 export function assistiveDevicesLabelT(
@@ -197,7 +216,7 @@ export function formatLiveTileLanguageLineT(
     remoteSettings?.primaryLanguage ??
     resolveIdentityPrimaryLanguage(profileLanguage);
   return t('dashboard.liveLanguage', {
-    label: identityLanguageLabel(primary),
+    label: circleUiLanguageLabel(t, primary),
   });
 }
 
@@ -234,6 +253,10 @@ export function formatDashboardPatientDashboardViewLineT(
   if (loading) return t('dashboard.dashboardViewLoading');
   if (!doc) return t('dashboard.dashboardViewUnknown');
 
+  if (doc.featuresVisibility?.dashboard !== true) {
+    return t('dashboard.dashboardViewNone');
+  }
+
   const preset = resolveEffectiveRemoteDashboardPreset(doc);
   if (preset === 'custom') {
     return t('dashboard.dashboardViewCustom');
@@ -269,7 +292,7 @@ function daysBetween(from: Date, to: Date): number {
 }
 
 function formatMonthDay(language: CircleUiLanguage, date: Date): string {
-  return date.toLocaleDateString(LOCALE_BY_LANGUAGE[language], {
+  return date.toLocaleDateString(circleUiLanguageToLocale(language), {
     month: 'long',
     day: 'numeric',
   });
@@ -336,46 +359,49 @@ export function localizeBirthdayReminder(
 
   const todayStart = startOfDay(today);
   const thisYearBirthday = new Date(today.getFullYear(), dob.getMonth(), dob.getDate());
-  const delta = daysBetween(thisYearBirthday, todayStart);
+  // daysFromBirthday: negative = upcoming, 0 = today, positive = already passed
+  const daysFromBirthday = daysBetween(thisYearBirthday, todayStart);
 
-  if (delta < -3 || delta > 7) return null;
+  // Match patient dashboard window: up to 7 days before, 2 days after.
+  if (daysFromBirthday < -7 || daysFromBirthday > 2) return null;
 
   const name = patientFriendlyDisplayName(snapshot, patientDisplayName);
   const ageOnBirthday = thisYearBirthday.getFullYear() - dob.getFullYear();
   const birthdayLabel = formatMonthDay(language, thisYearBirthday);
+  const daysUntil = daysFromBirthday < 0 ? -daysFromBirthday : 0;
 
   let headline = '';
   let body = '';
-  if (delta > 1) {
-    headline = t('dashboard.reminders.birthdayInDays', { name, count: delta });
+  if (daysFromBirthday < -1) {
+    headline = t('dashboard.reminders.birthdayInDays', { name, count: daysUntil });
     body =
       ageOnBirthday > 0
         ? t('dashboard.reminders.turningOnDate', { age: ageOnBirthday, date: birthdayLabel })
         : t('dashboard.reminders.birthdayOnDate', { date: birthdayLabel });
-  } else if (delta === 1) {
+  } else if (daysFromBirthday === -1) {
     headline = t('dashboard.reminders.birthdayTomorrow', { name });
     body =
       ageOnBirthday > 0
         ? t('dashboard.reminders.turningAge', { age: ageOnBirthday })
         : t('dashboard.reminders.goodMomentReachOut');
-  } else if (delta === 0) {
+  } else if (daysFromBirthday === 0) {
     headline = t('dashboard.reminders.birthdayToday', { name });
     body =
       ageOnBirthday > 0
         ? t('dashboard.reminders.celebratingToday', { age: ageOnBirthday })
         : t('dashboard.reminders.goodMomentReachOut');
-  } else if (delta === -1) {
+  } else if (daysFromBirthday === 1) {
     headline = t('dashboard.reminders.birthdayYesterday', { name });
     body = t('dashboard.reminders.belatedNote');
   } else {
     headline = t('dashboard.reminders.birthdayDaysAgo', {
       name,
-      count: Math.abs(delta),
+      count: daysFromBirthday,
     });
     body = t('dashboard.reminders.belatedNote');
   }
 
-  return { headline, body, daysUntil: delta };
+  return { headline, body, daysUntil };
 }
 
 export function localizeOnsetMilestone(
@@ -400,15 +426,15 @@ export function localizeOnsetMilestone(
           ? t('dashboard.reminders.oneYearSinceOnset')
           : t('dashboard.reminders.yearsUpAndRunning', { years });
       const body =
-        delta > 1
-          ? t('dashboard.reminders.yearMarkInDays', { years, days: delta })
-          : delta === 1
+        delta < -1
+          ? t('dashboard.reminders.yearMarkInDays', { years, days: -delta })
+          : delta === -1
             ? t('dashboard.reminders.yearMarkTomorrow', { years })
             : delta === 0
               ? t('dashboard.reminders.todayMarksYearsSinceOnset', { years })
               : t('dashboard.reminders.yearMarkDaysAgo', {
                   years,
-                  days: Math.abs(delta),
+                  days: delta,
                 });
       return { headline, body };
     }
@@ -502,6 +528,126 @@ export function localizeCareAssessmentReminder(t: CircleTranslator): LocalizedRe
   };
 }
 
+export function localizeScheduledAssessmentMissedReminder(
+  t: CircleTranslator,
+  name: string,
+): LocalizedReminderCopy {
+  return {
+    headline: t('dashboard.reminders.scheduledAssessmentMissedHeadline'),
+    body: t('dashboard.reminders.scheduledAssessmentMissedBody', { name }),
+  };
+}
+
+export function localizePreviewScheduledAssessmentMissedReminder(
+  t: CircleTranslator,
+  name: string,
+): LocalizedReminderCopy {
+  return {
+    headline: t('dashboard.reminders.previewScheduledAssessmentMissedHeadline'),
+    body: t('dashboard.reminders.previewScheduledAssessmentMissedBody', { name }),
+  };
+}
+
+export function localizeHospitalFeatureReminder(
+  t: CircleTranslator,
+  kind:
+    | 'hospitalFeatureMessaging'
+    | 'hospitalFeatureDashboard'
+    | 'hospitalFeatureVitality'
+    | 'hospitalFeatureAssessments',
+): LocalizedReminderCopy {
+  const key =
+    kind === 'hospitalFeatureMessaging'
+      ? 'Messaging'
+      : kind === 'hospitalFeatureDashboard'
+        ? 'Dashboard'
+        : kind === 'hospitalFeatureVitality'
+          ? 'Vitality'
+          : 'Assessments';
+  return {
+    headline: t(`dashboard.reminders.hospitalFeature${key}Headline`),
+    body: t(`dashboard.reminders.hospitalFeature${key}Body`),
+  };
+}
+
+export function localizePreviewHospitalFeatureReminder(
+  t: CircleTranslator,
+  kind:
+    | 'hospitalFeatureMessaging'
+    | 'hospitalFeatureDashboard'
+    | 'hospitalFeatureVitality'
+    | 'hospitalFeatureAssessments',
+): LocalizedReminderCopy {
+  const key =
+    kind === 'hospitalFeatureMessaging'
+      ? 'Messaging'
+      : kind === 'hospitalFeatureDashboard'
+        ? 'Dashboard'
+        : kind === 'hospitalFeatureVitality'
+          ? 'Vitality'
+          : 'Assessments';
+  return {
+    headline: t(`dashboard.reminders.previewHospitalFeature${key}Headline`),
+    body: t(`dashboard.reminders.previewHospitalFeature${key}Body`),
+  };
+}
+
+export function localizeIcuProgressionReminder(
+  t: CircleTranslator,
+  kind: 'modeStepUpStandard' | 'modeStepUpHospital' | 'icuSoulMusic' | 'icuSoulMediaLibrary',
+): LocalizedReminderCopy {
+  if (kind === 'modeStepUpStandard') {
+    return {
+      headline: t('dashboard.reminders.modeStepUpStandardHeadline'),
+      body: t('dashboard.reminders.modeStepUpStandardBody'),
+    };
+  }
+  if (kind === 'modeStepUpHospital') {
+    return {
+      headline: t('dashboard.reminders.modeStepUpHospitalHeadline'),
+      body: t('dashboard.reminders.modeStepUpHospitalBody'),
+    };
+  }
+  if (kind === 'icuSoulMusic') {
+    return {
+      headline: t('dashboard.reminders.icuSoulMusicHeadline'),
+      body: t('dashboard.reminders.icuSoulMusicBody'),
+    };
+  }
+  return {
+    headline: t('dashboard.reminders.icuSoulMediaLibraryHeadline'),
+    body: t('dashboard.reminders.icuSoulMediaLibraryBody'),
+  };
+}
+
+export function localizePreviewIcuProgressionReminder(
+  t: CircleTranslator,
+  kind: 'modeStepUpStandard' | 'modeStepUpHospital' | 'icuSoulMusic' | 'icuSoulMediaLibrary',
+): LocalizedReminderCopy {
+  if (kind === 'modeStepUpStandard') {
+    return {
+      headline: t('dashboard.reminders.previewModeStepUpStandardHeadline'),
+      body: t('dashboard.reminders.previewModeStepUpStandardBody'),
+    };
+  }
+  if (kind === 'modeStepUpHospital') {
+    return {
+      headline: t('dashboard.reminders.previewModeStepUpHospitalHeadline'),
+      body: t('dashboard.reminders.previewModeStepUpHospitalBody'),
+    };
+  }
+  if (kind === 'icuSoulMusic') {
+    return {
+      headline: t('dashboard.reminders.previewIcuSoulMusicHeadline'),
+      body: t('dashboard.reminders.previewIcuSoulMusicBody'),
+    };
+  }
+  return {
+    headline: t('dashboard.reminders.previewIcuSoulMediaLibraryHeadline'),
+    body: t('dashboard.reminders.previewIcuSoulMediaLibraryBody'),
+  };
+}
+
 export function localizePreviewCareAssessmentReminder(t: CircleTranslator): LocalizedReminderCopy {
   return {
     headline: t('dashboard.reminders.previewCareAssessmentHeadline'),
@@ -513,14 +659,20 @@ export function localizeCareProfileReminder(
   t: CircleTranslator,
   patientName: string,
   canOpenPatientProfile: boolean,
+  missingFieldsLabel = '',
 ): LocalizedReminderCopy {
+  const bodyKey = canOpenPatientProfile
+    ? missingFieldsLabel
+      ? 'dashboard.reminders.careProfileBodyWithFields'
+      : 'dashboard.reminders.careProfileBody'
+    : missingFieldsLabel
+      ? 'dashboard.reminders.careProfileBodyCaregiverWithFields'
+      : 'dashboard.reminders.careProfileBodyCaregiver';
   return {
     headline: t('dashboard.reminders.careProfileHeadline', { name: patientName }),
-    body: t(
-      canOpenPatientProfile
-        ? 'dashboard.reminders.careProfileBody'
-        : 'dashboard.reminders.careProfileBodyCaregiver',
-    ),
+    body: missingFieldsLabel
+      ? t(bodyKey, { fields: missingFieldsLabel })
+      : t(bodyKey),
   };
 }
 
@@ -528,9 +680,15 @@ export function localizePreviewCareProfileReminder(
   t: CircleTranslator,
   patientName: string,
 ): LocalizedReminderCopy {
+  const sampleFields = formatMissingCoreProfileFieldsT(t, [
+    'firstName',
+    'dob',
+    'language',
+    'sex',
+  ]);
   return {
     headline: t('dashboard.reminders.previewCareProfileHeadline', { name: patientName }),
-    body: t('dashboard.reminders.previewCareProfileBody'),
+    body: t('dashboard.reminders.previewCareProfileBodyWithFields', { fields: sampleFields }),
   };
 }
 
@@ -563,6 +721,29 @@ export function localizePreviewTeamCoverageReminder(t: CircleTranslator): Locali
   return {
     headline: t('dashboard.reminders.previewCareTeamCoverageHeadline'),
     body: t('dashboard.reminders.previewCareTeamCoverageBody'),
+  };
+}
+
+export function localizePendingInviteReminder(
+  t: CircleTranslator,
+  count: number,
+  names: string,
+): LocalizedReminderCopy {
+  return {
+    headline: t(
+      count === 1
+        ? 'dashboard.reminders.pendingInvitesHeadline_one'
+        : 'dashboard.reminders.pendingInvitesHeadline_other',
+      { count },
+    ),
+    body: t('dashboard.reminders.pendingInvitesBody', { names }),
+  };
+}
+
+export function localizePreviewPendingInviteReminder(t: CircleTranslator): LocalizedReminderCopy {
+  return {
+    headline: t('dashboard.reminders.previewPendingInvitesHeadline'),
+    body: t('dashboard.reminders.previewPendingInvitesBody'),
   };
 }
 

@@ -7,6 +7,8 @@ import {
 } from 'firebase/firestore';
 import {
   sanitizeRemoteAssessmentSchedule,
+  assessmentScheduleLooksFullyDisabled,
+  assessmentScheduleForRecoveryStage,
   type RemoteAssessmentSchedule,
 } from './assessmentSchedule';
 import {
@@ -15,6 +17,15 @@ import {
   type DailyCheckInQuestion,
 } from './dailyCheckIn';
 import { stripUndefinedDeep } from './firestoreSanitize';
+import {
+  extractCircleInitiateMessagesForRemote,
+  parseCircleInitiateMessagesConfig,
+  type CircleInitiateMessageGroup,
+} from './circleInitiateMessages';
+import {
+  circleDropInAccessFieldsFromData,
+  extractCircleDropInAccessForRemote,
+} from './circleDropInAccess';
 
 /** Single live doc: patients/{patientId}/remote_settings/live */
 export const REMOTE_SETTINGS_DOC_ID = 'live';
@@ -43,16 +54,83 @@ export type RemoteDailyCheckInSettings = {
   questions?: DailyCheckInQuestion[];
 };
 
+/** Quiet hours on by default (10 PM–6 AM). Keep in sync with patient app DEFAULT_DAILY_CHECKIN_QUIET_HOURS. */
+export const REMOTE_DAILY_CHECKIN_QUIET_HOURS = {
+  enabled: true,
+  start: '22:00',
+  end: '06:00',
+} as const;
+
+export type RemoteActivityVisibility = {
+  enabled?: boolean;
+  mind?: boolean;
+  soul?: boolean;
+  body?: {
+    enabled?: boolean;
+    motion?: boolean;
+    verbal?: boolean;
+  };
+};
+
+/** Per-assessment visibility flags (Settings → Features → Health Assessments). */
+export const REMOTE_ASSESSMENT_VISIBILITY_KEYS = [
+  'impactAssessment',
+  'painAssessment',
+  'strengthReflexAssessment',
+  'mobilityAssessment',
+  'numbnessAssessment',
+  'temperatureAssessment',
+  'balanceAssessment',
+  'visionAssessment',
+  'speechAssessment',
+  'neurologicalAssessment',
+  'physiologicalAssessment',
+  'psychologicalAssessment',
+  'strokeSelfAssessment',
+  'diaryAssessment',
+] as const;
+
+export type RemoteAssessmentVisibilityKey = (typeof REMOTE_ASSESSMENT_VISIBILITY_KEYS)[number];
+
+export const REMOTE_ASSESSMENT_VISIBILITY_DEFAULTS: Record<RemoteAssessmentVisibilityKey, boolean> = {
+  impactAssessment: true,
+  painAssessment: true,
+  strengthReflexAssessment: true,
+  mobilityAssessment: true,
+  numbnessAssessment: true,
+  temperatureAssessment: true,
+  balanceAssessment: false,
+  visionAssessment: true,
+  speechAssessment: true,
+  neurologicalAssessment: true,
+  physiologicalAssessment: false,
+  psychologicalAssessment: true,
+  strokeSelfAssessment: false,
+  diaryAssessment: false,
+};
+
 export type RemoteFeaturesVisibility = {
   dashboard?: boolean;
+  dropIn?: boolean;
   communication?: boolean;
   messaging?: boolean;
   aiCompanion?: boolean;
   healthAssessments?: boolean;
+  schedule?: boolean;
   analytics?: boolean;
   journeyDiary?: boolean;
-  activity?: { enabled?: boolean };
-};
+  activity?: RemoteActivityVisibility;
+  /** ICU optional: Pain Assessment shortcut. */
+  intensiveCarePainAssessment?: boolean;
+  /** ICU optional: Quick Answers shortcut. */
+  intensiveCareDoctorQuickAnswers?: boolean;
+  /** ICU optional: Soul Music (Apple Music). */
+  intensiveCareSoulMusic?: boolean;
+  /** ICU optional: Soul Media Library. */
+  intensiveCareSoulMediaLibrary?: boolean;
+} & Partial<Record<RemoteAssessmentVisibilityKey, boolean>>;
+
+export type RemoteIntensiveCareExperience = 'standard' | 'minimal_focus';
 
 export type RemoteVisibleAreas = {
   phrases?: boolean;
@@ -117,14 +195,28 @@ export function sanitizeRemoteDashboardPreset(
 /** Whitelisted keys Circle may read/write in Phase 1. */
 export type RemoteSettingsPayload = {
   appMode?: RemoteAppMode;
+  /** ICU layout variant (Standard vs Minimal distraction). */
+  intensiveCareExperience?: RemoteIntensiveCareExperience;
   primaryLanguage?: RemotePrimaryLanguage;
   showAlertButton?: boolean;
   showAttentionButton?: boolean;
   detectEngagementNeed?: boolean;
   showSaveButton?: boolean;
+  enableAudioInput?: boolean;
+  showTranslateButton?: boolean;
+  minimizeTextWindowHeight?: boolean;
   useAiAssistant?: boolean;
   aiConversation?: boolean;
   allowSendMessages?: boolean;
+  autoSendMessage?: boolean;
+  /** Circle members may start a new message to the patient (off in ICU). */
+  allowCircleInitiateMessages?: boolean;
+  circleInitiateMessageGroups?: CircleInitiateMessageGroup[];
+  circleInitiateMessageMemberUids?: string[];
+  circleInitiateMessagesEnabledAt?: number;
+  /** Who may use live drop-in. Proxy and caregivers stay on whenever drop-in is enabled. */
+  circleDropInGroups?: CircleInitiateMessageGroup[];
+  circleDropInMemberUids?: string[];
   showUserInSidebar?: boolean;
   showQuickSettings?: boolean;
   showSettingsInSidebar?: boolean;
@@ -142,6 +234,12 @@ export type RemoteSettingsPayload = {
   shareLocationWithCircle?: boolean;
   dashboardLayout?: RemoteDashboardLayout;
   assessmentSchedule?: RemoteAssessmentSchedule;
+  /** One-time: Daily check-in on for Daily life / Hospital; ICU stays off. */
+  dailyCheckInDefaultOnAllStagesV1?: boolean;
+  /** One-time: ICU check-in off if an earlier default had turned it on. */
+  dailyCheckInIcuDefaultOffV1?: boolean;
+  /** One-time: Daily Life restores stage assessment cadences after ICU/Hospital all-off. */
+  assessmentScheduleDailyLifeRestoredV1?: boolean;
 };
 
 export type RemoteSettingsSource = 'patient' | 'circle';
@@ -160,46 +258,192 @@ export type RemoteFeatureToggleDef = {
   label: string;
   description?: string;
   nested?: 'activity.enabled' | 'journeyDiary.allowViewSharedEntries';
+  /** Parent toggle must be on before this toggle is editable. */
+  requiresEnabledPath?: string;
+  /**
+   * When false, the tablet shows “To Be Released” and the proxy cannot turn this on.
+   * Keep in sync with Patient `SETTINGS_ASSESSMENT_SECTIONS.released`.
+   */
+  released?: boolean;
 };
 
 export const REMOTE_APP_MODES: { key: RemoteAppMode; label: string; description: string }[] = [
   {
     key: 'intensive_care',
-    label: 'Intensive Care',
-    description: 'Critical care layout with specialized monitoring and alerts.',
+    label: 'ICU',
+    description: 'Intensive Care / Critical care — communication-first, minimal distractions, caregiver-controlled.',
   },
   {
     key: 'hospital',
     label: 'Hospital',
-    description: 'Acute care and assisted living environments.',
+    description: 'Acute care and active recovery — structured support in hospital or rehab.',
   },
   {
     key: 'user',
-    label: 'Individual',
-    description: 'Home use and independent living.',
+    label: 'Daily Life',
+    description: 'Home and everyday life — full features with sensible safety defaults.',
   },
 ];
 
 export const REMOTE_FEATURE_TOGGLES: RemoteFeatureToggleDef[] = [
   { path: 'showUserInSidebar', label: 'Show user', description: 'User profile in the left sidebar.' },
   { path: 'featuresVisibility.dashboard', label: 'Dashboard', description: 'Dashboard tab in the sidebar.' },
+  {
+    path: 'featuresVisibility.dropIn',
+    label: 'Drop-in',
+    description:
+      'Allow a live drop-in with the patient. Proxy and caregivers can always use it when this is on; family and friends are optional below.',
+  },
   { path: 'featuresVisibility.communication', label: 'Communication', description: 'Primary communication interface.' },
   { path: 'featuresVisibility.messaging', label: 'Messaging', description: 'Caregiver messaging features.' },
   { path: 'featuresVisibility.aiCompanion', label: 'MedIsOn Companion', description: 'Companion conversational interface.' },
-  { path: 'featuresVisibility.activity.enabled', label: 'Vitality', description: 'Vitality tab in the sidebar.', nested: 'activity.enabled' },
+  {
+    path: 'featuresVisibility.activity.enabled',
+    label: 'Vitality',
+    description: 'Vitality tab in the sidebar.',
+    nested: 'activity.enabled',
+  },
+  {
+    path: 'featuresVisibility.activity.mind',
+    label: 'Mind',
+    description: 'Mind games and cognitive activities inside Vitality.',
+    requiresEnabledPath: 'featuresVisibility.activity.enabled',
+  },
+  {
+    path: 'featuresVisibility.activity.body.enabled',
+    label: 'Body',
+    description: 'Physical exercises and movement inside Vitality.',
+    requiresEnabledPath: 'featuresVisibility.activity.enabled',
+  },
+  {
+    path: 'featuresVisibility.activity.soul',
+    label: 'Soul',
+    description: 'Gallery, music, and uplifting content inside Vitality.',
+    requiresEnabledPath: 'featuresVisibility.activity.enabled',
+  },
   { path: 'featuresVisibility.journeyDiary', label: 'Journal', description: 'Journal tab on the dashboard.' },
-  { path: 'journeyDiary.allowViewSharedEntries', label: 'View shared journal entries', description: 'Include entries shared by the circle.', nested: 'journeyDiary.allowViewSharedEntries' },
+  {
+    path: 'journeyDiary.allowViewSharedEntries',
+    label: 'View shared journal entries',
+    description: 'Include entries shared by the circle.',
+    nested: 'journeyDiary.allowViewSharedEntries',
+  },
   { path: 'featuresVisibility.healthAssessments', label: 'Assessments', description: 'Assessments tab in the sidebar.' },
+  {
+    path: 'featuresVisibility.schedule',
+    label: 'Schedule',
+    description: 'Care calendar tab for appointments and scheduled assessments.',
+  },
   { path: 'featuresVisibility.analytics', label: 'Analytics', description: 'Statistics and analytics tab.' },
   { path: 'showQuickSettings', label: 'Quick Settings', description: 'Quick Settings gear in the sidebar.' },
   { path: 'showSettingsInSidebar', label: 'Settings', description: 'Settings tab in the sidebar.' },
 ];
 
+export const REMOTE_ASSESSMENT_VISIBILITY_TOGGLES: RemoteFeatureToggleDef[] = [
+  {
+    path: 'featuresVisibility.impactAssessment',
+    label: 'Impact',
+    description: 'Show the impact assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.schedule',
+  },
+  {
+    path: 'featuresVisibility.painAssessment',
+    label: 'Pain',
+    description: 'Show the pain assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.schedule',
+  },
+  {
+    path: 'featuresVisibility.strengthReflexAssessment',
+    label: 'Strength & reflex',
+    description: 'Show the strength and reflex assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.schedule',
+  },
+  {
+    path: 'featuresVisibility.mobilityAssessment',
+    label: 'Mobility',
+    description: 'Show the mobility assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.schedule',
+  },
+  {
+    path: 'featuresVisibility.numbnessAssessment',
+    label: 'Numbness',
+    description: 'Show the numbness assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.schedule',
+  },
+  {
+    path: 'featuresVisibility.temperatureAssessment',
+    label: 'Temperature',
+    description: 'Show the temperature assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.schedule',
+  },
+  {
+    path: 'featuresVisibility.balanceAssessment',
+    label: 'Balance',
+    description: 'Show the balance assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.schedule',
+    released: false,
+  },
+  {
+    path: 'featuresVisibility.visionAssessment',
+    label: 'Vision',
+    description: 'Show the vision assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.schedule',
+  },
+  {
+    path: 'featuresVisibility.speechAssessment',
+    label: 'Speech & Language',
+    description: 'Show the speech and language assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.schedule',
+  },
+  {
+    path: 'featuresVisibility.neurologicalAssessment',
+    label: 'Neurological',
+    description: 'Show the neurological assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.schedule',
+  },
+  {
+    path: 'featuresVisibility.physiologicalAssessment',
+    label: 'Physiological',
+    description: 'Show the physiological assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.schedule',
+    released: false,
+  },
+  {
+    path: 'featuresVisibility.psychologicalAssessment',
+    label: 'Psychological',
+    description: 'Show the psychological assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.schedule',
+  },
+  {
+    path: 'featuresVisibility.strokeSelfAssessment',
+    label: 'Stroke self-assessment',
+    description: 'Show the stroke self-assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.schedule',
+    released: false,
+  },
+  {
+    path: 'featuresVisibility.diaryAssessment',
+    label: 'Diary assessment',
+    description: 'Show the diary-linked assessment on the tablet.',
+    requiresEnabledPath: 'featuresVisibility.schedule',
+    released: false,
+  },
+];
+
+const UNRELEASED_ASSESSMENT_VISIBILITY_KEYS = new Set(
+  REMOTE_ASSESSMENT_VISIBILITY_TOGGLES.filter((item) => item.released === false).map((item) =>
+    item.path.replace('featuresVisibility.', ''),
+  ),
+);
+
+export function isUnreleasedAssessmentVisibilityKey(key: string): boolean {
+  return UNRELEASED_ASSESSMENT_VISIBILITY_KEYS.has(key);
+}
+
 export const REMOTE_QUICK_SETTING_TOGGLES: { path: string; label: string; description?: string }[] = [
   { path: 'betterVisibleCursor', label: 'High visibility cursor', description: 'Easier-to-see pointer on the tablet.' },
   { path: 'showAiSuggestions', label: 'AI suggestions', description: 'Suggested phrases while composing.' },
   { path: 'speakOnSelection', label: 'Speak on selection', description: 'Read aloud when an item is chosen.' },
-  { path: 'showFrequentlyUsed', label: 'Frequently used', description: 'Show frequently used communication items.' },
   { path: 'hideRightSidebar', label: 'Show right sidebar', description: 'Toggle the right-hand panel (inverted: hideRightSidebar).' },
 ];
 
@@ -252,6 +496,27 @@ export const REMOTE_PROXY_SECTIONS: {
         path: 'detectEngagementNeed',
         label: 'Detect engagement need',
         description: 'Automatically detect when the patient may need engagement support.',
+      },
+      {
+        path: 'minimizeTextWindowHeight',
+        label: 'Minimize Text Window Height',
+        description:
+          'Shorten the text box and the Speak Out Loud / Smart Translate row so more board content fits below',
+      },
+      {
+        path: 'enableAudioInput',
+        label: 'Use Audio Input',
+        description: 'Enable microphone input for composing messages.',
+      },
+      {
+        path: 'showFrequentlyUsed',
+        label: 'Frequently Used items',
+        description: 'Show a list of frequently used items based on your history',
+      },
+      {
+        path: 'showTranslateButton',
+        label: 'Show Smart Translate',
+        description: 'Display the button to translate text',
       },
       {
         path: 'showSaveButton',
@@ -341,19 +606,217 @@ function parseDailyCheckIn(raw: unknown): RemoteDailyCheckInSettings | undefined
   const quietHours =
     qhRaw && typeof qhRaw === 'object'
       ? {
-          enabled: asBool((qhRaw as Record<string, unknown>).enabled) ?? false,
-          start: asString((qhRaw as Record<string, unknown>).start) ?? '22:00',
-          end: asString((qhRaw as Record<string, unknown>).end) ?? '06:00',
+          enabled:
+            asBool((qhRaw as Record<string, unknown>).enabled) ??
+            REMOTE_DAILY_CHECKIN_QUIET_HOURS.enabled,
+          start:
+            asString((qhRaw as Record<string, unknown>).start) ??
+            REMOTE_DAILY_CHECKIN_QUIET_HOURS.start,
+          end:
+            asString((qhRaw as Record<string, unknown>).end) ??
+            REMOTE_DAILY_CHECKIN_QUIET_HOURS.end,
         }
-      : { enabled: false, start: '22:00', end: '06:00' };
+      : { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS };
   const questions = Array.isArray(d.questions)
     ? sanitizeDailyCheckInQuestions(d.questions)
     : undefined;
   return {
-    enabled: asBool(d.enabled) ?? false,
+    enabled: asBool(d.enabled) ?? true,
     quietHours,
     ...(questions ? { questions } : {}),
   };
+}
+
+function parseRemoteActivityBody(raw: unknown): RemoteActivityVisibility['body'] | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const d = raw as Record<string, unknown>;
+  const enabled = asBool(d.enabled);
+  const motion = asBool(d.motion);
+  const verbal = asBool(d.verbal);
+  if (enabled === undefined && motion === undefined && verbal === undefined) return undefined;
+  return stripUndefinedDeep({ enabled, motion, verbal });
+}
+
+function parseRemoteActivity(raw: unknown): RemoteActivityVisibility | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const d = raw as Record<string, unknown>;
+  const enabled = asBool(d.enabled);
+  const mind = asBool(d.mind);
+  const soul = asBool(d.soul);
+  const body = parseRemoteActivityBody(d.body);
+  if (enabled === undefined && mind === undefined && soul === undefined && !body) return undefined;
+  return stripUndefinedDeep({ enabled, mind, soul, body });
+}
+
+function parseRemoteAssessmentVisibility(
+  fv: Record<string, unknown>,
+): Partial<Record<RemoteAssessmentVisibilityKey, boolean>> {
+  const out: Partial<Record<RemoteAssessmentVisibilityKey, boolean>> = {};
+  for (const key of REMOTE_ASSESSMENT_VISIBILITY_KEYS) {
+    const value = asBool(fv[key]);
+    if (value === undefined) continue;
+    out[key] = isUnreleasedAssessmentVisibilityKey(key) ? false : value;
+  }
+  return out;
+}
+
+function buildRemoteFeaturesVisibilityFromPreferences(
+  fv: Record<string, unknown>,
+): RemoteFeaturesVisibility {
+  const activity = (fv.activity ?? {}) as Record<string, unknown>;
+  const body = (activity.body ?? {}) as Record<string, unknown>;
+  const healthAssessments = !!fv.healthAssessments;
+  const assessmentVisibility = Object.fromEntries(
+    REMOTE_ASSESSMENT_VISIBILITY_KEYS.map((key) => {
+      const raw = fv[key];
+      const value = isUnreleasedAssessmentVisibilityKey(key)
+        ? false
+        : raw === undefined
+          ? REMOTE_ASSESSMENT_VISIBILITY_DEFAULTS[key]
+          : !!raw;
+      return [key, value];
+    }),
+  ) as Record<RemoteAssessmentVisibilityKey, boolean>;
+
+  return {
+    dashboard: !!fv.dashboard,
+    dropIn: fv.dropIn !== false,
+    communication: !!fv.communication,
+    messaging: !!fv.messaging,
+    aiCompanion: !!fv.aiCompanion,
+    healthAssessments,
+    schedule: fv.schedule !== false,
+    analytics: !!fv.analytics,
+    journeyDiary: !!fv.journeyDiary,
+    intensiveCarePainAssessment: fv.intensiveCarePainAssessment !== false,
+    intensiveCareDoctorQuickAnswers: fv.intensiveCareDoctorQuickAnswers !== false,
+    intensiveCareSoulMusic: !!fv.intensiveCareSoulMusic,
+    intensiveCareSoulMediaLibrary: !!fv.intensiveCareSoulMediaLibrary,
+    activity: {
+      enabled: !!activity.enabled,
+      mind: activity.mind !== false,
+      soul: activity.soul !== false,
+      body: {
+        enabled: body.enabled !== false,
+        motion: body.motion !== false,
+        verbal: body.verbal !== false,
+      },
+    },
+    ...assessmentVisibility,
+  };
+}
+
+function remoteActivityPresetForMode(mode: RemoteAppMode): RemoteActivityVisibility {
+  if (mode === 'user') {
+    return {
+      enabled: true,
+      mind: true,
+      soul: true,
+      body: { enabled: true, motion: true, verbal: true },
+    };
+  }
+  return {
+    enabled: false,
+    mind: false,
+    soul: false,
+    body: { enabled: false, motion: false, verbal: false },
+  };
+}
+
+function remoteAssessmentPresetForMode(
+  mode: RemoteAppMode,
+): Record<RemoteAssessmentVisibilityKey, boolean> {
+  if (mode === 'user') {
+    return Object.fromEntries(
+      REMOTE_ASSESSMENT_VISIBILITY_KEYS.map((key) => [
+        key,
+        !isUnreleasedAssessmentVisibilityKey(key),
+      ]),
+    ) as Record<RemoteAssessmentVisibilityKey, boolean>;
+  }
+  return Object.fromEntries(
+    REMOTE_ASSESSMENT_VISIBILITY_KEYS.map((key) => [key, false]),
+  ) as Record<RemoteAssessmentVisibilityKey, boolean>;
+}
+
+function remoteFeaturesVisibilityPresetForMode(mode: RemoteAppMode): RemoteFeaturesVisibility {
+  const activity = remoteActivityPresetForMode(mode);
+  const assessments = remoteAssessmentPresetForMode(mode);
+  const healthAssessments = mode === 'user';
+  const schedule = mode !== 'intensive_care';
+
+  return {
+    dashboard: mode === 'user',
+    dropIn: mode === 'user',
+    communication: true,
+    messaging: mode === 'user',
+    aiCompanion: mode !== 'intensive_care',
+    healthAssessments,
+    schedule,
+    analytics: mode === 'user',
+    journeyDiary: false,
+    intensiveCareSoulMusic: false,
+    intensiveCareSoulMediaLibrary: false,
+    intensiveCarePainAssessment: mode === 'intensive_care',
+    intensiveCareDoctorQuickAnswers: mode === 'intensive_care',
+    activity,
+    ...assessments,
+  };
+}
+
+function readFeaturesVisibilityValue(
+  fv: RemoteFeaturesVisibility | undefined,
+  key: string,
+): boolean | undefined {
+  if (!fv) return undefined;
+  if (key === 'activity.enabled') return fv.activity?.enabled;
+  if (key === 'activity.mind') {
+    if (!fv.activity?.enabled) return fv.activity?.mind;
+    if (fv.activity.mind === undefined) return true;
+    return fv.activity.mind;
+  }
+  if (key === 'activity.soul') {
+    if (!fv.activity?.enabled) return fv.activity?.soul;
+    if (fv.activity.soul === undefined) return true;
+    return fv.activity.soul;
+  }
+  if (key === 'activity.body.enabled') {
+    if (!fv.activity?.enabled) return fv.activity?.body?.enabled;
+    if (fv.activity.body?.enabled === undefined) return true;
+    return fv.activity.body.enabled;
+  }
+  if (key === 'dropIn') {
+    if (fv.dropIn === undefined) return true;
+    return fv.dropIn;
+  }
+  if (key === 'schedule') {
+    if (fv.schedule === undefined) return true;
+    return fv.schedule;
+  }
+  if ((REMOTE_ASSESSMENT_VISIBILITY_KEYS as readonly string[]).includes(key)) {
+    if (isUnreleasedAssessmentVisibilityKey(key)) return false;
+    const assessmentKey = key as RemoteAssessmentVisibilityKey;
+    const value = fv[assessmentKey];
+    if (value === undefined) return REMOTE_ASSESSMENT_VISIBILITY_DEFAULTS[assessmentKey];
+    return value;
+  }
+  return fv[key as keyof RemoteFeaturesVisibility] as boolean | undefined;
+}
+
+export function getRemoteFeatureToggleEnabled(
+  doc: RemoteSettingsPayload,
+  path: string,
+): boolean {
+  return getRemoteSettingValue(doc, path) ?? false;
+}
+
+export function isRemoteFeatureToggleDisabled(
+  doc: RemoteSettingsPayload,
+  item: RemoteFeatureToggleDef,
+): boolean {
+  if (item.released === false) return true;
+  if (!item.requiresEnabledPath) return false;
+  return !getRemoteFeatureToggleEnabled(doc, item.requiresEnabledPath);
 }
 
 export function parsePatientRemoteSettings(
@@ -367,10 +830,8 @@ export function parsePatientRemoteSettings(
       ? (fvRaw as Record<string, unknown>)
       : undefined;
   const activityRaw = fv?.activity;
-  const activity =
-    activityRaw && typeof activityRaw === 'object'
-      ? { enabled: asBool((activityRaw as Record<string, unknown>).enabled) }
-      : undefined;
+  const activity = parseRemoteActivity(activityRaw);
+  const assessmentVisibility = fv ? parseRemoteAssessmentVisibility(fv) : {};
   const vaRaw = data.visibleAreas;
   const visibleAreas =
     vaRaw && typeof vaRaw === 'object'
@@ -390,6 +851,9 @@ export function parsePatientRemoteSettings(
   const appMode = asString(data.appMode);
   const mode: RemoteAppMode | undefined =
     appMode === 'intensive_care' || appMode === 'hospital' || appMode === 'user' ? appMode : undefined;
+  const experienceRaw = asString(data.intensiveCareExperience);
+  const intensiveCareExperience: RemoteIntensiveCareExperience | undefined =
+    experienceRaw === 'standard' || experienceRaw === 'minimal_focus' ? experienceRaw : undefined;
 
   const contentFontSize = asString(data.contentFontSize);
   const fontSize =
@@ -400,27 +864,41 @@ export function parsePatientRemoteSettings(
   return {
     patientId,
     appMode: mode,
+    intensiveCareExperience,
     primaryLanguage: parsePrimaryLanguage(data.primaryLanguage),
     showAlertButton: asBool(data.showAlertButton),
     showAttentionButton: asBool(data.showAttentionButton),
     detectEngagementNeed: asBool(data.detectEngagementNeed),
     showSaveButton: asBool(data.showSaveButton),
+    enableAudioInput: asBool(data.enableAudioInput),
+    showTranslateButton: asBool(data.showTranslateButton),
+    minimizeTextWindowHeight: asBool(data.minimizeTextWindowHeight),
     useAiAssistant: asBool(data.useAiAssistant),
     aiConversation: asBool(data.aiConversation),
     allowSendMessages: asBool(data.allowSendMessages),
+    autoSendMessage: asBool(data.autoSendMessage),
+    ...parseCircleInitiateMessagesConfig(data),
+    ...circleDropInAccessFieldsFromData(data),
     showUserInSidebar: asBool(data.showUserInSidebar),
     showQuickSettings: asBool(data.showQuickSettings),
     showSettingsInSidebar: asBool(data.showSettingsInSidebar),
     featuresVisibility: fv
       ? {
           dashboard: asBool(fv.dashboard),
+          dropIn: asBool(fv.dropIn),
           communication: asBool(fv.communication),
           messaging: asBool(fv.messaging),
           aiCompanion: asBool(fv.aiCompanion),
           healthAssessments: asBool(fv.healthAssessments),
+          schedule: asBool(fv.schedule),
           analytics: asBool(fv.analytics),
           journeyDiary: asBool(fv.journeyDiary),
+          intensiveCarePainAssessment: asBool(fv.intensiveCarePainAssessment),
+          intensiveCareDoctorQuickAnswers: asBool(fv.intensiveCareDoctorQuickAnswers),
+          intensiveCareSoulMusic: asBool(fv.intensiveCareSoulMusic),
+          intensiveCareSoulMediaLibrary: asBool(fv.intensiveCareSoulMediaLibrary),
           activity,
+          ...assessmentVisibility,
         }
       : undefined,
     journeyDiary,
@@ -438,6 +916,11 @@ export function parsePatientRemoteSettings(
     shareLocationWithCircle: asBool(data.shareLocationWithCircle),
     dashboardLayout: parseRemoteDashboardLayout(data.dashboardLayout),
     assessmentSchedule: sanitizeRemoteAssessmentSchedule(data.assessmentSchedule),
+    dailyCheckInDefaultOnAllStagesV1:
+      data.dailyCheckInDefaultOnAllStagesV1 === true ? true : undefined,
+    dailyCheckInIcuDefaultOffV1: data.dailyCheckInIcuDefaultOffV1 === true ? true : undefined,
+    assessmentScheduleDailyLifeRestoredV1:
+      data.assessmentScheduleDailyLifeRestoredV1 === true ? true : undefined,
     updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : 0,
     updatedByUid: asString(data.updatedByUid) ?? '',
     updatedByName: asString(data.updatedByName) ?? '',
@@ -462,7 +945,6 @@ export function extractRemoteSettingsFromPreferences(
   meta: { uid: string; displayName: string; source?: RemoteSettingsSource },
 ): PatientRemoteSettingsDoc {
   const fv = (preferences.featuresVisibility ?? {}) as Record<string, unknown>;
-  const activity = (fv.activity ?? {}) as Record<string, unknown>;
   const dailyRaw = preferences.dailyCheckIn as Record<string, unknown> | undefined;
   const quietRaw = dailyRaw?.quietHours as Record<string, unknown> | undefined;
   const visibleAreas = (preferences.visibleAreas ?? {}) as Record<string, unknown>;
@@ -472,36 +954,38 @@ export function extractRemoteSettingsFromPreferences(
   return {
     patientId,
     appMode: preferences.appMode as RemoteAppMode | undefined,
+    intensiveCareExperience:
+      preferences.intensiveCareExperience === 'minimal_focus' ||
+      preferences.intensiveCareExperience === 'standard'
+        ? preferences.intensiveCareExperience
+        : undefined,
     primaryLanguage: parsePrimaryLanguage(preferences.primaryLanguage) ?? 'English',
     showAlertButton: preferences.showAlertButton !== false,
     showAttentionButton: preferences.showAttentionButton !== false,
     detectEngagementNeed: !!preferences.detectEngagementNeed,
     showSaveButton: preferences.showSaveButton !== false,
+    enableAudioInput: preferences.enableAudioInput !== false,
+    showTranslateButton: preferences.showTranslateButton !== false,
+    minimizeTextWindowHeight: !!preferences.minimizeTextWindowHeight,
     useAiAssistant: preferences.useAiAssistant !== false,
     aiConversation: !!preferences.aiConversation,
     allowSendMessages: preferences.allowSendMessages !== false,
+    autoSendMessage: !!preferences.autoSendMessage,
+    ...extractCircleInitiateMessagesForRemote(preferences, preferences.appMode as string | undefined),
+    ...extractCircleDropInAccessForRemote(preferences),
     showUserInSidebar: !!preferences.showUserInSidebar,
     showQuickSettings: preferences.showQuickSettings !== false,
     showSettingsInSidebar: preferences.showSettingsInSidebar !== false,
-    featuresVisibility: {
-      dashboard: !!fv.dashboard,
-      communication: !!fv.communication,
-      messaging: !!fv.messaging,
-      aiCompanion: !!fv.aiCompanion,
-      healthAssessments: !!fv.healthAssessments,
-      analytics: !!fv.analytics,
-      journeyDiary: !!fv.journeyDiary,
-      activity: { enabled: !!activity.enabled },
-    },
+    featuresVisibility: buildRemoteFeaturesVisibilityFromPreferences(fv),
     journeyDiary: {
       allowViewSharedEntries: !!journeyDiary?.allowViewSharedEntries,
     },
     dailyCheckIn: {
-      enabled: !!(dailyRaw?.enabled ?? false),
+      enabled: !!(dailyRaw?.enabled ?? true),
       quietHours: {
-        enabled: !!(quietRaw?.enabled ?? false),
-        start: asString(quietRaw?.start) ?? '22:00',
-        end: asString(quietRaw?.end) ?? '06:00',
+        enabled: !!(quietRaw?.enabled ?? REMOTE_DAILY_CHECKIN_QUIET_HOURS.enabled),
+        start: asString(quietRaw?.start) ?? REMOTE_DAILY_CHECKIN_QUIET_HOURS.start,
+        end: asString(quietRaw?.end) ?? REMOTE_DAILY_CHECKIN_QUIET_HOURS.end,
       },
       ...(Array.isArray(dailyRaw?.questions)
         ? {
@@ -545,6 +1029,10 @@ export function extractRemoteSettingsFromPreferences(
           use24HourClock: dashboardLayoutRaw.use24HourClock === true ? true : undefined,
         }
       : undefined,
+    dailyCheckInDefaultOnAllStagesV1:
+      preferences.dailyCheckInDefaultOnAllStagesV1 === true ? true : undefined,
+    dailyCheckInIcuDefaultOffV1:
+      preferences.dailyCheckInIcuDefaultOffV1 === true ? true : undefined,
     updatedAt: Date.now(),
     updatedByUid: meta.uid,
     updatedByName: meta.displayName,
@@ -563,6 +1051,9 @@ export function getRemoteSettingValue(
   if (path === 'showAttentionButton') return doc.showAttentionButton;
   if (path === 'detectEngagementNeed') return doc.detectEngagementNeed;
   if (path === 'showSaveButton') return doc.showSaveButton;
+  if (path === 'enableAudioInput') return doc.enableAudioInput;
+  if (path === 'showTranslateButton') return doc.showTranslateButton;
+  if (path === 'minimizeTextWindowHeight') return doc.minimizeTextWindowHeight;
   if (path === 'useAiAssistant') return doc.useAiAssistant;
   if (path === 'aiConversation') return doc.aiConversation;
   if (path === 'allowSendMessages') return doc.allowSendMessages;
@@ -577,8 +1068,7 @@ export function getRemoteSettingValue(
   }
   if (path.startsWith('featuresVisibility.')) {
     const key = path.slice('featuresVisibility.'.length);
-    if (key === 'activity.enabled') return doc.featuresVisibility?.activity?.enabled;
-    return doc.featuresVisibility?.[key as keyof RemoteFeaturesVisibility] as boolean | undefined;
+    return readFeaturesVisibilityValue(doc.featuresVisibility, key);
   }
   return undefined;
 }
@@ -602,6 +1092,9 @@ export function setRemoteSettingValue(
   else if (path === 'showAttentionButton') next.showAttentionButton = value;
   else if (path === 'detectEngagementNeed') next.detectEngagementNeed = value;
   else if (path === 'showSaveButton') next.showSaveButton = value;
+  else if (path === 'enableAudioInput') next.enableAudioInput = value;
+  else if (path === 'showTranslateButton') next.showTranslateButton = value;
+  else if (path === 'minimizeTextWindowHeight') next.minimizeTextWindowHeight = value;
   else if (path === 'useAiAssistant') next.useAiAssistant = value;
   else if (path === 'aiConversation') next.aiConversation = value;
   else if (path === 'allowSendMessages') next.allowSendMessages = value;
@@ -615,13 +1108,38 @@ export function setRemoteSettingValue(
     next.journeyDiary = { ...next.journeyDiary, allowViewSharedEntries: value };
   } else if (path.startsWith('featuresVisibility.')) {
     const key = path.slice('featuresVisibility.'.length);
+    const nextValue = isUnreleasedAssessmentVisibilityKey(key) ? false : value;
+    const current = next.featuresVisibility ?? {};
     if (key === 'activity.enabled') {
       next.featuresVisibility = {
-        ...next.featuresVisibility,
-        activity: { ...(next.featuresVisibility?.activity ?? {}), enabled: value },
+        ...current,
+        activity: { ...(current.activity ?? {}), enabled: nextValue },
+      };
+    } else if (key === 'activity.mind') {
+      next.featuresVisibility = {
+        ...current,
+        activity: { ...(current.activity ?? {}), mind: nextValue },
+      };
+    } else if (key === 'activity.soul') {
+      next.featuresVisibility = {
+        ...current,
+        activity: { ...(current.activity ?? {}), soul: nextValue },
+      };
+    } else if (key === 'activity.body.enabled') {
+      next.featuresVisibility = {
+        ...current,
+        activity: {
+          ...(current.activity ?? {}),
+          body: { ...(current.activity?.body ?? {}), enabled: nextValue },
+        },
+      };
+    } else if (key === 'healthAssessments') {
+      next.featuresVisibility = {
+        ...current,
+        healthAssessments: nextValue,
       };
     } else {
-      next.featuresVisibility = { ...next.featuresVisibility, [key]: value };
+      next.featuresVisibility = { ...current, [key]: nextValue };
     }
   }
   return next;
@@ -663,12 +1181,6 @@ export function canViewRemoteSettingsTab(
   return !!capabilities?.remoteSettings;
 }
 
-const REMOTE_DAILY_CHECKIN_QUIET_HOURS = {
-  enabled: true,
-  start: '22:00',
-  end: '06:00',
-} as const;
-
 const REMOTE_PROXY_PRESET_BY_MODE: Record<
   RemoteAppMode,
   Pick<
@@ -680,6 +1192,7 @@ const REMOTE_PROXY_PRESET_BY_MODE: Record<
     | 'useAiAssistant'
     | 'aiConversation'
     | 'allowSendMessages'
+    | 'allowCircleInitiateMessages'
   >
 > = {
   intensive_care: {
@@ -690,6 +1203,7 @@ const REMOTE_PROXY_PRESET_BY_MODE: Record<
     useAiAssistant: true,
     aiConversation: false,
     allowSendMessages: true,
+    allowCircleInitiateMessages: false,
   },
   hospital: {
     showAlertButton: true,
@@ -728,21 +1242,14 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
       showAiSuggestions: false,
       speakOnSelection: true,
       showFrequentlyUsed: false,
-      featuresVisibility: {
-        dashboard: false,
-        communication: true,
-        messaging: false,
-        aiCompanion: false,
-        healthAssessments: false,
-        analytics: false,
-        journeyDiary: false,
-        activity: { enabled: false },
-      },
+      enableAudioInput: false,
+      showTranslateButton: false,
+      minimizeTextWindowHeight: false,
+      featuresVisibility: remoteFeaturesVisibilityPresetForMode('intensive_care'),
       journeyDiary: { allowViewSharedEntries: false },
-      dailyCheckIn: { enabled: true, quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS } },
+      dailyCheckIn: { enabled: false, quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS } },
       visibleAreas: { phrases: false, categories: false, emojis: false, unicode: true },
       contentFontSize: 'medium',
-      shareLocationWithCircle: false,
     };
   }
 
@@ -758,24 +1265,17 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
       showAiSuggestions: true,
       speakOnSelection: true,
       showFrequentlyUsed: true,
-      featuresVisibility: {
-        dashboard: true,
-        communication: true,
-        messaging: true,
-        aiCompanion: true,
-        healthAssessments: true,
-        analytics: true,
-        journeyDiary: false,
-        activity: { enabled: true },
-      },
+      enableAudioInput: true,
+      showTranslateButton: true,
+      minimizeTextWindowHeight: false,
+      featuresVisibility: remoteFeaturesVisibilityPresetForMode('user'),
       journeyDiary: { allowViewSharedEntries: false },
       dailyCheckIn: {
-        enabled: false,
-        quietHours: { enabled: false, start: '22:00', end: '06:00' },
+        enabled: true,
+        quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS },
       },
       visibleAreas: visibleAll,
       contentFontSize: 'medium',
-      shareLocationWithCircle: false,
     };
   }
 
@@ -790,21 +1290,14 @@ function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload 
     showAiSuggestions: true,
     speakOnSelection: false,
     showFrequentlyUsed: true,
-    featuresVisibility: {
-      dashboard: false,
-      communication: true,
-      messaging: false,
-      aiCompanion: true,
-      healthAssessments: false,
-      analytics: false,
-      journeyDiary: false,
-      activity: { enabled: false },
-    },
+    enableAudioInput: true,
+    showTranslateButton: true,
+    minimizeTextWindowHeight: false,
+    featuresVisibility: remoteFeaturesVisibilityPresetForMode('hospital'),
     journeyDiary: { allowViewSharedEntries: false },
     dailyCheckIn: { enabled: true, quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS } },
     visibleAreas: visibleAll,
     contentFontSize: 'medium',
-    shareLocationWithCircle: false,
   };
 }
 
@@ -831,6 +1324,17 @@ export function isRemoteSettingsCustomized(doc: PatientRemoteSettingsDoc): boole
     }
   }
 
+  for (const item of REMOTE_ASSESSMENT_VISIBILITY_TOGGLES) {
+    if (
+      !remoteBoolMatches(
+        getRemoteSettingValue(doc, item.path),
+        getRemoteSettingValue(preset, item.path),
+      )
+    ) {
+      return true;
+    }
+  }
+
   for (const item of REMOTE_QUICK_SETTING_TOGGLES) {
     if (
       !remoteBoolMatches(
@@ -843,6 +1347,8 @@ export function isRemoteSettingsCustomized(doc: PatientRemoteSettingsDoc): boole
   }
 
   for (const path of REMOTE_PROXY_TOGGLE_PATHS) {
+    // Location sharing is independent of application mode — leave it alone for "Custom".
+    if (path === 'shareLocationWithCircle') continue;
     if (!remoteBoolMatches(getRemoteSettingValue(doc, path), getRemoteSettingValue(preset, path))) {
       return true;
     }
@@ -879,6 +1385,7 @@ export function createDefaultRemoteSettings(patientId: string): PatientRemoteSet
     patientId,
     primaryLanguage: 'English',
     ...remotePresetPayloadForMode('hospital'),
+    dailyCheckInDefaultOnAllStagesV1: true,
     updatedAt: 0,
     updatedByUid: '',
     updatedByName: '',
@@ -903,8 +1410,8 @@ export function setRemoteDailyCheckIn(
   },
 ): PatientRemoteSettingsDoc {
   const current = doc.dailyCheckIn ?? {
-    enabled: false,
-    quietHours: { enabled: false, start: '22:00', end: '06:00' },
+    enabled: true,
+    quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS },
   };
   return {
     ...doc,
@@ -920,21 +1427,255 @@ export function setRemoteDailyCheckIn(
   };
 }
 
+/** One-time: Daily life / Hospital on; ICU off (Circle Home reminder turns ICU on when ready). */
+export function applyDailyCheckInDefaultOnAllStages(
+  doc: PatientRemoteSettingsDoc,
+): { next: PatientRemoteSettingsDoc; changed: boolean } {
+  let next = doc;
+  let changed = false;
+  const fallback = {
+    enabled: next.appMode !== 'intensive_care',
+    quietHours: { ...REMOTE_DAILY_CHECKIN_QUIET_HOURS },
+  };
+
+  if (!next.dailyCheckInDefaultOnAllStagesV1) {
+    const current = next.dailyCheckIn ?? fallback;
+    next = {
+      ...next,
+      dailyCheckIn: {
+        ...current,
+        enabled: next.appMode !== 'intensive_care',
+      },
+      dailyCheckInDefaultOnAllStagesV1: true,
+    };
+    changed = true;
+  }
+
+  if (next.appMode === 'intensive_care' && !next.dailyCheckInIcuDefaultOffV1) {
+    const current = next.dailyCheckIn ?? fallback;
+    next = {
+      ...next,
+      dailyCheckIn: { ...current, enabled: false },
+      dailyCheckInIcuDefaultOffV1: true,
+    };
+    changed = true;
+  }
+
+  return { next, changed };
+}
+
+/** One-time: Daily Life leftover all-off schedule (from ICU/Hospital) restored to stage defaults. */
+export function applyDailyLifeAssessmentScheduleIfNeeded(
+  doc: PatientRemoteSettingsDoc,
+): { next: PatientRemoteSettingsDoc; changed: boolean } {
+  if (doc.appMode !== 'user') return { next: doc, changed: false };
+  if (doc.assessmentScheduleDailyLifeRestoredV1) return { next: doc, changed: false };
+
+  if (!assessmentScheduleLooksFullyDisabled(doc.assessmentSchedule)) {
+    return {
+      next: { ...doc, assessmentScheduleDailyLifeRestoredV1: true },
+      changed: true,
+    };
+  }
+
+  const restored = setRemoteAssessmentSchedule(
+    doc,
+    assessmentScheduleForRecoveryStage(
+      'maintenance',
+      doc.assessmentSchedule?.lockedIds ?? [],
+    ),
+  );
+  return {
+    next: { ...restored, assessmentScheduleDailyLifeRestoredV1: true },
+    changed: true,
+  };
+}
+
 export function setRemoteAppMode(
   doc: PatientRemoteSettingsDoc,
   appMode: RemoteAppMode,
 ): PatientRemoteSettingsDoc {
+  const previous = doc.appMode;
   const preset = remotePresetPayloadForMode(appMode);
-  const next: PatientRemoteSettingsDoc = {
+  let next: PatientRemoteSettingsDoc = {
     ...doc,
     ...preset,
     appMode,
     patientId: doc.patientId,
     primaryLanguage: doc.primaryLanguage,
     quickAreasOrder: preset.quickAreasOrder ?? doc.quickAreasOrder,
+    // Sticky: once enabled (or disabled) by proxy/patient, mode changes must not reset it.
+    shareLocationWithCircle: doc.shareLocationWithCircle,
   };
   if (appMode === 'intensive_care') {
     next.dashboardLayout = { ...doc.dashboardLayout, preset: 'minimal' };
+    next.intensiveCareExperience = doc.intensiveCareExperience ?? 'standard';
+  } else {
+    delete next.intensiveCareExperience;
+  }
+  if (
+    appMode === 'user' &&
+    (previous === 'intensive_care' || previous === 'hospital')
+  ) {
+    next = setRemoteAssessmentSchedule(
+      next,
+      assessmentScheduleForRecoveryStage(
+        'maintenance',
+        next.assessmentSchedule?.lockedIds ?? [],
+      ),
+    );
+    next.assessmentScheduleDailyLifeRestoredV1 = true;
+  }
+  return next;
+}
+
+/** Apply ICU Standard vs Minimal distraction layout remotely (buttons; sounds applied on patient). */
+export function setRemoteIntensiveCareExperience(
+  doc: PatientRemoteSettingsDoc,
+  variant: RemoteIntensiveCareExperience,
+): PatientRemoteSettingsDoc {
+  const next: PatientRemoteSettingsDoc = {
+    ...doc,
+    appMode: 'intensive_care',
+    intensiveCareExperience: variant,
+    ...(variant === 'minimal_focus'
+      ? {
+          showAlertButton: false,
+          showAttentionButton: false,
+        }
+      : {
+          showAlertButton: true,
+          showAttentionButton: true,
+        }),
+  };
+  return setRemoteSettingValue(
+    next,
+    'featuresVisibility.intensiveCarePainAssessment',
+    variant === 'standard',
+  );
+}
+
+export type RemoteIntensiveCareOptionalFeatures = {
+  painAssessment: boolean;
+  doctorQuickAnswers: boolean;
+  /** Sentences + words + AI suggestions as one ICU shortcut. */
+  boardLanguage: boolean;
+  soulMusic: boolean;
+  soulMediaLibrary: boolean;
+};
+
+export const REMOTE_ICU_OPTIONAL_FEATURES_DEFAULTS: RemoteIntensiveCareOptionalFeatures = {
+  painAssessment: true,
+  doctorQuickAnswers: true,
+  boardLanguage: false,
+  soulMusic: false,
+  soulMediaLibrary: false,
+};
+
+export function readRemoteIntensiveCareOptionalFeatures(
+  doc: PatientRemoteSettingsDoc | null | undefined,
+): RemoteIntensiveCareOptionalFeatures {
+  const fv = doc?.featuresVisibility;
+  const visibleAreas = doc?.visibleAreas;
+  return {
+    painAssessment:
+      fv?.intensiveCarePainAssessment !== undefined
+        ? !!fv.intensiveCarePainAssessment
+        : REMOTE_ICU_OPTIONAL_FEATURES_DEFAULTS.painAssessment,
+    doctorQuickAnswers:
+      fv?.intensiveCareDoctorQuickAnswers !== undefined
+        ? !!fv.intensiveCareDoctorQuickAnswers
+        : REMOTE_ICU_OPTIONAL_FEATURES_DEFAULTS.doctorQuickAnswers,
+    boardLanguage:
+      visibleAreas?.phrases === true &&
+      visibleAreas?.categories === true &&
+      doc?.showAiSuggestions === true,
+    soulMusic: !!fv?.intensiveCareSoulMusic,
+    soulMediaLibrary: !!fv?.intensiveCareSoulMediaLibrary,
+  };
+}
+
+/** Apply ICU optional Application Mode chips remotely. */
+export function applyRemoteIntensiveCareOptionalFeatures(
+  doc: PatientRemoteSettingsDoc,
+  state: RemoteIntensiveCareOptionalFeatures,
+): PatientRemoteSettingsDoc {
+  let next = setRemoteSettingValue(
+    doc,
+    'featuresVisibility.intensiveCarePainAssessment',
+    state.painAssessment,
+  );
+  next = setRemoteSettingValue(
+    next,
+    'featuresVisibility.intensiveCareDoctorQuickAnswers',
+    state.doctorQuickAnswers,
+  );
+  next = setRemoteSettingValue(next, 'showAiSuggestions', state.boardLanguage);
+  next = setRemoteVisibleArea(next, 'phrases', state.boardLanguage);
+  next = setRemoteVisibleArea(next, 'categories', state.boardLanguage);
+  next = setRemoteSettingValue(next, 'featuresVisibility.intensiveCareSoulMusic', state.soulMusic);
+  next = setRemoteSettingValue(
+    next,
+    'featuresVisibility.intensiveCareSoulMediaLibrary',
+    state.soulMediaLibrary,
+  );
+  if (state.soulMusic || state.soulMediaLibrary) {
+    next = setRemoteSettingValue(next, 'featuresVisibility.activity.enabled', true);
+    next = setRemoteSettingValue(next, 'featuresVisibility.activity.soul', true);
+  }
+  return next;
+}
+
+export type RemoteHospitalOptionalFeatures = {
+  dashboard: boolean;
+  messaging: boolean;
+  aiCompanion: boolean;
+  vitality: boolean;
+  healthAssessments: boolean;
+};
+
+export const REMOTE_HOSPITAL_OPTIONAL_FEATURES_DEFAULTS: RemoteHospitalOptionalFeatures = {
+  dashboard: false,
+  messaging: false,
+  aiCompanion: true,
+  vitality: false,
+  healthAssessments: false,
+};
+
+export function readRemoteHospitalOptionalFeatures(
+  doc: PatientRemoteSettingsDoc | null | undefined,
+): RemoteHospitalOptionalFeatures {
+  const fv = doc?.featuresVisibility;
+  return {
+    dashboard: !!fv?.dashboard,
+    messaging: !!fv?.messaging,
+    aiCompanion: fv?.aiCompanion !== false,
+    vitality: !!fv?.activity?.enabled,
+    healthAssessments: !!fv?.healthAssessments,
+  };
+}
+
+/** Apply Hospital optional Application Mode chips remotely. */
+export function applyRemoteHospitalOptionalFeatures(
+  doc: PatientRemoteSettingsDoc,
+  state: RemoteHospitalOptionalFeatures,
+): PatientRemoteSettingsDoc {
+  let next = setRemoteSettingValue(doc, 'featuresVisibility.dashboard', state.dashboard);
+  next = setRemoteSettingValue(next, 'featuresVisibility.messaging', state.messaging);
+  next = setRemoteSettingValue(next, 'featuresVisibility.aiCompanion', state.aiCompanion);
+  next = setRemoteSettingValue(
+    next,
+    'featuresVisibility.healthAssessments',
+    state.healthAssessments,
+  );
+  if (!state.healthAssessments) {
+    next = setRemoteSettingValue(next, 'featuresVisibility.schedule', false);
+  }
+  next = setRemoteSettingValue(next, 'featuresVisibility.activity.enabled', state.vitality);
+  if (state.vitality) {
+    next = setRemoteSettingValue(next, 'featuresVisibility.activity.mind', true);
+    next = setRemoteSettingValue(next, 'featuresVisibility.activity.body.enabled', true);
+    next = setRemoteSettingValue(next, 'featuresVisibility.activity.soul', true);
   }
   return next;
 }
@@ -992,6 +1733,6 @@ export function setRemoteAssessmentSchedule(
 ): PatientRemoteSettingsDoc {
   return {
     ...doc,
-    assessmentSchedule: schedule,
+    assessmentSchedule: sanitizeRemoteAssessmentSchedule(schedule) ?? schedule,
   };
 }

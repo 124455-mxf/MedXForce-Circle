@@ -1,37 +1,27 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Activity,
   BarChart3,
-  Bell,
-  BookOpen,
-  Bot,
-  Brain,
-  Calendar,
   ChevronRight,
   Clock,
-  Ear,
-  Eye,
-  Heart,
+  Keyboard,
   Loader2,
   MessageSquare,
-  Mic,
-  Move,
-  Scale,
-  Sparkles,
-  ThermometerSun,
-  Zap,
   type LucideIcon,
 } from 'lucide-react';
 import {
+  circleDisplayFirstName,
   ANALYTICS_METRIC_DEFINITIONS,
   ANALYTICS_SECTIONS,
   buildPlaceholderAnalyticsSummary,
   canReadAnalyticsAudience,
   isSameCalendarDay,
   subscribeRemoteSettings,
+  isHospitalFeatureEnabledInRemoteSettings,
   type AnalyticsMetricId,
   type CirclePatientSummary,
   type PatientAnalyticsSummary,
+  type RemoteAssessmentSchedule,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 import {
@@ -42,6 +32,7 @@ import {
   circleSectionHeaderStackClass,
   circleWorkTabHeaderClass,
   circleWorkTabPanelClass,
+  dashboardSectionTitleClass,
 } from '../lib/circleSectionStyles';
 import { useCircleAnalyticsSummaries } from '../hooks/useCircleAnalyticsSummaries';
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
@@ -53,42 +44,20 @@ import {
   localizeAnalyticsSummary,
 } from '../lib/circleAnalyticsI18n';
 import { firebase } from '../lib/firebaseClient';
+import {
+  ANALYTICS_METRIC_ICONS,
+  analyticsMetricIconWrapClass,
+} from '../lib/circleAnalyticsMetricUi';
 import { CircleAnalyticsDetailSheet } from './CircleAnalyticsDetailSheet';
+import { CircleAssessmentsOverviewSheet } from './CircleAssessmentsOverviewSheet';
+import {
+  CircleAnalyticsPeriodOverviewSheet,
+  type AnalyticsPeriodDays,
+} from './CircleAnalyticsPeriodOverviewSheet';
+import type { CircleMessagesAnalyticsFocus } from './CircleMessagesAnalyticsDetail';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 
-const METRIC_ICONS: Record<AnalyticsMetricId, LucideIcon> = {
-  'alert-attention': Bell,
-  'speech-history': MessageSquare,
-  'ai-conversation': Bot,
-  'daily-check-in': Calendar,
-  impact: Activity,
-  pain: Activity,
-  'strength-reflex': Scale,
-  mobility: Move,
-  numbness: Zap,
-  temperature: ThermometerSun,
-  balance: Activity,
-  vision: Eye,
-  hearing: Ear,
-  speech: Mic,
-  neurological: Brain,
-  physiological: Activity,
-  psychological: Heart,
-  stroke: Heart,
-  diary: BookOpen,
-  'vitality-game': Sparkles,
-  'soul-vitality': Heart,
-};
-
-const METRIC_COLORS: Record<string, string> = {
-  pain: 'bg-rose-50 text-rose-600',
-  numbness: 'bg-purple-50 text-purple-600',
-  mobility: 'bg-emerald-50 text-emerald-600',
-  temperature: 'bg-cyan-50 text-cyan-600',
-  neurological: 'bg-purple-50 text-purple-600',
-  physiological: 'bg-blue-50 text-blue-600',
-  psychological: 'bg-pink-50 text-pink-600',
-};
+const METRIC_ICONS = ANALYTICS_METRIC_ICONS;
 
 function footerColorClass(tone: PatientAnalyticsSummary['footerTone']): string {
   if (tone === 'warning') return 'text-red-500';
@@ -138,19 +107,25 @@ function AnalyticsMetricRow({
   onOpen,
   t,
   language,
+  titleOverride,
+  iconOverride,
+  iconClassOverride,
 }: {
   summary: PatientAnalyticsSummary;
   onOpen: () => void;
   t: CircleTranslator;
   language: CircleUiLanguage;
+  titleOverride?: string;
+  iconOverride?: LucideIcon;
+  iconClassOverride?: string;
 }) {
   const localized = localizeAnalyticsSummary(t, summary, language);
-  const Icon = METRIC_ICONS[localized.metricId] ?? Activity;
+  const Icon = iconOverride ?? METRIC_ICONS[localized.metricId] ?? Activity;
   const footerLabel = metricFooterLabel(localized, t, language);
   const unreleased = !localized.isReleased || localized.status === 'coming_soon';
   const iconClass = unreleased
     ? 'bg-slate-100 text-slate-400'
-    : METRIC_COLORS[localized.metricId] ?? 'bg-blue-50 text-blue-600';
+    : iconClassOverride ?? analyticsMetricIconWrapClass(localized.metricId);
   const tappable = localized.isReleased && localized.status !== 'coming_soon';
   const todayAlertAttention = isTodayAlertAttention(localized);
 
@@ -177,15 +152,15 @@ function AnalyticsMetricRow({
       </div>
       <p
         className={cn(
-          'flex-1 min-w-0 text-sm font-normal leading-snug truncate',
+          'flex-1 min-w-0 text-base font-normal leading-snug truncate',
           unreleased ? 'text-slate-400' : 'text-slate-800',
         )}
       >
-        {localized.title}
+        {titleOverride ?? localized.title}
       </p>
       <div
         className={cn(
-          'flex items-center gap-1 shrink-0 max-w-[46%] text-[10px] font-bold uppercase tracking-wider',
+          'flex items-center gap-1 shrink-0 max-w-[46%] text-[12px] font-bold uppercase tracking-wider',
           unreleased
             ? 'text-slate-400'
             : todayAlertAttention
@@ -201,25 +176,59 @@ function AnalyticsMetricRow({
   );
 }
 
+type AnalyticsListCard = {
+  summary: PatientAnalyticsSummary;
+  messagesFocus?: CircleMessagesAnalyticsFocus;
+};
+
+function expandAnalyticsListCards(summaries: PatientAnalyticsSummary[]): AnalyticsListCard[] {
+  return summaries.flatMap((summary) => {
+    if (summary.metricId !== 'speech-history') return [{ summary }];
+    return [
+      { summary, messagesFocus: 'messaging' as const },
+      { summary, messagesFocus: 'communication' as const },
+    ];
+  });
+}
+
 export function CircleAnalyticsScreen({
   patient,
   initialMetricId = null,
+  initialMessagesFocus = null,
+  initialAssessmentsOverview = false,
+  initialPeriodOverviewDays = null,
   onInitialMetricConsumed,
+  onCloseToOrigin,
 }: {
   patient: CirclePatientSummary;
   initialMetricId?: AnalyticsMetricId | null;
+  initialMessagesFocus?: CircleMessagesAnalyticsFocus | null;
+  initialAssessmentsOverview?: boolean;
+  initialPeriodOverviewDays?: AnalyticsPeriodDays | null;
   onInitialMetricConsumed?: () => void;
+  onCloseToOrigin?: () => void;
 }) {
   const [detailSummary, setDetailSummary] = useState<PatientAnalyticsSummary | null>(null);
+  const [detailMessagesFocus, setDetailMessagesFocus] =
+    useState<CircleMessagesAnalyticsFocus | null>(null);
+  const [assessmentsOverviewOpen, setAssessmentsOverviewOpen] = useState(false);
+  const [periodOverviewDays, setPeriodOverviewDays] = useState<AnalyticsPeriodDays | null>(null);
   const [remoteSettingsLoading, setRemoteSettingsLoading] = useState(true);
   const [remoteSettingsFromFirestore, setRemoteSettingsFromFirestore] = useState(false);
   const [dailyCheckInEnabled, setDailyCheckInEnabled] = useState(false);
+  const [messagingEnabled, setMessagingEnabled] = useState(false);
+  const [communicationEnabled, setCommunicationEnabled] = useState(false);
+  const [companionEnabled, setCompanionEnabled] = useState(false);
+  const [vitalityEnabled, setVitalityEnabled] = useState(false);
+  const [assessmentSchedule, setAssessmentSchedule] = useState<RemoteAssessmentSchedule | undefined>();
+  const [scheduleEnabled, setScheduleEnabled] = useState(true);
   const compactChrome = useCircleCompactChrome();
   const { t, language } = useCircleI18nContext();
   const { byMetricId, totalFromServer, loading, error } = useCircleAnalyticsSummaries(
     firebase.db,
     patient,
   );
+  const closeReturnsToOriginRef = useRef(false);
 
   useEffect(() => {
     setRemoteSettingsLoading(true);
@@ -230,11 +239,29 @@ export function CircleAnalyticsScreen({
         setRemoteSettingsFromFirestore(remote != null);
         const enabled = remote?.dailyCheckIn?.enabled === true;
         setDailyCheckInEnabled(enabled);
+        setMessagingEnabled(
+          isHospitalFeatureEnabledInRemoteSettings(remote, 'hospitalFeatureMessaging'),
+        );
+        setCommunicationEnabled(remote?.featuresVisibility?.communication === true);
+        setCompanionEnabled(remote?.featuresVisibility?.aiCompanion === true);
+        setVitalityEnabled(
+          isHospitalFeatureEnabledInRemoteSettings(remote, 'hospitalFeatureVitality'),
+        );
+        setAssessmentSchedule(remote?.assessmentSchedule);
+        const intensive =
+          remote?.appMode === 'intensive_care' || remote?.appMode === 'hospital';
+        setScheduleEnabled(!intensive && remote?.featuresVisibility?.schedule !== false);
         setRemoteSettingsLoading(false);
       },
       () => {
         setRemoteSettingsFromFirestore(false);
         setDailyCheckInEnabled(false);
+        setMessagingEnabled(false);
+        setCommunicationEnabled(false);
+        setCompanionEnabled(false);
+        setVitalityEnabled(false);
+        setAssessmentSchedule(undefined);
+        setScheduleEnabled(true);
         setRemoteSettingsLoading(false);
       },
     );
@@ -244,10 +271,41 @@ export function CircleAnalyticsScreen({
     if (!initialMetricId || loading) return;
     const summary = resolveAnalyticsSummary(initialMetricId, byMetricId, patient);
     if (summary?.isReleased && summary.status !== 'coming_soon') {
+      setAssessmentsOverviewOpen(false);
+      setPeriodOverviewDays(null);
       setDetailSummary(localizeAnalyticsSummary(t, summary, language));
+      setDetailMessagesFocus(
+        initialMetricId === 'speech-history' ? (initialMessagesFocus ?? 'messaging') : null,
+      );
+      closeReturnsToOriginRef.current = true;
     }
     onInitialMetricConsumed?.();
-  }, [initialMetricId, loading, byMetricId, patient, onInitialMetricConsumed, t, language]);
+  }, [
+    initialMetricId,
+    initialMessagesFocus,
+    loading,
+    byMetricId,
+    patient,
+    onInitialMetricConsumed,
+    t,
+    language,
+  ]);
+
+  useEffect(() => {
+    if (!initialAssessmentsOverview || loading) return;
+    setPeriodOverviewDays(null);
+    setAssessmentsOverviewOpen(true);
+    closeReturnsToOriginRef.current = true;
+    onInitialMetricConsumed?.();
+  }, [initialAssessmentsOverview, loading, onInitialMetricConsumed]);
+
+  useEffect(() => {
+    if (!initialPeriodOverviewDays || loading) return;
+    setAssessmentsOverviewOpen(false);
+    setPeriodOverviewDays(initialPeriodOverviewDays);
+    closeReturnsToOriginRef.current = true;
+    onInitialMetricConsumed?.();
+  }, [initialPeriodOverviewDays, loading, onInitialMetricConsumed]);
 
   return (
     <>
@@ -256,9 +314,11 @@ export function CircleAnalyticsScreen({
         <div className={cn(circleWorkTabHeaderClass(compactChrome), circleSectionHeaderStackClass)}>
           <CircleWorkTabSectionIntro
             icon={BarChart3}
-            iconClassName="text-blue-600"
+            iconTileClassName="bg-blue-50 text-blue-600"
             title={t('analytics.title')}
-            subtitle={t('analytics.subtitle', { name: patient.displayName })}
+            subtitle={t('analytics.subtitle', {
+              name: circleDisplayFirstName(patient.displayName, patient.firstName),
+            })}
           />
         </div>
 
@@ -302,21 +362,46 @@ export function CircleAnalyticsScreen({
                   return buildPlaceholderAnalyticsSummary(id, patient.patientId);
                 })
                 .filter((s): s is PatientAnalyticsSummary => s != null);
-              if (cards.length === 0) return null;
+              const listCards = expandAnalyticsListCards(cards);
+              if (listCards.length === 0) return null;
 
               return (
                 <section key={section.id} className="space-y-1.5">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5 pt-0.5">
+                  <h4 className={cn(dashboardSectionTitleClass, 'pt-0.5')}>
                     {analyticsSectionTitle(t, section.id)}
                   </h4>
                   <div className="flex flex-col gap-1.5">
-                    {cards.map((summary) => (
+                    {listCards.map((card) => (
                       <AnalyticsMetricRow
-                        key={summary.metricId}
-                        summary={summary}
+                        key={`${card.summary.metricId}-${card.messagesFocus ?? 'default'}`}
+                        summary={card.summary}
                         t={t}
                         language={language}
-                        onOpen={() => setDetailSummary(localizeAnalyticsSummary(t, summary, language))}
+                        titleOverride={
+                          card.messagesFocus === 'messaging'
+                            ? t('analytics.metrics.messaging')
+                            : card.messagesFocus === 'communication'
+                              ? t('analytics.metrics.communication')
+                              : undefined
+                        }
+                        iconOverride={
+                          card.messagesFocus === 'communication'
+                            ? Keyboard
+                            : card.messagesFocus === 'messaging'
+                              ? MessageSquare
+                              : undefined
+                        }
+                        iconClassOverride={
+                          card.messagesFocus === 'communication'
+                            ? 'bg-indigo-50 text-indigo-600'
+                            : card.messagesFocus === 'messaging'
+                              ? 'bg-emerald-50 text-emerald-600'
+                              : undefined
+                        }
+                        onOpen={() => {
+                          setDetailSummary(localizeAnalyticsSummary(t, card.summary, language));
+                          setDetailMessagesFocus(card.messagesFocus ?? null);
+                        }}
                       />
                     ))}
                   </div>
@@ -345,9 +430,68 @@ export function CircleAnalyticsScreen({
         </div>
       </div>
     </div>
+    <CircleAssessmentsOverviewSheet
+      open={assessmentsOverviewOpen}
+      patient={patient}
+      byMetricId={byMetricId}
+      onOpenMetric={(metricId) => {
+        const summary = resolveAnalyticsSummary(metricId, byMetricId, patient);
+        if (!summary?.isReleased || summary.status === 'coming_soon') return;
+        setDetailSummary(localizeAnalyticsSummary(t, summary, language));
+        setDetailMessagesFocus(null);
+      }}
+      onClose={() => {
+        setAssessmentsOverviewOpen(false);
+        setDetailSummary(null);
+        setDetailMessagesFocus(null);
+        if (closeReturnsToOriginRef.current) {
+          closeReturnsToOriginRef.current = false;
+          onCloseToOrigin?.();
+        }
+      }}
+    />
+    <CircleAnalyticsPeriodOverviewSheet
+      open={periodOverviewDays != null}
+      initialDays={periodOverviewDays ?? 7}
+      patient={patient}
+      byMetricId={byMetricId}
+      dailyCheckInEnabled={dailyCheckInEnabled && remoteSettingsFromFirestore && !remoteSettingsLoading}
+      messagingEnabled={messagingEnabled}
+      communicationEnabled={communicationEnabled}
+      companionEnabled={companionEnabled}
+      vitalityEnabled={vitalityEnabled}
+      onOpenMetric={(metricId, messagesFocus) => {
+        const summary = resolveAnalyticsSummary(metricId, byMetricId, patient);
+        if (!summary?.isReleased || summary.status === 'coming_soon') return;
+        setDetailSummary(localizeAnalyticsSummary(t, summary, language));
+        setDetailMessagesFocus(
+          metricId === 'speech-history' ? (messagesFocus ?? 'messaging') : null,
+        );
+      }}
+      onClose={() => {
+        setPeriodOverviewDays(null);
+        setDetailSummary(null);
+        setDetailMessagesFocus(null);
+        if (closeReturnsToOriginRef.current) {
+          closeReturnsToOriginRef.current = false;
+          onCloseToOrigin?.();
+        }
+      }}
+    />
     <CircleAnalyticsDetailSheet
       summary={detailSummary}
-      onClose={() => setDetailSummary(null)}
+      messagesFocus={detailMessagesFocus}
+      assessmentSchedule={assessmentSchedule}
+      scheduleEnabled={scheduleEnabled}
+      onClose={() => {
+        setDetailSummary(null);
+        setDetailMessagesFocus(null);
+        if (assessmentsOverviewOpen || periodOverviewDays != null) return;
+        if (closeReturnsToOriginRef.current) {
+          closeReturnsToOriginRef.current = false;
+          onCloseToOrigin?.();
+        }
+      }}
     />
     </>
   );

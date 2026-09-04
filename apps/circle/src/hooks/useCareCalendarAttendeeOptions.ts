@@ -1,16 +1,17 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 import { useEffect, useState } from 'react';
-import { doc, getDoc, type Firestore } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, type Firestore } from 'firebase/firestore';
 import {
   buildCareCalendarAttendeeOptions,
+  composeContactDisplayName,
   enrichCareCalendarAttendeeOptionsWithPhotos,
+  normalizeInviteEmail,
+  parseMemberContactProfile,
   resolveCareCalendarPatientAttendee,
   type CareCalendarAttendeeOption,
+  type CircleMemberContactProfile,
 } from '@medxforce/shared';
-import {
-  loadCircleMapPhotosByContactId,
-  loadCircleMapPhotosByEmail,
-} from '../lib/circleMapPhotos';
+import { loadCircleMapPhotoMaps } from '../lib/circleMapPhotos';
 
 export function useCareCalendarAttendeeOptions(
   db: Firestore | undefined,
@@ -54,14 +55,49 @@ export function useCareCalendarAttendeeOptions(
         patient,
       });
 
-      const [photosByEmail, photosByContactId] = await Promise.all([
-        loadCircleMapPhotosByEmail(db, patientId),
-        loadCircleMapPhotosByContactId(db, patientId),
-      ]);
+      const profileByEmail = new Map<string, CircleMemberContactProfile>();
+      try {
+        const membersSnap = await getDocs(collection(db, 'patients', patientId, 'members'));
+        await Promise.all(
+          membersSnap.docs.map(async (memberDoc) => {
+            if (memberDoc.id.startsWith('contact_')) return;
+            const memberData = memberDoc.data() as Record<string, unknown>;
+            const email = normalizeInviteEmail(String(memberData.invitedEmail || ''));
+            if (!email) return;
+            try {
+              const prefsSnap = await getDoc(
+                doc(db, 'patients', patientId, 'members', memberDoc.id, 'prefs', 'contact'),
+              );
+              const profile =
+                parseMemberContactProfile(
+                  prefsSnap.exists()
+                    ? (prefsSnap.data() as Record<string, unknown>)
+                    : memberData,
+                ) ?? parseMemberContactProfile(memberData);
+              if (profile) profileByEmail.set(email, profile);
+            } catch {
+              const profile = parseMemberContactProfile(memberData);
+              if (profile) profileByEmail.set(email, profile);
+            }
+          }),
+        );
+      } catch {
+        /* Patient contact arrays remain the fallback directory. */
+      }
+
+      const withLiveNames = base.map((option) => {
+        const email = option.email ? normalizeInviteEmail(option.email) : '';
+        const profile = email ? profileByEmail.get(email) : undefined;
+        if (!profile) return option;
+        const name = composeContactDisplayName(profile) || profile.name.trim();
+        return name && name !== option.name ? { ...option, name } : option;
+      });
+
+      const { byEmail, byContactId } = await loadCircleMapPhotoMaps(db, patientId);
 
       if (!cancelled) {
         setOptions(
-          enrichCareCalendarAttendeeOptionsWithPhotos(base, photosByContactId, photosByEmail),
+          enrichCareCalendarAttendeeOptionsWithPhotos(withLiveNames, byContactId, byEmail),
         );
       }
     })();

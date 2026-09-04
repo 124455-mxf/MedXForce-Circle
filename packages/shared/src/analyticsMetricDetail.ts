@@ -18,6 +18,8 @@ export type MessagesTimelinePoint = {
   date: string;
   communication: number;
   messaging: number;
+  sent?: number;
+  replies?: number;
 };
 
 export type AlertAttentionTimelinePoint = {
@@ -31,17 +33,33 @@ export type CompanionTimelinePoint = {
   conversations: number;
   interactions: number;
   detected: number;
+  started?: number;
+  resumed?: number;
 };
 
 export type DailyCheckInTimelinePoint = {
+  /** ISO `YYYY-MM-DD` preferred; locale labels may still appear on older payloads. */
   date: string;
   completed: number;
   skipped: number;
+  label?: string;
+  notTaken?: number;
 };
 
 export type AssessmentCountTimelinePoint = {
+  /** ISO `YYYY-MM-DD` preferred; locale labels may still appear on older payloads. */
   date: string;
   count: number;
+  label?: string;
+  /** Mean score for assessments on this day, when available. */
+  score?: number;
+};
+
+export type SoulGalleryTimelinePoint = {
+  date: string;
+  photos: number;
+  videos: number;
+  reactions: number;
 };
 
 export type DailyCheckInAnswerTrendPoint = {
@@ -73,6 +91,12 @@ export type VisionFindingItem = {
 export type VisionCategoryTrend = {
   current: number;
   trend: AnalyticsTrendDirection;
+};
+
+export type DiaryTimelinePoint = {
+  date: string;
+  entries: number;
+  milestones: number;
 };
 
 export type VitalityGameTimelinePoint = {
@@ -122,6 +146,19 @@ export type PsychologicalTimelinePoint = {
   energy: number;
 };
 
+export type SpeechLanguageScoreTrend = PsychologicalScoreTrend;
+
+export type SpeechLanguageTimelinePoint = {
+  date: string;
+  label: string;
+  overall: number;
+  spontaneousSpeech: number;
+  naming: number;
+  repetition: number;
+  readingWriting: number;
+  oralMotor: number;
+};
+
 export type AnalyticsMetricDetail =
   | {
       kind: 'alert_attention';
@@ -142,6 +179,7 @@ export type AnalyticsMetricDetail =
       trend?: AnalyticsTrendDirection;
       topTopics?: TopCountItem[];
       timeline?: CompanionTimelinePoint[];
+      lastCompanionAt?: number | null;
     }
   | {
       kind: 'messages';
@@ -152,6 +190,7 @@ export type AnalyticsMetricDetail =
       messagingBreakdown?: MessagesMessagingBreakdown;
       timeline?: MessagesTimelinePoint[];
       lastCommunicationInputMethod?: 'keyboard' | 'touch' | null;
+      lastCommunicationAt?: number | null;
     }
   | {
       kind: 'daily_check_in';
@@ -189,6 +228,7 @@ export type AnalyticsMetricDetail =
       milestoneCount: number;
       latestAt: number | null;
       trend: AnalyticsTrendDirection;
+      timeline?: DiaryTimelinePoint[];
     }
   | {
       kind: 'soul_gallery';
@@ -201,6 +241,7 @@ export type AnalyticsMetricDetail =
       reactionCount: number;
       latestAt: number | null;
       trend: AnalyticsTrendDirection;
+      timeline?: SoulGalleryTimelinePoint[];
     }
   | {
       kind: 'vision';
@@ -237,10 +278,30 @@ export type AnalyticsMetricDetail =
       stress: PsychologicalScoreTrend;
       energy: PsychologicalScoreTrend;
       timeline: PsychologicalTimelinePoint[];
+    }
+  | {
+      kind: 'speech_language';
+      count: number;
+      average: number;
+      trend: AnalyticsTrendDirection;
+      overall: SpeechLanguageScoreTrend;
+      spontaneousSpeech: SpeechLanguageScoreTrend;
+      naming: SpeechLanguageScoreTrend;
+      repetition: SpeechLanguageScoreTrend;
+      readingWriting: SpeechLanguageScoreTrend;
+      oralMotor: SpeechLanguageScoreTrend;
+      timeline: SpeechLanguageTimelinePoint[];
     };
 
 function asFiniteNumber(value: unknown): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (value === true) return 1;
+  if (value === false) return 0;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return 0;
 }
 
 function parseTrend(value: unknown): AnalyticsTrendDirection {
@@ -290,6 +351,8 @@ function parseMessagesTimeline(raw: unknown): MessagesTimelinePoint[] | undefine
       date: item.date,
       communication: asFiniteNumber(item.communication),
       messaging: asFiniteNumber(item.messaging),
+      sent: asFiniteNumber(item.sent),
+      replies: asFiniteNumber(item.replies),
     }));
   return points.length > 0 ? points : undefined;
 }
@@ -335,11 +398,17 @@ function parseCompanionTimeline(raw: unknown): CompanionTimelinePoint[] | undefi
       conversations: asFiniteNumber(item.conversations),
       interactions: asFiniteNumber(item.interactions),
       detected: asFiniteNumber(item.detected),
+      ...('started' in item ? { started: asFiniteNumber(item.started) } : {}),
+      ...('resumed' in item ? { resumed: asFiniteNumber(item.resumed) } : {}),
     }));
   return points.length > 0 ? points : undefined;
 }
 
 function parseCompanionDetail(raw: Record<string, unknown>): AnalyticsMetricDetail {
+  const lastCompanionAt =
+    typeof raw.lastCompanionAt === 'number' && Number.isFinite(raw.lastCompanionAt)
+      ? raw.lastCompanionAt
+      : null;
   return {
     kind: 'companion',
     total: asFiniteNumber(raw.total),
@@ -355,47 +424,70 @@ function parseCompanionDetail(raw: Record<string, unknown>): AnalyticsMetricDeta
     trend: parseTrend(raw.trend),
     topTopics: parseTopItems(raw.topTopics),
     timeline: parseCompanionTimeline(raw.timeline),
+    lastCompanionAt,
   };
+}
+
+function asDateString(value: unknown): string {
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  if (
+    value &&
+    typeof value === 'object' &&
+    'toDate' in value &&
+    typeof (value as { toDate: () => Date }).toDate === 'function'
+  ) {
+    const d = (value as { toDate: () => Date }).toDate();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  return '';
 }
 
 function parseDailyCheckInTimeline(raw: unknown): DailyCheckInTimelinePoint[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const points = raw
-    .filter(
-      (item): item is DailyCheckInTimelinePoint =>
-        item != null &&
-        typeof item === 'object' &&
-        typeof (item as DailyCheckInTimelinePoint).date === 'string',
-    )
-    .map((item) => ({
-      date: item.date,
-      completed: asFiniteNumber(item.completed),
-      skipped: asFiniteNumber(item.skipped),
-    }));
+    .map((item) => {
+      if (item == null || typeof item !== 'object') return null;
+      const date = asDateString((item as DailyCheckInTimelinePoint).date);
+      if (!date) return null;
+      const label = (item as DailyCheckInTimelinePoint).label;
+      return {
+        date,
+        completed: asFiniteNumber((item as DailyCheckInTimelinePoint).completed),
+        skipped: asFiniteNumber((item as DailyCheckInTimelinePoint).skipped),
+        ...(typeof label === 'string' && label ? { label } : {}),
+        ...(typeof (item as DailyCheckInTimelinePoint).notTaken === 'number' &&
+        Number.isFinite((item as DailyCheckInTimelinePoint).notTaken)
+          ? { notTaken: (item as DailyCheckInTimelinePoint).notTaken }
+          : {}),
+      };
+    })
+    .filter((item): item is DailyCheckInTimelinePoint => item != null);
   return points.length > 0 ? points : undefined;
 }
 
 function parseDailyCheckInAnswerTrend(raw: unknown): DailyCheckInAnswerTrendPoint[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const points = raw
-    .filter(
-      (item): item is DailyCheckInAnswerTrendPoint =>
-        item != null &&
-        typeof item === 'object' &&
-        typeof (item as DailyCheckInAnswerTrendPoint).date === 'string' &&
-        typeof (item as DailyCheckInAnswerTrendPoint).label === 'string',
-    )
-    .map((item) => ({
-      date: item.date,
-      label: item.label,
-      mood: typeof item.mood === 'number' && Number.isFinite(item.mood) ? item.mood : undefined,
-      pain: typeof item.pain === 'number' && Number.isFinite(item.pain) ? item.pain : undefined,
-      sleep: typeof item.sleep === 'number' && Number.isFinite(item.sleep) ? item.sleep : undefined,
-      vitality:
-        typeof item.vitality === 'number' && Number.isFinite(item.vitality)
-          ? item.vitality
-          : undefined,
-    }));
+    .map((item) => {
+      if (item == null || typeof item !== 'object') return null;
+      const row = item as DailyCheckInAnswerTrendPoint;
+      const date = asDateString(row.date);
+      if (!date) return null;
+      const label = typeof row.label === 'string' && row.label ? row.label : date.slice(5).replace('-', '/');
+      return {
+        date,
+        label,
+        mood: typeof row.mood === 'number' && Number.isFinite(row.mood) ? row.mood : undefined,
+        pain: typeof row.pain === 'number' && Number.isFinite(row.pain) ? row.pain : undefined,
+        sleep: typeof row.sleep === 'number' && Number.isFinite(row.sleep) ? row.sleep : undefined,
+        vitality:
+          typeof row.vitality === 'number' && Number.isFinite(row.vitality) ? row.vitality : undefined,
+      };
+    })
+    .filter((item): item is DailyCheckInAnswerTrendPoint => item != null);
   return points.length > 0 ? points : undefined;
 }
 
@@ -425,6 +517,23 @@ function parseDailyCheckInDetail(raw: Record<string, unknown>): AnalyticsMetricD
   };
 }
 
+function parseDiaryTimeline(raw: unknown): DiaryTimelinePoint[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const points = raw
+    .filter(
+      (item): item is DiaryTimelinePoint =>
+        item != null &&
+        typeof item === 'object' &&
+        typeof (item as DiaryTimelinePoint).date === 'string',
+    )
+    .map((item) => ({
+      date: item.date,
+      entries: asFiniteNumber(item.entries),
+      milestones: asFiniteNumber(item.milestones),
+    }));
+  return points.length > 0 ? points : undefined;
+}
+
 function parseDiaryDetail(raw: Record<string, unknown>): AnalyticsMetricDetail {
   const latestAt =
     typeof raw.latestAt === 'number' && Number.isFinite(raw.latestAt) ? raw.latestAt : null;
@@ -434,7 +543,26 @@ function parseDiaryDetail(raw: Record<string, unknown>): AnalyticsMetricDetail {
     milestoneCount: asFiniteNumber(raw.milestoneCount),
     latestAt,
     trend: parseTrend(raw.trend),
+    timeline: parseDiaryTimeline(raw.timeline),
   };
+}
+
+function parseSoulGalleryTimeline(raw: unknown): SoulGalleryTimelinePoint[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const points = raw
+    .filter(
+      (item): item is SoulGalleryTimelinePoint =>
+        item != null &&
+        typeof item === 'object' &&
+        typeof (item as SoulGalleryTimelinePoint).date === 'string',
+    )
+    .map((item) => ({
+      date: item.date,
+      photos: asFiniteNumber(item.photos),
+      videos: asFiniteNumber(item.videos),
+      reactions: asFiniteNumber(item.reactions),
+    }));
+  return points.length > 0 ? points : undefined;
 }
 
 function parseSoulGalleryDetail(raw: Record<string, unknown>): AnalyticsMetricDetail {
@@ -444,6 +572,7 @@ function parseSoulGalleryDetail(raw: Record<string, unknown>): AnalyticsMetricDe
   const totalPhotoCount = asFiniteNumber(raw.totalPhotoCount) || photoCount;
   const unseenPhotoCount = asFiniteNumber(raw.unseenPhotoCount);
   const unseenMediaCount = asFiniteNumber(raw.unseenMediaCount) || unseenPhotoCount;
+  const timeline = parseSoulGalleryTimeline(raw.timeline);
   return {
     kind: 'soul_gallery',
     albumCount: asFiniteNumber(raw.albumCount),
@@ -455,6 +584,7 @@ function parseSoulGalleryDetail(raw: Record<string, unknown>): AnalyticsMetricDe
     reactionCount: asFiniteNumber(raw.reactionCount),
     latestAt,
     trend: parseTrend(raw.trend),
+    ...(timeline ? { timeline } : {}),
   };
 }
 
@@ -465,12 +595,11 @@ function parseVisionTimeline(raw: unknown): VisionTimelinePoint[] | undefined {
       (item): item is VisionTimelinePoint =>
         item != null &&
         typeof item === 'object' &&
-        typeof (item as VisionTimelinePoint).date === 'string' &&
-        typeof (item as VisionTimelinePoint).label === 'string',
+        typeof (item as VisionTimelinePoint).date === 'string',
     )
     .map((item) => ({
       date: item.date,
-      label: item.label,
+      label: typeof item.label === 'string' && item.label ? item.label : item.date,
       fieldIssues: asFiniteNumber(item.fieldIssues),
       focusIssues: asFiniteNumber(item.focusIssues),
       motorIssues: asFiniteNumber(item.motorIssues),
@@ -643,6 +772,43 @@ function parsePsychologicalDetail(raw: Record<string, unknown>): AnalyticsMetric
   };
 }
 
+function parseSpeechLanguageTimeline(raw: unknown): SpeechLanguageTimelinePoint[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(
+      (item): item is SpeechLanguageTimelinePoint =>
+        item != null &&
+        typeof item === 'object' &&
+        typeof (item as SpeechLanguageTimelinePoint).date === 'string',
+    )
+    .map((item) => ({
+      date: item.date,
+      label: typeof item.label === 'string' ? item.label : item.date,
+      overall: asFiniteNumber(item.overall),
+      spontaneousSpeech: asFiniteNumber(item.spontaneousSpeech),
+      naming: asFiniteNumber(item.naming),
+      repetition: asFiniteNumber(item.repetition),
+      readingWriting: asFiniteNumber(item.readingWriting),
+      oralMotor: asFiniteNumber(item.oralMotor),
+    }));
+}
+
+function parseSpeechLanguageDetail(raw: Record<string, unknown>): AnalyticsMetricDetail {
+  return {
+    kind: 'speech_language',
+    count: asFiniteNumber(raw.count),
+    average: asFiniteNumber(raw.average),
+    trend: parseTrend(raw.trend),
+    overall: parsePsychologicalScoreTrend(raw.overall),
+    spontaneousSpeech: parsePsychologicalScoreTrend(raw.spontaneousSpeech),
+    naming: parsePsychologicalScoreTrend(raw.naming),
+    repetition: parsePsychologicalScoreTrend(raw.repetition),
+    readingWriting: parsePsychologicalScoreTrend(raw.readingWriting),
+    oralMotor: parsePsychologicalScoreTrend(raw.oralMotor),
+    timeline: parseSpeechLanguageTimeline(raw.timeline),
+  };
+}
+
 function parseAssessmentCountTimeline(raw: unknown): AssessmentCountTimelinePoint[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const points = raw
@@ -655,6 +821,8 @@ function parseAssessmentCountTimeline(raw: unknown): AssessmentCountTimelinePoin
     .map((item) => ({
       date: item.date,
       count: asFiniteNumber(item.count),
+      ...(typeof item.label === 'string' && item.label ? { label: item.label } : {}),
+      ...(typeof item.score === 'number' && Number.isFinite(item.score) ? { score: item.score } : {}),
     }));
   return points.length > 0 ? points : undefined;
 }
@@ -678,12 +846,11 @@ function parseVitalityGameTimeline(raw: unknown): VitalityGameTimelinePoint[] | 
       (item): item is VitalityGameTimelinePoint =>
         item != null &&
         typeof item === 'object' &&
-        typeof (item as VitalityGameTimelinePoint).date === 'string' &&
-        typeof (item as VitalityGameTimelinePoint).label === 'string',
+        typeof (item as VitalityGameTimelinePoint).date === 'string',
     )
     .map((item) => ({
       date: item.date,
-      label: item.label,
+      label: typeof item.label === 'string' && item.label ? item.label : item.date,
       games: asFiniteNumber(item.games),
       accuracy: asFiniteNumber(item.accuracy),
     }));
@@ -709,6 +876,10 @@ function parseMessagesDetail(raw: Record<string, unknown>): AnalyticsMetricDetai
   const method = raw.lastCommunicationInputMethod;
   const lastCommunicationInputMethod =
     method === 'keyboard' || method === 'touch' ? method : null;
+  const lastCommunicationAt =
+    typeof raw.lastCommunicationAt === 'number' && Number.isFinite(raw.lastCommunicationAt)
+      ? raw.lastCommunicationAt
+      : null;
   return {
     kind: 'messages',
     communication: asFiniteNumber(raw.communication),
@@ -718,6 +889,7 @@ function parseMessagesDetail(raw: Record<string, unknown>): AnalyticsMetricDetai
     messagingBreakdown: parseMessagingBreakdown(raw.messagingBreakdown),
     timeline: parseMessagesTimeline(raw.timeline),
     lastCommunicationInputMethod,
+    lastCommunicationAt,
   };
 }
 
@@ -743,6 +915,8 @@ export function parseAnalyticsMetricDetail(raw: unknown): AnalyticsMetricDetail 
       return parseNeurologicalDetail(d);
     case 'psychological':
       return parsePsychologicalDetail(d);
+    case 'speech_language':
+      return parseSpeechLanguageDetail(d);
     case 'diary':
       return parseDiaryDetail(d);
     case 'soul_gallery':

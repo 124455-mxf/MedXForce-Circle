@@ -1,8 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Firestore } from 'firebase/firestore';
-import { Check, ChevronLeft, Copy, Loader2, Maximize2, Trash2 } from 'lucide-react';
+import { BarChart3, Check, ChevronLeft, ClipboardList, Copy, Loader2, Maximize2, Megaphone, MessageSquare, Mic, Trash2 } from 'lucide-react';
 import {
+  isAnnouncementThreadPost,
   isDropInThreadPost,
+  isPollThreadPost,
   isVisitCaptureThreadPost,
   type CircleMemberThreadPost,
   type CircleMemberThreadPostReply,
@@ -16,12 +18,13 @@ import {
   circlePostInboxTitle,
 } from '../lib/circlePostInboxI18n';
 import { writeCircleThreadPostToClipboard } from '../lib/circleThreadClipboard';
+import { careTransitionPackIdFromAnnouncementPost } from '../lib/careTransitionAnnouncementUnread';
 import { CircleExpandableMessageComposer } from './CircleExpandableMessageComposer';
 import { CircleMemberReplyCard } from './CircleMemberReplyCard';
 import { CircleMessageExpandOverlay } from './CircleMessageExpandOverlay';
 import { CirclePatientLanguagePill } from './CirclePatientLanguagePill';
 import { CirclePostBodyRenderer } from './CirclePostBodyRenderer';
-import { circleSectionComposerClass, circleSectionPanelClass } from '../lib/circleSectionStyles';
+import { circleSectionPanelClass } from '../lib/circleSectionStyles';
 
 function circleReplyCountLabel(t: CircleTranslator, count: number): string {
   return t(count === 1 ? 'circle.reply_one' : 'circle.reply_other', { count });
@@ -67,6 +70,9 @@ export function CirclePostDetailView({
   memberDisplayName,
   memberRole,
   onRecordVisit,
+  onTakeNotes,
+  authorDisplayName,
+  translationTargetLanguages,
 }: {
   post: CircleMemberThreadPost;
   isOwn: boolean;
@@ -100,24 +106,54 @@ export function CirclePostDetailView({
   memberDisplayName?: string;
   memberRole?: string;
   onRecordVisit?: (entryId?: string) => void;
+  onTakeNotes?: (entryId: string, dateKey: string) => void;
+  authorDisplayName?: string;
+  translationTargetLanguages?: CircleUiLanguage[];
 }) {
   const [copied, setCopied] = useState(false);
   const [expandedOpen, setExpandedOpen] = useState(false);
+  const [replyComposerOpen, setReplyComposerOpen] = useState(false);
   const isVisitCapture = isVisitCaptureThreadPost(post);
   const isDropIn = isDropInThreadPost(post);
+  const isPoll = isPollThreadPost(post);
+  const isPackAnnouncement = Boolean(careTransitionPackIdFromAnnouncementPost(post));
+  const isAnnouncement = isAnnouncementThreadPost(post) || readOnlyAnnouncement;
   const showPatientLanguagePill = isDropIn || isVisitCapture;
   const title = circlePostInboxTitle(t, post, viewerLanguage, currentUserUid);
   const showReplies = canReply || replies.length > 0;
 
   const handleCopyPost = useCallback(async () => {
     try {
-      await writeCircleThreadPostToClipboard(post);
+      await writeCircleThreadPostToClipboard(post, {
+        recordedByDisplayName: authorDisplayName,
+      });
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
       /* clipboard unavailable */
     }
-  }, [post]);
+  }, [authorDisplayName, post]);
+
+  useEffect(() => {
+    setReplyComposerOpen(false);
+    setExpandedOpen(false);
+  }, [post.id]);
+
+  const canOpenReplyComposer = Boolean(canReply && onSendReply && onReplyDraftChange);
+  const replyActionButton = canOpenReplyComposer ? (
+    <button
+      type="button"
+      onClick={() => {
+        setExpandedOpen(false);
+        setReplyComposerOpen(true);
+      }}
+      disabled={replySending}
+      className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
+    >
+      <MessageSquare size={18} />
+      {t('circle.reply')}
+    </button>
+  ) : null;
 
   return (
     <>
@@ -125,7 +161,17 @@ export function CirclePostDetailView({
         <div
           className={cn(
             'shrink-0 border-b',
-            highlightAsUnread ? 'bg-red-50/40 border-red-200' : 'bg-white/90 border-slate-100',
+            isPackAnnouncement
+              ? 'bg-teal-50/80 border-teal-200'
+              : isAnnouncement
+                ? 'bg-amber-50/80 border-amber-200'
+                : isVisitCapture
+                  ? 'bg-indigo-50/80 border-indigo-200'
+                  : isPoll
+                    ? 'bg-sky-50/70 border-sky-200'
+                    : highlightAsUnread
+                      ? 'bg-red-50/40 border-red-200'
+                      : 'bg-white/90 border-slate-100',
           )}
         >
           <div className="flex items-start gap-2 px-4 pt-4 pb-3">
@@ -139,7 +185,43 @@ export function CirclePostDetailView({
             </button>
             <div className="min-w-0 flex-1 pb-1">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="font-bold text-slate-800 line-clamp-2 leading-snug min-w-0 flex-1">
+                {isPackAnnouncement || isAnnouncement || isVisitCapture || isPoll ? (
+                  <span
+                    className={cn(
+                      'w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 bg-white',
+                      isPackAnnouncement
+                        ? 'border-teal-100 text-teal-700'
+                        : isAnnouncement
+                          ? 'border-amber-100 text-amber-700'
+                          : isVisitCapture
+                            ? 'border-indigo-100 text-indigo-700'
+                            : 'border-sky-100 text-sky-700',
+                    )}
+                    aria-hidden
+                  >
+                    {isPackAnnouncement ? (
+                      <ClipboardList size={16} />
+                    ) : isAnnouncement ? (
+                      <Megaphone size={16} />
+                    ) : isVisitCapture ? (
+                      <Mic size={16} />
+                    ) : (
+                      <BarChart3 size={16} />
+                    )}
+                  </span>
+                ) : null}
+                <p
+                  className={cn(
+                    'font-bold line-clamp-2 leading-snug min-w-0 flex-1',
+                    isPackAnnouncement
+                      ? 'text-teal-950'
+                      : isAnnouncement
+                        ? 'text-amber-950'
+                        : isVisitCapture
+                          ? 'text-indigo-950'
+                          : 'text-slate-800',
+                  )}
+                >
                   {title}
                 </p>
                 {showPatientLanguagePill && patientLanguage ? (
@@ -152,7 +234,13 @@ export function CirclePostDetailView({
               <p className="text-[11px] text-slate-500 mt-0.5">
                 {formatCirclePostTime(t, post.createdAt)}
                 {' · '}
-                {circlePostDetailSubtitle(t, post, isOwn, ownRoleLabel)}
+                {circlePostDetailSubtitle(
+                  t,
+                  post,
+                  isOwn,
+                  ownRoleLabel,
+                  authorDisplayName ?? post.authorName,
+                )}
               </p>
             </div>
             <button
@@ -186,11 +274,6 @@ export function CirclePostDetailView({
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4">
-          {readOnlyAnnouncement ? (
-            <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
-              {t('circle.announcementReadOnlyHint')}
-            </p>
-          ) : null}
           <CirclePostBodyRenderer
             post={post}
             isOwn={isOwn}
@@ -206,7 +289,22 @@ export function CirclePostDetailView({
             memberDisplayName={memberDisplayName}
             memberRole={memberRole}
             onRecordVisit={onRecordVisit}
+            onTakeNotes={onTakeNotes}
+            authorDisplayName={authorDisplayName}
+            translationTargetLanguages={translationTargetLanguages}
           />
+          {readOnlyAnnouncement ? (
+            <p
+              className={cn(
+                'mt-4 rounded-xl border px-3 py-2.5 text-xs leading-relaxed',
+                isPackAnnouncement
+                  ? 'border-teal-100 bg-white text-teal-900'
+                  : 'border-amber-100 bg-white text-amber-900',
+              )}
+            >
+              {t('circle.announcementReadOnlyHint')}
+            </p>
+          ) : null}
           <div className="mt-6 flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -253,6 +351,7 @@ export function CirclePostDetailView({
                         highlightAsUnread={replyUnread}
                         viewerLanguage={viewerLanguage}
                         t={t}
+                        pollThread={isPoll}
                       />
                     );
                   })}
@@ -269,12 +368,16 @@ export function CirclePostDetailView({
           ) : null}
         </div>
 
-        {canReply && onSendReply && onReplyDraftChange ? (
-          <div className={circleSectionComposerClass}>
+        {canOpenReplyComposer ? (
+          <div className="shrink-0 p-3 sm:p-4 border-t border-slate-200 bg-white shadow-[0_-4px_12px_rgba(15,23,42,0.06)]">
             {replySendError ? (
               <p className="text-xs text-red-600 mb-2 px-1">{replySendError}</p>
             ) : null}
+            {replyActionButton}
             <CircleExpandableMessageComposer
+              presentation="overlay"
+              expanded={replyComposerOpen}
+              onExpandedChange={setReplyComposerOpen}
               value={replyDraft}
               onChange={onReplyDraftChange}
               placeholder={t('circle.replyPlaceholder')}
@@ -287,6 +390,7 @@ export function CirclePostDetailView({
               sendingLabel={t('circle.sending')}
               maxLength={5000}
               expandTitle={t('circle.expandReplyTitle')}
+              error={replySendError}
             />
           </div>
         ) : null}
@@ -301,23 +405,71 @@ export function CirclePostDetailView({
             : `${translateCircleMemberRole(t, post.authorRole)} · ${formatCirclePostTime(t, post.createdAt)}`
         }
         onClose={() => setExpandedOpen(false)}
+        footer={replyActionButton}
         t={t}
       >
-        <CirclePostBodyRenderer
-          post={post}
-          isOwn={isOwn}
-          viewerLanguage={viewerLanguage}
-          t={t}
-          disableTruncate
-          db={db}
-          patientId={patientId}
-          memberUid={currentUserUid}
-          memberContactId={memberContactId}
-          memberDocContactId={memberDocContactId}
-          inviteContactId={inviteContactId}
-          memberDisplayName={memberDisplayName}
-          memberRole={memberRole}
-        />
+        <div className="space-y-4">
+          <CirclePostBodyRenderer
+            post={post}
+            isOwn={isOwn}
+            viewerLanguage={viewerLanguage}
+            t={t}
+            disableTruncate
+            db={db}
+            patientId={patientId}
+            memberUid={currentUserUid}
+            memberContactId={memberContactId}
+            memberDocContactId={memberDocContactId}
+            inviteContactId={inviteContactId}
+            memberDisplayName={memberDisplayName}
+            memberRole={memberRole}
+            onRecordVisit={onRecordVisit}
+            onTakeNotes={onTakeNotes}
+            authorDisplayName={authorDisplayName}
+            translationTargetLanguages={translationTargetLanguages}
+          />
+          {readOnlyAnnouncement ? (
+            <p
+              className={cn(
+                'rounded-xl border px-3 py-2.5 text-xs leading-relaxed',
+                isPackAnnouncement
+                  ? 'border-teal-100 bg-white text-teal-900'
+                  : 'border-amber-100 bg-white text-amber-900',
+              )}
+            >
+              {t('circle.announcementReadOnlyHint')}
+            </p>
+          ) : null}
+          {replies.length > 0 ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="h-px flex-1 bg-slate-100" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2">
+                  {circleReplyCountLabel(t, replies.length)}
+                </span>
+                <div className="h-px flex-1 bg-slate-100" />
+              </div>
+              {replies.map((reply) => {
+                const replyIsOwn = reply.authorUid === currentUserUid;
+                const replyUnread =
+                  !replyIsOwn &&
+                  reply.createdAt > threadLastReadAt &&
+                  reply.createdAt > post.createdAt;
+                return (
+                  <CircleMemberReplyCard
+                    key={reply.id}
+                    reply={reply}
+                    isOwn={replyIsOwn}
+                    highlightAsUnread={replyUnread}
+                    viewerLanguage={viewerLanguage}
+                    t={t}
+                    pollThread={isPoll}
+                  />
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
       </CircleMessageExpandOverlay>
     </>
   );
