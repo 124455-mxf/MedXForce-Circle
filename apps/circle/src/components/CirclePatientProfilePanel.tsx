@@ -567,17 +567,17 @@ export function CirclePatientProfilePanel({
                     onClick={() => (canEdit ? handleEditSection('clinical') : undefined)}
                     disabled={!canEdit}
                     className={cn(
-                      'inline-flex items-center gap-2.5 rounded-full border px-3.5 py-1.5 text-left transition-colors',
+                      'inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-left transition-colors',
                       treatmentPhaseCardClass(workingSnapshot.clinical.treatmentPhase, true),
                       canEdit ? 'hover:opacity-95 cursor-pointer' : 'cursor-default',
                     )}
                   >
-                    <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
                       {t('admin.profile.fieldTreatmentPhase')}
                     </span>
                     <span
                       className={cn(
-                        'inline-flex items-center rounded-full px-3 py-1 text-sm font-bold uppercase tracking-wide',
+                        'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
                         treatmentPhaseBadgeClass(workingSnapshot.clinical.treatmentPhase),
                       )}
                     >
@@ -588,7 +588,7 @@ export function CirclePatientProfilePanel({
                     <button
                       type="button"
                       onClick={onOpenRemoteSettingsApplicationMode}
-                      className="text-sm font-semibold text-blue-600 hover:text-blue-700 px-0.5"
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-700 px-0.5"
                     >
                       {t('admin.profile.openApplicationModeSettings')}
                     </button>
