@@ -131,13 +131,13 @@ export function CircleIcuUnicodeEmojiManagement({
   };
 
   return (
-    <div className="rounded-2xl border border-blue-200/80 bg-white overflow-hidden">
+    <div className="rounded-2xl border border-red-200/80 bg-white overflow-hidden">
       <button
         type="button"
         onClick={() => setCollapsed((open) => !open)}
-        className="w-full p-4 flex items-center justify-between hover:bg-blue-50/50 transition-colors"
+        className="w-full p-4 flex items-center justify-between hover:bg-red-50/50 transition-colors"
       >
-        <div className="flex items-center gap-3 text-blue-700 min-w-0 text-left">
+        <div className="flex items-center gap-3 text-red-800 min-w-0 text-left">
           <Smile size={20} className="shrink-0" />
           <div className="min-w-0">
             <h4 className="font-semibold text-sm leading-snug">{t('remoteSettings.icuEmoji.heading')}</h4>
@@ -158,7 +158,7 @@ export function CircleIcuUnicodeEmojiManagement({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden px-4 pb-4 space-y-4 border-t border-blue-100"
+            className="overflow-hidden px-4 pb-4 space-y-4 border-t border-red-100"
           >
             <p className="text-sm text-slate-600 leading-snug pt-3">{t('remoteSettings.icuEmoji.hint')}</p>
 

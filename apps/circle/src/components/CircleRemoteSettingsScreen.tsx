@@ -922,153 +922,162 @@ export function CircleRemoteSettingsScreen({
               {REMOTE_APP_MODES.map((mode) => {
                 const active = settings.appMode === mode.key;
                 return (
-                  <button
+                  <div
                     key={mode.key}
-                    type="button"
-                    onClick={() => {
-                      if (active) return;
-                      openPendingMode(mode.key);
-                    }}
                     className={cn(
                       'w-full text-left p-4 rounded-2xl border transition-colors',
                       remoteAppModeCardClass(mode.key, active),
                     )}
                   >
-                    <div className="flex items-center gap-2">
-                      <Shield size={16} className={remoteAppModeIconClass(mode.key, active)} />
-                      <p className="text-sm font-bold text-slate-800">
-                        {remoteSettingsAppModeLabel(t, mode.key)}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (active) return;
+                        openPendingMode(mode.key);
+                      }}
+                      className={cn('w-full text-left', active ? 'cursor-default' : 'cursor-pointer')}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Shield size={16} className={remoteAppModeIconClass(mode.key, active)} />
+                        <p className="text-sm font-bold text-slate-800">
+                          {remoteSettingsAppModeLabel(t, mode.key)}
+                        </p>
+                        {active && (
+                          <span
+                            className={cn(
+                              'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full',
+                              remoteAppModeCurrentBadgeClass(mode.key),
+                            )}
+                          >
+                            {t('remoteSettings.current')}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                        {remoteSettingsAppModeDescription(t, mode.key)}
                       </p>
-                      {active && (
-                        <span
-                          className={cn(
-                            'text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full',
-                            remoteAppModeCurrentBadgeClass(mode.key),
-                          )}
-                        >
-                          {t('remoteSettings.current')}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                      {remoteSettingsAppModeDescription(t, mode.key)}
-                    </p>
-                    {mode.key === 'intensive_care' ? (
-                      <p className="text-[11px] font-semibold text-red-700/80 mt-1.5 leading-relaxed">
-                        {t('remoteSettings.modes.intensiveCareDashboardHint')}
-                      </p>
-                    ) : mode.key === 'hospital' ? (
-                      <p className="text-[11px] font-semibold text-amber-800/80 mt-1.5 leading-relaxed">
-                        {t('remoteSettings.modes.hospitalDashboardHint')}
-                      </p>
+                      {mode.key === 'intensive_care' ? (
+                        <p className="text-[11px] font-semibold text-red-700/80 mt-1.5 leading-relaxed">
+                          {t('remoteSettings.modes.intensiveCareDashboardHint')}
+                        </p>
+                      ) : mode.key === 'hospital' ? (
+                        <p className="text-[11px] font-semibold text-amber-800/80 mt-1.5 leading-relaxed">
+                          {t('remoteSettings.modes.hospitalDashboardHint')}
+                        </p>
+                      ) : null}
+                    </button>
+
+                    {active && mode.key === 'intensive_care' ? (
+                      <div className="mt-4 pt-4 border-t border-red-200/80 space-y-4">
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-bold text-red-800/70 uppercase tracking-widest">
+                            {t('remoteSettings.icuExperienceHeading')}
+                          </p>
+                          <p className="text-xs text-slate-600 leading-snug">
+                            {t('remoteSettings.icuExperienceDesc')}
+                          </p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <OptionalChipButton
+                              label={t('remoteSettings.icuVariantMinimal')}
+                              active={icuExperience === 'minimal_focus'}
+                              onClick={() => applyIcuExperience('minimal_focus')}
+                            />
+                            <OptionalChipButton
+                              label={t('remoteSettings.icuVariantStandard')}
+                              active={icuExperience !== 'minimal_focus'}
+                              onClick={() => applyIcuExperience('standard')}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-bold text-red-800/70 uppercase tracking-widest">
+                            {t('remoteSettings.icuOptionalHeading')}
+                          </p>
+                          <p className="text-xs text-slate-600 leading-snug">
+                            {t('remoteSettings.icuOptionalDesc')}
+                          </p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <OptionalChipButton
+                              label={t('remoteSettings.icuOptPain')}
+                              active={icuOptionalFeatures.painAssessment}
+                              onClick={() => toggleIcuOptionalFeature('painAssessment')}
+                            />
+                            <OptionalChipButton
+                              label={t('remoteSettings.icuOptDoctor')}
+                              active={icuOptionalFeatures.doctorQuickAnswers}
+                              onClick={() => toggleIcuOptionalFeature('doctorQuickAnswers')}
+                            />
+                            <OptionalChipButton
+                              label={t('remoteSettings.icuOptBoardLanguage')}
+                              active={icuOptionalFeatures.boardLanguage}
+                              onClick={() => toggleIcuOptionalFeature('boardLanguage')}
+                              className="col-span-2"
+                            />
+                            <OptionalChipButton
+                              label={t('remoteSettings.icuOptSoulMusic')}
+                              active={icuOptionalFeatures.soulMusic}
+                              onClick={() => toggleIcuOptionalFeature('soulMusic')}
+                            />
+                            <OptionalChipButton
+                              label={t('remoteSettings.icuOptSoulMedia')}
+                              active={icuOptionalFeatures.soulMediaLibrary}
+                              disabled={!soulMediaAvailable}
+                              disabledHint={t('remoteSettings.icuOptSoulMediaNeedsPhotos')}
+                              onClick={() => toggleIcuOptionalFeature('soulMediaLibrary')}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-bold text-red-800/70 uppercase tracking-widest">
+                            {t('remoteSettings.icuContentHeading')}
+                          </p>
+                          <CircleIcuUnicodeEmojiManagement t={t} settings={settings} onPatch={patch} />
+                        </div>
+                      </div>
                     ) : null}
-                  </button>
+
+                    {active && mode.key === 'hospital' ? (
+                      <div className="mt-4 pt-4 border-t border-amber-200/80 space-y-2">
+                        <p className="text-[10px] font-bold text-amber-800/70 uppercase tracking-widest">
+                          {t('remoteSettings.hospitalOptionalHeading')}
+                        </p>
+                        <p className="text-xs text-slate-600 leading-snug">
+                          {t('remoteSettings.hospitalOptionalDesc')}
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <OptionalChipButton
+                            label={t('remoteSettings.hospitalOptDashboard')}
+                            active={hospitalOptionalFeatures.dashboard}
+                            onClick={() => toggleHospitalOptionalFeature('dashboard')}
+                            className="col-span-2"
+                          />
+                          <OptionalChipButton
+                            label={t('remoteSettings.hospitalOptMessaging')}
+                            active={hospitalOptionalFeatures.messaging}
+                            onClick={() => toggleHospitalOptionalFeature('messaging')}
+                          />
+                          <OptionalChipButton
+                            label={t('remoteSettings.hospitalOptCompanion')}
+                            active={hospitalOptionalFeatures.aiCompanion}
+                            onClick={() => toggleHospitalOptionalFeature('aiCompanion')}
+                          />
+                          <OptionalChipButton
+                            label={t('remoteSettings.hospitalOptVitality')}
+                            active={hospitalOptionalFeatures.vitality}
+                            onClick={() => toggleHospitalOptionalFeature('vitality')}
+                          />
+                          <OptionalChipButton
+                            label={t('remoteSettings.hospitalOptAssessments')}
+                            active={hospitalOptionalFeatures.healthAssessments}
+                            onClick={() => toggleHospitalOptionalFeature('healthAssessments')}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 );
               })}
             </div>
-
-            {settings.appMode === 'intensive_care' ? (
-              <div className="rounded-2xl border border-blue-200/80 bg-blue-50/60 p-4 space-y-4">
-                <div className="space-y-2">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                    {t('remoteSettings.icuExperienceHeading')}
-                  </p>
-                  <p className="text-xs text-slate-600 leading-snug">
-                    {t('remoteSettings.icuExperienceDesc')}
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <OptionalChipButton
-                      label={t('remoteSettings.icuVariantMinimal')}
-                      active={icuExperience === 'minimal_focus'}
-                      onClick={() => applyIcuExperience('minimal_focus')}
-                    />
-                    <OptionalChipButton
-                      label={t('remoteSettings.icuVariantStandard')}
-                      active={icuExperience !== 'minimal_focus'}
-                      onClick={() => applyIcuExperience('standard')}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                    {t('remoteSettings.icuOptionalHeading')}
-                  </p>
-                  <p className="text-xs text-slate-600 leading-snug">
-                    {t('remoteSettings.icuOptionalDesc')}
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <OptionalChipButton
-                      label={t('remoteSettings.icuOptPain')}
-                      active={icuOptionalFeatures.painAssessment}
-                      onClick={() => toggleIcuOptionalFeature('painAssessment')}
-                    />
-                    <OptionalChipButton
-                      label={t('remoteSettings.icuOptDoctor')}
-                      active={icuOptionalFeatures.doctorQuickAnswers}
-                      onClick={() => toggleIcuOptionalFeature('doctorQuickAnswers')}
-                    />
-                    <OptionalChipButton
-                      label={t('remoteSettings.icuOptBoardLanguage')}
-                      active={icuOptionalFeatures.boardLanguage}
-                      onClick={() => toggleIcuOptionalFeature('boardLanguage')}
-                      className="col-span-2"
-                    />
-                    <OptionalChipButton
-                      label={t('remoteSettings.icuOptSoulMusic')}
-                      active={icuOptionalFeatures.soulMusic}
-                      onClick={() => toggleIcuOptionalFeature('soulMusic')}
-                    />
-                    <OptionalChipButton
-                      label={t('remoteSettings.icuOptSoulMedia')}
-                      active={icuOptionalFeatures.soulMediaLibrary}
-                      disabled={!soulMediaAvailable}
-                      disabledHint={t('remoteSettings.icuOptSoulMediaNeedsPhotos')}
-                      onClick={() => toggleIcuOptionalFeature('soulMediaLibrary')}
-                    />
-                  </div>
-                </div>
-                <CircleIcuUnicodeEmojiManagement t={t} settings={settings} onPatch={patch} />
-              </div>
-            ) : null}
-
-            {settings.appMode === 'hospital' ? (
-              <div className="rounded-2xl border border-blue-200/80 bg-blue-50/60 p-4 space-y-2">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  {t('remoteSettings.hospitalOptionalHeading')}
-                </p>
-                <p className="text-xs text-slate-600 leading-snug">
-                  {t('remoteSettings.hospitalOptionalDesc')}
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <OptionalChipButton
-                    label={t('remoteSettings.hospitalOptDashboard')}
-                    active={hospitalOptionalFeatures.dashboard}
-                    onClick={() => toggleHospitalOptionalFeature('dashboard')}
-                    className="col-span-2"
-                  />
-                  <OptionalChipButton
-                    label={t('remoteSettings.hospitalOptMessaging')}
-                    active={hospitalOptionalFeatures.messaging}
-                    onClick={() => toggleHospitalOptionalFeature('messaging')}
-                  />
-                  <OptionalChipButton
-                    label={t('remoteSettings.hospitalOptCompanion')}
-                    active={hospitalOptionalFeatures.aiCompanion}
-                    onClick={() => toggleHospitalOptionalFeature('aiCompanion')}
-                  />
-                  <OptionalChipButton
-                    label={t('remoteSettings.hospitalOptVitality')}
-                    active={hospitalOptionalFeatures.vitality}
-                    onClick={() => toggleHospitalOptionalFeature('vitality')}
-                  />
-                  <OptionalChipButton
-                    label={t('remoteSettings.hospitalOptAssessments')}
-                    active={hospitalOptionalFeatures.healthAssessments}
-                    onClick={() => toggleHospitalOptionalFeature('healthAssessments')}
-                  />
-                </div>
-              </div>
-            ) : null}
           </section>
 
           <div className="space-y-3">
@@ -1500,8 +1509,8 @@ export function CircleRemoteSettingsScreen({
               </p>
 
               {pendingMode === 'intensive_care' ? (
-                <div className="rounded-2xl border border-blue-200/80 bg-blue-50/60 p-4 space-y-3">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-4 space-y-3">
+                  <p className="text-[10px] font-bold text-red-800/70 uppercase tracking-widest">
                     {t('remoteSettings.icuExperienceHeading')}
                   </p>
                   <div className="grid grid-cols-2 gap-2">
@@ -1522,7 +1531,7 @@ export function CircleRemoteSettingsScreen({
                       }}
                     />
                   </div>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pt-1">
+                  <p className="text-[10px] font-bold text-red-800/70 uppercase tracking-widest pt-1">
                     {t('remoteSettings.icuOptionalHeading')}
                   </p>
                   <div className="grid grid-cols-2 gap-2">
@@ -1580,13 +1589,16 @@ export function CircleRemoteSettingsScreen({
                       }
                     />
                   </div>
+                  <p className="text-[10px] font-bold text-red-800/70 uppercase tracking-widest pt-1">
+                    {t('remoteSettings.icuContentHeading')}
+                  </p>
                   <CircleIcuUnicodeEmojiManagement t={t} settings={settings} onPatch={patch} />
                 </div>
               ) : null}
 
               {pendingMode === 'hospital' ? (
-                <div className="rounded-2xl border border-blue-200/80 bg-blue-50/60 p-4 space-y-3">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                  <p className="text-[10px] font-bold text-amber-800/70 uppercase tracking-widest">
                     {t('remoteSettings.hospitalOptionalHeading')}
                   </p>
                   <p className="text-xs text-slate-600 leading-snug">

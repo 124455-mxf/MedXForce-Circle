@@ -18,6 +18,7 @@ const remoteSettingsEnglish = {
   icuVariantStandard: 'Standard',
   icuOptionalHeading: 'ICU Features',
   icuOptionalDesc: 'Turn on only what the patient is ready for. Soul launchers need Apple Music or shared media.',
+  icuContentHeading: 'ICU Content',
   icuOptPain: 'Pain Assessment',
   icuOptDoctor: 'Quick Answers',
   icuOptBoardLanguage: 'Sentences & words',
@@ -84,7 +85,7 @@ const remoteSettingsEnglish = {
       food: 'Food',
     },
   },
-  hospitalOptionalHeading: 'Optional Hospital features',
+  hospitalOptionalHeading: 'Hospital features',
   hospitalOptionalDesc: 'Enable extra areas when the patient is ready. Communication stays on.',
   hospitalOptDashboard: 'Dashboard',
   hospitalOptMessaging: 'Messaging',
@@ -384,6 +385,7 @@ const remoteSettingsGerman = {
   icuOptionalHeading: 'ICU-Funktionen',
   icuOptionalDesc:
     'Schalten Sie nur ein, wofür der Patient bereit ist. Soul-Starter brauchen Apple Music oder geteilte Medien.',
+  icuContentHeading: 'ICU-Inhalt',
   icuOptPain: 'Schmerz-Einschätzung',
   icuOptDoctor: 'Schnellantworten',
   icuOptBoardLanguage: 'Sätze & Wörter',
@@ -450,7 +452,7 @@ const remoteSettingsGerman = {
       food: 'Essen',
     },
   },
-  hospitalOptionalHeading: 'Optionale Krankenhaus-Funktionen',
+  hospitalOptionalHeading: 'Krankenhaus-Funktionen',
   hospitalOptionalDesc:
     'Zusätzliche Bereiche freischalten, wenn der Patient bereit ist. Kommunikation bleibt an.',
   hospitalOptDashboard: 'Dashboard',
@@ -753,6 +755,7 @@ const remoteSettingsSpanish = {
   icuOptionalHeading: 'Funciones de UCI',
   icuOptionalDesc:
     'Active solo lo que el paciente esté listo. Los accesos Soul requieren Apple Music o medios compartidos.',
+  icuContentHeading: 'Contenido de UCI',
   icuOptPain: 'Evaluación del dolor',
   icuOptDoctor: 'Respuestas rápidas',
   icuOptBoardLanguage: 'Frases y palabras',
@@ -819,7 +822,7 @@ const remoteSettingsSpanish = {
       food: 'Comida',
     },
   },
-  hospitalOptionalHeading: 'Funciones opcionales de Hospital',
+  hospitalOptionalHeading: 'Funciones de Hospital',
   hospitalOptionalDesc:
     'Active áreas extra cuando el paciente esté listo. La comunicación permanece activa.',
   hospitalOptDashboard: 'Panel',
@@ -1120,6 +1123,7 @@ const remoteSettingsPolish = {
   icuOptionalHeading: 'Funkcje OIOM',
   icuOptionalDesc:
     'Włącz tylko to, na co pacjent jest gotowy. Launchery Soul wymagają Apple Music lub udostępnionych mediów.',
+  icuContentHeading: 'Treść OIOM',
   icuOptPain: 'Ocena bólu',
   icuOptDoctor: 'Szybkie odpowiedzi',
   icuOptBoardLanguage: 'Zdania i słowa',
@@ -1186,7 +1190,7 @@ const remoteSettingsPolish = {
       food: 'Jedzenie',
     },
   },
-  hospitalOptionalHeading: 'Opcjonalne funkcje Szpital',
+  hospitalOptionalHeading: 'Funkcje Szpital',
   hospitalOptionalDesc:
     'Włącz dodatkowe obszary, gdy pacjent jest gotowy. Komunikacja pozostaje włączona.',
   hospitalOptDashboard: 'Panel',
