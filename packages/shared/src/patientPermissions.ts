@@ -211,12 +211,17 @@ export function normalizeInviteEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-/** Home schedule nudge tiles (due assessments / today's appointments) for care team roles. */
-export function canSeePatientScheduleNudgeTiles(role: string): boolean {
+/** Show Home ICU daily brief to proxy and caregivers. */
+export function canViewIcuDailyBrief(role: string): boolean {
   const normalized = normalizeMemberRole(role);
   return (
     normalized === 'proxy'
     || normalized === 'caregiver'
     || normalized === 'professional_caregiver'
   );
+}
+
+/** Home schedule nudge tiles (due assessments / today's appointments) for care team roles. */
+export function canSeePatientScheduleNudgeTiles(role: string): boolean {
+  return canViewIcuDailyBrief(role);
 }

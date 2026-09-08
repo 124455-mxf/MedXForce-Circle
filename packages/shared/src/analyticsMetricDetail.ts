@@ -26,6 +26,8 @@ export type AlertAttentionTimelinePoint = {
   date: string;
   alert: number;
   attention: number;
+  canceledAlert?: number;
+  canceledAttention?: number;
 };
 
 export type CompanionTimelinePoint = {
@@ -164,6 +166,8 @@ export type AnalyticsMetricDetail =
       kind: 'alert_attention';
       alerts: number;
       attentions: number;
+      canceledAlerts?: number;
+      canceledAttentions?: number;
       trend: AnalyticsTrendDirection;
       timeline?: AlertAttentionTimelinePoint[];
     }
@@ -370,6 +374,8 @@ function parseAlertAttentionTimeline(raw: unknown): AlertAttentionTimelinePoint[
       date: item.date,
       alert: asFiniteNumber(item.alert),
       attention: asFiniteNumber(item.attention),
+      canceledAlert: asFiniteNumber(item.canceledAlert),
+      canceledAttention: asFiniteNumber(item.canceledAttention),
     }));
   return points.length > 0 ? points : undefined;
 }
@@ -379,6 +385,8 @@ function parseAlertAttentionDetail(raw: Record<string, unknown>): AnalyticsMetri
     kind: 'alert_attention',
     alerts: asFiniteNumber(raw.alerts),
     attentions: asFiniteNumber(raw.attentions),
+    canceledAlerts: asFiniteNumber(raw.canceledAlerts),
+    canceledAttentions: asFiniteNumber(raw.canceledAttentions),
     trend: parseTrend(raw.trend),
     timeline: parseAlertAttentionTimeline(raw.timeline),
   };

@@ -33,6 +33,7 @@ import {
   canSeeCareTeamDashboardReminders,
   canSeePatientScheduleNudgeTiles,
   canShowIcuCommunicationLogInbox,
+  canViewIcuDailyBrief,
   canViewPatientProfileTab,
   canViewRemoteSettingsTab,
   canManageCareTransitionPack,
@@ -73,6 +74,7 @@ import { CircleDashboardPatientLocaleWidget } from './CircleDashboardPatientLoca
 import { CircleGalleryRotatingPreviewWidget } from './CircleGalleryRotatingPreviewWidget';
 import { CircleDashboardCircleMapSection } from './CircleDashboardCircleMapSection';
 import { CircleDashboardCheckInWellnessSection } from './CircleDashboardCheckInWellnessSection';
+import { CircleIcuDailyBriefSection } from './CircleIcuDailyBriefSection';
 import { CirclePatientCommandConfirmModal } from './CirclePatientCommandConfirmModal';
 
 import { CircleAlertAttentionBanner } from './CircleAlertAttentionBanner';
@@ -124,7 +126,7 @@ import {
 
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import { isPatientDoNotDisturbSection } from '../hooks/usePatientOnlinePresence';
-import { countUnreadIcuDailySummaries, isIcuDailySummary } from '../lib/circleCommunicationLog';
+import { countUnreadIcuDailySummaries, isIcuDailySummary, splitCircleInbox } from '../lib/circleCommunicationLog';
 import {
   CIRCLE_MSG_READ_CHANGED,
   isCommunicationLogSummaryUnread,
@@ -1143,6 +1145,12 @@ export function CircleDashboardScreen({
     () => threadRawMessages.filter((msg) => isIcuDailySummary(msg)).length,
     [threadRawMessages],
   );
+  const icuCommunicationLog = useMemo(
+    () => splitCircleInbox(threadRawMessages).communicationLog,
+    [threadRawMessages],
+  );
+  const showIcuDailyBrief =
+    canViewIcuDailyBrief(memberRole) && remoteSettings?.appMode === 'intensive_care';
   const showCommunicationLogInbox = useMemo(
     () =>
       canShowIcuCommunicationLogInbox(memberRole, remoteSettings, icuSummaryCount),
@@ -2254,6 +2262,31 @@ export function CircleDashboardScreen({
               onManageContacts={canManageTeam ? () => onGoToTab('admin') : undefined}
             />
           </section>
+        ) : null}
+
+        {showIcuDailyBrief ? (
+          <CircleIcuDailyBriefSection
+            db={db}
+            patientId={patient.patientId}
+            memberRole={memberRole}
+            remoteSettings={remoteSettings}
+            alertTimeline={alertDetail?.timeline}
+            checkInTimeline={dailyDetail?.timeline}
+            communicationLog={icuCommunicationLog}
+            careTransitionState={careTransitionState}
+            onOpenCommunicationLog={() =>
+              onOpenMessagesInbox
+                ? onOpenMessagesInbox('communication_log')
+                : onGoToTab('messages')
+            }
+            onOpenAlerts={() => onOpenAnalyticsDetail('alert-attention')}
+            onOpenCheckIn={() => onOpenAnalyticsDetail('daily-check-in')}
+            onOpenTasks={() =>
+              onOpenCircleFolder
+                ? onOpenCircleFolder('open', 'care_transition' as CircleInboxFolder)
+                : onGoToTab('circle')
+            }
+          />
         ) : null}
 
         {visibleLastSevenDayWidgets.length > 0 || showCheckInWellnessRing ? (
