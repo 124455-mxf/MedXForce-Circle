@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Check, Copy, Loader2, Mic, MicOff, Sparkles, X } from 'lucide-react';
 import type { CircleMemberRole } from '@medxforce/shared';
+import { askCircleAiGuidance, isCircleAiAssistAvailable } from '../lib/circleAiAssist';
 import { writeFormattedTextToClipboard } from '../lib/formattedClipboard';
 import { useDictation } from '../hooks/useDictation';
 import { cn } from '../lib/utils';

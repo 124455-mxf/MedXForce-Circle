@@ -322,7 +322,7 @@ export const appShellEnglish = {
     notificationsHint: 'Alert, attention, and message delivery',
     myContactHint: 'Name, relationship, and language',
     customizeDashboard: 'Customize dashboard',
-    customizeDashboardHint: 'Choose which tiles appear at the bottom of Home',
+    customizeDashboardHint: 'How many tiles Home starts with, and how Patient activity cards sit.',
     openSettingsHint: 'Messaging, media, care relationship, and more',
     openSettingsHintWithUserMgmt:
       'Messaging, media, care relationship, user management, and more',
@@ -375,17 +375,28 @@ export const appShellEnglish = {
     dashboardCustomizeSubtitle: 'Choose optional tiles for {{name}}\'s home screen',
     dashboardCustomizeMandatoryHint:
       'Needs your attention, patient activity, live status, and other urgent blocks always stay on Home when relevant. You can show or hide the sections below.',
+    dashboardCustomizeMandatoryHintIcu:
+      'Needs your attention, tasks, polls, appointments, reminders, and the ICU daily brief stay on Home when relevant. Extra tiles below stay off until you turn them on.',
+    dashboardCustomizeIcuHint:
+      'This layout is for Intensive care Home. Daily Life keeps its own tiles when the application mode changes.',
     dashboardWidgetUnavailable: 'Not available for your role',
     dashboardCustomizeSaved: 'Saved',
     dashboardCustomizeSaveFailed: 'Could not save dashboard layout.',
     dashboardCustomizeNoPatient:
       'Open your account and switch patient to choose who you are supporting first.',
-    dashboardCustomizeReset: 'Reset to Compact',
-    dashboardCustomizePresetCompact: 'Compact',
-    dashboardCustomizePresetDetailed: 'Detailed',
+    dashboardCustomizeReset: 'Reset to fewer tiles',
+    dashboardCustomizePresetTitle: '1. Optional tiles on Home',
+    dashboardCustomizePresetCompact: 'Fewer tiles',
+    dashboardCustomizePresetCompactNote: 'Compact',
+    dashboardCustomizePresetDetailed: 'More tiles',
+    dashboardCustomizePresetDetailedNote: 'Detailed',
     dashboardCustomizePresetHint:
-      'Start with Compact or Detailed, then turn tiles on or off as you like.',
-    dashboardCustomizePresetCustom: 'Custom — tiles differ from Compact and Detailed.',
+      'Choose how many extra tiles Home starts with. You can still change tiles in the lists below.',
+    dashboardCustomizePresetHintIcu:
+      'Fewer tiles keeps Home quiet — reminders plus the ICU blocks above. More tiles adds a few overview cards. Daily Life is unchanged.',
+    dashboardCustomizePresetCustom:
+      'Custom — your tiles no longer match Fewer tiles or More tiles.',
+    dashboardCustomizeTilesHeading: '3. Turn tiles on or off',
     dashboardCustomizeSectionOnCount: '{{count}} on',
     turnOffAlertTitle: 'Turn off Alert notifications?',
     turnOffAlertBody:
@@ -886,10 +897,13 @@ export const appShellEnglish = {
     customizeReminderDiaryEntry: 'Journal entry reminder',
     customizeCheckInCompact: 'Check-in compact',
     customizeAssessmentsCompact: 'Assessments compact',
-    customizePatientActivityExpanded: 'Expanded',
-    customizePatientActivityCompact: 'Compact',
+    customizePatientActivityExpanded: 'Full-width',
+    customizePatientActivityExpandedNote: 'One per row',
+    customizePatientActivityCompact: 'Side by side',
+    customizePatientActivityCompactNote: 'Two in a row',
+    customizePatientActivityTitle: '2. Patient activity cards',
     customizePatientActivityHint:
-      'Choose Compact (side by side) or Expanded (full-width cards). Patient activity stays on Home when there is something to show.',
+      'This only changes how those cards sit on Home — not which other tiles appear.',
     attentionMessages: 'Messages',
     attentionIcuDailyNotes: 'Daily ICU notes',
     attentionIcuDailyNotesWaiting: 'unread daily summaries',
@@ -1188,6 +1202,10 @@ export const appShellEnglish = {
         'Enable Vitality with Media Library for Intensive Care. The launcher appears when shared media is available.',
       icuSoulTurnOnMusic: 'Turn on Soul Music',
       icuSoulTurnOnMediaLibrary: 'Turn on Media Library',
+      icuSetupHeadline: 'Intensive care setup',
+      icuSetupBody: '{{count}} suggestions for this tablet',
+      icuSetupShow: 'Show suggestions',
+      icuSetupHide: 'Hide',
       previewModeStepUpStandardHeadline: 'Ready for ICU Standard?',
       previewModeStepUpStandardBody:
         'Sample progression nudge — use Switch to Standard from Home.',
@@ -1729,7 +1747,7 @@ export const appShellGerman = {
     notificationsHint: 'Alarm, Aufmerksamkeit und Nachrichtenzustellung',
     myContactHint: 'Name, Beziehung und Sprache',
     customizeDashboard: 'Dashboard anpassen',
-    customizeDashboardHint: 'Wählen Sie, welche Kacheln unten auf Home erscheinen',
+    customizeDashboardHint: 'Wie viele Kacheln Home startet und wie die Aktivitätskarten sitzen.',
     openSettingsHint: 'Nachrichten, Medien, Pflegebeziehung und mehr',
     openSettingsHintWithUserMgmt:
       'Nachrichten, Medien, Pflegebeziehung, Benutzerverwaltung und mehr',
@@ -1785,17 +1803,28 @@ export const appShellGerman = {
     dashboardCustomizeSubtitle: 'Optionale Kacheln für {{name}}s Startseite wählen',
     dashboardCustomizeMandatoryHint:
       '„Ihre Aufmerksamkeit“, Patientenaktivität, Live-Status und andere dringende Blöcke bleiben auf Home, wenn relevant. Die Abschnitte unten können ein- oder ausgeblendet werden.',
+    dashboardCustomizeMandatoryHintIcu:
+      '„Ihre Aufmerksamkeit“, Aufgaben, Umfragen, Termine, Erinnerungen und das tägliche ICU-Briefing bleiben auf Home, wenn relevant. Zusätzliche Kacheln bleiben aus, bis Sie sie einschalten.',
+    dashboardCustomizeIcuHint:
+      'Dieses Layout gilt für die Intensivpflege-Startseite. Daily Life behält eigene Kacheln, wenn sich der Anwendungsmodus ändert.',
     dashboardWidgetUnavailable: 'Für Ihre Rolle nicht verfügbar',
     dashboardCustomizeSaved: 'Gespeichert',
     dashboardCustomizeSaveFailed: 'Dashboard-Layout konnte nicht gespeichert werden.',
     dashboardCustomizeNoPatient:
       'Öffnen Sie Ihr Konto und wählen Sie zuerst den Patienten, den Sie unterstützen.',
-    dashboardCustomizeReset: 'Auf Kompakt zurücksetzen',
-    dashboardCustomizePresetCompact: 'Kompakt',
-    dashboardCustomizePresetDetailed: 'Ausführlich',
+    dashboardCustomizeReset: 'Auf weniger Kacheln zurücksetzen',
+    dashboardCustomizePresetTitle: '1. Optionale Kacheln auf Home',
+    dashboardCustomizePresetCompact: 'Weniger Kacheln',
+    dashboardCustomizePresetCompactNote: 'Kompakt',
+    dashboardCustomizePresetDetailed: 'Mehr Kacheln',
+    dashboardCustomizePresetDetailedNote: 'Ausführlich',
     dashboardCustomizePresetHint:
-      'Beginnen Sie mit Kompakt oder Ausführlich und passen Sie die Kacheln danach an.',
-    dashboardCustomizePresetCustom: 'Benutzerdefiniert — weicht von Kompakt und Ausführlich ab.',
+      'Wählen Sie, mit wie vielen zusätzlichen Kacheln Home startet. Unten können Sie Kacheln weiter anpassen.',
+    dashboardCustomizePresetHintIcu:
+      'Weniger Kacheln hält Home ruhig — Erinnerungen plus die ICU-Blöcke oben. Mehr Kacheln fügt einige Überblickskarten hinzu. Daily Life bleibt unverändert.',
+    dashboardCustomizePresetCustom:
+      'Benutzerdefiniert — Ihre Kacheln stimmen nicht mehr mit Weniger oder Mehr überein.',
+    dashboardCustomizeTilesHeading: '3. Kacheln ein- oder ausschalten',
     dashboardCustomizeSectionOnCount: '{{count}} an',
     turnOffAlertTitle: 'Alarm-Benachrichtigungen ausschalten?',
     turnOffAlertBody:
@@ -2293,10 +2322,13 @@ export const appShellGerman = {
     customizeReminderDiaryEntry: 'Tagebuch-Erinnerung',
     customizeCheckInCompact: 'Check-in kompakt',
     customizeAssessmentsCompact: 'Beurteilungen kompakt',
-    customizePatientActivityExpanded: 'Erweitert',
-    customizePatientActivityCompact: 'Kompakt',
+    customizePatientActivityExpanded: 'Volle Breite',
+    customizePatientActivityExpandedNote: 'Eine pro Reihe',
+    customizePatientActivityCompact: 'Nebeneinander',
+    customizePatientActivityCompactNote: 'Zwei in einer Reihe',
+    customizePatientActivityTitle: '2. Karten zur Patientenaktivität',
     customizePatientActivityHint:
-      'Wählen Sie Kompakt (nebeneinander) oder Erweitert (volle Breite). Patientenaktivität bleibt auf Home, wenn es etwas zu zeigen gibt.',
+      'Das ändert nur, wie diese Karten auf Home sitzen — nicht, welche anderen Kacheln erscheinen.',
     attentionMessages: 'Nachrichten',
     attentionIcuDailyNotes: 'Tägliche ICU-Notizen',
     attentionIcuDailyNotesWaiting: 'ungelesene Tageszusammenfassungen',
@@ -2595,6 +2627,10 @@ export const appShellGerman = {
         'Vitalität mit Medienbibliothek für Intensivpflege einschalten. Der Starter erscheint, wenn geteilte Medien verfügbar sind.',
       icuSoulTurnOnMusic: 'Soul-Musik einschalten',
       icuSoulTurnOnMediaLibrary: 'Medienbibliothek einschalten',
+      icuSetupHeadline: 'Einrichtung Intensivpflege',
+      icuSetupBody: '{{count}} Vorschläge für dieses Tablet',
+      icuSetupShow: 'Vorschläge anzeigen',
+      icuSetupHide: 'Ausblenden',
       previewModeStepUpStandardHeadline: 'Bereit für Intensivpflege Standard?',
       previewModeStepUpStandardBody:
         'Beispiel-Fortschritts-Erinnerung — nutzen Sie „Zu Standard wechseln“ auf der Startseite.',
@@ -3136,7 +3172,7 @@ export const appShellSpanish = {
     notificationsHint: 'Alerta, atención y entrega de mensajes',
     myContactHint: 'Nombre, relación e idioma',
     customizeDashboard: 'Personalizar panel',
-    customizeDashboardHint: 'Elija qué mosaicos aparecen al final de Inicio',
+    customizeDashboardHint: 'Con cuántos mosaicos empieza Inicio y cómo se colocan las tarjetas de actividad.',
     openSettingsHint: 'Mensajes, medios, relación de cuidado y más',
     openSettingsHintWithUserMgmt:
       'Mensajes, medios, relación de cuidado, gestión de usuarios y más',
@@ -3192,17 +3228,28 @@ export const appShellSpanish = {
     dashboardCustomizeSubtitle: 'Elija mosaicos opcionales para la pantalla de inicio de {{name}}',
     dashboardCustomizeMandatoryHint:
       'Requiere su atención, actividad del paciente, estado en vivo y otros bloques urgentes permanecen en Inicio cuando corresponda. Puede mostrar u ocultar las secciones siguientes.',
+    dashboardCustomizeMandatoryHintIcu:
+      'Requiere su atención, tareas, encuestas, citas, recordatorios y el informe diario de UCI permanecen en Inicio cuando corresponda. Los mosaicos extra siguen apagados hasta que los active.',
+    dashboardCustomizeIcuHint:
+      'Este diseño es para Inicio en cuidados intensivos. Daily Life conserva sus propios mosaicos al cambiar el modo de la aplicación.',
     dashboardWidgetUnavailable: 'No disponible para su rol',
     dashboardCustomizeSaved: 'Guardado',
     dashboardCustomizeSaveFailed: 'No se pudo guardar el diseño del panel.',
     dashboardCustomizeNoPatient:
       'Abra su cuenta y elija primero el paciente al que apoya.',
-    dashboardCustomizeReset: 'Restablecer a Compacto',
-    dashboardCustomizePresetCompact: 'Compacto',
-    dashboardCustomizePresetDetailed: 'Detallado',
+    dashboardCustomizeReset: 'Restablecer a menos mosaicos',
+    dashboardCustomizePresetTitle: '1. Mosaicos opcionales en Inicio',
+    dashboardCustomizePresetCompact: 'Menos mosaicos',
+    dashboardCustomizePresetCompactNote: 'Compacto',
+    dashboardCustomizePresetDetailed: 'Más mosaicos',
+    dashboardCustomizePresetDetailedNote: 'Detallado',
     dashboardCustomizePresetHint:
-      'Empiece con Compacto o Detallado y luego active o desactive mosaicos.',
-    dashboardCustomizePresetCustom: 'Personalizado: los mosaicos no coinciden con Compacto ni Detallado.',
+      'Elija con cuántos mosaicos extra empieza Inicio. Luego puede cambiarlos en las listas de abajo.',
+    dashboardCustomizePresetHintIcu:
+      'Menos mosaicos deja Inicio más silencioso: recordatorios más los bloques de UCI de arriba. Más mosaicos añade algunas tarjetas de resumen. Daily Life no cambia.',
+    dashboardCustomizePresetCustom:
+      'Personalizado: sus mosaicos ya no coinciden con Menos mosaicos ni Más mosaicos.',
+    dashboardCustomizeTilesHeading: '3. Activar o desactivar mosaicos',
     dashboardCustomizeSectionOnCount: '{{count}} activos',
     turnOffAlertTitle: '¿Desactivar notificaciones de alerta?',
     turnOffAlertBody:
@@ -3700,10 +3747,13 @@ export const appShellSpanish = {
     customizeReminderDiaryEntry: 'Recordatorio de diario',
     customizeCheckInCompact: 'Check-in compacto',
     customizeAssessmentsCompact: 'Evaluaciones compactas',
-    customizePatientActivityExpanded: 'Expandido',
-    customizePatientActivityCompact: 'Compacto',
+    customizePatientActivityExpanded: 'Ancho completo',
+    customizePatientActivityExpandedNote: 'Una por fila',
+    customizePatientActivityCompact: 'Una al lado de otra',
+    customizePatientActivityCompactNote: 'Dos en una fila',
+    customizePatientActivityTitle: '2. Tarjetas de actividad del paciente',
     customizePatientActivityHint:
-      'Elija Compacto (lado a lado) o Expandido (tarjeta ancha). La actividad del paciente permanece en Inicio cuando hay algo que mostrar.',
+      'Esto solo cambia cómo se colocan esas tarjetas en Inicio, no qué otros mosaicos aparecen.',
     attentionMessages: 'Mensajes',
     attentionIcuDailyNotes: 'Notas diarias de UCI',
     attentionIcuDailyNotesWaiting: 'resúmenes diarios sin leer',
@@ -4002,6 +4052,10 @@ export const appShellSpanish = {
         'Active Vitalidad con Biblioteca de medios en cuidados intensivos. El acceso aparece cuando hay medios compartidos.',
       icuSoulTurnOnMusic: 'Activar Música Soul',
       icuSoulTurnOnMediaLibrary: 'Activar Biblioteca de medios',
+      icuSetupHeadline: 'Configuración de cuidados intensivos',
+      icuSetupBody: '{{count}} sugerencias para esta tablet',
+      icuSetupShow: 'Mostrar sugerencias',
+      icuSetupHide: 'Ocultar',
       previewModeStepUpStandardHeadline: '¿Listo para UCI Estándar?',
       previewModeStepUpStandardBody:
         'Recordatorio de progreso de ejemplo — usa Cambiar a Estándar desde Inicio.',
@@ -4543,7 +4597,7 @@ export const appShellPolish = {
     notificationsHint: 'Alarm, uwaga i dostarczanie wiadomości',
     myContactHint: 'Imię, relacja i język',
     customizeDashboard: 'Dostosuj panel',
-    customizeDashboardHint: 'Wybierz kafelki wyświetlane na dole ekranu Home',
+    customizeDashboardHint: 'Z iloma kafelkami zaczyna się ekran główny i jak układają się karty aktywności.',
     openSettingsHint: 'Wiadomości, media, relacja opieki i więcej',
     openSettingsHintWithUserMgmt:
       'Wiadomości, media, relacja opieki, zarządzanie użytkownikami i więcej',
@@ -4599,17 +4653,28 @@ export const appShellPolish = {
     dashboardCustomizeSubtitle: 'Wybierz opcjonalne kafelki na ekranie głównym {{name}}',
     dashboardCustomizeMandatoryHint:
       'Wymaga uwagi, aktywność pacjenta, status na żywo i inne pilne bloki pozostają na Home, gdy to istotne. Poniższe sekcje można włączać lub wyłączać.',
+    dashboardCustomizeMandatoryHintIcu:
+      'Wymaga uwagi, zadania, ankiety, wizyty, przypomnienia i dzienny briefing OIOM pozostają na Home, gdy to istotne. Dodatkowe kafelki są wyłączone, dopóki ich nie włączysz.',
+    dashboardCustomizeIcuHint:
+      'Ten układ dotyczy ekranu głównego intensywnej opieki. Daily Life zachowuje własne kafelki po zmianie trybu aplikacji.',
     dashboardWidgetUnavailable: 'Niedostępne dla Twojej roli',
     dashboardCustomizeSaved: 'Zapisano',
     dashboardCustomizeSaveFailed: 'Nie udało się zapisać układu panelu.',
     dashboardCustomizeNoPatient:
       'Otwórz konto i najpierw wybierz pacjenta, którego wspierasz.',
-    dashboardCustomizeReset: 'Przywróć Compact',
-    dashboardCustomizePresetCompact: 'Kompaktowy',
-    dashboardCustomizePresetDetailed: 'Szczegółowy',
+    dashboardCustomizeReset: 'Przywróć mniej kafelków',
+    dashboardCustomizePresetTitle: '1. Opcjonalne kafelki na ekranie głównym',
+    dashboardCustomizePresetCompact: 'Mniej kafelków',
+    dashboardCustomizePresetCompactNote: 'Kompaktowy',
+    dashboardCustomizePresetDetailed: 'Więcej kafelków',
+    dashboardCustomizePresetDetailedNote: 'Szczegółowy',
     dashboardCustomizePresetHint:
-      'Zacznij od Compact lub Szczegółowy, a potem włączaj i wyłączaj kafelki.',
-    dashboardCustomizePresetCustom: 'Własny — kafelki różnią się od Compact i Szczegółowy.',
+      'Wybierz, z iloma dodatkowymi kafelkami zaczyna się ekran główny. Poniżej nadal możesz je zmieniać.',
+    dashboardCustomizePresetHintIcu:
+      'Mniej kafelków uspokaja Home — przypomnienia plus bloki OIOM powyżej. Więcej kafelków dodaje kilka kart przeglądu. Daily Life pozostaje bez zmian.',
+    dashboardCustomizePresetCustom:
+      'Własny — kafelki nie zgadzają się już z Mniej kafelków ani Więcej kafelków.',
+    dashboardCustomizeTilesHeading: '3. Włączaj i wyłączaj kafelki',
     dashboardCustomizeSectionOnCount: '{{count}} włączone',
     turnOffAlertTitle: 'Wyłączyć powiadomienia alarmu?',
     turnOffAlertBody:
@@ -5107,10 +5172,13 @@ export const appShellPolish = {
     customizeReminderDiaryEntry: 'Przypomnienie o dzienniku',
     customizeCheckInCompact: 'Check-in kompaktowy',
     customizeAssessmentsCompact: 'Oceny kompaktowe',
-    customizePatientActivityExpanded: 'Rozszerzony',
-    customizePatientActivityCompact: 'Kompaktowy',
+    customizePatientActivityExpanded: 'Pełna szerokość',
+    customizePatientActivityExpandedNote: 'Jedna w rzędzie',
+    customizePatientActivityCompact: 'Obok siebie',
+    customizePatientActivityCompactNote: 'Dwie w rzędzie',
+    customizePatientActivityTitle: '2. Karty aktywności pacjenta',
     customizePatientActivityHint:
-      'Wybierz Kompaktowy (obok siebie) lub Rozszerzony (pełna szerokość). Aktywność pacjenta zostaje na ekranie głównym, gdy jest coś do pokazania.',
+      'To zmienia tylko układ tych kart na ekranie głównym — nie to, które inne kafelki są widoczne.',
     attentionMessages: 'Wiadomości',
     attentionIcuDailyNotes: 'Codzienne notatki OIOM',
     attentionIcuDailyNotesWaiting: 'nieprzeczytane codzienne podsumowania',
@@ -5409,6 +5477,10 @@ export const appShellPolish = {
         'Włącz Witalność z Biblioteką mediów w opiece intensywnej. Launcher pojawia się, gdy są udostępnione media.',
       icuSoulTurnOnMusic: 'Włącz Muzykę Soul',
       icuSoulTurnOnMediaLibrary: 'Włącz Bibliotekę mediów',
+      icuSetupHeadline: 'Ustawienia intensywnej opieki',
+      icuSetupBody: '{{count}} sugestii dla tego tabletu',
+      icuSetupShow: 'Pokaż sugestie',
+      icuSetupHide: 'Ukryj',
       previewModeStepUpStandardHeadline: 'Gotowi na OIOM Standard?',
       previewModeStepUpStandardBody:
         'Przykładowe przypomnienie postępu — użyj Przełącz na Standard na stronie głównej.',

@@ -252,7 +252,7 @@ type DashboardWidgetSpec = {
   title: string;
   icon: LucideIcon;
   row1: ReactNode;
-  row2: ReactNode;
+  row2?: ReactNode;
   row3?: ReactNode;
   onClick: () => void;
   span?: 'full';
@@ -1093,6 +1093,7 @@ export function CircleDashboardScreen({
     patient.patientId,
     user.uid,
     memberRole,
+    remoteSettings?.appMode,
   );
   const {
     state: careTransitionState,

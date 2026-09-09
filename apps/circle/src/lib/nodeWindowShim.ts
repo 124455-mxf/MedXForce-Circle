@@ -4,9 +4,11 @@ const g = globalThis as typeof globalThis & {
   Worker?: unknown;
 };
 
-if (g.window == null) g.window = g;
+if (g.window == null) {
+  (g as { window: typeof globalThis }).window = g;
+}
 if (typeof g.Worker === 'undefined') {
-  g.Worker = class {
+  (g as { Worker: unknown }).Worker = class {
     terminate() {}
     postMessage() {}
     addEventListener() {}

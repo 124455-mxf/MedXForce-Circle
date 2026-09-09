@@ -368,7 +368,7 @@ export function CirclePostDetailView({
           ) : null}
         </div>
 
-        {canOpenReplyComposer ? (
+        {canOpenReplyComposer && onReplyDraftChange && onSendReply ? (
           <div className="shrink-0 p-3 sm:p-4 border-t border-slate-200 bg-white shadow-[0_-4px_12px_rgba(15,23,42,0.06)]">
             {replySendError ? (
               <p className="text-xs text-red-600 mb-2 px-1">{replySendError}</p>
@@ -384,7 +384,9 @@ export function CirclePostDetailView({
               disabled={replySending}
               sending={replySending}
               onClear={() => onReplyDraftChange('')}
-              onSend={onSendReply}
+              onSend={() => {
+                void onSendReply();
+              }}
               clearLabel={t('circle.clear')}
               sendLabel={t('circle.sendReply')}
               sendingLabel={t('circle.sending')}

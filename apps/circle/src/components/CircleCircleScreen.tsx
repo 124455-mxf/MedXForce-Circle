@@ -1619,7 +1619,7 @@ export function CircleCircleScreen({
                       <CircleFolderCountBadge
                       {...inboxTabCounts[view]}
                       placement="overlay"
-                      showTotalWhenUnread={view === 'care_transition'}
+                      showTotalWhenUnread={false}
                     />
                     </span>
                   </button>

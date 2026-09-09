@@ -11,7 +11,10 @@ import {
   type PatientCapabilities,
 } from './patientPermissions';
 import { canReadAnalyticsAudience } from './analyticsSummaries';
-import { canViewRemoteSettingsTab } from './remoteSettings';
+import {
+  canViewRemoteSettingsTab,
+  type RemoteAppMode,
+} from './remoteSettings';
 
 /** Dashboard widgets members can show or hide (not the mandatory attention / live blocks). */
 export type CircleDashboardWidgetKey =
@@ -56,7 +59,23 @@ export type CircleDashboardStoredPreset = CircleDashboardLayoutPreset | 'custom'
 export type CircleDashboardLayout = {
   hiddenWidgets: CircleDashboardWidgetKey[];
   preset?: CircleDashboardStoredPreset;
+  icuHiddenWidgets?: CircleDashboardWidgetKey[];
+  icuPreset?: CircleDashboardStoredPreset;
 };
+
+export type ParsedCircleDashboardLayout = {
+  layout: CircleDashboardLayout | null;
+  hasStoredLayout: boolean;
+  hasStoredIcuLayout: boolean;
+};
+
+/** Quiet ICU Home for everyone except Friend (Friend keeps Daily Life compact). */
+export function usesIcuHomeLayout(
+  role: CircleMemberRole,
+  appMode?: RemoteAppMode | null,
+): boolean {
+  return appMode === 'intensive_care' && role !== 'friend';
+}
 
 export const ALL_CUSTOMIZABLE_DASHBOARD_WIDGETS: CircleDashboardWidgetKey[] = [
   'alert-attention',
@@ -226,6 +245,24 @@ const DETAILED_VISIBLE_BY_ROLE: Record<DashboardPresetRoleGroup, CircleDashboard
   ],
 };
 
+/** ICU Home compact: reminders + side-by-side appointment cards. Mandatory attention / tasks / polls / brief stay on. */
+const ICU_COMPACT_VISIBLE: CircleDashboardWidgetKey[] = [
+  'reminder-gallery-upload',
+  'reminder-diary-entry',
+  'patient-activity-compact',
+];
+
+/** ICU “More tiles”: a few overview cards without restoring Daily Life density. */
+const ICU_DETAILED_VISIBLE: CircleDashboardWidgetKey[] = [
+  'reminder-gallery-upload',
+  'reminder-diary-entry',
+  'patient-activity-compact',
+  'patient-locale',
+  'alert-attention',
+  'last-7-days-overview',
+  'circle',
+];
+
 function hiddenWidgetsFromVisible(
   visible: readonly CircleDashboardWidgetKey[],
   role: CircleMemberRole,
@@ -249,7 +286,12 @@ function hiddenWidgetSetEquals(
 export function hiddenDashboardWidgetsForRolePreset(
   role: CircleMemberRole,
   preset: CircleDashboardLayoutPreset,
+  appMode?: RemoteAppMode | null,
 ): CircleDashboardWidgetKey[] {
+  if (usesIcuHomeLayout(role, appMode)) {
+    const visible = preset === 'detailed' ? ICU_DETAILED_VISIBLE : ICU_COMPACT_VISIBLE;
+    return hiddenWidgetsFromVisible(visible, role);
+  }
   const group = dashboardPresetRoleGroup(role);
   const visible =
     preset === 'detailed' ? DETAILED_VISIBLE_BY_ROLE[group] : COMPACT_VISIBLE_BY_ROLE[group];
@@ -259,11 +301,22 @@ export function hiddenDashboardWidgetsForRolePreset(
 export function resolveCircleDashboardLayoutPreset(
   hiddenWidgets: readonly CircleDashboardWidgetKey[],
   role: CircleMemberRole,
+  appMode?: RemoteAppMode | null,
 ): CircleDashboardStoredPreset {
-  if (hiddenWidgetSetEquals(hiddenWidgets, hiddenDashboardWidgetsForRolePreset(role, 'compact'))) {
+  if (
+    hiddenWidgetSetEquals(
+      hiddenWidgets,
+      hiddenDashboardWidgetsForRolePreset(role, 'compact', appMode),
+    )
+  ) {
     return 'compact';
   }
-  if (hiddenWidgetSetEquals(hiddenWidgets, hiddenDashboardWidgetsForRolePreset(role, 'detailed'))) {
+  if (
+    hiddenWidgetSetEquals(
+      hiddenWidgets,
+      hiddenDashboardWidgetsForRolePreset(role, 'detailed', appMode),
+    )
+  ) {
     return 'detailed';
   }
   return 'custom';
@@ -367,14 +420,14 @@ function sanitizeStoredDashboardPreset(raw: unknown): CircleDashboardStoredPrese
 
 export function parseMemberDashboardLayout(
   data: Record<string, unknown> | undefined,
-): { layout: CircleDashboardLayout | null; hasStoredLayout: boolean } {
+): ParsedCircleDashboardLayout {
   if (!data || !Object.prototype.hasOwnProperty.call(data, 'dashboardLayout')) {
-    return { layout: null, hasStoredLayout: false };
+    return { layout: null, hasStoredLayout: false, hasStoredIcuLayout: false };
   }
 
   const raw = data.dashboardLayout;
   if (!raw || typeof raw !== 'object') {
-    return { layout: { hiddenWidgets: [] }, hasStoredLayout: true };
+    return { layout: { hiddenWidgets: [] }, hasStoredLayout: true, hasStoredIcuLayout: false };
   }
 
   return {
@@ -385,6 +438,7 @@ export function parseMemberDashboardLayout(
       preset: sanitizeStoredDashboardPreset((raw as Record<string, unknown>).preset),
     },
     hasStoredLayout: true,
+    hasStoredIcuLayout: false,
   };
 }
 
@@ -427,9 +481,17 @@ function migratePatientActivityWidgetKeys(
 }
 
 export function resolveEffectiveHiddenDashboardWidgets(
-  parsed: { layout: CircleDashboardLayout | null; hasStoredLayout: boolean },
+  parsed: ParsedCircleDashboardLayout,
   role: CircleMemberRole,
+  appMode?: RemoteAppMode | null,
 ): CircleDashboardWidgetKey[] {
+  if (usesIcuHomeLayout(role, appMode)) {
+    const hidden =
+      parsed.hasStoredIcuLayout && parsed.layout
+        ? (parsed.layout.icuHiddenWidgets ?? [])
+        : hiddenDashboardWidgetsForRolePreset(role, 'compact', appMode);
+    return applyExclusiveDashboardWidgetPairs(migratePatientActivityWidgetKeys(hidden, role));
+  }
   const hidden =
     parsed.hasStoredLayout && parsed.layout
       ? parsed.layout.hiddenWidgets
@@ -460,19 +522,28 @@ export function memberDashboardLayoutRef(
 
 export function parsePrefsDashboardLayout(
   data: Record<string, unknown> | undefined,
-): { layout: CircleDashboardLayout | null; hasStoredLayout: boolean } {
-  if (!data || !Object.prototype.hasOwnProperty.call(data, 'hiddenWidgets')) {
-    return { layout: null, hasStoredLayout: false };
+): ParsedCircleDashboardLayout {
+  if (!data) {
+    return { layout: null, hasStoredLayout: false, hasStoredIcuLayout: false };
   }
-  const hiddenWidgets = sanitizeHiddenDashboardWidgets(data.hiddenWidgets);
+  const hasStoredLayout = Object.prototype.hasOwnProperty.call(data, 'hiddenWidgets');
+  const hasStoredIcuLayout = Object.prototype.hasOwnProperty.call(data, 'icuHiddenWidgets');
+  if (!hasStoredLayout && !hasStoredIcuLayout) {
+    return { layout: null, hasStoredLayout: false, hasStoredIcuLayout: false };
+  }
   return {
     layout: {
-      hiddenWidgets,
-      preset:
-        sanitizeStoredDashboardPreset(data.preset) ??
-        undefined,
+      hiddenWidgets: hasStoredLayout
+        ? sanitizeHiddenDashboardWidgets(data.hiddenWidgets)
+        : [],
+      preset: sanitizeStoredDashboardPreset(data.preset) ?? undefined,
+      icuHiddenWidgets: hasStoredIcuLayout
+        ? sanitizeHiddenDashboardWidgets(data.icuHiddenWidgets)
+        : undefined,
+      icuPreset: sanitizeStoredDashboardPreset(data.icuPreset),
     },
-    hasStoredLayout: true,
+    hasStoredLayout,
+    hasStoredIcuLayout,
   };
 }
 
@@ -480,7 +551,7 @@ export async function readMemberDashboardLayout(
   db: Firestore,
   patientId: string,
   memberUid: string,
-): Promise<{ layout: CircleDashboardLayout | null; hasStoredLayout: boolean }> {
+): Promise<ParsedCircleDashboardLayout> {
   const prefsSnap = await getDoc(memberDashboardLayoutRef(db, patientId, memberUid));
   if (prefsSnap.exists()) {
     return parsePrefsDashboardLayout(prefsSnap.data() as Record<string, unknown>);
@@ -489,7 +560,9 @@ export async function readMemberDashboardLayout(
   const legacySnap = await getDoc(
     memberDashboardLayoutLegacyRef(db, patientId, memberUid),
   );
-  if (!legacySnap.exists()) return { layout: null, hasStoredLayout: false };
+  if (!legacySnap.exists()) {
+    return { layout: null, hasStoredLayout: false, hasStoredIcuLayout: false };
+  }
   return parseMemberDashboardLayout(legacySnap.data() as Record<string, unknown>);
 }
 
@@ -499,11 +572,28 @@ export async function writeMemberDashboardLayout(
   memberUid: string,
   hiddenWidgets: CircleDashboardWidgetKey[],
   preset?: CircleDashboardStoredPreset,
+  options?: { slot?: 'daily' | 'icu' },
 ): Promise<CircleDashboardLayout> {
+  const sanitized = applyExclusiveDashboardWidgetPairs(
+    sanitizeHiddenDashboardWidgets(hiddenWidgets),
+  );
+  const slot = options?.slot === 'icu' ? 'icu' : 'daily';
+
+  if (slot === 'icu') {
+    await setDoc(
+      memberDashboardLayoutRef(db, patientId, memberUid),
+      {
+        icuHiddenWidgets: sanitized,
+        ...(preset ? { icuPreset: preset } : {}),
+        updatedAt: Date.now(),
+      },
+      { merge: true },
+    );
+    return { hiddenWidgets: [], icuHiddenWidgets: sanitized, icuPreset: preset };
+  }
+
   const layout: CircleDashboardLayout = {
-    hiddenWidgets: applyExclusiveDashboardWidgetPairs(
-      sanitizeHiddenDashboardWidgets(hiddenWidgets),
-    ),
+    hiddenWidgets: sanitized,
     preset,
   };
 

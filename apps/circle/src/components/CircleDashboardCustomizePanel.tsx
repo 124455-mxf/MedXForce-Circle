@@ -1,16 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
-import { ChevronDown, LayoutGrid, Loader2 } from 'lucide-react';
+import { ChevronDown, Columns2, LayoutGrid, LayoutList, Loader2, Rows2, type LucideIcon } from 'lucide-react';
 import type { Firestore } from 'firebase/firestore';
 import {
   CIRCLE_DASHBOARD_WIDGET_SECTIONS,
   isCircleDashboardWidgetAvailable,
-  isPatientActivityCompactVisible,
   normalizeMemberRole,
+  subscribeRemoteSettings,
+  usesIcuHomeLayout,
   type CircleDashboardLayoutPreset,
   type CircleDashboardLayoutSection,
   type CircleDashboardWidgetKey,
   type CirclePatientSummary,
+  type RemoteAppMode,
 } from '@medxforce/shared';
 import { useCircleDashboardLayout } from '../hooks/useCircleDashboardLayout';
 import {
@@ -26,12 +28,51 @@ type CircleDashboardCustomizePanelProps = {
   patient: CirclePatientSummary | null;
 };
 
+function LayoutChoiceButton({
+  active,
+  disabled,
+  icon: Icon,
+  label,
+  note,
+  onClick,
+}: {
+  active: boolean;
+  disabled: boolean;
+  icon: LucideIcon;
+  label: string;
+  note: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        'flex flex-col items-center gap-1 px-2 py-3 rounded-2xl border text-center transition-colors disabled:opacity-60',
+        active
+          ? 'border-blue-600 bg-blue-50 text-blue-800'
+          : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+      )}
+    >
+      <Icon size={18} aria-hidden className={active ? 'text-blue-700' : 'text-slate-400'} />
+      <span className="text-sm font-semibold leading-tight">{label}</span>
+      <span className={cn('text-[11px] font-medium leading-tight', active ? 'text-blue-700/80' : 'text-slate-400')}>
+        {note}
+      </span>
+    </button>
+  );
+}
+
 function PatientActivityDensityPicker({
-  compact,
+  compactVisible,
+  expandedVisible,
   saving,
   onSelect,
 }: {
-  compact: boolean;
+  compactVisible: boolean;
+  expandedVisible: boolean;
   saving: boolean;
   onSelect: (compact: boolean) => void;
 }) {
@@ -40,35 +81,29 @@ function PatientActivityDensityPicker({
     <div className="space-y-2 rounded-2xl border border-slate-100 bg-white px-4 py-3.5">
       <div className="min-w-0">
         <p className="font-semibold text-slate-800 text-sm">
-          {t('dashboard.sectionPatientActivity')}
+          {t('dashboard.customizePatientActivityTitle')}
         </p>
         <p className="text-xs text-slate-500 mt-1 leading-relaxed">
           {t('dashboard.customizePatientActivityHint')}
         </p>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        {([
-          { id: 'compact' as const, label: t('dashboard.customizePatientActivityCompact') },
-          { id: 'expanded' as const, label: t('dashboard.customizePatientActivityExpanded') },
-        ]).map((option) => {
-          const active = option.id === 'compact' ? compact : !compact;
-          return (
-            <button
-              key={option.id}
-              type="button"
-              disabled={saving}
-              onClick={() => onSelect(option.id === 'compact')}
-              className={cn(
-                'py-2.5 rounded-2xl border text-sm font-semibold transition-colors disabled:opacity-60',
-                active
-                  ? 'border-blue-600 bg-blue-50 text-blue-800'
-                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
-              )}
-            >
-              {option.label}
-            </button>
-          );
-        })}
+        <LayoutChoiceButton
+          active={compactVisible}
+          disabled={saving}
+          icon={Columns2}
+          label={t('dashboard.customizePatientActivityCompact')}
+          note={t('dashboard.customizePatientActivityCompactNote')}
+          onClick={() => onSelect(true)}
+        />
+        <LayoutChoiceButton
+          active={expandedVisible}
+          disabled={saving}
+          icon={Rows2}
+          label={t('dashboard.customizePatientActivityExpanded')}
+          note={t('dashboard.customizePatientActivityExpandedNote')}
+          onClick={() => onSelect(false)}
+        />
       </div>
     </div>
   );
@@ -195,12 +230,26 @@ export function CircleDashboardCustomizePanel({
   const [saved, setSaved] = useState(false);
 
   const memberRole = normalizeMemberRole(patient?.role ?? 'caregiver');
+  const [appMode, setAppMode] = useState<RemoteAppMode | null>(null);
+  const icuHome = usesIcuHomeLayout(memberRole, appMode);
+
+  useEffect(() => {
+    if (!patient?.patientId) {
+      setAppMode(null);
+      return undefined;
+    }
+    return subscribeRemoteSettings(db, patient.patientId, (remote) => {
+      setAppMode(remote?.appMode ?? null);
+    });
+  }, [db, patient?.patientId]);
+
   const { hiddenWidgets, activePreset, loading, setWidgetVisible, applyLayoutPreset, resetToRoleDefaults } =
     useCircleDashboardLayout(
       db,
       patient?.patientId,
       user.uid,
       memberRole,
+      appMode,
     );
 
   const handleToggle = async (key: CircleDashboardWidgetKey, visible: boolean) => {
@@ -292,38 +341,51 @@ export function CircleDashboardCustomizePanel({
       </div>
 
       <p className="text-xs text-slate-500 leading-relaxed bg-slate-50 border border-slate-100 rounded-2xl p-4">
-        {t('settings.dashboardCustomizeMandatoryHint')}
+        {t(
+          icuHome
+            ? 'settings.dashboardCustomizeMandatoryHintIcu'
+            : 'settings.dashboardCustomizeMandatoryHint',
+        )}
       </p>
-
-      <div className="space-y-2">
-        <p className="text-xs text-slate-500 leading-relaxed px-1">
-          {t('settings.dashboardCustomizePresetHint')}
+      {icuHome ? (
+        <p className="text-xs text-blue-800 leading-relaxed bg-blue-50 border border-blue-100 rounded-2xl p-4">
+          {t('settings.dashboardCustomizeIcuHint')}
         </p>
+      ) : null}
+
+      <div className="space-y-2 rounded-2xl border border-slate-100 bg-white px-4 py-3.5">
+        <div className="min-w-0">
+          <p className="font-semibold text-slate-800 text-sm">
+            {t('settings.dashboardCustomizePresetTitle')}
+          </p>
+          <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+            {t(
+              icuHome
+                ? 'settings.dashboardCustomizePresetHintIcu'
+                : 'settings.dashboardCustomizePresetHint',
+            )}
+          </p>
+        </div>
         <div className="grid grid-cols-2 gap-2">
-          {(['compact', 'detailed'] as const).map((preset) => {
-            const active = activePreset === preset;
-            return (
-              <button
-                key={preset}
-                type="button"
-                disabled={saving || loading}
-                onClick={() => void handleApplyPreset(preset)}
-                className={cn(
-                  'py-3 rounded-2xl border text-sm font-semibold transition-colors disabled:opacity-60',
-                  active
-                    ? 'border-blue-600 bg-blue-50 text-blue-800'
-                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
-                )}
-              >
-                {preset === 'compact'
-                  ? t('settings.dashboardCustomizePresetCompact')
-                  : t('settings.dashboardCustomizePresetDetailed')}
-              </button>
-            );
-          })}
+          <LayoutChoiceButton
+            active={activePreset === 'compact'}
+            disabled={saving || loading}
+            icon={LayoutGrid}
+            label={t('settings.dashboardCustomizePresetCompact')}
+            note={t('settings.dashboardCustomizePresetCompactNote')}
+            onClick={() => void handleApplyPreset('compact')}
+          />
+          <LayoutChoiceButton
+            active={activePreset === 'detailed'}
+            disabled={saving || loading}
+            icon={LayoutList}
+            label={t('settings.dashboardCustomizePresetDetailed')}
+            note={t('settings.dashboardCustomizePresetDetailedNote')}
+            onClick={() => void handleApplyPreset('detailed')}
+          />
         </div>
         {activePreset === 'custom' ? (
-          <p className="text-[11px] text-slate-400 px-1">
+          <p className="text-[11px] text-slate-400">
             {t('settings.dashboardCustomizePresetCustom')}
           </p>
         ) : null}
@@ -341,7 +403,8 @@ export function CircleDashboardCustomizePanel({
             memberRole,
           ) ? (
             <PatientActivityDensityPicker
-              compact={isPatientActivityCompactVisible(hiddenWidgets)}
+              compactVisible={!hiddenWidgets.has('patient-activity-compact')}
+              expandedVisible={!hiddenWidgets.has('patient-activity')}
               saving={saving}
               onSelect={(compact) =>
                 void handleToggle(
@@ -351,6 +414,9 @@ export function CircleDashboardCustomizePanel({
               }
             />
           ) : null}
+          <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1 pt-2">
+            {t('settings.dashboardCustomizeTilesHeading')}
+          </h4>
           {(Object.keys(CIRCLE_DASHBOARD_WIDGET_SECTIONS) as CircleDashboardLayoutSection[]).map(
             (section) => (
               <DashboardSectionToggles

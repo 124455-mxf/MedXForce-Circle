@@ -36,7 +36,7 @@ const legacyCompactHidden = compactProxyHidden.filter(
   (key) => key !== 'patient-activity' && key !== 'patient-activity-compact',
 );
 const migratedCompact = resolveEffectiveHiddenDashboardWidgets(
-  { layout: { hiddenWidgets: legacyCompactHidden }, hasStoredLayout: true },
+  { layout: { hiddenWidgets: legacyCompactHidden }, hasStoredLayout: true, hasStoredIcuLayout: false },
   'proxy',
 );
 assert.equal(
@@ -50,7 +50,7 @@ const legacyDetailedHidden = detailedProxyHidden.filter(
   (key) => key !== 'patient-activity' && key !== 'patient-activity-compact',
 );
 const migratedDetailed = resolveEffectiveHiddenDashboardWidgets(
-  { layout: { hiddenWidgets: legacyDetailedHidden }, hasStoredLayout: true },
+  { layout: { hiddenWidgets: legacyDetailedHidden }, hasStoredLayout: true, hasStoredIcuLayout: false },
   'proxy',
 );
 assert.equal(
@@ -70,7 +70,7 @@ assert.equal(
 );
 
 const familyEffective = resolveEffectiveHiddenDashboardWidgets(
-  { layout: { hiddenWidgets: [] }, hasStoredLayout: true },
+  { layout: { hiddenWidgets: [] }, hasStoredLayout: true, hasStoredIcuLayout: false },
   'family',
 );
 assert.equal(isPatientActivityCompactVisible(new Set(familyEffective)), false);
@@ -115,5 +115,115 @@ assert.equal(
   true,
   'if both check-in tiles would be on, keep compact and hide wellness',
 );
+
+const icuProxyCompact = hiddenDashboardWidgetsForRolePreset(
+  'proxy',
+  'compact',
+  'intensive_care',
+);
+assert.equal(
+  icuProxyCompact.includes('last-7-days-overview'),
+  true,
+  'ICU compact hides Last 7 days analytics',
+);
+assert.equal(
+  icuProxyCompact.includes('circle-map'),
+  true,
+  'ICU compact hides Circle map',
+);
+assert.equal(
+  icuProxyCompact.includes('reminder-diary-entry'),
+  false,
+  'ICU compact keeps diary reminder',
+);
+assert.equal(
+  isPatientActivityCompactVisible(new Set(icuProxyCompact)),
+  true,
+  'ICU compact keeps side-by-side appointment cards',
+);
+assert.equal(
+  resolveCircleDashboardLayoutPreset(icuProxyCompact, 'proxy', 'intensive_care'),
+  'compact',
+);
+
+const icuProxyDetailed = hiddenDashboardWidgetsForRolePreset(
+  'proxy',
+  'detailed',
+  'intensive_care',
+);
+assert.equal(
+  icuProxyDetailed.includes('last-7-days-overview'),
+  false,
+  'ICU more-tiles shows Last 7 days overview',
+);
+assert.equal(
+  icuProxyDetailed.includes('circle-map'),
+  true,
+  'ICU more-tiles still hides Circle map',
+);
+assert.equal(
+  resolveCircleDashboardLayoutPreset(icuProxyDetailed, 'proxy', 'intensive_care'),
+  'detailed',
+);
+
+const dailyStoredIcuDefault = resolveEffectiveHiddenDashboardWidgets(
+  {
+    layout: { hiddenWidgets: compactProxyHidden },
+    hasStoredLayout: true,
+    hasStoredIcuLayout: false,
+  },
+  'proxy',
+  'intensive_care',
+);
+assert.equal(
+  dailyStoredIcuDefault.includes('last-7-days-overview'),
+  true,
+  'ICU Home ignores Daily Life stored layout until ICU layout is saved',
+);
+assert.deepEqual(dailyStoredIcuDefault, icuProxyCompact);
+
+const icuStoredUsed = resolveEffectiveHiddenDashboardWidgets(
+  {
+    layout: {
+      hiddenWidgets: compactProxyHidden,
+      icuHiddenWidgets: icuProxyDetailed,
+    },
+    hasStoredLayout: true,
+    hasStoredIcuLayout: true,
+  },
+  'proxy',
+  'intensive_care',
+);
+assert.deepEqual(icuStoredUsed, applyExclusiveDashboardWidgetPairs(icuProxyDetailed));
+
+const friendIcuKeepsDaily = resolveEffectiveHiddenDashboardWidgets(
+  { layout: null, hasStoredLayout: false, hasStoredIcuLayout: false },
+  'friend',
+  'intensive_care',
+);
+assert.deepEqual(
+  friendIcuKeepsDaily,
+  hiddenDashboardWidgetsForRolePreset('friend', 'compact'),
+  'Friend in ICU keeps Daily Life compact, not ICU quiet Home',
+);
+
+const hospitalKeepsDaily = resolveEffectiveHiddenDashboardWidgets(
+  {
+    layout: { hiddenWidgets: compactProxyHidden },
+    hasStoredLayout: true,
+    hasStoredIcuLayout: false,
+  },
+  'proxy',
+  'hospital',
+);
+assert.deepEqual(hospitalKeepsDaily, applyExclusiveDashboardWidgetPairs(compactProxyHidden));
+
+const familyIcuQuiet = hiddenDashboardWidgetsForRolePreset(
+  'family',
+  'compact',
+  'intensive_care',
+);
+assert.equal(familyIcuQuiet.includes('last-7-days-overview'), true);
+assert.equal(familyIcuQuiet.includes('reminder-gallery-upload'), false);
 
 console.log('circle dashboard layout patient-activity tests ok');

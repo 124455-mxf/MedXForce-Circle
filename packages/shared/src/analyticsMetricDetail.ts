@@ -479,7 +479,7 @@ function parseDailyCheckInTimeline(raw: unknown): DailyCheckInTimelinePoint[] | 
 function parseDailyCheckInAnswerTrend(raw: unknown): DailyCheckInAnswerTrendPoint[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const points = raw
-    .map((item) => {
+    .map((item): DailyCheckInAnswerTrendPoint | null => {
       if (item == null || typeof item !== 'object') return null;
       const row = item as DailyCheckInAnswerTrendPoint;
       const date = asDateString(row.date);

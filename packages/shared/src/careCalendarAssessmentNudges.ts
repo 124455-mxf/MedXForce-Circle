@@ -117,7 +117,7 @@ function resolveNudgeMeta(assessmentId: AssessmentScheduleId): SchedulableAssess
 export function getCareCalendarAssessmentNudges(
   event: Pick<
     CareCalendarDayEvent,
-    'kind' | 'visitSubtype' | 'startTimeMinutes' | 'endTimeMinutes'
+    'kind' | 'visitSubtype' | 'startTimeMinutes' | 'endTimeMinutes' | 'timezoneId'
   >,
   dateKey: string,
   phase: CareCalendarAssessmentNudgePhase,

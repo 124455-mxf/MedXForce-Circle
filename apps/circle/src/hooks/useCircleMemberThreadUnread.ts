@@ -7,6 +7,7 @@ import {
   canSeeCircleRestrictedThread,
   canViewCareTransitionTasks,
   canViewCircleAppointmentInvites,
+  normalizeMemberRole,
   careTransitionFolderCounts,
   careTransitionLivePackId,
   careTransitionReadinessRef,
@@ -437,8 +438,9 @@ export function useCircleMemberThreadUnread(
   );
 
   const careTransitionUnreadCount = useMemo(() => {
-    if (!careTransitionState || !canViewCareTransitionTasks(memberRole)) return 0;
-    return careTransitionFolderCounts(careTransitionState, memberRole).unread;
+    const role = normalizeMemberRole(memberRole);
+    if (!careTransitionState || !canViewCareTransitionTasks(role)) return 0;
+    return careTransitionFolderCounts(careTransitionState, role).unread;
   }, [careTransitionState, memberRole]);
 
   const unreadCount = openUnreadCount + restrictedUnreadCount + careTransitionUnreadCount;

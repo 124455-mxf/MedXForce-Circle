@@ -17,6 +17,7 @@ import {
   UserRound,
   Users,
   UserPlus,
+  SlidersHorizontal,
   X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -124,6 +125,8 @@ type CelebrationTile = {
   secondaryLabel?: string;
   onSecondary?: () => void;
   secondaryDisabled?: boolean;
+  /** Application-mode setup cluster (ICU Standard / Hospital / Soul / check-in). */
+  clusterTiles?: CelebrationTile[];
 };
 
 function hospitalFeatureIcon(kind: HospitalFeatureReminderKind): LucideIcon {
@@ -321,6 +324,69 @@ function CelebrationCard({
         <p className="mt-auto inline-flex w-full items-center justify-center rounded-xl border border-sky-200 bg-white/80 px-3 py-2 text-center text-[11px] sm:text-xs font-bold text-sky-800 shrink-0 leading-snug">
           {footerNote}
         </p>
+      ) : null}
+    </div>
+  );
+}
+
+function celebrationTileMinHeightClass(tile: CelebrationTile): string {
+  return tile.actionLabel || tile.footerNote || tile.secondaryLabel
+    ? 'min-h-[12rem] sm:min-h-[12.5rem]'
+    : 'min-h-[10rem] sm:min-h-[10.5rem]';
+}
+
+function IcuSetupReminderCluster({
+  tiles,
+  t,
+  onDismiss,
+}: {
+  tiles: CelebrationTile[];
+  t: ReturnType<typeof useCircleT>;
+  onDismiss: (kind: CircleParticipationReminderKind) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const allPreview = tiles.every((tile) => tile.isPreview);
+
+  return (
+    <div className="space-y-3">
+      <CelebrationCard
+        tone="care"
+        icon={SlidersHorizontal}
+        headline={t('dashboard.reminders.icuSetupHeadline')}
+        body={t('dashboard.reminders.icuSetupBody', { count: tiles.length })}
+        isPreview={allPreview}
+        actionLabel={
+          open ? t('dashboard.reminders.icuSetupHide') : t('dashboard.reminders.icuSetupShow')
+        }
+        onAction={() => setOpen((value) => !value)}
+        t={t}
+      />
+      {open ? (
+        <div className="grid grid-cols-2 gap-3 items-stretch">
+          {tiles.map((tile) => (
+            <div key={tile.key} className={cn('h-full', celebrationTileMinHeightClass(tile))}>
+              <CelebrationCard
+                tone={tile.tone}
+                icon={tile.icon}
+                headline={tile.headline}
+                body={tile.body}
+                isPreview={tile.isPreview}
+                dismissKind={tile.dismissKind}
+                onOpen={tile.onOpen}
+                actionLabel={tile.actionLabel}
+                onAction={tile.onAction}
+                actionUpdating={tile.actionUpdating}
+                actionDisabled={tile.actionDisabled}
+                footerNote={tile.footerNote}
+                secondaryLabel={tile.secondaryLabel}
+                onSecondary={tile.onSecondary}
+                secondaryDisabled={tile.secondaryDisabled}
+                t={t}
+                onDismiss={onDismiss}
+              />
+            </div>
+          ))}
+        </div>
       ) : null}
     </div>
   );
@@ -986,10 +1052,11 @@ export function CircleDashboardCelebrationSection({
     });
   }
 
+  const icuSetupTiles: CelebrationTile[] = [];
   if (icuProgressionKinds.length > 0) {
     for (const kind of icuProgressionKinds) {
       const copy = localizeIcuProgressionReminder(t, kind);
-      tiles.push({
+      icuSetupTiles.push({
         key: kind,
         tone: 'care',
         icon: icuProgressionIcon(kind),
@@ -1005,7 +1072,7 @@ export function CircleDashboardCelebrationSection({
   } else if (previewReminders && careRemindersEnabled) {
     for (const kind of ICU_PROGRESSION_REMINDER_KINDS) {
       const preview = localizePreviewIcuProgressionReminder(t, kind);
-      tiles.push({
+      icuSetupTiles.push({
         key: `preview-${kind}`,
         tone: 'care',
         icon: icuProgressionIcon(kind),
@@ -1019,7 +1086,7 @@ export function CircleDashboardCelebrationSection({
   }
 
   if (showIcuDailyCheckInReminder) {
-    tiles.push({
+    icuSetupTiles.push({
       key: 'icu-daily-check-in',
       tone: 'care',
       icon: Calendar,
@@ -1044,8 +1111,8 @@ export function CircleDashboardCelebrationSection({
       onSecondary: onOpenRemoteSettingsApplicationMode,
       secondaryDisabled: !canOpenRemoteSettings || !onOpenRemoteSettingsApplicationMode,
     });
-  } else if (previewReminders && careRemindersEnabled) {
-    tiles.push({
+  } else if (previewReminders && careRemindersEnabled && icuProgressionKinds.length === 0) {
+    icuSetupTiles.push({
       key: 'preview-icu-daily-check-in',
       tone: 'care',
       icon: Calendar,
@@ -1056,6 +1123,20 @@ export function CircleDashboardCelebrationSection({
       actionDisabled: true,
       secondaryLabel: t('dashboard.icuCheckInOpenApplicationSettings'),
       secondaryDisabled: true,
+    });
+  }
+
+  if (icuSetupTiles.length === 1) {
+    tiles.push(icuSetupTiles[0]);
+  } else if (icuSetupTiles.length > 1) {
+    tiles.push({
+      key: 'icu-setup-cluster',
+      tone: 'care',
+      icon: SlidersHorizontal,
+      headline: t('dashboard.reminders.icuSetupHeadline'),
+      body: t('dashboard.reminders.icuSetupBody', { count: icuSetupTiles.length }),
+      isPreview: icuSetupTiles.every((tile) => tile.isPreview),
+      clusterTiles: icuSetupTiles,
     });
   }
 
@@ -1072,41 +1153,50 @@ export function CircleDashboardCelebrationSection({
         </p>
       ) : null}
       <div className="grid grid-cols-2 gap-3 items-stretch">
-        {tiles.map((tile) => (
-          <div
-            key={tile.key}
-            className={cn(
-              'h-full',
-              tile.actionLabel || tile.footerNote || tile.secondaryLabel
-                ? 'min-h-[12rem] sm:min-h-[12.5rem]'
-                : 'min-h-[10rem] sm:min-h-[10.5rem]',
-            )}
-          >
-            <CelebrationCard
-              tone={tile.tone}
-              icon={tile.icon}
-              headline={tile.headline}
-              body={tile.body}
-              isPreview={tile.isPreview}
-              dismissKind={tile.dismissKind}
-              onOpen={tile.onOpen}
-              actionLabel={tile.actionLabel}
-              onAction={tile.onAction}
-              actionUpdating={tile.actionUpdating}
-              actionDisabled={tile.actionDisabled}
-              footerNote={tile.footerNote}
-              secondaryLabel={tile.secondaryLabel}
-              onSecondary={tile.onSecondary}
-              secondaryDisabled={tile.secondaryDisabled}
-              t={t}
-              onDismiss={(kind) => {
-                void dismissReminder(kind).catch((err) => {
-                  console.warn('[Circle] Reminder dismiss failed:', err);
-                });
-              }}
-            />
-          </div>
-        ))}
+        {tiles.map((tile) =>
+          tile.clusterTiles && tile.clusterTiles.length > 1 ? (
+            <div key={tile.key} className="col-span-2">
+              <IcuSetupReminderCluster
+                tiles={tile.clusterTiles}
+                t={t}
+                onDismiss={(kind) => {
+                  void dismissReminder(kind).catch((err) => {
+                    console.warn('[Circle] Reminder dismiss failed:', err);
+                  });
+                }}
+              />
+            </div>
+          ) : (
+            <div
+              key={tile.key}
+              className={cn('h-full', celebrationTileMinHeightClass(tile))}
+            >
+              <CelebrationCard
+                tone={tile.tone}
+                icon={tile.icon}
+                headline={tile.headline}
+                body={tile.body}
+                isPreview={tile.isPreview}
+                dismissKind={tile.dismissKind}
+                onOpen={tile.onOpen}
+                actionLabel={tile.actionLabel}
+                onAction={tile.onAction}
+                actionUpdating={tile.actionUpdating}
+                actionDisabled={tile.actionDisabled}
+                footerNote={tile.footerNote}
+                secondaryLabel={tile.secondaryLabel}
+                onSecondary={tile.onSecondary}
+                secondaryDisabled={tile.secondaryDisabled}
+                t={t}
+                onDismiss={(kind) => {
+                  void dismissReminder(kind).catch((err) => {
+                    console.warn('[Circle] Reminder dismiss failed:', err);
+                  });
+                }}
+              />
+            </div>
+          ),
+        )}
       </div>
     </section>
   );
