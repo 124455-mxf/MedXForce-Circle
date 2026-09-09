@@ -135,13 +135,13 @@ export function CircleIcuUnicodeEmojiManagement({
       <button
         type="button"
         onClick={() => setCollapsed((open) => !open)}
-        className="w-full p-4 flex items-center justify-between hover:bg-red-50/50 transition-colors"
+        className="w-full p-4 flex items-start justify-between gap-3 hover:bg-red-50/50 transition-colors"
       >
-        <div className="flex items-center gap-3 text-red-800 min-w-0 text-left">
-          <Smile size={20} className="shrink-0" />
+        <div className="flex items-start gap-3 text-red-800 min-w-0 text-left">
+          <Smile size={20} className="shrink-0 mt-0.5" />
           <div className="min-w-0">
             <h4 className="font-semibold text-sm leading-snug">{t('remoteSettings.icuEmoji.heading')}</h4>
-            <p className="text-xs text-slate-500 font-medium truncate">
+            <p className="text-xs text-slate-500 font-medium leading-snug">
               {t('remoteSettings.icuEmoji.desc')}
             </p>
           </div>
