@@ -129,7 +129,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       checkingAccess: 'Checking your Circle access…',
       checkingAccessHint: 'Looking up invites and patient links for this account. This can take a moment.',
       noInvitesYet:
-        'No active invites yet. In the patient app, open Settings → Family & Friends, confirm your email is saved, click Done, then tap Refresh here.',
+        'This account has no Circle patients right now. That can mean you have not been invited yet, or access was removed. If you should have access, ask the patient\'s family or proxy to invite this email again from the patient tablet (Settings → Family & Friends). Then tap Refresh here.',
     },
     brand: {
       startupTagline: 'MedXForce Circle — Family & Friends',
@@ -198,7 +198,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       checkingAccessHint:
         'Einladungen und Patientenverknüpfungen für dieses Konto werden gesucht. Das kann einen Moment dauern.',
       noInvitesYet:
-        'Noch keine aktiven Einladungen. Öffnen Sie in der Patienten-App Einstellungen → Familie & Freunde, speichern Sie Ihre E-Mail, tippen Sie auf Fertig und dann hier auf Aktualisieren.',
+        'Dieses Konto hat derzeit keine Circle-Patienten. Das kann heißen, dass Sie noch nicht eingeladen wurden oder der Zugang entfernt wurde. Wenn Sie Zugang haben sollten, bitten Sie die Familie oder den Vertreter des Patienten, diese E-Mail erneut vom Patiententablet einzuladen (Einstellungen → Familie & Freunde). Tippen Sie danach hier auf Aktualisieren.',
     },
     brand: {
       startupTagline: 'MedXForce Circle — Familie & Freunde',
@@ -267,7 +267,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       checkingAccessHint:
         'Buscando invitaciones y vínculos de pacientes para esta cuenta. Puede tardar un momento.',
       noInvitesYet:
-        'Aún no hay invitaciones activas. En la app del paciente, abra Ajustes → Familia y amigos, confirme su correo, pulse Hecho y luego Actualizar aquí.',
+        'Esta cuenta no tiene pacientes de Circle ahora. Puede ser que aún no la hayan invitado o que le hayan quitado el acceso. Si debería tener acceso, pida a la familia o al representante del paciente que vuelva a invitar este correo desde la tablet del paciente (Ajustes → Familia y amigos). Luego pulse Actualizar aquí.',
     },
     brand: {
       startupTagline: 'MedXForce Circle — Familia y amigos',
@@ -336,7 +336,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       checkingAccessHint:
         'Szukamy zaproszeń i powiązań z pacjentami dla tego konta. To może chwilę potrwać.',
       noInvitesYet:
-        'Brak aktywnych zaproszeń. W aplikacji pacjenta otwórz Ustawienia → Rodzina i przyjaciele, zapisz e-mail, naciśnij Gotowe, a potem Odśwież tutaj.',
+        'To konto nie ma teraz żadnych pacjentów w Circle. To może znaczyć, że nie dostałaś/eś jeszcze zaproszenia albo dostęp został usunięty. Jeśli powinnaś/powinieneś mieć dostęp, poproś rodzinę lub pełnomocnika pacjenta, by ponownie zaprosili ten e-mail z tabletu pacjenta (Ustawienia → Rodzina i przyjaciele). Potem naciśnij tutaj Odśwież.',
     },
     brand: {
       startupTagline: 'MedXForce Circle — Rodzina i przyjaciele',
