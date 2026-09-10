@@ -1322,7 +1322,7 @@ export function CircleSettingsUserManagementPanel({
 
   return (
     <>
-      <div className={cn('space-y-5', compact ? 'p-4' : 'p-5')}>
+      <div className={cn(compact ? 'flex flex-col flex-1 min-h-0' : 'space-y-5 p-5')}>
         {!compact && (
           <div className="flex items-start gap-3">
             <div className="w-11 h-11 rounded-2xl bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
@@ -1346,46 +1346,53 @@ export function CircleSettingsUserManagementPanel({
           </div>
         )}
 
-        <div className="flex items-center gap-2">
-          <div className={cn(circleTabListClass, 'flex-1 min-w-0')} role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'people'}
-              onClick={() => setTab('people')}
-              className={circleTabButtonClass(tab === 'people')}
-            >
-              {t('admin.users.tabPeople')}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'access'}
-              onClick={() => setTab('access')}
-              className={circleTabButtonClass(tab === 'access')}
-            >
-              {t('admin.users.tabAccess')}
-            </button>
+        <div className={cn(compact && 'shrink-0 space-y-3 px-4 pt-4 pb-2 bg-white')}>
+          <div className="flex items-center gap-2">
+            <div className={cn(circleTabListClass, 'flex-1 min-w-0')} role="tablist">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'people'}
+                onClick={() => setTab('people')}
+                className={circleTabButtonClass(tab === 'people')}
+              >
+                {t('admin.users.tabPeople')}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'access'}
+                onClick={() => setTab('access')}
+                className={circleTabButtonClass(tab === 'access')}
+              >
+                {t('admin.users.tabAccess')}
+              </button>
+            </div>
+            {compact && (
+              <button
+                type="button"
+                onClick={() => void loadMembers()}
+                disabled={loading}
+                className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 shrink-0 disabled:opacity-50"
+                aria-label={t('admin.users.refreshAria')}
+              >
+                {loading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
+              </button>
+            )}
           </div>
-          {compact && (
-            <button
-              type="button"
-              onClick={() => void loadMembers()}
-              disabled={loading}
-              className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 shrink-0 disabled:opacity-50"
-              aria-label={t('admin.users.refreshAria')}
-            >
-              {loading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
-            </button>
+
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+              {error}
+            </p>
           )}
         </div>
 
-        {error && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
-            {error}
-          </p>
-        )}
-
+        <div
+          className={cn(
+            compact && 'min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-4 px-4 pb-4',
+          )}
+        >
         {tab === 'people' && (
           <div className="space-y-4">
             <button
@@ -1555,6 +1562,7 @@ export function CircleSettingsUserManagementPanel({
             )}
           </div>
         )}
+        </div>
       </div>
 
       <CircleContactEditorModal

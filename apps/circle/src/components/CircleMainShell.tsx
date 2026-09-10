@@ -824,7 +824,8 @@ export function CircleMainShell({
               activeTab === 'circle' ||
               activeTab === 'analytics' ||
               activeTab === 'patient-profile' ||
-              activeTab === 'remote-settings'
+              activeTab === 'remote-settings' ||
+              activeTab === 'admin'
               ? 'flex flex-col overflow-hidden'
               : 'space-y-4 overflow-y-auto',
           )}
@@ -984,13 +985,15 @@ export function CircleMainShell({
             </div>
           )}
           {activeTab === 'admin' && (
-            <CircleAdminScreen
-              user={user}
-              db={db}
-              patient={selectedPatient}
-              initialUsersTab={initialAdminUsersTab}
-              onInitialUsersTabConsumed={handleAdminInitialUsersTabConsumed}
-            />
+            <div className="flex flex-col flex-1 min-h-0">
+              <CircleAdminScreen
+                user={user}
+                db={db}
+                patient={selectedPatient}
+                initialUsersTab={initialAdminUsersTab}
+                onInitialUsersTabConsumed={handleAdminInitialUsersTabConsumed}
+              />
+            </div>
           )}
           {activeTab === 'analytics' && (
             <div className="flex flex-col flex-1 min-h-0">

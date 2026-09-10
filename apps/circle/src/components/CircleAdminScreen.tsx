@@ -24,8 +24,8 @@ export function CircleAdminScreen({
   const t = useCircleT();
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start gap-2 px-1">
+    <div className="flex flex-col flex-1 min-h-0 gap-4">
+      <div className="flex items-start gap-2 px-1 shrink-0">
         <CircleWorkTabDashboardBackButton className="-ml-1" />
         <div className="min-w-0 flex-1">
           <h3 className="font-bold text-slate-800">{t('admin.title')}</h3>
@@ -33,7 +33,7 @@ export function CircleAdminScreen({
         </div>
       </div>
 
-      <CircleCollapsibleSection title={t('admin.sectionUserManagement')} defaultOpen>
+      <CircleCollapsibleSection title={t('admin.sectionUserManagement')} defaultOpen fillHeight>
         <CircleSettingsUserManagementPanel
           user={user}
           db={db}

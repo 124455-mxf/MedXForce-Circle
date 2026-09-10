@@ -9,6 +9,8 @@ type CircleCollapsibleSectionProps = {
   defaultOpen?: boolean;
   /** Keep this section expanded (e.g. when deep-linking from a Home reminder). */
   forceOpen?: boolean;
+  /** Fill remaining height when open so inner content can scroll under a pinned header. */
+  fillHeight?: boolean;
   trailing?: ReactNode;
 };
 
@@ -18,6 +20,7 @@ export function CircleCollapsibleSection({
   className,
   defaultOpen = false,
   forceOpen = false,
+  fillHeight = false,
   trailing,
 }: CircleCollapsibleSectionProps) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
@@ -32,10 +35,11 @@ export function CircleCollapsibleSection({
       open={defaultOpen || undefined}
       className={cn(
         'rounded-2xl border border-slate-100 bg-white shadow-sm group',
+        fillHeight && 'open:flex open:flex-col open:flex-1 open:min-h-0 open:overflow-hidden',
         className,
       )}
     >
-      <summary className="flex items-center justify-between gap-3 px-4 py-3.5 cursor-pointer list-none select-none">
+      <summary className="flex items-center justify-between gap-3 px-4 py-3.5 cursor-pointer list-none select-none shrink-0">
         <span className="flex items-center gap-2 min-w-0">
           <span className="font-bold text-slate-800">{title}</span>
           {trailing}
@@ -45,7 +49,14 @@ export function CircleCollapsibleSection({
           className="text-slate-400 shrink-0 transition-transform group-open:rotate-180"
         />
       </summary>
-      <div className="border-t border-slate-100">{children}</div>
+      <div
+        className={cn(
+          'border-t border-slate-100',
+          fillHeight && 'min-h-0 flex-1 overflow-hidden flex flex-col',
+        )}
+      >
+        {children}
+      </div>
     </details>
   );
 }
