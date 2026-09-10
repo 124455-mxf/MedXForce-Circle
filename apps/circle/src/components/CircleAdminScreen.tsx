@@ -2,7 +2,6 @@ import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { CirclePatientSummary } from '@medxforce/shared';
 import { useCircleT } from '../lib/circleI18nContext';
-import { CircleCollapsibleSection } from './CircleCollapsibleSection';
 import { CircleSettingsUserManagementPanel } from './CircleSettingsUserManagementPanel';
 import { CircleWorkTabDashboardBackButton } from './CircleWorkTabSectionIntro';
 
@@ -24,8 +23,8 @@ export function CircleAdminScreen({
   const t = useCircleT();
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 gap-4">
-      <div className="flex items-start gap-2 px-1 shrink-0">
+    <div className="flex h-full min-h-0 flex-1 flex-col gap-4">
+      <div className="flex shrink-0 items-start gap-2 px-1">
         <CircleWorkTabDashboardBackButton className="-ml-1" />
         <div className="min-w-0 flex-1">
           <h3 className="font-bold text-slate-800">{t('admin.title')}</h3>
@@ -33,16 +32,21 @@ export function CircleAdminScreen({
         </div>
       </div>
 
-      <CircleCollapsibleSection title={t('admin.sectionUserManagement')} defaultOpen fillHeight>
-        <CircleSettingsUserManagementPanel
-          user={user}
-          db={db}
-          patient={patient}
-          compact
-          initialTab={initialUsersTab ?? undefined}
-          onInitialTabConsumed={onInitialUsersTabConsumed}
-        />
-      </CircleCollapsibleSection>
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+        <div className="flex shrink-0 items-center px-4 py-3.5">
+          <h4 className="font-bold text-slate-800">{t('admin.sectionUserManagement')}</h4>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-slate-100">
+          <CircleSettingsUserManagementPanel
+            user={user}
+            db={db}
+            patient={patient}
+            compact
+            initialTab={initialUsersTab ?? undefined}
+            onInitialTabConsumed={onInitialUsersTabConsumed}
+          />
+        </div>
+      </section>
     </div>
   );
 }

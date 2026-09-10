@@ -1390,7 +1390,8 @@ export function CircleSettingsUserManagementPanel({
 
         <div
           className={cn(
-            compact && 'min-h-0 flex-1 overflow-y-auto overscroll-contain space-y-4 px-4 pb-4',
+            compact &&
+              'min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y space-y-4 px-4 pb-4',
           )}
         >
         {tab === 'people' && (
