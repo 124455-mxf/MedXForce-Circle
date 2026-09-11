@@ -159,7 +159,7 @@ export function CircleIcuDailyBriefSection({
               <Clock size={14} aria-hidden />
               <span className={dashboardTileTitleClass}>{t('dashboard.icuBriefFirstLogin')}</span>
             </div>
-            <p className="text-sm font-bold text-slate-800">
+            <p className="text-sm text-slate-700">
               {day.firstLoginAt
                 ? formatDashboardTimestamp(t, language, day.firstLoginAt)
                 : t('dashboard.icuBriefNoLogin')}
@@ -170,7 +170,7 @@ export function CircleIcuDailyBriefSection({
               <Clock size={14} aria-hidden />
               <span className={dashboardTileTitleClass}>{t('dashboard.icuBriefOnlineTime')}</span>
             </div>
-            <p className="text-sm font-bold text-slate-800">
+            <p className="text-sm text-slate-700">
               {day.totalOnlineMs > 0
                 ? formatOnlineDuration(t, day.totalOnlineMs)
                 : t('dashboard.icuBriefNoLogin')}
@@ -188,7 +188,7 @@ export function CircleIcuDailyBriefSection({
               <Bell size={14} aria-hidden />
               <span className={dashboardTileTitleClass}>{t('dashboard.alertsAttention')}</span>
             </div>
-            <p className="text-sm font-bold text-slate-800">
+            <p className="text-sm text-slate-700">
               {[
                 flags.alertButton
                   ? `${formatCircleBadgeCount(day.alerts)} ${t('dashboard.icuBriefAlerts')}`
@@ -220,7 +220,7 @@ export function CircleIcuDailyBriefSection({
             className="w-full bg-white rounded-xl border border-slate-100 p-3 text-left hover:bg-slate-50"
           >
             <span className={dashboardTileTitleClass}>{t('dashboard.dailyCheckIn')}</span>
-            <p className="text-sm font-bold text-slate-800 mt-1">
+            <p className="text-sm text-slate-700 mt-1">
               {day.checkInCompleted > 0
                 ? t('dashboard.icuBriefCheckInCompleted')
                 : day.checkInSkipped > 0
@@ -240,7 +240,7 @@ export function CircleIcuDailyBriefSection({
               <MessageSquare size={14} aria-hidden />
               <span className={dashboardTileTitleClass}>{t('dashboard.icuBriefCommLog')}</span>
             </div>
-            <p className="text-sm font-bold text-slate-800">
+            <p className="text-sm text-slate-700">
               {day.commLogCount > 0
                 ? t('dashboard.icuBriefCommLogCount', { count: day.commLogCount })
                 : t('dashboard.icuBriefCommLogEmpty')}
@@ -258,7 +258,7 @@ export function CircleIcuDailyBriefSection({
               <ClipboardList size={14} aria-hidden />
               <span className={dashboardTileTitleClass}>{t('dashboard.icuBriefTasks')}</span>
             </div>
-            <p className="text-sm font-bold text-slate-800">
+            <p className="text-sm text-slate-700">
               {t('dashboard.icuBriefTasksProgress', {
                 done: day.packDone,
                 total: day.packTotal,

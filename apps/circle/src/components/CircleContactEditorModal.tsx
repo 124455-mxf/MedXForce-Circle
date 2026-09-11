@@ -493,7 +493,6 @@ export function CircleContactEditorModal({
                     onChange={(e) => onChange({ name: e.target.value })}
                     className={fieldClass}
                     placeholder={t('admin.contact.placeholderFullName')}
-                    autoFocus
                   />
                 </div>
                 <div className="space-y-2">
