@@ -440,6 +440,7 @@ export function CircleDiaryScreen({ user, db, patient }: CircleDiaryScreenProps)
         open={modalOpen}
         mode={editingEntry ? 'edit' : 'create'}
         entry={editingEntry ?? undefined}
+        defaultVisibility={filter === 'mine' ? 'private' : 'circle'}
         saving={saving}
         onClose={closeModal}
         onSave={(draft) => void handleSave(draft)}

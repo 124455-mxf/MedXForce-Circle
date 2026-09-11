@@ -144,13 +144,16 @@ function parseDiaryTranslations(raw: unknown): DiaryEntryTranslation[] {
   return out;
 }
 
-export function emptyDiaryDraft(experienceAt = Date.now()): CircleDiaryEntryDraft {
+export function emptyDiaryDraft(
+  experienceAt = Date.now(),
+  visibility: Extract<DiaryEntryVisibility, 'private' | 'circle'> = 'circle',
+): CircleDiaryEntryDraft {
   return {
     title: '',
     body: '',
     mood: '',
     experienceAt,
-    visibility: 'circle',
+    visibility,
     isMilestone: false,
   };
 }
