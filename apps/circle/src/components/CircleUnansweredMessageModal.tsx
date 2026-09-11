@@ -68,7 +68,7 @@ export function CircleUnansweredMessageModal({
             onClick={onReply}
             className="flex-1 py-3 rounded-2xl bg-sky-600 text-white font-bold hover:bg-sky-700"
           >
-            {t('messages.reply')}
+            {t('messages.unansweredOpenConversation')}
           </button>
         </div>
       </div>

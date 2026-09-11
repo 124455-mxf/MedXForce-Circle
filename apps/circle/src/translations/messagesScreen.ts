@@ -117,6 +117,11 @@ export const messagesScreenEnglish = {
   unansweredWaitingTitle: 'Waiting for a reply',
   unansweredWaitingBody:
     '{{name}} has not answered your last message yet. You can only reply until they respond.',
+  unansweredWaitingBanner:
+    '{{name}} has not replied yet. You can add to this conversation until they respond. New messages stay locked until then.',
+  unansweredOpenConversation: 'Open conversation',
+  inboxWaitingForReply: 'Waiting for reply',
+  inboxYouSnippet: 'You: {{text}}',
   showMoreInbox: 'Show {{remaining}} more',
   sectionRecent: 'Last 7 days',
   inboxOlderUnread: '{{count}} unread',
@@ -256,6 +261,11 @@ export const messagesScreenGerman = {
   unansweredWaitingTitle: 'Warten auf eine Antwort',
   unansweredWaitingBody:
     '{{name}} hat Ihre letzte Nachricht noch nicht beantwortet. Bis dahin können Sie nur auf diese Nachricht antworten.',
+  unansweredWaitingBanner:
+    '{{name}} hat noch nicht geantwortet. Sie können diese Unterhaltung ergänzen, bis eine Antwort kommt. Neue Nachrichten bleiben bis dahin gesperrt.',
+  unansweredOpenConversation: 'Unterhaltung öffnen',
+  inboxWaitingForReply: 'Warten auf Antwort',
+  inboxYouSnippet: 'Sie: {{text}}',
   showMoreInbox: '{{remaining}} weitere anzeigen',
   sectionRecent: 'Letzte 7 Tage',
   inboxOlderUnread: '{{count}} ungelesen',
@@ -394,6 +404,11 @@ export const messagesScreenSpanish = {
   unansweredWaitingTitle: 'Esperando una respuesta',
   unansweredWaitingBody:
     '{{name}} aún no ha respondido a su último mensaje. Hasta entonces solo puede responder a esa conversación.',
+  unansweredWaitingBanner:
+    '{{name}} aún no ha respondido. Puede añadir a esta conversación hasta que responda. Los mensajes nuevos quedan bloqueados hasta entonces.',
+  unansweredOpenConversation: 'Abrir conversación',
+  inboxWaitingForReply: 'Esperando respuesta',
+  inboxYouSnippet: 'Usted: {{text}}',
   showMoreInbox: 'Mostrar {{remaining}} más',
   sectionRecent: 'Últimos 7 días',
   inboxOlderUnread: '{{count}} sin leer',
@@ -531,6 +546,11 @@ export const messagesScreenPolish = {
   unansweredWaitingTitle: 'Oczekiwanie na odpowiedź',
   unansweredWaitingBody:
     'Brak odpowiedzi od {{name}} na Twoją ostatnią wiadomość. Do tego czasu możesz tylko odpisać.',
+  unansweredWaitingBanner:
+    '{{name}} jeszcze nie odpowiedział(a). Możesz dopisać do tej rozmowy, dopóki nie odpowie. Nowe wiadomości są do tego czasu zablokowane.',
+  unansweredOpenConversation: 'Otwórz rozmowę',
+  inboxWaitingForReply: 'Oczekiwanie na odpowiedź',
+  inboxYouSnippet: 'Ty: {{text}}',
   showMoreInbox: 'Pokaż jeszcze {{remaining}}',
   sectionRecent: 'Ostatnie 7 dni',
   inboxOlderUnread: '{{count}} nieprzeczytanych',

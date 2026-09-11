@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import type { User } from 'firebase/auth';
-import { Archive, ChevronLeft, ChevronDown, ChevronUp, ClipboardList, Mail, Maximize2, MessageSquare, Mic, Plus, Save, Trash2, User as UserIcon, Users, AlertCircle, Bell } from 'lucide-react';
+import { Archive, ChevronLeft, ChevronDown, ChevronUp, ClipboardList, Clock, Mail, Maximize2, MessageSquare, Mic, Plus, Save, Trash2, User as UserIcon, Users, AlertCircle, Bell } from 'lucide-react';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import {
@@ -1162,6 +1162,7 @@ export function PatientMessagesScreen({
         msg.id,
         threadReplies,
       );
+    const waitingForReply = !summaryRow && msg.id === unansweredCircleInitiatedId;
     const snippet = summaryRow
       ? messagesCountLabel(t, summaryUtteranceCount(msg), 'messages.utterance_one', 'messages.utterance_other')
       : messagesThreadInboxSnippet(msg, threadReplies, language, replySort, {
@@ -1169,6 +1170,18 @@ export function PatientMessagesScreen({
           latestVisiblePatientReply,
           firstName: patientFirstName,
         });
+    const latestReply =
+      threadReplies.length === 0
+        ? null
+        : threadReplies.reduce((best, reply) =>
+            (reply.timestamp || 0) >= (best.timestamp || 0) ? reply : best,
+          );
+    const displaySnippet =
+      waitingForReply &&
+      snippet &&
+      (!latestReply || circleReplySenderKind(latestReply, user.uid, normalizedEmail) === 'self')
+        ? t('messages.inboxYouSnippet', { text: snippet })
+        : snippet;
     const recipients = summaryRow || alertKind
       ? []
       : resolveCircleMessageRecipients(msg, memberDisplayNames, { patientRecipient });
@@ -1252,6 +1265,11 @@ export function PatientMessagesScreen({
                         : t('messages.newMessage')}
                   </span>
                 )}
+                {waitingForReply && (
+                  <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md ring-1 ring-inset bg-amber-50 text-amber-800 ring-amber-200/70">
+                    {t('messages.inboxWaitingForReply')}
+                  </span>
+                )}
                 {!summaryRow && replyCount > 0 && !unread && (
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                     {messagesCountLabel(t, replyCount, 'messages.reply_one', 'messages.reply_other')}
@@ -1286,9 +1304,9 @@ export function PatientMessagesScreen({
                   <span>{t('messages.toRecipients', { names: recipientPreview })}</span>
                 </p>
               ) : null}
-              {snippet ? (
+              {displaySnippet ? (
                 <p className={cn('text-sm mt-0.5 line-clamp-2 leading-relaxed', summaryRow ? 'text-indigo-700/80' : 'text-slate-500')}>
-                  {snippet}
+                  {displaySnippet}
                 </p>
               ) : null}
             </div>
@@ -1337,10 +1355,22 @@ export function PatientMessagesScreen({
                 <button
                   type="button"
                   onClick={handleOpenComposeToPatient}
-                  className={circleHeaderActionButtonClass}
-                  aria-label={t('messages.composeToPatient')}
+                  className={cn(
+                    circleHeaderActionButtonClass,
+                    unansweredCircleInitiatedId && 'bg-amber-500 hover:bg-amber-600',
+                  )}
+                  aria-label={
+                    unansweredCircleInitiatedId
+                      ? t('messages.unansweredWaitingTitle')
+                      : t('messages.composeToPatient')
+                  }
+                  title={
+                    unansweredCircleInitiatedId
+                      ? t('messages.unansweredWaitingTitle')
+                      : t('messages.composeToPatient')
+                  }
                 >
-                  <Plus size={18} />
+                  {unansweredCircleInitiatedId ? <Clock size={18} /> : <Plus size={18} />}
                 </button>
               ) : undefined
             }
@@ -1831,6 +1861,11 @@ export function PatientMessagesScreen({
           </button>
           ) : null}
         </div>
+        {selectedMessage.id === unansweredCircleInitiatedId ? (
+          <p className="mx-4 mb-3 px-3 py-2 rounded-xl bg-amber-50 border border-amber-100 text-xs text-amber-900 leading-relaxed">
+            {t('messages.unansweredWaitingBanner', { name: patientFirstName })}
+          </p>
+        ) : null}
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
