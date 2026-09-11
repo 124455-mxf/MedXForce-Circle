@@ -58,6 +58,7 @@ type CircleMessagesAnalyticsDetailProps = {
   timeline?: MessagesTimelinePoint[];
   windowLabel?: string;
   windowDays?: number;
+  hasSyncedTimeline?: boolean;
 };
 
 const BREAKDOWN_ROWS: { key: keyof MessagesMessagingBreakdown; labelKey: string }[] = [
@@ -303,12 +304,14 @@ function MessagingMetricCard({
 export function CircleMessagesAnalyticsDetail({
   focus = 'messaging',
   communication = 0,
+  messaging = 0,
   trend = 'stable',
   topItems,
   messagingBreakdown,
   timeline,
   windowLabel,
   windowDays = 30,
+  hasSyncedTimeline = false,
 }: CircleMessagesAnalyticsDetailProps) {
   const t = useCircleT();
   const [chartType, setChartType] = useState<'line' | 'bar'>('bar');
@@ -316,8 +319,8 @@ export function CircleMessagesAnalyticsDetail({
   const isMessaging = focus === 'messaging';
   const { rawMessages, repliesByMessageId } = useCirclePatientThreadsContext();
   const liveStats = useMemo(
-    () => buildCircleMessagingLiveStats(rawMessages, repliesByMessageId),
-    [rawMessages, repliesByMessageId],
+    () => buildCircleMessagingLiveStats(rawMessages, repliesByMessageId, Date.now(), windowDays),
+    [rawMessages, repliesByMessageId, windowDays],
   );
 
   const communicationLabel = t('analytics.messages.communication');
@@ -333,16 +336,15 @@ export function CircleMessagesAnalyticsDetail({
 
   const syncedSent = safeBreakdownValue(messagingBreakdown, 'sent');
   const syncedReplies = safeBreakdownValue(messagingBreakdown, 'replies');
-  const allowLiveOverlay = windowDays === 30;
-  const sentCount = !allowLiveOverlay || syncedSent > 0 ? syncedSent : liveStats.newMessages;
-  const replyCount = !allowLiveOverlay || syncedReplies > 0 ? syncedReplies : liveStats.replies;
+  const sentCount = syncedSent > 0 ? syncedSent : liveStats.newMessages;
+  const replyCount = syncedReplies > 0 ? syncedReplies : liveStats.replies;
   const sentChartData = preferNonEmptyTimeline(
     syncedSplitTimeline(timeline, 'sent'),
-    allowLiveOverlay ? liveStats.newMessagesTimeline : [],
+    liveStats.newMessagesTimeline,
   );
   const replyChartData = preferNonEmptyTimeline(
     syncedSplitTimeline(timeline, 'replies'),
-    allowLiveOverlay ? liveStats.repliesTimeline : [],
+    liveStats.repliesTimeline,
   );
 
   const communicationTrend = trendFromSeries(
@@ -379,6 +381,18 @@ export function CircleMessagesAnalyticsDetail({
       <div className="p-4 space-y-4">
         {isMessaging ? (
           <>
+            <div className="space-y-1">
+              <p className="text-[11px] font-bold uppercase tracking-tight text-emerald-600">
+                {t('analytics.metrics.messaging')}
+              </p>
+              <p className="text-2xl font-black leading-none tabular-nums text-emerald-700">
+                {messaging}
+              </p>
+              <p className="text-[12px] text-slate-500 leading-snug">
+                {t('analytics.messages.hintMessaging')}
+              </p>
+            </div>
+
             <div className="flex items-center justify-between gap-2">
               <span className="text-[12px] font-bold text-slate-400 uppercase">{t('analytics.chart')}</span>
               <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg">
@@ -459,7 +473,7 @@ export function CircleMessagesAnalyticsDetail({
               icon={UserPlus}
               title={t('analytics.messages.circleStarted')}
               value={liveStats.circleStarted}
-              hint={t('analytics.messages.circleStartedHint')}
+              hint={t('analytics.messages.circleStartedHint', { window: rangeLabel })}
               color={CIRCLE_STARTED_COLOR}
               iconWrapClass="text-violet-600"
               cardClass="border-violet-200 bg-violet-50/50"
@@ -604,7 +618,9 @@ export function CircleMessagesAnalyticsDetail({
               </div>
             ) : (
               <p className="text-[13px] text-slate-400 text-center leading-relaxed py-2">
-                {t('analytics.chartNotSynced')}
+                {hasSyncedTimeline
+                  ? t('analytics.noChartInPeriod', { window: rangeLabel })
+                  : t('analytics.chartNotSynced')}
               </p>
             )}
 

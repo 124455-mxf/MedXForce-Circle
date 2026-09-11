@@ -1,9 +1,10 @@
-import type {
-  AnalyticsDetailRangeId,
-  AnalyticsMetricId,
-  AnalyticsSectionId,
-  AnalyticsTrendDirection,
-  PatientAnalyticsSummary,
+import {
+  analyticsDetailRangeDays,
+  type AnalyticsDetailRangeId,
+  type AnalyticsMetricId,
+  type AnalyticsSectionId,
+  type AnalyticsTrendDirection,
+  type PatientAnalyticsSummary,
 } from '@medxforce/shared';
 import type { CircleTranslator } from './circleI18nContext';
 import { circleUiLanguageToLocale, type CircleUiLanguage } from './circleLanguages';
@@ -225,7 +226,7 @@ export function analyticsDetailRangeWindowLabel(
 ): string {
   if (rangeId === 'all') return t('analytics.windowSinceStart');
   if (rangeId === '180') return t('analytics.window6Months');
-  return t('analytics.windowDays', { days: windowDays ?? (rangeId === '90' ? 90 : 30) });
+  return t('analytics.windowDays', { days: windowDays ?? analyticsDetailRangeDays(rangeId) });
 }
 
 export function analyticsLastDaysLabel(t: CircleTranslator, days: number): string {

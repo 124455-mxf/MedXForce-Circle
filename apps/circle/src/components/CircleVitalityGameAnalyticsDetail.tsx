@@ -24,6 +24,7 @@ type CircleVitalityGameAnalyticsDetailProps = {
   level?: string;
   timeline?: VitalityGameTimelinePoint[];
   windowLabel?: string;
+  showSessionSummaries?: boolean;
 };
 
 function accuracyTrendCopy(
@@ -60,6 +61,7 @@ export function CircleVitalityGameAnalyticsDetail({
   level = 'N/A',
   timeline,
   windowLabel,
+  showSessionSummaries = true,
 }: CircleVitalityGameAnalyticsDetailProps) {
   const t = useCircleT();
   const [chartType, setChartType] = useState<CircleAnalyticsChartType>('bar');
@@ -130,27 +132,29 @@ export function CircleVitalityGameAnalyticsDetail({
           allowDecimals
         />
 
-        <div className="grid grid-cols-2 gap-3">
-          <CircleAnalyticsStatCard
-            icon={Clock}
-            title={t('analytics.vitalityGame.totalTime')}
-            value={totalTimeLabel}
-            hint={t('analytics.vitalityGame.timeHint', { window: rangeLabel })}
-            iconWrapClass="text-slate-600"
-            cardClass="border-slate-200 bg-slate-50/70"
-            titleClass="text-slate-600"
-            valueClass="text-slate-800"
-          />
-          <CircleAnalyticsStatCard
-            icon={Gauge}
-            title={t('analytics.vitalityGame.difficulty')}
-            value={analyticsDifficultyLabel(t, level)}
-            iconWrapClass="text-amber-600"
-            cardClass="border-amber-200 bg-amber-50/50"
-            titleClass="text-amber-700"
-            valueClass="text-amber-700"
-          />
-        </div>
+        {showSessionSummaries ? (
+          <div className="grid grid-cols-2 gap-3">
+            <CircleAnalyticsStatCard
+              icon={Clock}
+              title={t('analytics.vitalityGame.totalTime')}
+              value={totalTimeLabel}
+              hint={t('analytics.vitalityGame.timeHint', { window: rangeLabel })}
+              iconWrapClass="text-slate-600"
+              cardClass="border-slate-200 bg-slate-50/70"
+              titleClass="text-slate-600"
+              valueClass="text-slate-800"
+            />
+            <CircleAnalyticsStatCard
+              icon={Gauge}
+              title={t('analytics.vitalityGame.difficulty')}
+              value={analyticsDifficultyLabel(t, level)}
+              iconWrapClass="text-amber-600"
+              cardClass="border-amber-200 bg-amber-50/50"
+              titleClass="text-amber-700"
+              valueClass="text-amber-700"
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import {
+  analyticsDetailRangeIdFromPeriodDays,
   circleDisplayFirstName,
   ANALYTICS_METRIC_DEFINITIONS,
   ANALYTICS_SECTIONS,
@@ -19,6 +20,7 @@ import {
   subscribeRemoteSettings,
   isHospitalFeatureEnabledInRemoteSettings,
   type AnalyticsMetricId,
+  type AnalyticsDetailRangeId,
   type CirclePatientSummary,
   type PatientAnalyticsSummary,
   type RemoteAssessmentSchedule,
@@ -213,6 +215,9 @@ export function CircleAnalyticsScreen({
     useState<CircleMessagesAnalyticsFocus | null>(null);
   const [assessmentsOverviewOpen, setAssessmentsOverviewOpen] = useState(false);
   const [periodOverviewDays, setPeriodOverviewDays] = useState<AnalyticsPeriodDays | null>(null);
+  const [detailInitialRangeId, setDetailInitialRangeId] = useState<AnalyticsDetailRangeId | null>(
+    null,
+  );
   const [remoteSettingsLoading, setRemoteSettingsLoading] = useState(true);
   const [remoteSettingsFromFirestore, setRemoteSettingsFromFirestore] = useState(false);
   const [dailyCheckInEnabled, setDailyCheckInEnabled] = useState(false);
@@ -399,6 +404,7 @@ export function CircleAnalyticsScreen({
                               : undefined
                         }
                         onOpen={() => {
+                          setDetailInitialRangeId(null);
                           setDetailSummary(localizeAnalyticsSummary(t, card.summary, language));
                           setDetailMessagesFocus(card.messagesFocus ?? null);
                         }}
@@ -437,6 +443,7 @@ export function CircleAnalyticsScreen({
       onOpenMetric={(metricId) => {
         const summary = resolveAnalyticsSummary(metricId, byMetricId, patient);
         if (!summary?.isReleased || summary.status === 'coming_soon') return;
+        setDetailInitialRangeId(null);
         setDetailSummary(localizeAnalyticsSummary(t, summary, language));
         setDetailMessagesFocus(null);
       }}
@@ -460,9 +467,12 @@ export function CircleAnalyticsScreen({
       communicationEnabled={communicationEnabled}
       companionEnabled={companionEnabled}
       vitalityEnabled={vitalityEnabled}
-      onOpenMetric={(metricId, messagesFocus) => {
+      onOpenMetric={(metricId, messagesFocus, periodDays) => {
         const summary = resolveAnalyticsSummary(metricId, byMetricId, patient);
         if (!summary?.isReleased || summary.status === 'coming_soon') return;
+        setDetailInitialRangeId(
+          analyticsDetailRangeIdFromPeriodDays(periodDays ?? periodOverviewDays ?? 7),
+        );
         setDetailSummary(localizeAnalyticsSummary(t, summary, language));
         setDetailMessagesFocus(
           metricId === 'speech-history' ? (messagesFocus ?? 'messaging') : null,
@@ -483,9 +493,11 @@ export function CircleAnalyticsScreen({
       messagesFocus={detailMessagesFocus}
       assessmentSchedule={assessmentSchedule}
       scheduleEnabled={scheduleEnabled}
+      initialRangeId={detailInitialRangeId}
       onClose={() => {
         setDetailSummary(null);
         setDetailMessagesFocus(null);
+        setDetailInitialRangeId(null);
         if (assessmentsOverviewOpen || periodOverviewDays != null) return;
         if (closeReturnsToOriginRef.current) {
           closeReturnsToOriginRef.current = false;

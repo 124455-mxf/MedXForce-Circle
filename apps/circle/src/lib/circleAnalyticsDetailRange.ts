@@ -12,7 +12,7 @@ import {
   type DailyCheckInTimelinePoint,
   type PatientAnalyticsSummary,
 } from '@medxforce/shared';
-import { timelinePointToTimestamp } from './circleAnalyticsChart';
+import { filterPointsToLastNLocalDays, timelinePointToTimestamp } from './circleAnalyticsChart';
 
 export {
   analyticsDetailRangeDays,
@@ -119,13 +119,19 @@ export function filterTimelinePointsToRange<T extends DatedPoint>(
   now = new Date(),
 ): T[] {
   if (!Array.isArray(points) || points.length === 0) return [];
-  const windowDays = resolveAnalyticsDetailWindowDays(rangeId, points, now);
-  const today = startOfLocalDay(now);
-  const cutoff = addLocalDays(today, -(windowDays - 1)).getTime();
-  return points.filter((point) => {
-    const ts = pointTimestamp(point);
-    return ts != null && ts >= cutoff;
-  });
+  if (rangeId === 'all') {
+    const windowDays = resolveAnalyticsDetailWindowDays(rangeId, points, now);
+    const today = startOfLocalDay(now);
+    const cutoff = addLocalDays(today, -(windowDays - 1)).getTime();
+    const matched = points.filter((point) => {
+      const ts = pointTimestamp(point);
+      return ts != null && ts >= cutoff;
+    });
+    if (matched.length > 0) return matched;
+    const parsed = points.some((point) => pointTimestamp(point) != null);
+    return parsed ? [] : points;
+  }
+  return filterPointsToLastNLocalDays(points, analyticsDetailRangeDays(rangeId), now);
 }
 
 function coarsenByGrain<T extends DatedPoint>(
@@ -165,10 +171,14 @@ function previousWindowPoints<T extends DatedPoint>(
   const today = startOfLocalDay(now);
   const currentStart = addLocalDays(today, -(windowDays - 1)).getTime();
   const prevStart = addLocalDays(today, -(windowDays * 2 - 1)).getTime();
-  return points.filter((point) => {
+  const matched = points.filter((point) => {
     const ts = pointTimestamp(point);
     return ts != null && ts >= prevStart && ts < currentStart;
   });
+  if (matched.length > 0) return matched;
+  const parsed = points.some((point) => pointTimestamp(point) != null);
+  if (parsed) return [];
+  return points.slice(-windowDays * 2, -windowDays);
 }
 
 function sumAlertAttention(points: AlertAttentionTimelinePoint[]): { alerts: number; attentions: number } {
@@ -231,12 +241,29 @@ function fillDailyCheckInWindow(
 ): DailyCheckInTimelinePoint[] {
   const today = startOfLocalDay(now);
   const byIso = new Map<string, DailyCheckInTimelinePoint>();
+  let parsed = 0;
   for (const point of points) {
     const ts = pointTimestamp(point);
     if (ts == null) continue;
+    parsed += 1;
     byIso.set(isoFromDate(new Date(ts)), point);
   }
   const filled: DailyCheckInTimelinePoint[] = [];
+  if (parsed === 0 && points.length > 0) {
+    const last = points.slice(-windowDays);
+    const offset = windowDays - last.length;
+    for (let i = windowDays - 1; i >= 0; i--) {
+      const day = addLocalDays(today, -i);
+      const iso = isoFromDate(day);
+      const existing = last[windowDays - 1 - i - offset];
+      filled.push(
+        existing
+          ? { ...existing, date: iso, label: existing.label ?? bucketLabel(iso, 'day') }
+          : { date: iso, label: bucketLabel(iso, 'day'), completed: 0, skipped: 0 },
+      );
+    }
+    return filled;
+  }
   for (let i = windowDays - 1; i >= 0; i--) {
     const day = addLocalDays(today, -i);
     const iso = isoFromDate(day);
@@ -499,10 +526,12 @@ export function applyAnalyticsDetailRange(
     );
     const filled = fillDailyCheckInWindow(participation, windowDays, now);
     const stats = checkInStatsFromTimeline(filled);
+    const prevStats = checkInStatsFromTimeline(previousWindowPoints(detail.timeline, rangeId, now));
     const answerFiltered = filterTimelinePointsToRange(detail.answerTrend, rangeId, now);
     const next: AnalyticsMetricDetail = {
       ...detail,
       ...stats,
+      trend: trendFromWindowTotals(stats.total, prevStats.total),
       timeline: coarsenCheckInTimeline(filled, grain),
       answerTrend: coarsenAnswerTrend(answerFiltered, grain),
     };
@@ -655,11 +684,12 @@ export function applyAnalyticsDetailRange(
       conversations,
       interactions,
       detected,
-      newCount: hasStartedResumed ? started : detail.newCount,
-      resumed: hasStartedResumed ? resumed : detail.resumed,
-      total: conversations + interactions,
+      newCount: hasStartedResumed ? started : rangeId === '30' ? detail.newCount : 0,
+      resumed: hasStartedResumed ? resumed : rangeId === '30' ? detail.resumed : 0,
+      total: Math.max(0, conversations + interactions - detected),
       avgInteractions: conversations > 0 ? (interactions / conversations).toFixed(1) : '0',
       trend: trendFromWindowTotals(conversations + interactions, prevTotal),
+      topTopics: rangeId === '30' ? detail.topTopics : [],
       timeline: coarsened,
     };
     return { detail: next, windowDays, grain, adherenceTimeline: [] };
@@ -683,19 +713,21 @@ export function applyAnalyticsDetailRange(
       (sum, point) => sum + (Number(point.communication) || 0) + (Number(point.messaging) || 0),
       0,
     );
+    const keepThirtyDayExtras = rangeId === '30';
     const next: AnalyticsMetricDetail = {
       ...detail,
       communication,
       messaging,
       trend: trendFromWindowTotals(communication + messaging, prevTotal),
+      topItems: keepThirtyDayExtras ? detail.topItems : [],
       messagingBreakdown: {
         sent,
         replies,
-        conversations: detail.messagingBreakdown?.conversations ?? 0,
-        updates: detail.messagingBreakdown?.updates ?? 0,
-        drafts: detail.messagingBreakdown?.drafts ?? 0,
-        notes: detail.messagingBreakdown?.notes ?? 0,
-        deletions: detail.messagingBreakdown?.deletions ?? 0,
+        conversations: keepThirtyDayExtras ? (detail.messagingBreakdown?.conversations ?? 0) : 0,
+        updates: keepThirtyDayExtras ? (detail.messagingBreakdown?.updates ?? 0) : 0,
+        drafts: keepThirtyDayExtras ? (detail.messagingBreakdown?.drafts ?? 0) : 0,
+        notes: keepThirtyDayExtras ? (detail.messagingBreakdown?.notes ?? 0) : 0,
+        deletions: keepThirtyDayExtras ? (detail.messagingBreakdown?.deletions ?? 0) : 0,
       },
       timeline: coarsened,
     };
@@ -748,7 +780,10 @@ export function applyAnalyticsDetailRange(
       ...detail,
       gamesPlayed,
       avgAccuracy: accuracyValues.length > 0 ? Math.round(mean(accuracyValues)) : 0,
+      totalTimeSeconds: rangeId === '30' ? detail.totalTimeSeconds : 0,
+      totalTimeLabel: rangeId === '30' ? detail.totalTimeLabel : '',
       trend: trendFromWindowTotals(gamesPlayed, prevGames),
+      level: rangeId === '30' ? detail.level : '',
       timeline: coarsened,
     };
     return { detail: next, windowDays, grain, adherenceTimeline: [] };

@@ -51,7 +51,11 @@ type CircleAnalyticsPeriodOverviewSheetProps = {
   communicationEnabled: boolean;
   companionEnabled: boolean;
   vitalityEnabled: boolean;
-  onOpenMetric: (metricId: AnalyticsMetricId, messagesFocus?: CircleMessagesAnalyticsFocus) => void;
+  onOpenMetric: (
+    metricId: AnalyticsMetricId,
+    messagesFocus?: CircleMessagesAnalyticsFocus,
+    periodDays?: AnalyticsPeriodDays,
+  ) => void;
   onClose: () => void;
 };
 
@@ -266,7 +270,7 @@ export function CircleAnalyticsPeriodOverviewSheet({
       <button
         key={row.key}
         type="button"
-        onClick={() => onOpenMetric(row.metricId, row.messagesFocus)}
+        onClick={() => onOpenMetric(row.metricId, row.messagesFocus, days)}
         className="w-full rounded-2xl border border-slate-100 bg-white px-3.5 py-3 text-left flex items-center gap-3 transition-colors hover:border-blue-200 hover:bg-blue-50/30"
       >
         <span className={cn(ANALYTICS_SHEET_ICON_TILE_CLASS, wrapClass)}>

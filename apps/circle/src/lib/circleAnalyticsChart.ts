@@ -22,6 +22,47 @@ function localNoon(year: number, monthIndex: number, day: number): number {
   return new Date(year, monthIndex, day, 12, 0, 0, 0).getTime();
 }
 
+export function localDateKeyFromDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+export function rollingLocalDateKeys(days: number, now = new Date()): string[] {
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  return Array.from({ length: days }, (_, index) => {
+    const day = new Date(today);
+    day.setDate(today.getDate() - (days - 1 - index));
+    return localDateKeyFromDate(day);
+  });
+}
+
+/**
+ * Last N local calendar days. Sparse ISO histories must not use slice(-N)
+ * (that is “last N days with any activity”, not “last N calendar days”).
+ * If no dates parse, fall back to the last N buckets for legacy label series.
+ */
+export function filterPointsToLastNLocalDays<T extends { date: string; label?: string }>(
+  points: T[] | undefined,
+  days: number,
+  now = new Date(),
+): T[] {
+  if (!Array.isArray(points) || points.length === 0 || days <= 0) return [];
+  const keys = new Set(rollingLocalDateKeys(days, now));
+  const matched: T[] = [];
+  let parsed = 0;
+  for (const point of points) {
+    const ts = timelinePointToTimestamp(point.date, point.label);
+    if (ts == null) continue;
+    parsed += 1;
+    if (keys.has(localDateKeyFromDate(new Date(ts)))) matched.push(point);
+  }
+  if (parsed === 0) return points.slice(-days);
+  return matched;
+}
+
 function clampTimestampToPastYear(ts: number, now = Date.now()): number {
   const d = new Date(ts);
   if (d.getTime() > now + 12 * 60 * 60 * 1000) {

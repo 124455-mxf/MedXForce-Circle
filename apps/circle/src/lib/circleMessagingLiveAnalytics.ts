@@ -37,10 +37,11 @@ function dateKey(ts: number): string {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function emptyBuckets(): Record<string, CircleMessagingDailyPoint> {
+function emptyBuckets(windowDays = CIRCLE_ANALYTICS_WINDOW_DAYS): Record<string, CircleMessagingDailyPoint> {
   const now = new Date();
   const buckets: Record<string, CircleMessagingDailyPoint> = {};
-  for (let i = CIRCLE_ANALYTICS_WINDOW_DAYS - 1; i >= 0; i--) {
+  const days = Math.max(1, windowDays);
+  for (let i = days - 1; i >= 0; i--) {
     const day = new Date(now);
     day.setDate(day.getDate() - i);
     const key = dateKey(day.getTime());
@@ -49,9 +50,9 @@ function emptyBuckets(): Record<string, CircleMessagingDailyPoint> {
   return buckets;
 }
 
-function inWindow(ts: number, nowMs: number): boolean {
+function inWindow(ts: number, nowMs: number, windowDays = CIRCLE_ANALYTICS_WINDOW_DAYS): boolean {
   if (!ts) return false;
-  const oldest = nowMs - CIRCLE_ANALYTICS_WINDOW_DAYS * DAY_MS;
+  const oldest = nowMs - Math.max(1, windowDays) * DAY_MS;
   return ts >= oldest && ts <= nowMs + DAY_MS;
 }
 
@@ -74,10 +75,11 @@ export function buildCircleMessagingLiveStats(
   messages: CircleThreadMessage[],
   repliesByMessageId: Record<string, CircleThreadReply[]>,
   nowMs = Date.now(),
+  windowDays = CIRCLE_ANALYTICS_WINDOW_DAYS,
 ): CircleMessagingLiveStats {
-  const newBuckets = emptyBuckets();
-  const replyBuckets = emptyBuckets();
-  const circleBuckets = emptyBuckets();
+  const newBuckets = emptyBuckets(windowDays);
+  const replyBuckets = emptyBuckets(windowDays);
+  const circleBuckets = emptyBuckets(windowDays);
   let newMessages = 0;
   let replies = 0;
   let circleStarted = 0;
@@ -85,7 +87,7 @@ export function buildCircleMessagingLiveStats(
   for (const message of messages) {
     if (!isRegularMessage(message)) continue;
     const createdAt = asMillis(message.createdAt);
-    if (!inWindow(createdAt, nowMs)) continue;
+    if (!inWindow(createdAt, nowMs, windowDays)) continue;
     const key = dateKey(createdAt);
     if (isCircleStarted(message)) {
       circleStarted += 1;
@@ -100,7 +102,7 @@ export function buildCircleMessagingLiveStats(
     for (const reply of list || []) {
       if (!reply?.isPatient) continue;
       const ts = asMillis(reply.timestamp);
-      if (!inWindow(ts, nowMs)) continue;
+      if (!inWindow(ts, nowMs, windowDays)) continue;
       replies += 1;
       const key = dateKey(ts);
       if (replyBuckets[key]) replyBuckets[key].value += 1;

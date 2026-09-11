@@ -20,10 +20,10 @@ export function CircleIdentityMismatchBanner({
         <UserRound size={18} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-bold text-sky-800 uppercase tracking-wide">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-sky-800">
           {t('dashboard.identityMismatchTitle')}
         </p>
-        <p className="text-sm font-medium text-slate-800 mt-1 leading-snug">
+        <p className="text-xs text-slate-600 mt-1 leading-relaxed">
           {t('dashboard.identityMismatchBody', { names })}
         </p>
       </div>

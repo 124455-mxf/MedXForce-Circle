@@ -50,6 +50,8 @@ type CircleAnalyticsDetailSheetProps = {
   messagesFocus?: CircleMessagesAnalyticsFocus | null;
   assessmentSchedule?: RemoteAssessmentSchedule;
   scheduleEnabled?: boolean;
+  /** When set (dashboard Last 7 / Last 4×7), open charts on that window instead of the last saved range. */
+  initialRangeId?: AnalyticsDetailRangeId | null;
   onClose: () => void;
 };
 
@@ -131,6 +133,9 @@ function renderDetailBody(
           timeline={detail.timeline}
           windowLabel={windowLabel}
           windowDays={windowDays}
+          hasSyncedTimeline={
+            summary.detail?.kind === 'messages' && (summary.detail.timeline?.length ?? 0) > 0
+          }
         />
       );
     case 'daily_check_in':
@@ -157,6 +162,7 @@ function renderDetailBody(
           level={detail.level}
           timeline={detail.timeline}
           windowLabel={windowLabel}
+          showSessionSummaries={Boolean(detail.totalTimeLabel)}
         />
       );
     case 'diary':
@@ -300,11 +306,12 @@ export function CircleAnalyticsDetailSheet({
   messagesFocus = null,
   assessmentSchedule,
   scheduleEnabled = true,
+  initialRangeId = null,
   onClose,
 }: CircleAnalyticsDetailSheetProps) {
   const t = useCircleT();
   const [dragY, setDragY] = useState(0);
-  const [rangeId, setRangeId] = useState<AnalyticsDetailRangeId>('30');
+  const [rangeId, setRangeId] = useState<AnalyticsDetailRangeId>(initialRangeId ?? '30');
   const touchStartY = useRef(0);
   const dragYRef = useRef(0);
   const dragging = useRef(false);
@@ -326,14 +333,14 @@ export function CircleAnalyticsDetailSheet({
   }, [summary?.metricId, messagesFocus]);
 
   useEffect(() => {
-    if (!patientId) return;
-    setRangeId(readAnalyticsDetailRange(patientId));
-  }, [patientId]);
+    if (!patientId || !summary) return;
+    setRangeId(initialRangeId ?? readAnalyticsDetailRange(patientId));
+  }, [initialRangeId, messagesFocus, patientId, summary, summary?.metricId]);
 
   useEffect(() => {
-    if (!patientId) return;
+    if (!patientId || !summary) return;
     writeAnalyticsDetailRange(patientId, rangeId);
-  }, [patientId, rangeId]);
+  }, [patientId, rangeId, summary]);
 
   if (!summary) return null;
 

@@ -9,7 +9,11 @@ import type {
   PatientAnalyticsSummary,
   VitalityGameTimelinePoint,
 } from '@medxforce/shared';
-import { timelinePointToTimestamp } from './circleAnalyticsChart';
+import {
+  filterPointsToLastNLocalDays,
+  localDateKeyFromDate,
+  timelinePointToTimestamp,
+} from './circleAnalyticsChart';
 
 export const DASHBOARD_STATS_DAYS = 7;
 export const DASHBOARD_STATS_DAYS_30 = 30;
@@ -23,10 +27,7 @@ export type DashboardActivityDay = {
 };
 
 function localDateKey(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  return localDateKeyFromDate(date);
 }
 
 /** Oldest → today, rolling last 7 calendar days (for week activity bars). */
@@ -51,12 +52,23 @@ export function buildRollingLast7ActivityDays(
   });
 }
 
-export function activityDaysFromTimeline<T extends { date: string }>(
+export function activityDaysFromTimeline<T extends { date: string; label?: string }>(
   timeline: T[] | undefined,
   valueOf: (point: T) => number,
 ): DashboardActivityDay[] {
-  // Analytics timelines use display labels (e.g. "Aug 11"), not YYYY-MM-DD.
-  // They are contiguous day buckets ending today, so align the last 7 by index.
+  const totals = new Map<string, number>();
+  let parsed = 0;
+  for (const point of timeline ?? []) {
+    const ts = timelinePointToTimestamp(point.date, point.label);
+    if (ts == null) continue;
+    parsed += 1;
+    const key = localDateKey(new Date(ts));
+    totals.set(key, (totals.get(key) ?? 0) + Math.max(0, valueOf(point)));
+  }
+  if (parsed > 0) {
+    return buildRollingLast7ActivityDays((dateKey) => totals.get(dateKey) ?? 0);
+  }
+  // Legacy display-label series: contiguous buckets ending today, align last 7 by index.
   const last7 = (timeline ?? []).slice(-DASHBOARD_STATS_DAYS);
   const offset = DASHBOARD_STATS_DAYS - last7.length;
   return buildRollingLast7ActivityDays((_dateKey, dayIndex) => {
@@ -140,6 +152,13 @@ function rollingLocalDateKeys(days: number): string[] {
   });
 }
 
+function lastNTimelinePoints<T extends { date: string; label?: string }>(
+  timeline: T[] | undefined,
+  days: number,
+): T[] {
+  return filterPointsToLastNLocalDays(timeline, days);
+}
+
 /** Completed assessments in the rolling last N calendar days (sparse ISO timelines). */
 export function assessmentTakenCountLastN(
   summary: PatientAnalyticsSummary | undefined,
@@ -195,7 +214,7 @@ export function sumAlertAttentionLastN(
   timeline: AlertAttentionTimelinePoint[] | undefined,
   days: number,
 ) {
-  const slice = (timeline ?? []).slice(-days);
+  const slice = lastNTimelinePoints(timeline, days);
   let alerts = 0;
   let attentions = 0;
   for (const point of slice) {
@@ -260,7 +279,7 @@ export function sumCompanionLastNExcludingDetected(
   timeline: CompanionTimelinePoint[] | undefined,
   days: number,
 ): number {
-  const slice = (timeline ?? []).slice(-days);
+  const slice = lastNTimelinePoints(timeline, days);
   let conversations = 0;
   let interactions = 0;
   let detected = 0;
@@ -277,7 +296,7 @@ export function sumCompanionLast7ExcludingDetected(timeline?: CompanionTimelineP
 }
 
 export function sumMessagesLastN(timeline: MessagesTimelinePoint[] | undefined, days: number) {
-  const slice = (timeline ?? []).slice(-days);
+  const slice = lastNTimelinePoints(timeline, days);
   let communication = 0;
   let messaging = 0;
   for (const point of slice) {
@@ -295,8 +314,7 @@ export function sumVitalityGamesLastN(
   timeline: VitalityGameTimelinePoint[] | undefined,
   days: number,
 ) {
-  const slice = (timeline ?? []).slice(-days);
-  return slice.reduce((sum, point) => sum + point.games, 0);
+  return lastNTimelinePoints(timeline, days).reduce((sum, point) => sum + point.games, 0);
 }
 
 export function sumVitalityGamesLast7(timeline?: VitalityGameTimelinePoint[]) {
@@ -307,7 +325,7 @@ export function sumDailyCheckInLastN(
   timeline: DailyCheckInTimelinePoint[] | undefined,
   days: number,
 ) {
-  const slice = (timeline ?? []).slice(-days);
+  const slice = lastNTimelinePoints(timeline, days);
   let completed = 0;
   let skipped = 0;
   for (const point of slice) {
@@ -326,6 +344,9 @@ export function resolveDailyCheckInLast7Stats(detail?: {
   skippedLast7?: number;
   timeline?: DailyCheckInTimelinePoint[];
 } | null) {
+  if (Array.isArray(detail?.timeline) && detail.timeline.length > 0) {
+    return sumDailyCheckInLast7(detail.timeline);
+  }
   if (
     detail &&
     typeof detail.completedLast7 === 'number' &&
@@ -335,7 +356,7 @@ export function resolveDailyCheckInLast7Stats(detail?: {
     const skipped = detail.skippedLast7;
     return { completed, skipped, total: completed + skipped };
   }
-  return sumDailyCheckInLast7(detail?.timeline);
+  return { completed: 0, skipped: 0, total: 0 };
 }
 
 export type DailyCheckInRecencyInput = {

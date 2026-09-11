@@ -68,6 +68,7 @@ export const analyticsScreenEnglish = {
   average: 'Average',
   entries30Days: 'Entries (30 days)',
   noTopicsInPeriod: 'No topics in this period',
+  noChartInPeriod: 'Nothing in {{window}} yet.',
   chartNotSynced:
     'Chart data not synced yet. On the patient app, open Analytics and tap Sync to Circle.',
   detailNotSynced:
@@ -131,7 +132,7 @@ export const analyticsScreenEnglish = {
     unreadTodayHint:
       'Total unread on the patient app right now, in conversations you can see — not a 30-day count. A high number can mean the patient is behind on messages.',
     circleStarted: 'Started by Circle',
-    circleStartedHint: 'New threads a Circle member started in the last 30 days, in conversations you can see.',
+    circleStartedHint: 'New threads a Circle member started in {{window}}, in conversations you can see.',
     conversations: 'Conversations',
     updates: 'Updates',
     drafts: 'Drafts',
@@ -388,6 +389,7 @@ export const analyticsScreenGerman = {
   average: 'Durchschnitt',
   entries30Days: 'Einträge (30 Tage)',
   noTopicsInPeriod: 'Keine Themen in diesem Zeitraum',
+  noChartInPeriod: 'Nichts in {{window}}.',
   chartNotSynced:
     'Diagrammdaten noch nicht synchronisiert. Öffnen Sie in der Patienten-App Analysen und tippen Sie auf Mit Circle synchronisieren.',
   detailNotSynced:
@@ -451,7 +453,7 @@ export const analyticsScreenGerman = {
     unreadTodayHint:
       'Aktuell ungelesene Nachrichten in der Patienten-App in Unterhaltungen, die Sie sehen können — keine 30-Tage-Summe. Eine hohe Zahl kann bedeuten, dass der Patient bei Nachrichten im Rückstand ist.',
     circleStarted: 'Von Circle gestartet',
-    circleStartedHint: 'Neue Unterhaltungen, die ein Circle-Mitglied in den letzten 30 Tagen gestartet hat, in Unterhaltungen, die Sie sehen können.',
+    circleStartedHint: 'Neue Unterhaltungen, die ein Circle-Mitglied in {{window}} gestartet hat, in Unterhaltungen, die Sie sehen können.',
     conversations: 'Unterhaltungen',
     updates: 'Aktualisierungen',
     drafts: 'Entwürfe',
@@ -709,6 +711,7 @@ export const analyticsScreenSpanish = {
   average: 'Promedio',
   entries30Days: 'Entradas (30 días)',
   noTopicsInPeriod: 'Sin temas en este período',
+  noChartInPeriod: 'Nada en {{window}} todavía.',
   chartNotSynced:
     'Datos del gráfico aún no sincronizados. En la app del paciente, abra Analíticas y pulse Sincronizar con Circle.',
   detailNotSynced:
@@ -772,7 +775,7 @@ export const analyticsScreenSpanish = {
     unreadTodayHint:
       'Total de no leídos en la app del paciente ahora mismo, en conversaciones que usted puede ver — no es un recuento de 30 días. Un número alto puede indicar que el paciente está atrasado en los mensajes.',
     circleStarted: 'Iniciado por Circle',
-    circleStartedHint: 'Hilos nuevos que un miembro de Circle inició en los últimos 30 días, en conversaciones que usted puede ver.',
+    circleStartedHint: 'Hilos nuevos que un miembro de Circle inició en {{window}}, en conversaciones que usted puede ver.',
     conversations: 'Conversaciones',
     updates: 'Actualizaciones',
     drafts: 'Borradores',
@@ -1029,6 +1032,7 @@ export const analyticsScreenPolish = {
   average: 'Średnia',
   entries30Days: 'Wpisy (30 dni)',
   noTopicsInPeriod: 'Brak tematów w tym okresie',
+  noChartInPeriod: 'Nic w {{window}}.',
   chartNotSynced:
     'Dane wykresu jeszcze nie zsynchronizowane. Otwórz Analitykę w aplikacji pacjenta i zsynchronizuj z Circle.',
   detailNotSynced:
@@ -1092,7 +1096,7 @@ export const analyticsScreenPolish = {
     unreadTodayHint:
       'Łączna liczba nieprzeczytanych w aplikacji pacjenta teraz, w rozmowach, które widzisz — to nie suma z 30 dni. Wysoka liczba może oznaczać, że pacjent zalega z wiadomościami.',
     circleStarted: 'Rozpoczęte przez Circle',
-    circleStartedHint: 'Nowe wątki rozpoczęte przez członka Circle w ciągu ostatnich 30 dni, w rozmowach, które widzisz.',
+    circleStartedHint: 'Nowe wątki rozpoczęte przez członka Circle w {{window}}, w rozmowach, które widzisz.',
     conversations: 'Rozmowy',
     updates: 'Aktualizacje',
     drafts: 'Szkice',

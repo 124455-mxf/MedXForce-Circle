@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 import type { CircleTranslator } from '../lib/circleI18nContext';
 
 const RANGE_LABEL_KEYS: Record<AnalyticsDetailRangeId, string> = {
+  '7': 'analytics.range7',
   '30': 'analytics.range30',
   '90': 'analytics.range90',
   '180': 'analytics.range6Months',
