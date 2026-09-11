@@ -9,6 +9,7 @@ import {
   isVisitCaptureThreadPost,
   canParticipateInCircleOpenThread,
   canViewCircleAppointmentInvites,
+  normalizeMemberRole,
   type CareCalendarMemberInviteContext,
   type CircleMemberThreadKind,
   type CircleMemberThreadPost,
@@ -77,6 +78,30 @@ export function circlePostInboxViewsForThread(
     return views;
   }
   return ['discussion', 'announcements', 'care_transition', 'drop_ins', 'visit_captures', 'hidden'];
+}
+
+/** Folders a member can open in this audience, including role-specific omissions. */
+export function circlePostInboxViewsForMember(
+  threadKind: CircleMemberThreadKind,
+  memberRole: string,
+): CirclePostInboxView[] {
+  const views = circlePostInboxViewsForThread(threadKind, memberRole);
+  // Friends stay informed via announcements; checklist tab is for care team + family.
+  if (normalizeMemberRole(memberRole) === 'friend') {
+    return views.filter((view) => view !== 'care_transition');
+  }
+  return views;
+}
+
+/** Keep the current folder when flipping Care team ↔ Everybody, unless it is missing on that side. */
+export function resolveCircleInboxViewForThread(
+  view: CirclePostInboxView,
+  threadKind: CircleMemberThreadKind,
+  memberRole: string,
+): CirclePostInboxView {
+  return circlePostInboxViewsForMember(threadKind, memberRole).includes(view)
+    ? view
+    : 'discussion';
 }
 
 export function postMatchesInboxView(

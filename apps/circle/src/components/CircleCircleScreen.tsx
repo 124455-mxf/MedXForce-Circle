@@ -28,7 +28,6 @@ import {
   isSyntheticAppointmentInvitePostId,
   isPastAppointmentInvitePost,
   mergeAppointmentInvitePostsWithCareCalendar,
-  normalizeMemberRole,
   unhideCircleThreadPostForUser,
   type CircleMemberRole,
   type CircleMemberThreadKind,
@@ -79,8 +78,9 @@ import {
   filterPostsForInboxView,
   getCirclePostLatestActivityAt,
   isCirclePostUnread,
-  circlePostInboxViewsForThread,
+  circlePostInboxViewsForMember,
   partitionCirclePostInboxViews,
+  resolveCircleInboxViewForThread,
   type CirclePostInboxView,
 } from '../lib/circlePostInboxViews';
 import {
@@ -403,12 +403,10 @@ export function CircleCircleScreen({
     [activeThread, patient.patientId, user.uid],
   );
 
-  const skipInboxResetForThreadRef = useRef(false);
   const pendingAttentionFolderRef = useRef<CirclePostInboxView | null>(null);
 
   useEffect(() => {
     if (!circleInboxIntent) return;
-    skipInboxResetForThreadRef.current = true;
     pendingAttentionFolderRef.current = circleInboxIntent.view;
     setActiveThread(circleInboxIntent.thread);
     setInboxView(circleInboxIntent.view);
@@ -422,12 +420,17 @@ export function CircleCircleScreen({
     }
   }, [activeThread, canRestricted]);
 
+  const selectThread = useCallback(
+    (thread: CircleMemberThreadKind) => {
+      if (thread === activeThread) return;
+      setActiveThread(thread);
+      setInboxView((current) => resolveCircleInboxViewForThread(current, thread, memberRole));
+      setSelectedPostId(null);
+    },
+    [activeThread, memberRole],
+  );
+
   useEffect(() => {
-    if (skipInboxResetForThreadRef.current) {
-      skipInboxResetForThreadRef.current = false;
-      return;
-    }
-    setInboxView('discussion');
     setSelectedPostId(null);
   }, [activeThread]);
 
@@ -549,14 +552,10 @@ export function CircleCircleScreen({
   const showCircleInitiateNotice =
     showInitiateNotice && activeThread === 'open' && inboxView === 'discussion';
 
-  const inboxViews = useMemo(() => {
-    const views = circlePostInboxViewsForThread(activeThread, memberRole);
-    // Friends stay informed via announcements; checklist tab is for care team + family.
-    if (normalizeMemberRole(memberRole) === 'friend') {
-      return views.filter((view) => view !== 'care_transition');
-    }
-    return views;
-  }, [activeThread, memberRole]);
+  const inboxViews = useMemo(
+    () => circlePostInboxViewsForMember(activeThread, memberRole),
+    [activeThread, memberRole],
+  );
 
   useEffect(() => {
     if (!inboxViews.includes(inboxView)) {
@@ -1500,7 +1499,7 @@ export function CircleCircleScreen({
               type="button"
               role="tab"
               aria-selected={activeThread === 'restricted'}
-              onClick={() => setActiveThread('restricted')}
+              onClick={() => selectThread('restricted')}
               className={circleTabButtonClass(activeThread === 'restricted')}
             >
               <span className="inline-flex items-center justify-center gap-1.5">
@@ -1516,7 +1515,7 @@ export function CircleCircleScreen({
               type="button"
               role="tab"
               aria-selected={activeThread === 'open'}
-              onClick={() => setActiveThread('open')}
+              onClick={() => selectThread('open')}
               className={circleTabButtonClass(activeThread === 'open')}
             >
               <span className="inline-flex items-center justify-center gap-1.5">
