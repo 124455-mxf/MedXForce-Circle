@@ -1745,6 +1745,9 @@ export function PatientMessagesScreen({
       ? messagesPatientStatusHint(t, selectedMessage.status)
       : '';
   const selectedAlertKind = circleMessageAlertAttentionKind(selectedMessage);
+  const selectedAlertBody = selectedAlertKind
+    ? messagesThreadBodyText(selectedMessage, language, patientFirstName).trim()
+    : '';
   const selectedAlertHistory =
     selectedAlertKind && alertAttentionDetail ? (
       <div className="space-y-2">
@@ -1895,21 +1898,23 @@ export function PatientMessagesScreen({
         {showSelectedInitialMessage ? (
           <div className="px-4 pb-2 pt-3">
             {selectedAlertKind ? (
-              <div
-                className={cn(
-                  'rounded-2xl border px-4 py-3',
-                  selectedAlertKind === 'alert'
-                    ? 'border-red-200 bg-red-50/70'
-                    : 'border-sky-200 bg-sky-50/70',
-                )}
-              >
-                <CircleMessageBodyPreview
-                  text={messagesThreadBodyText(selectedMessage, language, patientFirstName)}
-                  className={
-                    selectedAlertKind === 'alert' ? 'text-red-950' : 'text-sky-950'
-                  }
-                />
-              </div>
+              selectedAlertBody ? (
+                <div
+                  className={cn(
+                    'rounded-2xl border px-4 py-3',
+                    selectedAlertKind === 'alert'
+                      ? 'border-red-200 bg-red-50/70'
+                      : 'border-sky-200 bg-sky-50/70',
+                  )}
+                >
+                  <CircleMessageBodyPreview
+                    text={selectedAlertBody}
+                    className={
+                      selectedAlertKind === 'alert' ? 'text-red-950' : 'text-sky-950'
+                    }
+                  />
+                </div>
+              ) : null
             ) : (
               <div className="pl-10">
                 <CircleStoredTranslationMessage
@@ -2049,22 +2054,24 @@ export function PatientMessagesScreen({
           />
         ) : selectedAlertKind ? (
           <div className="space-y-4">
-            <div
-              className={cn(
-                'rounded-2xl border px-4 py-3',
-                selectedAlertKind === 'alert'
-                  ? 'border-red-200 bg-red-50/70'
-                  : 'border-sky-200 bg-sky-50/70',
-              )}
-            >
-              <CircleMessageBodyPreview
-                text={messagesThreadBodyText(selectedMessage, language, patientFirstName)}
-                className={
-                  selectedAlertKind === 'alert' ? 'text-red-950 text-base' : 'text-sky-950 text-base'
-                }
-                disableTruncate
-              />
-            </div>
+            {selectedAlertBody ? (
+              <div
+                className={cn(
+                  'rounded-2xl border px-4 py-3',
+                  selectedAlertKind === 'alert'
+                    ? 'border-red-200 bg-red-50/70'
+                    : 'border-sky-200 bg-sky-50/70',
+                )}
+              >
+                <CircleMessageBodyPreview
+                  text={selectedAlertBody}
+                  className={
+                    selectedAlertKind === 'alert' ? 'text-red-950 text-base' : 'text-sky-950 text-base'
+                  }
+                  disableTruncate
+                />
+              </div>
+            ) : null}
             {selectedAlertHistory}
           </div>
         ) : null}

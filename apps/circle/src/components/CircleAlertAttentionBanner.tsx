@@ -78,12 +78,13 @@ function BannerRow({
                 type: item.type,
                 subject: item.subject,
                 text: item.text,
+                createdAt: item.createdAt,
                 translations: item.translations,
               },
               language,
               firstName,
             );
-            const preview = localized?.text || item.text || '';
+            const preview = localized ? localized.text : item.text || '';
             const trimmed = preview.length > 120 ? `${preview.slice(0, 120).trimEnd()}…` : preview;
             return trimmed || t('alertAttention.openMessages');
           })()}

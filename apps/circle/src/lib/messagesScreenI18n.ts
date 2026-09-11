@@ -121,7 +121,7 @@ export function messagesThreadBodyText(
   const localized = viewerLanguage
     ? resolveAlertAttentionMessageDisplay(msg, viewerLanguage, firstName)
     : null;
-  if (localized?.text) return localized.text;
+  if (localized) return localized.text;
   if (viewerLanguage) {
     return resolveStoredMessageText(msg, viewerLanguage).displayText;
   }

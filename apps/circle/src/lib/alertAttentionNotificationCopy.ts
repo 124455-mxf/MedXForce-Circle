@@ -1,4 +1,5 @@
 import { normalizeCircleUiLanguage, type CircleUiLanguage } from './circleLanguages';
+import { isInboxRecentMessage } from './circleMessageInboxRecency';
 
 export type AlertAttentionNotificationKind = 'emergency' | 'attention';
 
@@ -138,6 +139,7 @@ export function resolveAlertAttentionMessageDisplay(
     type?: string;
     subject?: string;
     text?: string;
+    createdAt?: number;
     translations?: AlertAttentionMessageTranslation[];
   },
   viewerLanguage: CircleUiLanguage,
@@ -147,5 +149,10 @@ export function resolveAlertAttentionMessageDisplay(
 
   const kind: AlertAttentionNotificationKind =
     msg.type === 'emergency' ? 'emergency' : 'attention';
-  return alertAttentionInAppCopyForLanguage(viewerLanguage, kind, firstName);
+  const copy = alertAttentionInAppCopyForLanguage(viewerLanguage, kind, firstName);
+  // Older than the 7-day inbox window: keep the title, drop the live "check on {name} now" note.
+  if (!isInboxRecentMessage(msg.createdAt || 0)) {
+    return { subject: copy.subject, text: '' };
+  }
+  return copy;
 }
