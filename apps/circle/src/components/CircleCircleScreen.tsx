@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
-import { Loader2, BarChart2, CalendarClock, ClipboardList, CircleDot, HeartHandshake, Megaphone, MessageCircle, Plus, Shield, Sparkles, Trash2, Undo2, Users } from 'lucide-react';
+import { Loader2, BarChart2, CalendarClock, ChevronDown, ChevronUp, ClipboardList, CircleDot, HeartHandshake, Megaphone, MessageCircle, Plus, Shield, Sparkles, Trash2, Undo2, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
   canDeleteCircleThreadPostForEveryone,
@@ -83,6 +83,7 @@ import {
   resolveCircleInboxViewForThread,
   type CirclePostInboxView,
 } from '../lib/circlePostInboxViews';
+import { splitCirclePostsForOlderArchive } from '../lib/circlePostInboxRecency';
 import {
   getCirclePostThreadLastReadAt,
   getCirclePostThreadReadSnapshot,
@@ -228,6 +229,26 @@ function circlePostInboxListHeading(t: ReturnType<typeof useCircleT>, view: Circ
   }
 }
 
+function circleInboxOlderArchiveLabel(
+  t: ReturnType<typeof useCircleT>,
+  view: CirclePostInboxView,
+  count: number,
+): string {
+  if (view === 'announcements') {
+    return t(count === 1 ? 'circle.inboxOlderAnnouncement_one' : 'circle.inboxOlderAnnouncement_other', {
+      count,
+    });
+  }
+  if (view === 'appointments') {
+    return t(count === 1 ? 'circle.inboxOlderAppointment_one' : 'circle.inboxOlderAppointment_other', {
+      count,
+    });
+  }
+  return t(count === 1 ? 'circle.inboxOlderClosedPoll_one' : 'circle.inboxOlderClosedPoll_other', {
+    count,
+  });
+}
+
 function circlePostInboxTabIcon(view: CirclePostInboxView): LucideIcon | null {
   switch (view) {
     case 'announcements':
@@ -339,6 +360,7 @@ export function CircleCircleScreen({
     canRestricted ? 'restricted' : 'open',
   );
   const [inboxView, setInboxView] = useState<CirclePostInboxView>('discussion');
+  const [olderInboxExpanded, setOlderInboxExpanded] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [composerOpen, setComposerOpen] = useState(false);
@@ -440,6 +462,10 @@ export function CircleCircleScreen({
     setHelpComposerOpen(false);
     setPackStarterOpen(false);
   }, [inboxView]);
+
+  useEffect(() => {
+    setOlderInboxExpanded(false);
+  }, [activeThread, inboxView, patient.patientId]);
 
   useEffect(() => {
     if (!composeMenuOpen) return;
@@ -657,6 +683,26 @@ export function CircleCircleScreen({
         (a, b) => getCirclePostLatestActivityAt(b) - getCirclePostLatestActivityAt(a),
       ),
     [filteredPosts],
+  );
+
+  const isInboxPostUnread = useCallback(
+    (post: CircleMemberThreadPost) =>
+      isCirclePostUnread(post, user.uid, getPostLastRead(post.id), {
+        suppressUnread: suppressCirclePostUnread(post),
+      }),
+    [getPostLastRead, postReadTick, suppressCirclePostUnread, user.uid],
+  );
+
+  const postArchiveSplit = useMemo(
+    () =>
+      splitCirclePostsForOlderArchive(
+        orderedPosts,
+        inboxView,
+        isInboxPostUnread,
+        Date.now(),
+        careCalendarEntryById,
+      ),
+    [careCalendarEntryById, inboxView, isInboxPostUnread, orderedPosts],
   );
 
   const selectedPost = useMemo(() => {
@@ -1731,7 +1777,51 @@ export function CircleCircleScreen({
           ) : (
             <>
               {folderActionCard}
-              <ol className="space-y-2 list-none p-0 m-0">{orderedPosts.map(renderInboxRow)}</ol>
+              {postArchiveSplit.main.length > 0 ? (
+                <ol className="space-y-2 list-none p-0 m-0">
+                  {postArchiveSplit.main.map(renderInboxRow)}
+                </ol>
+              ) : null}
+              {postArchiveSplit.older.length > 0 ? (
+                <div
+                  className={cn(
+                    'border border-slate-200 bg-slate-50/80 rounded-xl overflow-hidden',
+                    postArchiveSplit.main.length > 0 ? 'mt-3' : null,
+                  )}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOlderInboxExpanded((expanded) => !expanded)}
+                    className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-slate-100/80"
+                    aria-expanded={olderInboxExpanded}
+                  >
+                    <span className="text-sm font-semibold text-slate-600">
+                      {circleInboxOlderArchiveLabel(t, inboxView, postArchiveSplit.older.length)}
+                    </span>
+                    {olderInboxExpanded ? (
+                      <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" aria-hidden />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" aria-hidden />
+                    )}
+                  </button>
+                  {olderInboxExpanded ? (
+                    <>
+                      <ol className="space-y-2 list-none p-0 mx-3 mb-3">
+                        {postArchiveSplit.older.map(renderInboxRow)}
+                      </ol>
+                      <div className="px-3 pb-3">
+                        <button
+                          type="button"
+                          onClick={() => setOlderInboxExpanded(false)}
+                          className="w-full rounded-lg border border-slate-200 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                        >
+                          {t('circle.inboxHideOlder')}
+                        </button>
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
             </>
           )}
         </div>
