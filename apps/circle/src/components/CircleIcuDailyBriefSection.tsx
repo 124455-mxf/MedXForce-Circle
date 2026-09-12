@@ -1,5 +1,5 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Bell, ClipboardList, Clock, MessageSquare } from 'lucide-react';
 import type { Firestore } from 'firebase/firestore';
 import type {
@@ -11,6 +11,7 @@ import type {
 import { useCircleI18nContext, useCircleT, type CircleTranslator } from '../lib/circleI18nContext';
 import { cn } from '../lib/utils';
 import {
+  circleHorizontalScrollInnerClass,
   dashboardSectionTitleClass,
   dashboardTileTitleClass,
 } from '../lib/circleSectionStyles';
@@ -33,6 +34,32 @@ function formatOnlineDuration(t: CircleTranslator, ms: number): string {
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
   return `${hours}:${String(remainder).padStart(2, '0')}`;
+}
+
+function IcuBriefDayPill({
+  selected,
+  onClick,
+  children,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onClick}
+      className={cn(
+        'shrink-0 whitespace-nowrap min-w-[3.5rem] px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-colors',
+        selected
+          ? 'bg-red-600 text-white border-red-600'
+          : 'bg-white text-slate-600 border-slate-200 hover:bg-red-50',
+      )}
+    >
+      {children}
+    </button>
+  );
 }
 
 function FeatureChip({ on, label }: { on: boolean; label: string }) {
@@ -83,8 +110,16 @@ export function CircleIcuDailyBriefSection({
   const dateKeys = useMemo(() => rollingLast7DateKeys(), []);
   const todayKey = dateKeys[dateKeys.length - 1] ?? '';
   const yesterdayKey = dateKeys[dateKeys.length - 2] ?? todayKey;
+  const pastDateKeys = useMemo(() => dateKeys.slice(0, -1), [dateKeys]);
   const [selectedKey, setSelectedKey] = useState(() => defaultIcuBriefDateKey());
+  const dayStripRef = useRef<HTMLDivElement>(null);
   const { byDateKey } = useIcuDailyPresence(db, patientId, true);
+
+  useLayoutEffect(() => {
+    const el = dayStripRef.current;
+    if (!el) return;
+    el.scrollLeft = el.scrollWidth;
+  }, [dateKeys]);
 
   useEffect(() => {
     if (!dateKeys.includes(selectedKey)) setSelectedKey(defaultIcuBriefDateKey());
@@ -127,30 +162,36 @@ export function CircleIcuDailyBriefSection({
       <div className="rounded-2xl border border-red-100 bg-red-50/50 p-3 sm:p-4 space-y-4">
         <p className="text-xs text-slate-500 leading-relaxed">{t('dashboard.icuBriefSubtitle')}</p>
 
-        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-0.5 px-0.5">
-          {dateKeys.map((key) => {
-            const d = new Date(`${key}T12:00:00`);
-            const label = d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric' });
-            const selected = key === selectedKey;
-            const isY = key === yesterdayKey;
-            const isToday = key === todayKey;
-            return (
-              <button
-                key={key}
-                type="button"
-                aria-pressed={selected}
-                onClick={() => setSelectedKey(key)}
-                className={cn(
-                  'shrink-0 min-w-[3.5rem] px-2 py-1.5 rounded-xl text-xs font-bold border transition-colors',
-                  selected
-                    ? 'bg-red-600 text-white border-red-600'
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-red-50',
-                )}
-              >
-                {isY ? t('dashboard.icuBriefYesterday') : isToday ? t('common.today') : label}
-              </button>
-            );
-          })}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <div
+            ref={dayStripRef}
+            className={cn(
+              'min-w-0 flex-1 overflow-x-auto overscroll-x-contain touch-pan-x',
+              '[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden',
+              '[-webkit-overflow-scrolling:touch]',
+            )}
+          >
+            <div className={cn(circleHorizontalScrollInnerClass, 'gap-1.5')}>
+              {pastDateKeys.map((key) => {
+                const d = new Date(`${key}T12:00:00`);
+                const label = d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric' });
+                return (
+                  <IcuBriefDayPill
+                    key={key}
+                    selected={key === selectedKey}
+                    onClick={() => setSelectedKey(key)}
+                  >
+                    {key === yesterdayKey ? t('dashboard.icuBriefYesterday') : label}
+                  </IcuBriefDayPill>
+                );
+              })}
+            </div>
+          </div>
+          {todayKey ? (
+            <IcuBriefDayPill selected={selectedKey === todayKey} onClick={() => setSelectedKey(todayKey)}>
+              {t('common.today')}
+            </IcuBriefDayPill>
+          ) : null}
         </div>
 
         <div className="grid grid-cols-2 gap-2">
