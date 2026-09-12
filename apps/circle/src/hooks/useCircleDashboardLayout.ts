@@ -4,6 +4,7 @@ import {
   FRIEND_NEVER_VISIBLE_DASHBOARD_WIDGETS,
   exclusivePartnerForDashboardWidget,
   hiddenDashboardWidgetsForRolePreset,
+  overlayPatientActivityDensity,
   applyExclusiveDashboardWidgetPairs,
   isCircleDashboardWidgetKey,
   isCircleDashboardWidgetVisibleForRole,
@@ -183,9 +184,10 @@ export function useCircleDashboardLayout(
   const applyLayoutPreset = useCallback(
     async (preset: CircleDashboardLayoutPreset) => {
       if (!patientId || !memberUid) return;
-      await persistHidden(hiddenDashboardWidgetsForRolePreset(memberRole, preset, appMode));
+      const presetHidden = hiddenDashboardWidgetsForRolePreset(memberRole, preset, appMode);
+      await persistHidden(overlayPatientActivityDensity(presetHidden, hiddenWidgets, memberRole));
     },
-    [appMode, memberRole, memberUid, persistHidden, patientId],
+    [appMode, hiddenWidgets, memberRole, memberUid, persistHidden, patientId],
   );
 
   const resetToRoleDefaults = useCallback(async () => {

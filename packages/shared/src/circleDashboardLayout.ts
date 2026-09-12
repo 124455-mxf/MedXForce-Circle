@@ -245,7 +245,7 @@ const DETAILED_VISIBLE_BY_ROLE: Record<DashboardPresetRoleGroup, CircleDashboard
   ],
 };
 
-/** ICU Home compact: reminders + side-by-side appointment cards. Mandatory attention / tasks / polls / brief stay on. */
+/** ICU Home compact: reminders + Patient activity. Mandatory attention / tasks / polls / brief stay on. */
 const ICU_COMPACT_VISIBLE: CircleDashboardWidgetKey[] = [
   'reminder-gallery-upload',
   'reminder-diary-entry',
@@ -298,23 +298,56 @@ export function hiddenDashboardWidgetsForRolePreset(
   return hiddenWidgetsFromVisible(visible, role);
 }
 
+function hiddenWidgetsWithoutPatientActivityDensity(
+  hidden: readonly CircleDashboardWidgetKey[],
+): CircleDashboardWidgetKey[] {
+  return hidden.filter(
+    (key) => key !== 'patient-activity' && key !== 'patient-activity-compact',
+  );
+}
+
+/**
+ * Side-by-side vs full-width Patient activity is independent of Fewer/More tiles.
+ * Keep the member’s current density when applying a tile preset.
+ */
+export function overlayPatientActivityDensity(
+  presetHidden: readonly CircleDashboardWidgetKey[],
+  currentHidden: ReadonlySet<CircleDashboardWidgetKey> | readonly CircleDashboardWidgetKey[],
+  role: CircleMemberRole,
+): CircleDashboardWidgetKey[] {
+  if (!canSeePatientScheduleNudgeTiles(role)) {
+    return [...presetHidden];
+  }
+  const current =
+    currentHidden instanceof Set ? currentHidden : new Set(currentHidden);
+  const without = hiddenWidgetsWithoutPatientActivityDensity(presetHidden);
+  return isPatientActivityCompactVisible(current)
+    ? [...without, 'patient-activity']
+    : [...without, 'patient-activity-compact'];
+}
+
 export function resolveCircleDashboardLayoutPreset(
   hiddenWidgets: readonly CircleDashboardWidgetKey[],
   role: CircleMemberRole,
   appMode?: RemoteAppMode | null,
 ): CircleDashboardStoredPreset {
+  const current = hiddenWidgetsWithoutPatientActivityDensity(hiddenWidgets);
   if (
     hiddenWidgetSetEquals(
-      hiddenWidgets,
-      hiddenDashboardWidgetsForRolePreset(role, 'compact', appMode),
+      current,
+      hiddenWidgetsWithoutPatientActivityDensity(
+        hiddenDashboardWidgetsForRolePreset(role, 'compact', appMode),
+      ),
     )
   ) {
     return 'compact';
   }
   if (
     hiddenWidgetSetEquals(
-      hiddenWidgets,
-      hiddenDashboardWidgetsForRolePreset(role, 'detailed', appMode),
+      current,
+      hiddenWidgetsWithoutPatientActivityDensity(
+        hiddenDashboardWidgetsForRolePreset(role, 'detailed', appMode),
+      ),
     )
   ) {
     return 'detailed';

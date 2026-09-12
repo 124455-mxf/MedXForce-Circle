@@ -5,6 +5,7 @@ import {
   hiddenDashboardWidgetsForRolePreset,
   isCircleDashboardWidgetAvailable,
   isPatientActivityCompactVisible,
+  overlayPatientActivityDensity,
   resolveCircleDashboardLayoutPreset,
   resolveEffectiveHiddenDashboardWidgets,
 } from './circleDashboardLayout';
@@ -20,7 +21,45 @@ assert.equal(
 assert.equal(
   isPatientActivityCompactVisible(new Set(detailedProxyHidden)),
   false,
-  'detailed proxy preset uses expanded Patient activity',
+  'detailed proxy default starts with full-width Patient activity',
+);
+
+const compactWithFullWidth = overlayPatientActivityDensity(
+  compactProxyHidden,
+  detailedProxyHidden,
+  'proxy',
+);
+assert.equal(
+  isPatientActivityCompactVisible(new Set(compactWithFullWidth)),
+  false,
+  'applying Fewer tiles keeps the current full-width cards',
+);
+assert.equal(
+  resolveCircleDashboardLayoutPreset(compactWithFullWidth, 'proxy'),
+  'compact',
+  'full-width cards do not leave Fewer tiles',
+);
+
+const detailedWithSideBySide = overlayPatientActivityDensity(
+  detailedProxyHidden,
+  compactProxyHidden,
+  'proxy',
+);
+assert.equal(
+  isPatientActivityCompactVisible(new Set(detailedWithSideBySide)),
+  true,
+  'applying More tiles keeps the current side-by-side cards',
+);
+assert.equal(
+  resolveCircleDashboardLayoutPreset(detailedWithSideBySide, 'proxy'),
+  'detailed',
+  'side-by-side cards do not leave More tiles',
+);
+
+assert.deepEqual(
+  overlayPatientActivityDensity(compactProxyHidden, compactProxyHidden, 'family'),
+  compactProxyHidden,
+  'roles without Patient activity keep the preset unchanged',
 );
 
 assert.equal(
@@ -139,7 +178,22 @@ assert.equal(
 assert.equal(
   isPatientActivityCompactVisible(new Set(icuProxyCompact)),
   true,
-  'ICU compact keeps side-by-side appointment cards',
+  'ICU compact default starts with side-by-side appointment cards',
+);
+
+const icuCompactFullWidth = overlayPatientActivityDensity(
+  icuProxyCompact,
+  ['patient-activity-compact'],
+  'proxy',
+);
+assert.equal(
+  isPatientActivityCompactVisible(new Set(icuCompactFullWidth)),
+  false,
+);
+assert.equal(
+  resolveCircleDashboardLayoutPreset(icuCompactFullWidth, 'proxy', 'intensive_care'),
+  'compact',
+  'ICU Fewer tiles stays selected after switching to full-width cards',
 );
 assert.equal(
   resolveCircleDashboardLayoutPreset(icuProxyCompact, 'proxy', 'intensive_care'),
