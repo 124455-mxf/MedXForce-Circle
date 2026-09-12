@@ -1186,13 +1186,13 @@ export const appShellEnglish = {
       previewHospitalFeatureAssessmentsHeadline: 'Consider Assessments',
       previewHospitalFeatureAssessmentsBody:
         'Sample progression nudge — use Turn on Assessments to enable it from Home.',
-      modeStepUpStandardHeadline: 'Ready for ICU Standard?',
+      modeStepUpStandardHeadline: 'Ready for ICU Normal?',
       modeStepUpStandardBody:
-        'The patient is engaging — switch from Minimal distraction to Standard Intensive Care (Alert and Attention buttons on).',
+        'The patient is engaging — switch from Minimal to Normal Intensive Care (Alert and Attention buttons on).',
       modeStepUpHospitalHeadline: 'Consider Hospital mode',
       modeStepUpHospitalBody:
         'If the patient is ready for more features, switch Application Mode to Hospital.',
-      modeStepUpTurnOnStandard: 'Switch to Standard',
+      modeStepUpTurnOnStandard: 'Switch to Normal',
       modeStepUpTurnOnHospital: 'Switch to Hospital',
       icuSoulMusicHeadline: 'Add Soul Music?',
       icuSoulMusicBody:
@@ -1206,9 +1206,9 @@ export const appShellEnglish = {
       icuSetupBody: '{{count}} suggestions for this tablet',
       icuSetupShow: 'Show suggestions',
       icuSetupHide: 'Hide',
-      previewModeStepUpStandardHeadline: 'Ready for ICU Standard?',
+      previewModeStepUpStandardHeadline: 'Ready for ICU Normal?',
       previewModeStepUpStandardBody:
-        'Sample progression nudge — use Switch to Standard from Home.',
+        'Sample progression nudge — use Switch to Normal from Home.',
       previewModeStepUpHospitalHeadline: 'Consider Hospital mode',
       previewModeStepUpHospitalBody:
         'Sample progression nudge — use Switch to Hospital from Home.',
@@ -2611,13 +2611,13 @@ export const appShellGerman = {
       previewHospitalFeatureAssessmentsHeadline: 'Beurteilungen erwägen',
       previewHospitalFeatureAssessmentsBody:
         'Beispiel-Fortschritts-Erinnerung — nutzen Sie „Beurteilungen einschalten“ auf der Startseite.',
-      modeStepUpStandardHeadline: 'Bereit für Intensivpflege Standard?',
+      modeStepUpStandardHeadline: 'Bereit für Intensivpflege Normal?',
       modeStepUpStandardBody:
-        'Der Patient ist aktiv — wechseln Sie von Minimal zu Standard Intensivpflege (Alert- und Attention-Tasten an).',
+        'Der Patient ist aktiv — wechseln Sie von Minimal zu Normal Intensivpflege (Alert- und Attention-Tasten an).',
       modeStepUpHospitalHeadline: 'Krankenhaus-Modus erwägen',
       modeStepUpHospitalBody:
         'Wenn der Patient bereit für mehr Funktionen ist, wechseln Sie den Anwendungsmodus zu Krankenhaus.',
-      modeStepUpTurnOnStandard: 'Zu Standard wechseln',
+      modeStepUpTurnOnStandard: 'Zu Normal wechseln',
       modeStepUpTurnOnHospital: 'Zu Krankenhaus wechseln',
       icuSoulMusicHeadline: 'Soul-Musik hinzufügen?',
       icuSoulMusicBody:
@@ -2631,9 +2631,9 @@ export const appShellGerman = {
       icuSetupBody: '{{count}} Vorschläge für dieses Tablet',
       icuSetupShow: 'Vorschläge anzeigen',
       icuSetupHide: 'Ausblenden',
-      previewModeStepUpStandardHeadline: 'Bereit für Intensivpflege Standard?',
+      previewModeStepUpStandardHeadline: 'Bereit für Intensivpflege Normal?',
       previewModeStepUpStandardBody:
-        'Beispiel-Fortschritts-Erinnerung — nutzen Sie „Zu Standard wechseln“ auf der Startseite.',
+        'Beispiel-Fortschritts-Erinnerung — nutzen Sie „Zu Normal wechseln“ auf der Startseite.',
       previewModeStepUpHospitalHeadline: 'Krankenhaus-Modus erwägen',
       previewModeStepUpHospitalBody:
         'Beispiel-Fortschritts-Erinnerung — nutzen Sie „Zu Krankenhaus wechseln“ auf der Startseite.',
@@ -4036,13 +4036,13 @@ export const appShellSpanish = {
       previewHospitalFeatureAssessmentsHeadline: 'Considerar Evaluaciones',
       previewHospitalFeatureAssessmentsBody:
         'Recordatorio de progreso de ejemplo — usa Activar Evaluaciones desde Inicio.',
-      modeStepUpStandardHeadline: '¿Listo para UCI Estándar?',
+      modeStepUpStandardHeadline: '¿Listo para UCI Normal?',
       modeStepUpStandardBody:
-        'El paciente está participando — pase de Mínimo a Cuidados intensivos Estándar (botones de Alerta y Atención activos).',
+        'El paciente está participando — pase de Mínimo a Cuidados intensivos Normal (botones de Alerta y Atención activos).',
       modeStepUpHospitalHeadline: 'Considerar modo Hospital',
       modeStepUpHospitalBody:
         'Si el paciente está listo para más funciones, cambie el Modo de aplicación a Hospital.',
-      modeStepUpTurnOnStandard: 'Cambiar a Estándar',
+      modeStepUpTurnOnStandard: 'Cambiar a Normal',
       modeStepUpTurnOnHospital: 'Cambiar a Hospital',
       icuSoulMusicHeadline: '¿Añadir Música Soul?',
       icuSoulMusicBody:
@@ -4056,9 +4056,9 @@ export const appShellSpanish = {
       icuSetupBody: '{{count}} sugerencias para esta tablet',
       icuSetupShow: 'Mostrar sugerencias',
       icuSetupHide: 'Ocultar',
-      previewModeStepUpStandardHeadline: '¿Listo para UCI Estándar?',
+      previewModeStepUpStandardHeadline: '¿Listo para UCI Normal?',
       previewModeStepUpStandardBody:
-        'Recordatorio de progreso de ejemplo — usa Cambiar a Estándar desde Inicio.',
+        'Recordatorio de progreso de ejemplo — usa Cambiar a Normal desde Inicio.',
       previewModeStepUpHospitalHeadline: 'Considerar modo Hospital',
       previewModeStepUpHospitalBody:
         'Recordatorio de progreso de ejemplo — usa Cambiar a Hospital desde Inicio.',
@@ -5461,13 +5461,13 @@ export const appShellPolish = {
       previewHospitalFeatureAssessmentsHeadline: 'Rozważ Oceny',
       previewHospitalFeatureAssessmentsBody:
         'Przykładowe przypomnienie postępu — użyj Włącz Oceny na stronie głównej.',
-      modeStepUpStandardHeadline: 'Gotowi na OIOM Standard?',
+      modeStepUpStandardHeadline: 'Gotowi na OIOM Normalny?',
       modeStepUpStandardBody:
-        'Pacjent jest aktywny — przełącz z Minimal na Standard Intensywnej opieki (przyciski Alert i Attention włączone).',
+        'Pacjent jest aktywny — przełącz z Minimal na Normalny Intensywnej opieki (przyciski Alert i Attention włączone).',
       modeStepUpHospitalHeadline: 'Rozważ tryb Szpital',
       modeStepUpHospitalBody:
         'Jeśli pacjent jest gotowy na więcej funkcji, przełącz Tryb aplikacji na Szpital.',
-      modeStepUpTurnOnStandard: 'Przełącz na Standard',
+      modeStepUpTurnOnStandard: 'Przełącz na Normalny',
       modeStepUpTurnOnHospital: 'Przełącz na Szpital',
       icuSoulMusicHeadline: 'Dodać Muzykę Soul?',
       icuSoulMusicBody:
@@ -5481,9 +5481,9 @@ export const appShellPolish = {
       icuSetupBody: '{{count}} sugestii dla tego tabletu',
       icuSetupShow: 'Pokaż sugestie',
       icuSetupHide: 'Ukryj',
-      previewModeStepUpStandardHeadline: 'Gotowi na OIOM Standard?',
+      previewModeStepUpStandardHeadline: 'Gotowi na OIOM Normalny?',
       previewModeStepUpStandardBody:
-        'Przykładowe przypomnienie postępu — użyj Przełącz na Standard na stronie głównej.',
+        'Przykładowe przypomnienie postępu — użyj Przełącz na Normalny na stronie głównej.',
       previewModeStepUpHospitalHeadline: 'Rozważ tryb Szpital',
       previewModeStepUpHospitalBody:
         'Przykładowe przypomnienie postępu — użyj Przełącz na Szpital na stronie głównej.',

@@ -1,12 +1,14 @@
 import { useMemo, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { AnimatePresence, motion, Reorder, useDragControls } from 'motion/react';
-import { ChevronLeft, Eye, EyeOff, GripVertical, RotateCcw, Smile } from 'lucide-react';
+import { ChevronLeft, Eye, EyeOff, Globe, GripVertical, RotateCcw, Smile } from 'lucide-react';
 import {
   UNICODE_EMOJI_CATEGORIES,
   UNICODE_EMOJIS_BY_CATEGORY,
+  applyDefaultIcuUnicodeEmojiOverride,
   applyModeUnicodeEmojiOverrides,
   clearModeUnicodeEmojiOverride,
   hasModeUnicodeEmojiOverride,
+  isDefaultIcuUnicodeEmojiOverride,
   readModeUnicodeEmojiOverride,
   toggleModeUnicodeCategoryVisible,
   toggleModeUnicodeEmojiVisible,
@@ -105,6 +107,7 @@ export function CircleIcuUnicodeEmojiManagement({
   const store = settings.modeUnicodeEmojiContent;
   const override = readModeUnicodeEmojiOverride(store);
   const hasOverride = hasModeUnicodeEmojiOverride(store);
+  const isDefaultLayout = isDefaultIcuUnicodeEmojiOverride(override);
 
   const { categories, emojisByCategory } = useMemo(
     () => applyModeUnicodeEmojiOverrides(UNICODE_EMOJI_CATEGORIES, UNICODE_EMOJIS_BY_CATEGORY, override),
@@ -162,20 +165,34 @@ export function CircleIcuUnicodeEmojiManagement({
           >
             <p className="text-sm text-slate-600 leading-snug pt-3">{t('remoteSettings.icuEmoji.hint')}</p>
 
-            <div className="flex flex-wrap gap-2 justify-end">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={isDefaultLayout}
+                onClick={() => persistStore(applyDefaultIcuUnicodeEmojiOverride(store))}
+                className={cn(
+                  'flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs sm:text-sm font-bold border transition-colors min-w-0',
+                  isDefaultLayout
+                    ? 'border-slate-100 text-slate-300 cursor-not-allowed'
+                    : 'border-red-200 text-red-800 hover:bg-red-50',
+                )}
+              >
+                <RotateCcw size={14} className="shrink-0" />
+                <span className="leading-snug text-center">{t('remoteSettings.icuEmoji.useDefault')}</span>
+              </button>
               <button
                 type="button"
                 disabled={!hasOverride}
                 onClick={() => persistStore(clearModeUnicodeEmojiOverride(store))}
                 className={cn(
-                  'flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold border transition-colors',
+                  'flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs sm:text-sm font-bold border transition-colors min-w-0',
                   hasOverride
                     ? 'border-slate-200 text-slate-700 hover:bg-slate-50'
                     : 'border-slate-100 text-slate-300 cursor-not-allowed',
                 )}
               >
-                <RotateCcw size={16} />
-                {t('remoteSettings.icuEmoji.reset')}
+                <Globe size={14} className="shrink-0" />
+                <span className="leading-snug text-center">{t('remoteSettings.icuEmoji.reset')}</span>
               </button>
             </div>
 

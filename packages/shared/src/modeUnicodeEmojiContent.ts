@@ -1,4 +1,9 @@
-import type { UnicodeEmoji, UnicodeEmojiCategory } from './unicodeEmojiCatalog';
+import {
+  UNICODE_EMOJI_CATEGORIES,
+  UNICODE_EMOJIS_BY_CATEGORY,
+  type UnicodeEmoji,
+  type UnicodeEmojiCategory,
+} from './unicodeEmojiCatalog';
 
 export type ModeUnicodeEmojiOverride = {
   categoryOrder?: string[];
@@ -231,4 +236,118 @@ export function clearModeUnicodeEmojiOverride(
   const next: ModeUnicodeEmojiContentStore = { ...(store || {}) };
   delete next[mode as keyof ModeUnicodeEmojiContentStore];
   return next;
+}
+
+function sameIdList(a?: string[], b?: string[]): boolean {
+  if (!a?.length && !b?.length) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  return a.every((id, i) => id === b[i]);
+}
+
+function sameBoolMap(a?: Record<string, boolean>, b?: Record<string, boolean>): boolean {
+  const left = a || {};
+  const right = b || {};
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+  for (const key of keys) {
+    if (left[key] !== right[key]) return false;
+  }
+  return true;
+}
+
+function sameNestedBoolMap(
+  a?: Record<string, Record<string, boolean>>,
+  b?: Record<string, Record<string, boolean>>,
+): boolean {
+  const left = a || {};
+  const right = b || {};
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+  for (const key of keys) {
+    if (!sameBoolMap(left[key], right[key])) return false;
+  }
+  return true;
+}
+
+function sameIdListMap(a?: Record<string, string[]>, b?: Record<string, string[]>): boolean {
+  const left = a || {};
+  const right = b || {};
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+  for (const key of keys) {
+    if (!sameIdList(left[key], right[key])) return false;
+  }
+  return true;
+}
+
+export function modeUnicodeEmojiOverridesEqual(
+  a?: ModeUnicodeEmojiOverride | null,
+  b?: ModeUnicodeEmojiOverride | null,
+): boolean {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return (
+    sameIdList(a.categoryOrder, b.categoryOrder) &&
+    sameBoolMap(a.categoryVisible, b.categoryVisible) &&
+    sameIdListMap(a.emojiOrder, b.emojiOrder) &&
+    sameNestedBoolMap(a.emojiVisible, b.emojiVisible)
+  );
+}
+
+/** Built-in ICU set: stock catalog on, custom extras off, stock order. */
+export function buildDefaultIcuUnicodeEmojiOverride(
+  liveCategories: UnicodeEmojiCategory[] = UNICODE_EMOJI_CATEGORIES,
+  liveEmojisByCategory: Record<string, UnicodeEmoji[]> = UNICODE_EMOJIS_BY_CATEGORY,
+): ModeUnicodeEmojiOverride {
+  const stockCategoryIds = UNICODE_EMOJI_CATEGORIES.map((c) => c.id);
+  const stockCategorySet = new Set(stockCategoryIds);
+  const liveCategoryIds = liveCategories.map((c) => c.id);
+  const categoryOrder = [
+    ...stockCategoryIds,
+    ...liveCategoryIds.filter((id) => !stockCategorySet.has(id)),
+  ];
+  const categoryVisible: Record<string, boolean> = {};
+  for (const id of categoryOrder) {
+    categoryVisible[id] = stockCategorySet.has(id);
+  }
+
+  const emojiOrder: Record<string, string[]> = {};
+  const emojiVisible: Record<string, Record<string, boolean>> = {};
+  const categoryIds = new Set(categoryOrder);
+  for (const id of categoryIds) {
+    const stock = UNICODE_EMOJIS_BY_CATEGORY[id] || [];
+    const stockIds = stock.map((e) => e.id);
+    const stockIdSet = new Set(stockIds);
+    const live = liveEmojisByCategory[id] || [];
+    const liveIds = live.map((e) => e.id);
+    emojiOrder[id] = [...stockIds, ...liveIds.filter((emojiId) => !stockIdSet.has(emojiId))];
+    emojiVisible[id] = {};
+    for (const emojiId of emojiOrder[id]) {
+      emojiVisible[id][emojiId] = stockIdSet.has(emojiId);
+    }
+  }
+
+  return { categoryOrder, categoryVisible, emojiOrder, emojiVisible };
+}
+
+export function isDefaultIcuUnicodeEmojiOverride(
+  override: ModeUnicodeEmojiOverride | undefined,
+  liveCategories: UnicodeEmojiCategory[] = UNICODE_EMOJI_CATEGORIES,
+  liveEmojisByCategory: Record<string, UnicodeEmoji[]> = UNICODE_EMOJIS_BY_CATEGORY,
+): boolean {
+  if (!override) return false;
+  return modeUnicodeEmojiOverridesEqual(
+    override,
+    buildDefaultIcuUnicodeEmojiOverride(liveCategories, liveEmojisByCategory),
+  );
+}
+
+export function applyDefaultIcuUnicodeEmojiOverride(
+  store: ModeUnicodeEmojiContentStore | undefined,
+  liveCategories: UnicodeEmojiCategory[] = UNICODE_EMOJI_CATEGORIES,
+  liveEmojisByCategory: Record<string, UnicodeEmoji[]> = UNICODE_EMOJIS_BY_CATEGORY,
+  mode: string = ICU_UNICODE_EMOJI_MODE,
+): ModeUnicodeEmojiContentStore {
+  return patchStore(
+    store,
+    mode,
+    buildDefaultIcuUnicodeEmojiOverride(liveCategories, liveEmojisByCategory),
+  );
 }

@@ -529,6 +529,69 @@ function readQuickToggle(doc: PatientRemoteSettingsDoc, path: string): boolean {
   return getRemoteSettingValue(doc, path) ?? false;
 }
 
+function IcuOptionalFeatureGrid({
+  t,
+  features,
+  alertOn,
+  attentionOn,
+  soulMediaAvailable,
+  onToggleAlert,
+  onToggleAttention,
+  onToggleFeature,
+}: {
+  t: ReturnType<typeof useCircleT>;
+  features: RemoteIntensiveCareOptionalFeatures;
+  alertOn: boolean;
+  attentionOn: boolean;
+  soulMediaAvailable: boolean;
+  onToggleAlert: () => void;
+  onToggleAttention: () => void;
+  onToggleFeature: (key: keyof RemoteIntensiveCareOptionalFeatures) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <OptionalChipButton
+        label={t('remoteSettings.icuOptAlert')}
+        active={alertOn}
+        onClick={onToggleAlert}
+      />
+      <OptionalChipButton
+        label={t('remoteSettings.icuOptAttention')}
+        active={attentionOn}
+        onClick={onToggleAttention}
+      />
+      <OptionalChipButton
+        label={t('remoteSettings.icuOptPain')}
+        active={features.painAssessment}
+        onClick={() => onToggleFeature('painAssessment')}
+      />
+      <OptionalChipButton
+        label={t('remoteSettings.icuOptDoctor')}
+        active={features.doctorQuickAnswers}
+        onClick={() => onToggleFeature('doctorQuickAnswers')}
+      />
+      <OptionalChipButton
+        label={t('remoteSettings.icuOptBoardLanguage')}
+        active={features.boardLanguage}
+        onClick={() => onToggleFeature('boardLanguage')}
+        className="col-span-2"
+      />
+      <OptionalChipButton
+        label={t('remoteSettings.icuOptSoulMusic')}
+        active={features.soulMusic}
+        onClick={() => onToggleFeature('soulMusic')}
+      />
+      <OptionalChipButton
+        label={t('remoteSettings.icuOptSoulMedia')}
+        active={features.soulMediaLibrary}
+        disabled={!soulMediaAvailable}
+        disabledHint={t('remoteSettings.icuOptSoulMediaNeedsPhotos')}
+        onClick={() => onToggleFeature('soulMediaLibrary')}
+      />
+    </div>
+  );
+}
+
 function OptionalChipButton({
   label,
   active,
@@ -646,6 +709,8 @@ export function CircleRemoteSettingsScreen({
   const [pendingIcuFeatures, setPendingIcuFeatures] = useState<RemoteIntensiveCareOptionalFeatures>(
     REMOTE_ICU_OPTIONAL_FEATURES_DEFAULTS,
   );
+  const [pendingShowAlertButton, setPendingShowAlertButton] = useState(true);
+  const [pendingShowAttentionButton, setPendingShowAttentionButton] = useState(true);
   const [pendingHospitalFeatures, setPendingHospitalFeatures] =
     useState<RemoteHospitalOptionalFeatures>(REMOTE_HOSPITAL_OPTIONAL_FEATURES_DEFAULTS);
   const [overviewOpen, setOverviewOpen] = useState(false);
@@ -667,6 +732,8 @@ export function CircleRemoteSettingsScreen({
     if (mode === 'intensive_care') {
       setPendingIcuExperience('standard');
       setPendingIcuFeatures({ ...REMOTE_ICU_OPTIONAL_FEATURES_DEFAULTS });
+      setPendingShowAlertButton(true);
+      setPendingShowAttentionButton(true);
     } else if (mode === 'hospital') {
       setPendingHospitalFeatures({ ...REMOTE_HOSPITAL_OPTIONAL_FEATURES_DEFAULTS });
     }
@@ -679,6 +746,11 @@ export function CircleRemoteSettingsScreen({
     let next = setRemoteAppMode(settings, mode);
     if (mode === 'intensive_care') {
       next = setRemoteIntensiveCareExperience(next, pendingIcuExperience);
+      next = {
+        ...next,
+        showAlertButton: pendingShowAlertButton,
+        showAttentionButton: pendingShowAttentionButton,
+      };
       next = applyRemoteIntensiveCareOptionalFeatures(next, {
         ...pendingIcuFeatures,
         painAssessment:
@@ -996,36 +1068,26 @@ export function CircleRemoteSettingsScreen({
                           <p className="text-xs text-slate-600 leading-snug">
                             {t('remoteSettings.icuOptionalDesc')}
                           </p>
-                          <div className="grid grid-cols-2 gap-2">
-                            <OptionalChipButton
-                              label={t('remoteSettings.icuOptPain')}
-                              active={icuOptionalFeatures.painAssessment}
-                              onClick={() => toggleIcuOptionalFeature('painAssessment')}
-                            />
-                            <OptionalChipButton
-                              label={t('remoteSettings.icuOptDoctor')}
-                              active={icuOptionalFeatures.doctorQuickAnswers}
-                              onClick={() => toggleIcuOptionalFeature('doctorQuickAnswers')}
-                            />
-                            <OptionalChipButton
-                              label={t('remoteSettings.icuOptBoardLanguage')}
-                              active={icuOptionalFeatures.boardLanguage}
-                              onClick={() => toggleIcuOptionalFeature('boardLanguage')}
-                              className="col-span-2"
-                            />
-                            <OptionalChipButton
-                              label={t('remoteSettings.icuOptSoulMusic')}
-                              active={icuOptionalFeatures.soulMusic}
-                              onClick={() => toggleIcuOptionalFeature('soulMusic')}
-                            />
-                            <OptionalChipButton
-                              label={t('remoteSettings.icuOptSoulMedia')}
-                              active={icuOptionalFeatures.soulMediaLibrary}
-                              disabled={!soulMediaAvailable}
-                              disabledHint={t('remoteSettings.icuOptSoulMediaNeedsPhotos')}
-                              onClick={() => toggleIcuOptionalFeature('soulMediaLibrary')}
-                            />
-                          </div>
+                          <IcuOptionalFeatureGrid
+                            t={t}
+                            features={icuOptionalFeatures}
+                            alertOn={settings.showAlertButton !== false}
+                            attentionOn={settings.showAttentionButton !== false}
+                            soulMediaAvailable={soulMediaAvailable}
+                            onToggleAlert={() =>
+                              patch({
+                                ...settings,
+                                showAlertButton: settings.showAlertButton === false,
+                              })
+                            }
+                            onToggleAttention={() =>
+                              patch({
+                                ...settings,
+                                showAttentionButton: settings.showAttentionButton === false,
+                              })
+                            }
+                            onToggleFeature={toggleIcuOptionalFeature}
+                          />
                         </div>
                         <div className="space-y-2">
                           <p className="text-[10px] font-bold text-red-800/70 uppercase tracking-widest">
@@ -1513,6 +1575,9 @@ export function CircleRemoteSettingsScreen({
                   <p className="text-[10px] font-bold text-red-800/70 uppercase tracking-widest">
                     {t('remoteSettings.icuExperienceHeading')}
                   </p>
+                  <p className="text-xs text-slate-600 leading-snug">
+                    {t('remoteSettings.icuExperienceDesc')}
+                  </p>
                   <div className="grid grid-cols-2 gap-2">
                     <OptionalChipButton
                       label={t('remoteSettings.icuVariantMinimal')}
@@ -1520,6 +1585,8 @@ export function CircleRemoteSettingsScreen({
                       onClick={() => {
                         setPendingIcuExperience('minimal_focus');
                         setPendingIcuFeatures((prev) => ({ ...prev, painAssessment: false }));
+                        setPendingShowAlertButton(false);
+                        setPendingShowAttentionButton(false);
                       }}
                     />
                     <OptionalChipButton
@@ -1528,67 +1595,29 @@ export function CircleRemoteSettingsScreen({
                       onClick={() => {
                         setPendingIcuExperience('standard');
                         setPendingIcuFeatures((prev) => ({ ...prev, painAssessment: true }));
+                        setPendingShowAlertButton(true);
+                        setPendingShowAttentionButton(true);
                       }}
                     />
                   </div>
                   <p className="text-[10px] font-bold text-red-800/70 uppercase tracking-widest pt-1">
                     {t('remoteSettings.icuOptionalHeading')}
                   </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <OptionalChipButton
-                      label={t('remoteSettings.icuOptPain')}
-                      active={pendingIcuFeatures.painAssessment}
-                      onClick={() =>
-                        setPendingIcuFeatures((prev) => ({
-                          ...prev,
-                          painAssessment: !prev.painAssessment,
-                        }))
-                      }
-                    />
-                    <OptionalChipButton
-                      label={t('remoteSettings.icuOptDoctor')}
-                      active={pendingIcuFeatures.doctorQuickAnswers}
-                      onClick={() =>
-                        setPendingIcuFeatures((prev) => ({
-                          ...prev,
-                          doctorQuickAnswers: !prev.doctorQuickAnswers,
-                        }))
-                      }
-                    />
-                    <OptionalChipButton
-                      label={t('remoteSettings.icuOptBoardLanguage')}
-                      active={pendingIcuFeatures.boardLanguage}
-                      onClick={() =>
-                        setPendingIcuFeatures((prev) => ({
-                          ...prev,
-                          boardLanguage: !prev.boardLanguage,
-                        }))
-                      }
-                      className="col-span-2"
-                    />
-                    <OptionalChipButton
-                      label={t('remoteSettings.icuOptSoulMusic')}
-                      active={pendingIcuFeatures.soulMusic}
-                      onClick={() =>
-                        setPendingIcuFeatures((prev) => ({
-                          ...prev,
-                          soulMusic: !prev.soulMusic,
-                        }))
-                      }
-                    />
-                    <OptionalChipButton
-                      label={t('remoteSettings.icuOptSoulMedia')}
-                      active={pendingIcuFeatures.soulMediaLibrary}
-                      disabled={!soulMediaAvailable}
-                      disabledHint={t('remoteSettings.icuOptSoulMediaNeedsPhotos')}
-                      onClick={() =>
-                        setPendingIcuFeatures((prev) => ({
-                          ...prev,
-                          soulMediaLibrary: !prev.soulMediaLibrary,
-                        }))
-                      }
-                    />
-                  </div>
+                  <IcuOptionalFeatureGrid
+                    t={t}
+                    features={pendingIcuFeatures}
+                    alertOn={pendingShowAlertButton}
+                    attentionOn={pendingShowAttentionButton}
+                    soulMediaAvailable={soulMediaAvailable}
+                    onToggleAlert={() => setPendingShowAlertButton((on) => !on)}
+                    onToggleAttention={() => setPendingShowAttentionButton((on) => !on)}
+                    onToggleFeature={(key) =>
+                      setPendingIcuFeatures((prev) => ({
+                        ...prev,
+                        [key]: !prev[key],
+                      }))
+                    }
+                  />
                   <p className="text-[10px] font-bold text-red-800/70 uppercase tracking-widest pt-1">
                     {t('remoteSettings.icuContentHeading')}
                   </p>
