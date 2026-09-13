@@ -214,6 +214,13 @@ export async function deleteGalleryAlbum(
   await deleteDoc(doc(db, 'patients', params.patientId, 'gallery_albums', params.albumId));
 }
 
+export type CircleGalleryAlbumUploadResult = {
+  uploadedIds: string[];
+  failed: Array<{ fileName: string; message: string }>;
+  /** Files the picker handed over (before per-file failures). */
+  attempted: number;
+};
+
 export async function uploadCircleGalleryMediaToAlbum(params: {
   db: Firestore;
   storage: FirebaseStorage;
@@ -225,31 +232,48 @@ export async function uploadCircleGalleryMediaToAlbum(params: {
   files: File[];
   caption?: string;
   onProgress?: (progress: GalleryUploadFileProgress) => void;
-}): Promise<string[]> {
-  const ids: string[] = [];
+}): Promise<CircleGalleryAlbumUploadResult> {
+  const uploadedIds: string[] = [];
+  const failed: CircleGalleryAlbumUploadResult['failed'] = [];
   const total = params.files.length;
+
   for (let i = 0; i < params.files.length; i++) {
     const file = params.files[i]!;
-    const id = await uploadCircleGalleryMedia({
-      db: params.db,
-      storage: params.storage,
-      patientId: params.patientId,
-      albumId: params.albumId,
-      uploadedByUid: params.uploadedByUid,
-      uploadedByRole: params.uploadedByRole,
-      senderName: params.senderName,
-      file,
-      caption: params.caption,
-      fileIndex: i + 1,
-      fileCount: total,
-      onProgress: params.onProgress,
-    });
-    ids.push(id);
+    const fileName = file.name || `file-${i + 1}`;
+    try {
+      // iCloud / Photos often hand over 0-byte placeholders until fully downloaded.
+      if (!file.size) {
+        throw new Error(
+          'This photo is not fully available on this device yet (often iCloud). Open it in Photos so it downloads, then try again.',
+        );
+      }
+      const id = await uploadCircleGalleryMedia({
+        db: params.db,
+        storage: params.storage,
+        patientId: params.patientId,
+        albumId: params.albumId,
+        uploadedByUid: params.uploadedByUid,
+        uploadedByRole: params.uploadedByRole,
+        senderName: params.senderName,
+        file,
+        caption: params.caption,
+        fileIndex: i + 1,
+        fileCount: total,
+        onProgress: params.onProgress,
+      });
+      uploadedIds.push(id);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Upload failed.';
+      console.error('[CircleGallery] Upload failed:', fileName, err);
+      failed.push({ fileName, message });
+    }
   }
-  if (ids.length > 0) {
+
+  if (uploadedIds.length > 0) {
     await updateDoc(doc(params.db, 'patients', params.patientId, 'gallery_albums', params.albumId), {
       updatedAt: Date.now(),
     });
   }
-  return ids;
+
+  return { uploadedIds, failed, attempted: total };
 }

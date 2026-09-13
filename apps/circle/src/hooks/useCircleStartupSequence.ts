@@ -5,8 +5,11 @@ const STEP_INTERVAL_MS = 2000;
 const FINAL_DWELL_MS = 400;
 /** Fast path: signed-in return within the same session — dismiss as soon as the app is ready. */
 const FAST_PATH_DWELL_MS = 120;
-/** Never block the app longer than this if auth is slow. */
-const MAX_WAIT_MS = 12_000;
+/**
+ * Absolute safety: if patient access never resolves (network hang), dismiss splash
+ * so the app can show an in-screen checking/empty state instead of blocking forever.
+ */
+const MAX_WAIT_MS = 45_000;
 const EXIT_MS = 550;
 const STARTUP_SESSION_KEY = 'mx-circle-startup-seen';
 
@@ -54,12 +57,11 @@ export function useCircleStartupSequence(appReady: boolean) {
   }, [fastPath]);
 
   useEffect(() => {
-    const timer = window.setTimeout(finish, MAX_WAIT_MS);
-    return () => window.clearTimeout(timer);
-  }, [finish]);
-
-  useEffect(() => {
-    if (!appReady) return undefined;
+    // Wait for auth + patient access hydrate — do not dismiss early on a short timer.
+    if (!appReady) {
+      const timer = window.setTimeout(finish, MAX_WAIT_MS);
+      return () => window.clearTimeout(timer);
+    }
     if (fastPath) {
       const timer = window.setTimeout(finish, FAST_PATH_DWELL_MS);
       return () => window.clearTimeout(timer);

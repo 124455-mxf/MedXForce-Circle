@@ -1,4 +1,5 @@
 import { normalizeCircleUiLanguage, type CircleUiLanguage } from './circleLanguages';
+import { isInboxRecentMessage } from './circleMessageInboxRecency';
 
 export type AlertAttentionNotificationKind = 'emergency' | 'attention';
 
@@ -50,6 +51,75 @@ const COPY: Record<CircleUiLanguage, Record<AlertAttentionNotificationKind, Aler
   },
 };
 
+const LOVED_ONE: Record<CircleUiLanguage, string> = {
+  English: 'your loved one',
+  German: 'Ihrem Angehörigen',
+  Spanish: 'su ser querido',
+  Polish: 'bliskiej osoby',
+};
+
+/** In-app thread copy only — email/SMS keep the Patient templates. */
+const IN_APP_COPY: Record<CircleUiLanguage, Record<AlertAttentionNotificationKind, AlertAttentionCopy>> = {
+  English: {
+    emergency: {
+      subject: 'Emergency alert',
+      text: 'Please check on {{name}} now. This is an emergency alert from MedXForce.',
+    },
+    attention: {
+      subject: 'Attention request',
+      text: 'Please check on {{name}} when you can. {{name}} asked for attention in MedXForce.',
+    },
+  },
+  German: {
+    emergency: {
+      subject: 'Notfallalarm',
+      text: 'Bitte sehen Sie jetzt nach {{name}}. Das ist ein Notfallalarm aus MedXForce.',
+    },
+    attention: {
+      subject: 'Aufmerksamkeitsanfrage',
+      text: 'Bitte sehen Sie nach {{name}}, sobald Sie können. Es gibt eine Aufmerksamkeitsanfrage in MedXForce.',
+    },
+  },
+  Spanish: {
+    emergency: {
+      subject: 'Alerta de emergencia',
+      text: 'Compruebe cómo está {{name}} ahora. Esta es una alerta de emergencia de MedXForce.',
+    },
+    attention: {
+      subject: 'Solicitud de atención',
+      text: 'Compruebe cómo está {{name}} cuando pueda. {{name}} pidió atención en MedXForce.',
+    },
+  },
+  Polish: {
+    emergency: {
+      subject: 'Alert alarmowy',
+      text: 'Sprawdź teraz, jak się ma {{name}}. To alert alarmowy z MedXForce.',
+    },
+    attention: {
+      subject: 'Prośba o uwagę',
+      text: 'Sprawdź, jak się ma {{name}}, gdy możesz. To prośba o uwagę z MedXForce.',
+    },
+  },
+};
+
+function interpolateName(template: string, name: string): string {
+  return template.split('{{name}}').join(name);
+}
+
+export function alertAttentionInAppCopyForLanguage(
+  language: string | undefined | null,
+  kind: AlertAttentionNotificationKind,
+  firstName?: string | null,
+): AlertAttentionCopy {
+  const lang = normalizeCircleUiLanguage(language);
+  const copy = IN_APP_COPY[lang][kind];
+  const name = firstName?.trim() || LOVED_ONE[lang];
+  return {
+    subject: copy.subject,
+    text: interpolateName(copy.text, name),
+  };
+}
+
 export function alertAttentionCopyForLanguage(
   language: string | undefined | null,
   kind: AlertAttentionNotificationKind,
@@ -69,25 +139,20 @@ export function resolveAlertAttentionMessageDisplay(
     type?: string;
     subject?: string;
     text?: string;
+    createdAt?: number;
     translations?: AlertAttentionMessageTranslation[];
   },
   viewerLanguage: CircleUiLanguage,
+  firstName?: string | null,
 ): AlertAttentionCopy | null {
   if (msg.type !== 'emergency' && msg.type !== 'attention') return null;
 
   const kind: AlertAttentionNotificationKind =
     msg.type === 'emergency' ? 'emergency' : 'attention';
-  const viewerLang = normalizeCircleUiLanguage(viewerLanguage);
-  const match = (msg.translations ?? []).find(
-    (entry) => normalizeCircleUiLanguage(entry.language) === viewerLang,
-  );
-  if (match) {
-    const catalog = alertAttentionCopyForLanguage(viewerLang, kind);
-    return {
-      subject: match.subject?.trim() || catalog.subject,
-      text: match.text?.trim() || catalog.text,
-    };
+  const copy = alertAttentionInAppCopyForLanguage(viewerLanguage, kind, firstName);
+  // Older than the 7-day inbox window: keep the title, drop the live "check on {name} now" note.
+  if (!isInboxRecentMessage(msg.createdAt || 0)) {
+    return { subject: copy.subject, text: '' };
   }
-
-  return alertAttentionCopyForLanguage(viewerLang, kind);
+  return copy;
 }

@@ -1,5 +1,6 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 import { circleRoleFromContact, proxyTierFromContact } from './circleMemberRoles';
+import { composeContactDisplayName } from './circleContactManagement';
 import { normalizeInviteEmail } from './patientPermissions';
 import { parseCircleProfileSnapshot } from './circlePatientProfile';
 import { resolveCirclePatientPhotoUrl } from './circlePatients';
@@ -99,7 +100,11 @@ export function buildCareCalendarAttendeeOptions(patientData: {
     ...(patientData.friendsAndFamily || []),
   ]) {
     const contactId = String(contact.id || '').trim();
-    const name = String(contact.name || '').trim();
+    const name = composeContactDisplayName({
+      firstName: typeof contact.firstName === 'string' ? contact.firstName : '',
+      lastName: typeof contact.lastName === 'string' ? contact.lastName : '',
+      name: typeof contact.name === 'string' ? contact.name : '',
+    });
     if (!contactId || !name || seen.has(contactId)) continue;
 
     const role = toAttendeeRole(circleRoleFromContact(contact));
@@ -164,6 +169,7 @@ export function attendeeFromCareCalendarOption(
 export function defaultNewCircleCareCalendarAttendees(
   options: CareCalendarAttendeeOption[],
   organizerContactId?: string,
+  opts?: { includePatient?: boolean },
 ): CareCalendarAttendee[] {
   const attendees: CareCalendarAttendee[] = [];
   const seen = new Set<string>();
@@ -174,7 +180,9 @@ export function defaultNewCircleCareCalendarAttendees(
     attendees.push(attendeeFromCareCalendarOption(option));
   };
 
-  add(options.find((option) => option.role === 'patient'));
+  if (opts?.includePatient !== false) {
+    add(options.find((option) => option.role === 'patient'));
+  }
 
   if (organizerContactId) {
     add(options.find((option) => option.contactId === organizerContactId));
@@ -197,6 +205,47 @@ export function enrichCareCalendarAttendeeOptionsWithPhotos(
   }));
 }
 
+/**
+ * Prefer live contact / self display names over snapshotted attendee labels
+ * (e.g. email local-part left on older appointment invites).
+ */
+export function applyCareCalendarAttendeeDisplayNames(
+  attendees: CareCalendarAttendee[] | undefined,
+  options: {
+    nameByContactId?: ReadonlyMap<string, string> | Record<string, string>;
+    selfContactIds?: readonly string[];
+    selfDisplayName?: string;
+  } = {},
+): CareCalendarAttendee[] | undefined {
+  if (!attendees?.length) return attendees;
+  const selfName = options.selfDisplayName?.trim();
+  const selfIds = new Set(
+    (options.selfContactIds ?? []).map((id) => String(id || '').trim()).filter(Boolean),
+  );
+  const lookup = (contactId: string): string | undefined => {
+    const nameByContactId = options.nameByContactId;
+    if (!nameByContactId) return undefined;
+    // ReadonlyMap is an interface — `instanceof Map` alone does not narrow it for Record indexing.
+    if (nameByContactId instanceof Map) {
+      return nameByContactId.get(contactId)?.trim() || undefined;
+    }
+    if (typeof (nameByContactId as ReadonlyMap<string, string>).get === 'function') {
+      return (nameByContactId as ReadonlyMap<string, string>).get(contactId)?.trim() || undefined;
+    }
+    return (nameByContactId as Record<string, string>)[contactId]?.trim() || undefined;
+  };
+  return attendees.map((attendee) => {
+    let name = attendee.name;
+    if (selfName && selfIds.has(attendee.contactId)) {
+      name = selfName;
+    } else {
+      const fromDirectory = lookup(attendee.contactId);
+      if (fromDirectory) name = fromDirectory;
+    }
+    return name === attendee.name ? attendee : { ...attendee, name };
+  });
+}
+
 export function formatCareCalendarAttendeeSummary(
   attendees: CareCalendarAttendee[],
   options?: { excludePatient?: boolean },
@@ -206,6 +255,38 @@ export function formatCareCalendarAttendeeSummary(
     : attendees;
   if (!list.length) return '';
   return list.map((attendee) => attendee.name).join(', ');
+}
+
+/** True when the patient is explicitly on the invite list. */
+export function careCalendarEventIncludesPatient(
+  event: { attendees?: CareCalendarAttendee[] | null },
+): boolean {
+  return (event.attendees ?? []).some((attendee) => attendee.role === 'patient');
+}
+
+/**
+ * Circle-only: invitees are set, but the patient is not among them.
+ * Missing/empty attendees stays a general appointment (still shown on the patient dashboard).
+ */
+export function isCareCalendarCircleOnlyForPatient(
+  event: { attendees?: CareCalendarAttendee[] | null },
+): boolean {
+  const attendees = event.attendees ?? [];
+  return attendees.length > 0 && !careCalendarEventIncludesPatient(event);
+}
+
+/** Internal (care-team) appointments — stored as kind `wellness`. */
+export function isCareCalendarInternalMeeting(kind: string | undefined | null): boolean {
+  return kind === 'wellness';
+}
+
+/** Hide from the patient Schedule / dashboard (internal meetings + Circle-only invites). */
+export function isCareCalendarHiddenFromPatientSchedule(event: {
+  kind?: string | null;
+  attendees?: CareCalendarAttendee[] | null;
+}): boolean {
+  if (isCareCalendarInternalMeeting(event.kind)) return true;
+  return isCareCalendarCircleOnlyForPatient(event);
 }
 
 export function careCalendarAttendeeRoleLabelKey(role: CareCalendarAttendeeRole): string {

@@ -35,7 +35,7 @@ const PATIENT_SECTION_LABELS: Record<string, string> = {
   'quick-answers': 'Quick Answers',
   'quick-settings': 'Quick Settings',
   'dashboard/daily-check-in': 'Daily check-in',
-  'dashboard/visit-capture': 'Doctor visit capture',
+  'dashboard/visit-capture': 'Record a meeting',
   'dashboard/drop-in': 'Drop-in chat',
   communication: 'Communication',
   messages: 'Messages',

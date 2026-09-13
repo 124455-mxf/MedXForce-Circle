@@ -30,7 +30,7 @@ export function downloadVisitCaptureWord(session: VisitCaptureSession): void {
   const body = sessionExportHtmlBody(session);
   const html = `<!DOCTYPE html>
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
-<head><meta charset="utf-8"><title>Doctor visit capture</title></head>
+<head><meta charset="utf-8"><title>Meeting capture</title></head>
 <body>${body}</body>
 </html>`;
   triggerDownload(
@@ -43,7 +43,7 @@ export function downloadVisitCaptureHtml(session: VisitCaptureSession): void {
   const body = sessionExportHtmlBody(session);
   const html = `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Doctor visit capture</title></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Meeting capture</title></head>
 <body>${body}</body>
 </html>`;
   triggerDownload(

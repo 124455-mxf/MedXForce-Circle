@@ -1,6 +1,11 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 
 import { useState } from 'react';
+import { useCircleLiveTranslatedText } from '../hooks/useCircleLiveTranslatedText';
+import {
+  CircleLiveTranslatingLabel,
+  CircleLiveTranslationToggle,
+} from './CircleTranslatedUserText';
 import { cn } from '../lib/utils';
 
 export const CIRCLE_TEXT_PREVIEW_CHARS = 100;
@@ -25,12 +30,21 @@ export function CircleExpandableTextPreview({
   rootClassName,
 }: CircleExpandableTextPreviewProps) {
   const [expanded, setExpanded] = useState(false);
-  const body = text.trim();
-  if (!body) return null;
+  const {
+    originalText,
+    displayText: translatedText,
+    hasTranslation,
+    isTranslating,
+    showOriginal,
+    toggleOriginal,
+  } = useCircleLiveTranslatedText(text);
+  if (!originalText) return null;
 
-  const needsTruncate = body.length > previewChars;
+  const needsTruncate = translatedText.length > previewChars;
   const displayText =
-    expanded || !needsTruncate ? body : `${body.slice(0, previewChars).trimEnd()}…`;
+    expanded || !needsTruncate
+      ? translatedText
+      : `${translatedText.slice(0, previewChars).trimEnd()}…`;
 
   return (
     <div className={cn('space-y-1', rootClassName)}>
@@ -44,6 +58,7 @@ export function CircleExpandableTextPreview({
           {label}
         </p>
       ) : null}
+      {isTranslating && !showOriginal ? <CircleLiveTranslatingLabel /> : null}
       <p className={cn('text-sm text-slate-600 whitespace-pre-wrap', className)}>
         {displayText}
         {needsTruncate ? (
@@ -59,6 +74,9 @@ export function CircleExpandableTextPreview({
           </button>
         ) : null}
       </p>
+      {hasTranslation ? (
+        <CircleLiveTranslationToggle showOriginal={showOriginal} onToggle={toggleOriginal} />
+      ) : null}
     </div>
   );
 }

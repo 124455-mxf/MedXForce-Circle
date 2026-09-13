@@ -1,0 +1,100 @@
+import assert from 'node:assert/strict';
+import {
+  careTransitionDraftReviewCount,
+  careTransitionFolderCounts,
+  careTransitionOpenItemCount,
+  careTransitionPackRemainingCount,
+  careTransitionVisiblePackItems,
+  EMPTY_CARE_TRANSITION_STATE,
+  planCareTransitionDraftForPhase,
+  suggestedPackForPhaseTransition,
+  type CareTransitionReadinessState,
+  type CircleHelpTask,
+} from './careTransitionReadiness';
+
+function draftIcuToWard(overrides: Partial<CareTransitionReadinessState> = {}): CareTransitionReadinessState {
+  return {
+    ...EMPTY_CARE_TRANSITION_STATE,
+    activePackId: 'icu-to-ward',
+    packLive: false,
+    ...overrides,
+  };
+}
+
+const openHelp: CircleHelpTask = {
+  id: 'help-1',
+  title: 'Pick up groceries',
+  note: '',
+  createdAt: 1,
+  createdByUid: 'u1',
+  createdByName: 'Proxy',
+  claimedByUid: '',
+  claimedByName: '',
+  assignedByUid: '',
+  done: false,
+};
+
+const draft = draftIcuToWard();
+assert.equal(careTransitionVisiblePackItems(draft, 'proxy').length, 4);
+assert.equal(careTransitionPackRemainingCount(draft, 'proxy'), 0);
+assert.equal(careTransitionDraftReviewCount(draft, 'proxy'), 1);
+assert.equal(careTransitionOpenItemCount(draft, 'proxy'), 1);
+assert.deepEqual(careTransitionFolderCounts(draft, 'proxy'), { total: 1, unread: 1 });
+assert.equal(careTransitionDraftReviewCount(draft, 'caregiver'), 0);
+assert.equal(careTransitionOpenItemCount(draft, 'caregiver'), 0);
+assert.deepEqual(careTransitionFolderCounts(draft, 'caregiver'), { total: 0, unread: 0 });
+assert.equal(careTransitionOpenItemCount(draft, 'family'), 0);
+
+const live = draftIcuToWard({ packLive: true });
+assert.equal(careTransitionPackRemainingCount(live, 'proxy'), 4);
+assert.equal(careTransitionDraftReviewCount(live, 'proxy'), 0);
+assert.equal(careTransitionOpenItemCount(live, 'proxy'), 4);
+assert.deepEqual(careTransitionFolderCounts(live, 'proxy'), { total: 4, unread: 4 });
+
+const draftWithHelp = draftIcuToWard({ circleHelpTasks: [openHelp] });
+assert.equal(careTransitionPackRemainingCount(draftWithHelp, 'proxy'), 0);
+assert.equal(careTransitionOpenItemCount(draftWithHelp, 'proxy'), 2);
+assert.deepEqual(careTransitionFolderCounts(draftWithHelp, 'proxy'), { total: 2, unread: 2 });
+assert.equal(careTransitionOpenItemCount(draftWithHelp, 'caregiver'), 1);
+assert.deepEqual(careTransitionFolderCounts(draftWithHelp, 'caregiver'), { total: 1, unread: 1 });
+
+assert.equal(suggestedPackForPhaseTransition('', 'icu'), 'crisis-icu');
+assert.equal(suggestedPackForPhaseTransition('', 'acute'), 'ward-to-acute');
+assert.equal(suggestedPackForPhaseTransition('icu', 'acute'), 'icu-to-ward');
+assert.equal(suggestedPackForPhaseTransition('', 'maintenance'), 'home-settle');
+assert.equal(suggestedPackForPhaseTransition('rehab', 'maintenance'), 'rehab-to-home');
+assert.equal(suggestedPackForPhaseTransition('', ''), null);
+
+const firstSetup = planCareTransitionDraftForPhase(EMPTY_CARE_TRANSITION_STATE, '', 'icu', {
+  skipIfLive: true,
+  country: 'DE',
+});
+assert.equal('packId' in firstSetup && firstSetup.packId, 'crisis-icu');
+assert.equal('next' in firstSetup && firstSetup.next.packLive, false);
+assert.equal('next' in firstSetup && firstSetup.next.region, 'de');
+
+const skipLive = planCareTransitionDraftForPhase(
+  { ...EMPTY_CARE_TRANSITION_STATE, activePackId: 'crisis-icu', packLive: true },
+  '',
+  'acute',
+  { skipIfLive: true },
+);
+assert.deepEqual(skipLive, { skip: 'live-pack' });
+
+const skipSameDraft = planCareTransitionDraftForPhase(
+  { ...EMPTY_CARE_TRANSITION_STATE, activePackId: 'crisis-icu', packLive: false },
+  'icu',
+  'icu',
+  { skipIfLive: true },
+);
+assert.deepEqual(skipSameDraft, { skip: 'same-draft' });
+
+const circleReplacesLive = planCareTransitionDraftForPhase(
+  { ...EMPTY_CARE_TRANSITION_STATE, activePackId: 'crisis-icu', packLive: true },
+  'icu',
+  'acute',
+);
+assert.equal('packId' in circleReplacesLive && circleReplacesLive.packId, 'icu-to-ward');
+assert.equal('next' in circleReplacesLive && circleReplacesLive.next.packLive, false);
+
+console.log('careTransitionReadiness.test.ts: ok');

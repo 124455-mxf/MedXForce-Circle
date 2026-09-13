@@ -1,7 +1,8 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { CalendarClock, Lock } from 'lucide-react';
+import { CalendarClock, Lock, RotateCcw } from 'lucide-react';
 import {
   SCHEDULABLE_ASSESSMENTS,
+  assessmentScheduleForRecoveryStage,
   buildDefaultAssessmentScheduleRules,
   formatRecurrenceLabel,
   resolveEffectiveAssessmentScheduleRules,
@@ -15,6 +16,7 @@ import {
   type RemoteAssessmentSchedule,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
+import { treatmentPhaseLabelT } from '../lib/dashboardI18n';
 import { CircleCollapsibleSection } from './CircleCollapsibleSection';
 
 type CircleAssessmentSchedulePanelProps = {
@@ -90,6 +92,7 @@ export function CircleAssessmentSchedulePanel({
   const sections = [
     { id: 'physical', titleKey: 'remoteSettings.assessmentSchedule.sections.physical' },
     { id: 'visionHearing', titleKey: 'remoteSettings.assessmentSchedule.sections.visionHearing' },
+    { id: 'speech', titleKey: 'remoteSettings.assessmentSchedule.sections.speech' },
     {
       id: 'neurologicalPhysiological',
       titleKey: 'remoteSettings.assessmentSchedule.sections.neurologicalPhysiological',
@@ -97,6 +100,8 @@ export function CircleAssessmentSchedulePanel({
   ] as const;
 
   const updateRule = (assessmentId: AssessmentScheduleId, patchRule: Partial<AssessmentScheduleRule>) => {
+    const meta = SCHEDULABLE_ASSESSMENTS.find((item) => item.id === assessmentId);
+    if (!meta?.released) return;
     const nextRules = {
       ...remote.rules,
       [assessmentId]: {
@@ -112,6 +117,8 @@ export function CircleAssessmentSchedulePanel({
   };
 
   const toggleLock = (assessmentId: AssessmentScheduleId) => {
+    const meta = SCHEDULABLE_ASSESSMENTS.find((item) => item.id === assessmentId);
+    if (!meta?.released) return;
     const nextLocked = new Set(locked);
     if (nextLocked.has(assessmentId)) nextLocked.delete(assessmentId);
     else nextLocked.add(assessmentId);
@@ -121,16 +128,41 @@ export function CircleAssessmentSchedulePanel({
     });
   };
 
+  const resetToStageDefaults = () => {
+    persistRemoteSchedule(
+      settings,
+      treatmentPhase,
+      patch,
+      assessmentScheduleForRecoveryStage(treatmentPhase, remote.lockedIds ?? []),
+    );
+  };
+
+  const stageLabel = treatmentPhaseLabelT(t, treatmentPhase || 'rehab');
+
   return (
     <div className="space-y-4">
       <div className="flex items-start gap-3 px-1">
         <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
           <CalendarClock size={20} />
         </div>
-        <div className="space-y-1">
+        <div className="space-y-2 min-w-0 flex-1">
           <p className="text-sm font-normal text-slate-800">{t('remoteSettings.assessmentSchedule.title')}</p>
           <p className="text-xs text-slate-400 leading-relaxed">
             {t('remoteSettings.assessmentSchedule.description')}
+          </p>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            {t('remoteSettings.assessmentSchedule.lockHint')}
+          </p>
+          <button
+            type="button"
+            onClick={resetToStageDefaults}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-blue-200 hover:text-blue-700"
+          >
+            <RotateCcw size={14} />
+            {t('remoteSettings.assessmentSchedule.resetToStageDefaults', { stage: stageLabel })}
+          </button>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            {t('remoteSettings.assessmentSchedule.resetToStageDefaultsHint')}
           </p>
         </div>
       </div>
@@ -169,9 +201,14 @@ export function CircleAssessmentSchedulePanel({
                             {t(`remoteSettings.assessmentSchedule.items.${meta.id}`)}
                           </p>
                           {isLocked ? (
-                            <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-                              <Lock size={10} />
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
+                              <Lock size={12} />
                               {t('remoteSettings.assessmentSchedule.lockedForPatient')}
+                            </span>
+                          ) : null}
+                          {!meta.released ? (
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-full">
+                              {t('remoteSettings.toBeReleased')}
                             </span>
                           ) : null}
                         </div>
@@ -194,7 +231,7 @@ export function CircleAssessmentSchedulePanel({
                                 ? 'bg-blue-600'
                                 : 'bg-slate-300',
                           )}
-                          aria-pressed={rule.enabled}
+                          aria-pressed={meta.released && rule.enabled}
                         >
                           <span
                             className={cn(
@@ -203,24 +240,57 @@ export function CircleAssessmentSchedulePanel({
                             )}
                           />
                         </button>
-                        <button
-                          type="button"
-                          disabled={!meta.released}
-                          onClick={() => toggleLock(meta.id)}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={!meta.released}
+                      aria-pressed={isLocked}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        toggleLock(meta.id);
+                      }}
+                      className={cn(
+                        'w-full flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors',
+                        isLocked
+                          ? 'bg-amber-100 border-amber-300'
+                          : 'bg-slate-50 border-slate-200 hover:border-slate-300',
+                        !meta.released && 'opacity-60 cursor-not-allowed',
+                      )}
+                    >
+                      <span className="flex items-center gap-2 min-w-0">
+                        <Lock
+                          size={16}
+                          className={isLocked ? 'text-amber-800 shrink-0' : 'text-slate-500 shrink-0'}
+                        />
+                        <span
                           className={cn(
-                            'text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border transition-colors',
-                            isLocked
-                              ? 'bg-amber-50 text-amber-700 border-amber-200'
-                              : 'bg-slate-50 text-slate-500 border-slate-100 hover:border-slate-200',
-                            !meta.released && 'opacity-60 cursor-not-allowed',
+                            'text-xs font-semibold',
+                            isLocked ? 'text-amber-950' : 'text-slate-700',
                           )}
                         >
                           {isLocked
-                            ? t('remoteSettings.assessmentSchedule.unlock')
-                            : t('remoteSettings.assessmentSchedule.lock')}
-                        </button>
-                      </div>
-                    </div>
+                            ? t('remoteSettings.assessmentSchedule.lockedForPatient')
+                            : t('remoteSettings.assessmentSchedule.lockForPatient')}
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          'w-12 h-7 rounded-full transition-all duration-300 relative shrink-0',
+                          isLocked ? 'bg-amber-500' : 'bg-slate-300',
+                        )}
+                        aria-hidden
+                      >
+                        <span
+                          className={cn(
+                            'absolute top-1 left-0 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300',
+                            isLocked ? 'translate-x-[22px]' : 'translate-x-1',
+                          )}
+                        />
+                      </span>
+                    </button>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                       {RECURRENCE_KINDS.map((kind) => (
@@ -242,62 +312,72 @@ export function CircleAssessmentSchedulePanel({
                       ))}
                     </div>
 
-                    {rule.recurrence.kind === 'weekdays' && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {Array.from({ length: 7 }, (_, day) => {
-                          const active = rule.recurrence.daysOfWeek.includes(day);
+                    {rule.recurrence.kind === 'weekdays'
+                      ? (() => {
+                          const weekdays = rule.recurrence;
                           return (
-                            <button
-                              key={day}
-                              type="button"
-                              disabled={!meta.released || !rule.enabled}
-                              onClick={() => {
-                                const days = active
-                                  ? rule.recurrence.kind === 'weekdays'
-                                    ? rule.recurrence.daysOfWeek.filter((value) => value !== day)
-                                    : []
-                                  : rule.recurrence.kind === 'weekdays'
-                                    ? [...rule.recurrence.daysOfWeek, day].sort((a, b) => a - b)
-                                    : [day];
-                                if (days.length === 0) return;
-                                updateRule(meta.id, { recurrence: { kind: 'weekdays', daysOfWeek: days } });
-                              }}
-                              className={cn(
-                                'w-9 h-9 rounded-full text-[10px] font-bold border',
-                                active
-                                  ? 'bg-blue-600 text-white border-blue-600'
-                                  : 'bg-slate-50 text-slate-600 border-slate-100',
-                              )}
-                            >
-                              {scheduleT(t, `settings.assessmentSchedule.weekdayShort.${day}`)}
-                            </button>
+                            <div className="flex flex-wrap gap-1.5">
+                              {Array.from({ length: 7 }, (_, day) => {
+                                const active = weekdays.daysOfWeek.includes(day);
+                                return (
+                                  <button
+                                    key={day}
+                                    type="button"
+                                    disabled={!meta.released || !rule.enabled}
+                                    onClick={() => {
+                                      const days = active
+                                        ? weekdays.daysOfWeek.filter((value) => value !== day)
+                                        : [...weekdays.daysOfWeek, day].sort((a, b) => a - b);
+                                      if (days.length === 0) return;
+                                      updateRule(meta.id, {
+                                        recurrence: { kind: 'weekdays', daysOfWeek: days },
+                                      });
+                                    }}
+                                    className={cn(
+                                      'w-9 h-9 rounded-full text-[10px] font-bold border',
+                                      active
+                                        ? 'bg-blue-600 text-white border-blue-600'
+                                        : 'bg-slate-50 text-slate-600 border-slate-100',
+                                    )}
+                                  >
+                                    {scheduleT(t, `settings.assessmentSchedule.weekdayShort.${day}`)}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           );
-                        })}
-                      </div>
-                    )}
+                        })()
+                      : null}
 
-                    {rule.recurrence.kind === 'weekly' && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {Array.from({ length: 7 }, (_, day) => (
-                          <button
-                            key={day}
-                            type="button"
-                            disabled={!meta.released || !rule.enabled}
-                            onClick={() =>
-                              updateRule(meta.id, { recurrence: { kind: 'weekly', dayOfWeek: day } })
-                            }
-                            className={cn(
-                              'w-9 h-9 rounded-full text-[10px] font-bold border',
-                              rule.recurrence.dayOfWeek === day
-                                ? 'bg-blue-600 text-white border-blue-600'
-                                : 'bg-slate-50 text-slate-600 border-slate-100',
-                            )}
-                          >
-                            {scheduleT(t, `settings.assessmentSchedule.weekdayShort.${day}`)}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    {rule.recurrence.kind === 'weekly'
+                      ? (() => {
+                          const weekly = rule.recurrence;
+                          return (
+                            <div className="flex flex-wrap gap-1.5">
+                              {Array.from({ length: 7 }, (_, day) => (
+                                <button
+                                  key={day}
+                                  type="button"
+                                  disabled={!meta.released || !rule.enabled}
+                                  onClick={() =>
+                                    updateRule(meta.id, {
+                                      recurrence: { kind: 'weekly', dayOfWeek: day },
+                                    })
+                                  }
+                                  className={cn(
+                                    'w-9 h-9 rounded-full text-[10px] font-bold border',
+                                    weekly.dayOfWeek === day
+                                      ? 'bg-blue-600 text-white border-blue-600'
+                                      : 'bg-slate-50 text-slate-600 border-slate-100',
+                                  )}
+                                >
+                                  {scheduleT(t, `settings.assessmentSchedule.weekdayShort.${day}`)}
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })()
+                      : null}
 
                     {rule.recurrence.kind === 'monthly' && (
                       <label className="flex items-center gap-2 text-xs text-slate-600">

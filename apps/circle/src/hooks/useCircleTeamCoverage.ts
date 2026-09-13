@@ -18,7 +18,12 @@ export function useCircleTeamCoverage(
   db: Firestore,
   patientId: string | undefined,
   isPendingProvision = false,
-): { analysis: TeamCoverageAnalysis; contacts: CircleManagedContact[]; loading: boolean } {
+): {
+  analysis: TeamCoverageAnalysis;
+  contacts: CircleManagedContact[];
+  invites: CircleInviteListItem[];
+  loading: boolean;
+} {
   const [contacts, setContacts] = useState<CircleManagedContact[]>([]);
   const [invites, setInvites] = useState<CircleInviteListItem[]>([]);
   const [contactsReady, setContactsReady] = useState(false);
@@ -71,6 +76,11 @@ export function useCircleTeamCoverage(
                       : undefined,
                   status,
                   updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : 0,
+                  createdAt: typeof data.createdAt === 'number' ? data.createdAt : undefined,
+                  introductionEmailSentAt:
+                    typeof data.introductionEmailSentAt === 'number'
+                      ? data.introductionEmailSentAt
+                      : undefined,
                   acceptedByUid:
                     typeof data.acceptedByUid === 'string' ? data.acceptedByUid : undefined,
                 } satisfies CircleInviteListItem;
@@ -102,6 +112,11 @@ export function useCircleTeamCoverage(
                       : undefined,
                   status,
                   updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : 0,
+                  createdAt: typeof data.createdAt === 'number' ? data.createdAt : undefined,
+                  introductionEmailSentAt:
+                    typeof data.introductionEmailSentAt === 'number'
+                      ? data.introductionEmailSentAt
+                      : undefined,
                   acceptedByUid:
                     typeof data.acceptedByUid === 'string' ? data.acceptedByUid : undefined,
                 } satisfies CircleInviteListItem;
@@ -130,6 +145,7 @@ export function useCircleTeamCoverage(
   return {
     analysis,
     contacts,
+    invites,
     loading: !patientId || !contactsReady || !invitesReady,
   };
 }

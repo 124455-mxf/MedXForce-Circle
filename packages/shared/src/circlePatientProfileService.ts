@@ -21,19 +21,65 @@ import {
   type CirclePatientProfileSnapshot,
   type CircleProfileNotification,
 } from './circlePatientProfile';
+import { assessmentScheduleForRecoveryStage } from './assessmentSchedule';
 import {
   createDefaultRemoteSettings,
   parsePatientRemoteSettings,
   REMOTE_PRIMARY_LANGUAGE_OPTIONS,
   remoteSettingsDocRef,
+  setRemoteAppMode,
+  setRemoteAssessmentSchedule,
+  setRemoteDashboardPreset,
   writeRemoteSettings,
   type RemotePrimaryLanguage,
 } from './remoteSettings';
+import { recommendRemoteSettingsForTreatmentPhase } from './treatmentPhase';
 
 function primaryLanguageFromProfileLanguage(raw: string): RemotePrimaryLanguage {
   const short = String(raw || '').split(' ')[0];
   if (short === 'German' || short === 'Spanish' || short === 'Polish') return short;
   return 'English';
+}
+
+async function syncRemoteSettingsForTreatmentPhase(
+  db: Firestore,
+  patientId: string,
+  treatmentPhase: string,
+  actorUid: string,
+  actorDisplayName: string,
+  updatedAt: number,
+  updateTabletLayout = true,
+): Promise<void> {
+  const recommendation = recommendRemoteSettingsForTreatmentPhase(treatmentPhase);
+  const rsSnap = await getDoc(remoteSettingsDocRef(db, patientId));
+  const base = rsSnap.exists()
+    ? parsePatientRemoteSettings(patientId, rsSnap.data() as Record<string, unknown>)
+    : createDefaultRemoteSettings(patientId);
+  if (!base) return;
+
+  let next = base;
+  if (updateTabletLayout && recommendation) {
+    next = setRemoteDashboardPreset(
+      setRemoteAppMode(next, recommendation.appMode),
+      recommendation.dashboardPreset,
+    );
+  }
+  next = setRemoteAssessmentSchedule(
+    next,
+    assessmentScheduleForRecoveryStage(
+      treatmentPhase,
+      next.assessmentSchedule?.lockedIds ?? [],
+    ),
+  );
+
+  await writeRemoteSettings(db, {
+    ...next,
+    patientId,
+    updatedAt,
+    updatedByUid: actorUid,
+    updatedByName: actorDisplayName.trim() || 'Circle proxy',
+    source: 'circle',
+  });
 }
 
 async function syncRemoteSettingsPrimaryLanguage(
@@ -121,6 +167,17 @@ export async function readCirclePatientProfile(
   };
 }
 
+export type UpdateCirclePatientProfileFromProxyOptions = {
+  /** Default true. When false, a recovery-stage save does not change tablet app mode or dashboard. */
+  applyRecommendedTabletLayout?: boolean;
+};
+
+function shouldApplyRecommendedTabletLayout(
+  options?: UpdateCirclePatientProfileFromProxyOptions,
+): boolean {
+  return options?.applyRecommendedTabletLayout !== false;
+}
+
 export async function updateCirclePatientProfileFromProxy(
   db: Firestore,
   patientId: string,
@@ -128,12 +185,22 @@ export async function updateCirclePatientProfileFromProxy(
   actorUid: string,
   patientDisplayName: string,
   actorDisplayName?: string,
+  options?: UpdateCirclePatientProfileFromProxyOptions,
 ): Promise<void> {
   const patientRef = doc(db, 'patients', patientId);
   const existingSnap = await getDoc(patientRef);
   const previousSnapshot = existingSnap.exists()
     ? parseCircleProfileSnapshot(existingSnap.data()?.profileSnapshot)
     : null;
+
+  // Refuse to attach another patient's avatar URL to this patient (cross-switch bug guard).
+  const picture = String(snapshot.identity.profilePicture || '').trim();
+  const foreignAvatarMatch = picture.match(/patient_([A-Za-z0-9]+)_avatar/i);
+  if (foreignAvatarMatch && foreignAvatarMatch[1] && foreignAvatarMatch[1] !== patientId) {
+    throw new Error(
+      `Refusing profile write: photo belongs to patient ${foreignAvatarMatch[1]}, not ${patientId}`,
+    );
+  }
 
   if (
     previousSnapshot &&
@@ -182,6 +249,35 @@ export async function updateCirclePatientProfileFromProxy(
       return;
     }
 
+    const treatmentPhaseChanged =
+      String(previousSnapshot?.clinical.treatmentPhase ?? '').trim() !==
+      String(snapshot.clinical.treatmentPhase ?? '').trim();
+    if (treatmentPhaseChanged && snapshot.clinical.treatmentPhase.trim()) {
+      const updatedAt = Date.now();
+      await setDoc(
+        patientRef,
+        {
+          profileSnapshot: firestoreSnapshot,
+          updatedAt,
+        },
+        { merge: true },
+      );
+      try {
+        await syncRemoteSettingsForTreatmentPhase(
+          db,
+          patientId,
+          snapshot.clinical.treatmentPhase,
+          actorUid,
+          actorDisplayName || patientDisplayName,
+          updatedAt,
+          shouldApplyRecommendedTabletLayout(options),
+        );
+      } catch (err) {
+        console.warn('[updateCirclePatientProfileFromProxy] remote settings treatment phase', err);
+      }
+      return;
+    }
+
     await setDoc(
       patientRef,
       {
@@ -225,6 +321,22 @@ export async function updateCirclePatientProfileFromProxy(
       );
     } catch (err) {
       console.warn('[updateCirclePatientProfileFromProxy] remote settings language', err);
+    }
+  }
+
+  if (changedLabels.includes('Where I am in recovery')) {
+    try {
+      await syncRemoteSettingsForTreatmentPhase(
+        db,
+        patientId,
+        snapshot.clinical.treatmentPhase,
+        actorUid,
+        actorDisplayName || patientDisplayName,
+        meta.updatedAt,
+        shouldApplyRecommendedTabletLayout(options),
+      );
+    } catch (err) {
+      console.warn('[updateCirclePatientProfileFromProxy] remote settings treatment phase', err);
     }
   }
 

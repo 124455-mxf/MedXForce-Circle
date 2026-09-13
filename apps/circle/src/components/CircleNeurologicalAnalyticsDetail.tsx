@@ -1,526 +1,227 @@
-import {
-
-  CartesianGrid,
-
-  Line,
-
-  LineChart,
-
-  ResponsiveContainer,
-
-  Tooltip,
-
-  YAxis,
-
-} from 'recharts';
-
-import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
-
+import { useState } from 'react';
+import { Brain, Languages, Sparkles, Target, Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import type {
-
   AnalyticsTrendDirection,
-
   DomainScoreTrend,
-
   NeurologicalLatestSnapshot,
-
   NeurologicalTimelinePoint,
-
 } from '@medxforce/shared';
-
-import {
-
-  CIRCLE_ANALYTICS_CHART_HEIGHT,
-
-  circleAnalyticsChartMargin,
-
-  circleAnalyticsPlotInsetLeft,
-
-  circleAnalyticsPlotInsetRight,
-
-  circleAnalyticsSparseLineProps,
-
-  circleAnalyticsTooltipLabelFormatter,
-
-  prepareSparseTimelineChartData,
-
-} from '../lib/circleAnalyticsChart';
-
 import { useCircleT } from '../lib/circleI18nContext';
-
 import {
-
   analyticsNeurologicalOutcomeLabel,
-
   analyticsTrendImprovingDeclining,
-
   analyticsWindowDaysLabel,
-
 } from '../lib/circleAnalyticsI18n';
-
 import { cn } from '../lib/utils';
-
-import { CircleAnalyticsChartFooter } from './CircleAnalyticsChartFooter';
-
-import { CircleAnalyticsChartXAxis } from './CircleAnalyticsChartXAxis';
-
-
+import {
+  CircleAnalyticsChartTypeToggle,
+  CircleAnalyticsSeriesCard,
+  seriesFromKeyedTimeline,
+  type CircleAnalyticsChartType,
+} from './CircleAnalyticsSeriesCard';
 
 type CircleNeurologicalAnalyticsDetailProps = {
-
   count?: number;
-
   average?: number;
-
   trend?: AnalyticsTrendDirection;
-
   overall?: DomainScoreTrend;
-
   executive?: DomainScoreTrend;
-
   language?: DomainScoreTrend;
-
   attention?: DomainScoreTrend;
-
   timeline?: NeurologicalTimelinePoint[];
-
   latestSnapshot?: NeurologicalLatestSnapshot;
-
+  windowLabel?: string;
 };
 
+const SCORE_DOMAIN: [number, number] = [0, 10];
+const SCORE_TICKS = [0, 5, 10];
 
-
-function TrendBadge({
-
+function TrendSummary({
   trend,
-
   t,
-
-  higherIsBetter = true,
-
 }: {
-
   trend: AnalyticsTrendDirection;
-
   t: ReturnType<typeof useCircleT>;
-
-  higherIsBetter?: boolean;
-
 }) {
-
   const Icon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
-
   const colorClass =
-
-    trend === 'stable'
-
-      ? 'text-slate-300'
-
-      : (trend === 'up') === higherIsBetter
-
-        ? 'text-emerald-500'
-
-        : 'text-red-500';
-
+    trend === 'up'
+      ? 'text-emerald-600 bg-emerald-50'
+      : trend === 'down'
+        ? 'text-amber-600 bg-amber-50'
+        : 'text-slate-400 bg-slate-100';
   return (
-
-    <span className={cn('inline-flex items-center gap-1', colorClass)}>
-
-      <Icon size={14} />
-
-      <span className="text-[11px] font-bold text-slate-600">
-
-        {analyticsTrendImprovingDeclining(t, trend, higherIsBetter)}
-
-      </span>
-
+    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[12px] font-bold uppercase', colorClass)}>
+      <Icon size={12} />
+      {analyticsTrendImprovingDeclining(t, trend)}
     </span>
-
   );
-
 }
-
-
-
-function DomainCard({
-
-  label,
-
-  data,
-
-  t,
-
-}: {
-
-  label: string;
-
-  data: DomainScoreTrend;
-
-  t: ReturnType<typeof useCircleT>;
-
-}) {
-
-  return (
-
-    <div className="rounded-2xl border border-slate-100 bg-white p-3 space-y-2">
-
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">{label}</p>
-
-      <div className="flex items-end justify-between gap-2">
-
-        <p className="text-xl font-black text-slate-800 tabular-nums">{data.current}</p>
-
-        <TrendBadge trend={data.trend} t={t} />
-
-      </div>
-
-      <p className="text-[10px] text-slate-400 font-semibold tabular-nums">
-
-        {data.change > 0 ? `+${data.change}` : data.change}
-
-      </p>
-
-    </div>
-
-  );
-
-}
-
-
 
 function resultClass(value: boolean | null): string {
-
   if (value === true) return 'bg-emerald-50 text-emerald-700';
-
   if (value === false) return 'bg-red-50 text-red-700';
-
   return 'bg-slate-100 text-slate-500';
-
 }
-
-
 
 export function CircleNeurologicalAnalyticsDetail({
-
-  count = 0,
-
-  average = 0,
-
-  trend = 'stable',
-
   overall,
-
   executive,
-
   language,
-
   attention,
-
   timeline,
-
   latestSnapshot,
-
+  trend = 'stable',
+  windowLabel,
 }: CircleNeurologicalAnalyticsDetailProps) {
-
   const t = useCircleT();
-
-  const overallLabel = t('analytics.neurological.overall');
-
+  const [chartType, setChartType] = useState<CircleAnalyticsChartType>('bar');
+  const overallLabel = t('analytics.neurological.overallCognitive');
   const executiveLabel = t('analytics.neurological.executive');
-
   const languageLabel = t('analytics.neurological.language');
-
   const attentionLabel = t('analytics.neurological.attention');
 
-  const legend = [
-
-    { color: '#7c3aed', label: overallLabel },
-
-    { color: '#2563eb', label: executiveLabel },
-
-    { color: '#059669', label: languageLabel },
-
-    { color: '#d97706', label: attentionLabel },
-
-  ] as const;
-
-  const chartData = prepareSparseTimelineChartData(
-
-    Array.isArray(timeline) ? timeline : undefined,
-
-  );
-
-  const hasChart = chartData.length > 0;
-
-  const chartMargin = circleAnalyticsChartMargin({ right: 8, left: -18 });
-
-
-
   return (
-
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-
       <div className="px-3 py-2 border-b border-slate-100 bg-purple-50/50">
-
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
-
-          {analyticsWindowDaysLabel(t, 30)}
-
+        <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
+          {windowLabel ?? analyticsWindowDaysLabel(t, 30)}
         </p>
-
       </div>
-
       <div className="p-4 space-y-4">
-
-        <div className="grid grid-cols-3 gap-3">
-
-          <div className="space-y-0.5">
-
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
-
-              {t('analytics.vision.assessments')}
-
-            </p>
-
-            <p className="text-2xl font-black text-purple-600 tabular-nums leading-none">{count}</p>
-
-          </div>
-
-          <div className="space-y-0.5">
-
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
-
-              {t('analytics.neurological.overallCognitive')}
-
-            </p>
-
-            <p className="text-2xl font-black text-slate-800 tabular-nums leading-none">{average}</p>
-
-          </div>
-
-          <div className="space-y-0.5">
-
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
-
-              {t('analytics.trend')}
-
-            </p>
-
-            <div className="pt-1">
-
-              <TrendBadge trend={trend} t={t} />
-
-            </div>
-
-          </div>
-
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[12px] font-bold text-slate-400 uppercase">{t('analytics.trend')}</span>
+          <TrendSummary trend={trend} t={t} />
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[12px] font-bold text-slate-400 uppercase">{t('analytics.chart')}</span>
+          <CircleAnalyticsChartTypeToggle
+            chartType={chartType}
+            onChange={setChartType}
+            lineAriaLabel={t('analytics.lineChart')}
+            barAriaLabel={t('analytics.barChart')}
+          />
         </div>
 
-
-
-        {overall && executive && language && attention && (
-
-          <div className="grid grid-cols-2 gap-2">
-
-            <DomainCard label={t('analytics.neurological.overallCognitive')} data={overall} t={t} />
-
-            <DomainCard label={executiveLabel} data={executive} t={t} />
-
-            <DomainCard label={languageLabel} data={language} t={t} />
-
-            <DomainCard label={attentionLabel} data={attention} t={t} />
-
-          </div>
-
-        )}
-
-
+        <CircleAnalyticsSeriesCard
+          icon={Brain}
+          title={overallLabel}
+          value={overall?.current ?? '—'}
+          hint={t('analytics.neurological.overallHint')}
+          color="#7c3aed"
+          iconWrapClass="text-violet-600"
+          cardClass="border-violet-200 bg-violet-50/50"
+          titleClass="text-violet-700"
+          valueClass="text-violet-700"
+          chartType={chartType}
+          chartData={seriesFromKeyedTimeline(timeline, 'overall')}
+          variant="sparse"
+          yDomain={SCORE_DOMAIN}
+          yTicks={SCORE_TICKS}
+          allowDecimals
+        />
+        <CircleAnalyticsSeriesCard
+          icon={Sparkles}
+          title={executiveLabel}
+          value={executive?.current ?? '—'}
+          hint={t('analytics.neurological.executiveHint')}
+          color="#2563eb"
+          iconWrapClass="text-blue-600"
+          cardClass="border-blue-200 bg-blue-50/50"
+          titleClass="text-blue-700"
+          valueClass="text-blue-700"
+          chartType={chartType}
+          chartData={seriesFromKeyedTimeline(timeline, 'executive')}
+          variant="sparse"
+          yDomain={SCORE_DOMAIN}
+          yTicks={SCORE_TICKS}
+          allowDecimals
+        />
+        <CircleAnalyticsSeriesCard
+          icon={Languages}
+          title={languageLabel}
+          value={language?.current ?? '—'}
+          hint={t('analytics.neurological.languageHint')}
+          color="#059669"
+          iconWrapClass="text-emerald-600"
+          cardClass="border-emerald-200 bg-emerald-50/50"
+          titleClass="text-emerald-700"
+          valueClass="text-emerald-700"
+          chartType={chartType}
+          chartData={seriesFromKeyedTimeline(timeline, 'language')}
+          variant="sparse"
+          yDomain={SCORE_DOMAIN}
+          yTicks={SCORE_TICKS}
+          allowDecimals
+        />
+        <CircleAnalyticsSeriesCard
+          icon={Target}
+          title={attentionLabel}
+          value={attention?.current ?? '—'}
+          hint={t('analytics.neurological.attentionHint')}
+          color="#d97706"
+          iconWrapClass="text-amber-600"
+          cardClass="border-amber-200 bg-amber-50/50"
+          titleClass="text-amber-700"
+          valueClass="text-amber-700"
+          chartType={chartType}
+          chartData={seriesFromKeyedTimeline(timeline, 'attention')}
+          variant="sparse"
+          yDomain={SCORE_DOMAIN}
+          yTicks={SCORE_TICKS}
+          allowDecimals
+        />
 
         {latestSnapshot && (
-
           <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-3 space-y-2">
-
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
-
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
               {t('analytics.neurological.latestSnapshot')}
-
             </p>
-
-            <div className="grid grid-cols-2 gap-2 text-[11px]">
-
+            <div className="grid grid-cols-2 gap-2 text-[13px]">
               <div className="flex items-center justify-between gap-2">
-
-                <span className="font-semibold text-slate-600">Naming</span>
-
-                <span
-
-                  className={cn(
-
-                    'px-2 py-0.5 rounded-md font-bold uppercase text-[10px]',
-
-                    resultClass(latestSnapshot.namingSuccess),
-
-                  )}
-
-                >
-
+                <span className="font-semibold text-slate-600">{t('analytics.neurological.naming')}</span>
+                <span className={cn('px-2 py-0.5 rounded-md font-bold uppercase text-[12px]', resultClass(latestSnapshot.namingSuccess))}>
                   {analyticsNeurologicalOutcomeLabel(t, latestSnapshot.namingSuccess)}
-
                 </span>
-
               </div>
-
               <div className="flex items-center justify-between gap-2">
-
-                <span className="font-semibold text-slate-600">Comprehension</span>
-
+                <span className="font-semibold text-slate-600">{t('analytics.neurological.comprehension')}</span>
                 <span
-
                   className={cn(
-
-                    'px-2 py-0.5 rounded-md font-bold uppercase text-[10px]',
-
+                    'px-2 py-0.5 rounded-md font-bold uppercase text-[12px]',
                     resultClass(latestSnapshot.comprehensionSuccess),
-
                   )}
-
                 >
-
                   {analyticsNeurologicalOutcomeLabel(t, latestSnapshot.comprehensionSuccess)}
-
                 </span>
-
               </div>
-
               <div className="flex items-center justify-between gap-2">
-
-                <span className="font-semibold text-slate-600">Sequence</span>
-
+                <span className="font-semibold text-slate-600">{t('analytics.neurological.sequence')}</span>
                 <span
-
                   className={cn(
-
-                    'px-2 py-0.5 rounded-md font-bold uppercase text-[10px]',
-
+                    'px-2 py-0.5 rounded-md font-bold uppercase text-[12px]',
                     resultClass(latestSnapshot.sequenceSuccess),
-
                   )}
-
                 >
-
                   {analyticsNeurologicalOutcomeLabel(t, latestSnapshot.sequenceSuccess)}
-
                 </span>
-
               </div>
-
               <div className="flex items-center justify-between gap-2">
-
-                <span className="font-semibold text-slate-600">Fluency words</span>
-
-                <span className="font-black text-purple-600 tabular-nums">
-
-                  {latestSnapshot.fluencyCount}
-
-                </span>
-
+                <span className="font-semibold text-slate-600">{t('analytics.neurological.fluency')}</span>
+                <span className="font-black text-slate-700 tabular-nums">{latestSnapshot.fluencyCount}</span>
               </div>
-
               <div className="flex items-center justify-between gap-2">
-
-                <span className="font-semibold text-slate-600">Trail errors</span>
-
-                <span className="font-black text-slate-700 tabular-nums">
-
-                  {latestSnapshot.trailErrors}
-
-                </span>
-
+                <span className="font-semibold text-slate-600">{t('analytics.neurological.trailErrors')}</span>
+                <span className="font-black text-slate-700 tabular-nums">{latestSnapshot.trailErrors}</span>
               </div>
-
               <div className="flex items-center justify-between gap-2">
-
-                <span className="font-semibold text-slate-600">Trail time</span>
-
-                <span className="font-black text-slate-700 tabular-nums">
-
-                  {latestSnapshot.trailLatency}s
-
-                </span>
-
+                <span className="font-semibold text-slate-600">{t('analytics.neurological.trailTime')}</span>
+                <span className="font-black text-slate-700 tabular-nums">{latestSnapshot.trailLatency}s</span>
               </div>
-
             </div>
-
           </div>
-
         )}
-
-
-
-        {hasChart ? (
-
-          <div className="w-full overflow-visible">
-
-            <ResponsiveContainer width="100%" height={CIRCLE_ANALYTICS_CHART_HEIGHT}>
-
-              <LineChart data={chartData} margin={chartMargin}>
-
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-
-                <CircleAnalyticsChartXAxis variant="sparse" />
-
-                <YAxis domain={[0, 10]} tick={{ fontSize: 9, fill: '#94a3b8' }} width={28} />
-
-                <Tooltip
-
-                  labelFormatter={circleAnalyticsTooltipLabelFormatter}
-
-                  contentStyle={{ fontSize: 11, borderRadius: 12, border: '1px solid #e2e8f0' }}
-
-                />
-
-                <Line dataKey="overall" name={overallLabel} stroke="#7c3aed" strokeWidth={2} {...circleAnalyticsSparseLineProps} />
-
-                <Line dataKey="executive" name={executiveLabel} stroke="#2563eb" strokeWidth={1.5} {...circleAnalyticsSparseLineProps} />
-
-                <Line dataKey="language" name={languageLabel} stroke="#059669" strokeWidth={1.5} {...circleAnalyticsSparseLineProps} />
-
-                <Line dataKey="attention" name={attentionLabel} stroke="#d97706" strokeWidth={1.5} {...circleAnalyticsSparseLineProps} />
-
-              </LineChart>
-
-            </ResponsiveContainer>
-
-            <CircleAnalyticsChartFooter
-
-              legend={[...legend]}
-
-              plotInsetLeft={circleAnalyticsPlotInsetLeft(chartMargin, 28)}
-
-              plotInsetRight={circleAnalyticsPlotInsetRight(chartMargin)}
-
-              sparsePointCount={chartData.length}
-
-            />
-
-          </div>
-
-        ) : (
-
-          <p className="text-[11px] text-slate-400 italic text-center py-2">
-
-            {t('analytics.chartNotSynced')}
-
-          </p>
-
-        )}
-
       </div>
-
     </div>
-
   );
-
 }
-

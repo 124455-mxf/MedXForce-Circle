@@ -8,8 +8,21 @@ import { threadHasUnreadPatientReply } from './circleMessageRead';
 export type CircleMessagesInboxView =
   | CirclePatientMessageBucket
   | 'communication_log'
+  | 'alerts_attention'
+  /** @deprecated Use `alerts_attention`. */
   | 'alert'
+  /** @deprecated Use `alerts_attention`. */
   | 'attention';
+
+export function isAlertsAttentionInboxView(view: CircleMessagesInboxView): boolean {
+  return view === 'alerts_attention' || view === 'alert' || view === 'attention';
+}
+
+export function normalizeMessagesInboxView(
+  view: CircleMessagesInboxView,
+): CircleMessagesInboxView {
+  return isAlertsAttentionInboxView(view) ? 'alerts_attention' : view;
+}
 
 type InboxMessage = {
   id: string;
@@ -31,7 +44,7 @@ function isThreadUnread(
   return threadHasUnreadPatientReply(replies, patientId, msg.id, msg);
 }
 
-/** Unread alert/attention stay in In/Out until acknowledged; all appear under Alert/Attention tabs. */
+/** Unread alert/attention stay in In/Out until acknowledged; all appear under Alerts & attention. */
 export function shouldShowInInOutDirectList(
   msg: InboxMessage,
   replies: { isPatient?: boolean; timestamp: number }[],
@@ -43,22 +56,12 @@ export function shouldShowInInOutDirectList(
   return isThreadUnread(msg, replies, patientId);
 }
 
-export function shouldShowInAlertTab(
+export function shouldShowInAlertsAttentionTab(
   msg: InboxMessage,
   _replies: { isPatient?: boolean; timestamp: number }[],
   _patientId: string,
 ): boolean {
-  if (circleMessageAlertAttentionKind(msg) !== 'alert') return false;
-  return isInOutStatus(msg);
-}
-
-export function shouldShowInAttentionTab(
-  msg: InboxMessage,
-  _replies: { isPatient?: boolean; timestamp: number }[],
-  _patientId: string,
-): boolean {
-  if (circleMessageAlertAttentionKind(msg) !== 'attention') return false;
-  return isInOutStatus(msg);
+  return circleMessageAlertAttentionKind(msg) != null && isInOutStatus(msg);
 }
 
 export function messageMatchesInboxView(
@@ -70,10 +73,10 @@ export function messageMatchesInboxView(
   switch (view) {
     case 'in_out':
       return shouldShowInInOutDirectList(msg, replies, patientId);
+    case 'alerts_attention':
     case 'alert':
-      return shouldShowInAlertTab(msg, replies, patientId);
     case 'attention':
-      return shouldShowInAttentionTab(msg, replies, patientId);
+      return shouldShowInAlertsAttentionTab(msg, replies, patientId);
     case 'archived':
     case 'deleted':
       return circlePatientMessageBucket(msg.status) === view;
@@ -94,41 +97,21 @@ export function filterDirectMessagesForInboxView<T extends InboxMessage>(
   });
 }
 
-export function countUnreadAlertsInInbox<T extends InboxMessage>(
+export function countUnreadAlertsAttentionInInbox<T extends InboxMessage>(
   directMessages: T[],
   repliesByMessageId: Record<string, { isPatient?: boolean; timestamp: number }[]>,
   patientId: string,
 ): number {
   return directMessages.filter((msg) => {
-    if (circleMessageAlertAttentionKind(msg) !== 'alert') return false;
-    if (!isInOutStatus(msg)) return false;
+    if (!circleMessageAlertAttentionKind(msg) || !isInOutStatus(msg)) return false;
     const replies = repliesByMessageId[msg.id] || [];
     return isThreadUnread(msg, replies, patientId);
   }).length;
 }
 
-export function countUnreadAttentionsInInbox<T extends InboxMessage>(
-  directMessages: T[],
-  repliesByMessageId: Record<string, { isPatient?: boolean; timestamp: number }[]>,
-  patientId: string,
-): number {
-  return directMessages.filter((msg) => {
-    if (circleMessageAlertAttentionKind(msg) !== 'attention') return false;
-    if (!isInOutStatus(msg)) return false;
-    const replies = repliesByMessageId[msg.id] || [];
-    return isThreadUnread(msg, replies, patientId);
-  }).length;
-}
-
-export function countAlertsInInbox<T extends InboxMessage>(directMessages: T[]): number {
+export function countAlertsAttentionInInbox<T extends InboxMessage>(directMessages: T[]): number {
   return directMessages.filter(
-    (msg) => circleMessageAlertAttentionKind(msg) === 'alert' && isInOutStatus(msg),
-  ).length;
-}
-
-export function countAttentionsInInbox<T extends InboxMessage>(directMessages: T[]): number {
-  return directMessages.filter(
-    (msg) => circleMessageAlertAttentionKind(msg) === 'attention' && isInOutStatus(msg),
+    (msg) => circleMessageAlertAttentionKind(msg) != null && isInOutStatus(msg),
   ).length;
 }
 

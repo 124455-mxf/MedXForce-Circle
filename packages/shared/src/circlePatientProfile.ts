@@ -27,6 +27,7 @@ export interface CirclePatientProfileSnapshot {
     dob: string;
     city: string;
     country: string;
+    timezoneId: string;
   };
   extended: {
     sex: string;
@@ -113,6 +114,7 @@ export const EMPTY_CIRCLE_PROFILE_SNAPSHOT: CirclePatientProfileSnapshot = {
     dob: '',
     city: '',
     country: '',
+    timezoneId: '',
   },
   extended: {
     sex: '',
@@ -275,6 +277,7 @@ export function buildCircleProfileSnapshot(
       dob: str(identity.dob),
       city: str(identity.city),
       country: str(identity.country),
+      timezoneId: str(identity.timezoneId),
     },
     extended: {
       sex: str(extended.sex),
@@ -510,6 +513,7 @@ const FIELD_LABELS: Record<string, string> = {
   'identity.dob': 'Date of birth',
   'identity.city': 'City',
   'identity.country': 'Country',
+  'identity.timezoneId': 'Home time zone',
   'identity.email': 'Email',
   'identity.profilePicture': 'Profile photo',
   'extended.sex': 'Sex',
@@ -520,7 +524,7 @@ const FIELD_LABELS: Record<string, string> = {
   'extended.languagesSpoken': 'Languages spoken',
   'clinical.primaryDiagnosis': 'Primary diagnosis',
   'clinical.dateOfOnset': 'Date of onset',
-  'clinical.treatmentPhase': 'Treatment phase',
+  'clinical.treatmentPhase': 'Where I am in recovery',
   'clinical.allergies': 'Allergies',
   'clinical.surgicalHistory': 'Surgical history',
   'clinical.comorbidities': 'Comorbidities',
@@ -644,6 +648,7 @@ export function describeProfileSnapshotChanges(
   check('identity.dob', previous.identity.dob, next.identity.dob);
   check('identity.city', previous.identity.city, next.identity.city);
   check('identity.country', previous.identity.country, next.identity.country);
+  check('identity.timezoneId', previous.identity.timezoneId, next.identity.timezoneId);
   check('identity.email', previous.identity.email, next.identity.email);
   check('identity.profilePicture', previous.identity.profilePicture, next.identity.profilePicture);
 

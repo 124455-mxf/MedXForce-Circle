@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import {
   ChevronLeft,
-  FolderPlus,
   Image as ImageIcon,
   Pencil,
   Play,
@@ -21,6 +20,7 @@ import {
   dedupeGalleryAlbumsForDisplay,
   ensureReactionsGalleryAlbum,
   findCanonicalReactionsAlbum,
+  galleryAlbumVisibleToSharedViewers,
   isReactionsTitleAlbum,
   mediaBelongsToGalleryAlbum,
   renameGalleryAlbum,
@@ -30,15 +30,21 @@ import {
   listUnassignedCircleMedia,
   updateCircleGalleryCaption,
   uploadCircleGalleryMediaToAlbum,
+  circleDisplayFirstName,
   type CircleMemberRole,
   type CirclePatientSummary,
   type GalleryAlbum,
   type GalleryAlbumMedia,
+  type GalleryReactionRecord,
   type GalleryUploadFileProgress,
 } from '@medxforce/shared';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
-import { getCircleGalleryViewedIds } from '../lib/circleGalleryViews';
+import {
+  getCircleGalleryViewedIds,
+  CIRCLE_GALLERY_VIEWED_CHANGED,
+  isCircleGalleryMediaUnseenForMember,
+} from '../lib/circleGalleryViews';
 import {
   circleGalleryGridClass,
   isCompactCircleGalleryThumbnail,
@@ -48,6 +54,7 @@ import { useCircleGallerySkipPhotoDeleteConfirm } from '../hooks/useCircleGaller
 import { useCircleCompactChrome } from '../lib/circleChromeContext';
 import { CircleHorizontalScrollStrip } from './CircleHorizontalScrollStrip';
 import { CircleGalleryLightbox, GalleryThumb } from './CircleGalleryLightbox';
+import { CircleGalleryGridReactionOverlay } from './CircleGalleryGridReactionOverlay';
 import { CircleWorkTabSectionIntro } from './CircleWorkTabSectionIntro';
 import { CircleDeleteAlbumConfirmModal } from './CircleDeleteAlbumConfirmModal';
 import { CircleDeleteMediaConfirmModal } from './CircleDeleteMediaConfirmModal';
@@ -64,6 +71,7 @@ import {
   circleBrowsePillListClass,
   circleTabButtonClass,
   circleTabListClass,
+  circleHeaderActionButtonClass,
   circleWorkTabHeaderClass,
   circleWorkTabPanelClass,
 } from '../lib/circleSectionStyles';
@@ -213,7 +221,9 @@ export function PatientGalleryScreen({
 
   const [mainMode, setMainMode] = useState<MainMode>('browse');
   const [browseTab, setBrowseTab] = useState<BrowseTab>('shared');
-  const [sharedBrowseMode, setSharedBrowseMode] = useState<SharedBrowseMode>('album');
+  const [sharedBrowseMode, setSharedBrowseMode] = useState<SharedBrowseMode>(() =>
+    galleryIntent?.type === 'open-my-albums' && canUpload ? 'my-albums' : 'album',
+  );
   const [gridScope, setGridScope] = useState<string>('all');
   const [showGrid, setShowGrid] = useState(false);
 
@@ -227,7 +237,6 @@ export function PatientGalleryScreen({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [newAlbumTitle, setNewAlbumTitle] = useState('');
   const [showCreateAlbum, setShowCreateAlbum] = useState(false);
   const [uploadCaption, setUploadCaption] = useState('');
@@ -249,9 +258,15 @@ export function PatientGalleryScreen({
     session: number;
   } | null>(null);
   const [viewedIds, setViewedIds] = useState<Set<string>>(() =>
-    getCircleGalleryViewedIds(patient.patientId),
+    getCircleGalleryViewedIds(patient.patientId, user.uid),
   );
   const [reactedMediaIds, setReactedMediaIds] = useState<Set<string>>(() => new Set());
+  const [reactionsByMediaId, setReactionsByMediaId] = useState<
+    Record<string, GalleryReactionRecord[]>
+  >({});
+  const galleryBodyRef = useRef<HTMLDivElement>(null);
+
+  const patientFirstName = circleDisplayFirstName(patient.displayName, patient.firstName);
 
   const role = patient.role as CircleMemberRole;
   const senderName = user.displayName || user.email || t('gallery.familyMemberFallback');
@@ -276,7 +291,9 @@ export function PatientGalleryScreen({
   const albumCards = useMemo(() => {
     return albums.map((album) => {
       const items = circleMedia.filter((m) => mediaInAlbum(m, album, reactedMediaIds));
-      const unseen = items.filter((m) => !viewedIds.has(m.id)).length;
+      const unseen = items.filter((m) =>
+        isCircleGalleryMediaUnseenForMember(m, viewedIds, user.uid),
+      ).length;
       return {
         album,
         items,
@@ -286,19 +303,29 @@ export function PatientGalleryScreen({
         unseen,
       };
     });
-  }, [albums, circleMedia, reactedMediaIds, viewedIds]);
+  }, [albums, circleMedia, reactedMediaIds, user.uid, viewedIds]);
 
   const visibleAlbumCards = useMemo(() => {
     const canonicalReactionsId = findCanonicalReactionsAlbum(albums)?.id;
-    return albumCards.filter(({ album, count }) => {
-      if (album.isReactions) return count > 0 && album.id === canonicalReactionsId;
-      if (canonicalReactionsId && isReactionsTitleAlbum(album.title)) return false;
-      return true;
-    });
+    return albumCards
+      .filter(({ album, count }) => {
+        if (album.isReactions) return count > 0 && album.id === canonicalReactionsId;
+        if (canonicalReactionsId && isReactionsTitleAlbum(album.title)) return false;
+        return galleryAlbumVisibleToSharedViewers(count);
+      })
+      .sort((a, b) => {
+        if (a.album.isReactions && !b.album.isReactions) return -1;
+        if (!a.album.isReactions && b.album.isReactions) return 1;
+        return 0;
+      });
   }, [albumCards, albums]);
 
   const myAlbumCards = useMemo(
-    () => albumCards.filter(({ album }) => album.createdByUid === user.uid),
+    () =>
+      albumCards.filter(
+        ({ album }) =>
+          album.createdByUid === user.uid && !album.isDefault && !album.isReactions,
+      ),
     [albumCards, user.uid],
   );
 
@@ -309,8 +336,18 @@ export function PatientGalleryScreen({
   );
 
   const refreshViewed = useCallback(() => {
-    setViewedIds(getCircleGalleryViewedIds(patient.patientId));
-  }, [patient.patientId]);
+    setViewedIds(getCircleGalleryViewedIds(patient.patientId, user.uid));
+  }, [patient.patientId, user.uid]);
+
+  useEffect(() => {
+    refreshViewed();
+  }, [refreshViewed]);
+
+  useEffect(() => {
+    const onViewed = () => refreshViewed();
+    window.addEventListener(CIRCLE_GALLERY_VIEWED_CHANGED, onViewed);
+    return () => window.removeEventListener(CIRCLE_GALLERY_VIEWED_CHANGED, onViewed);
+  }, [refreshViewed]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -342,19 +379,48 @@ export function PatientGalleryScreen({
     return onSnapshot(
       reactionsQuery,
       (snapshot) => {
+        const next: Record<string, GalleryReactionRecord[]> = {};
         const ids = new Set<string>();
         for (const docSnap of snapshot.docs) {
-          const mediaId = docSnap.data().mediaId;
-          if (typeof mediaId === 'string' && mediaId) ids.add(mediaId);
+          const data = docSnap.data();
+          const mediaId = typeof data.mediaId === 'string' ? data.mediaId : '';
+          if (!mediaId) continue;
+          ids.add(mediaId);
+          const entry: GalleryReactionRecord = {
+            id: docSnap.id,
+            emoji: String(data.emoji || ''),
+            userId: typeof data.userId === 'string' ? data.userId : undefined,
+            timestamp: typeof data.timestamp === 'number' ? data.timestamp : undefined,
+          };
+          if (!next[mediaId]) next[mediaId] = [];
+          next[mediaId].push(entry);
         }
         setReactedMediaIds(ids);
+        setReactionsByMediaId(next);
       },
-      () => setReactedMediaIds(new Set()),
+      () => {
+        setReactedMediaIds(new Set());
+        setReactionsByMediaId({});
+      },
     );
   }, [db, patient.patientId]);
 
   useEffect(() => {
-    if (!galleryIntent || loading) return;
+    if (!galleryIntent) return;
+
+    if (galleryIntent.type === 'open-my-albums') {
+      setMainMode('browse');
+      setBrowseTab('shared');
+      setShowGrid(false);
+      setGridScope('all');
+      if (canUpload) {
+        setSharedBrowseMode('my-albums');
+      }
+      onGalleryIntentConsumed?.();
+      return;
+    }
+
+    if (loading) return;
     if (galleryIntent.type !== 'open-album' || galleryIntent.albumKind !== 'reactions') return;
 
     const reactionsAlbum = albums.find((album) => album.isReactions);
@@ -366,7 +432,16 @@ export function PatientGalleryScreen({
       setShowGrid(true);
     }
     onGalleryIntentConsumed?.();
-  }, [albums, galleryIntent, loading, onGalleryIntentConsumed]);
+  }, [albums, canUpload, galleryIntent, loading, onGalleryIntentConsumed]);
+
+  useLayoutEffect(() => {
+    const el = galleryBodyRef.current;
+    if (el) el.scrollTop = 0;
+    const frame = requestAnimationFrame(() => {
+      if (el) el.scrollTop = 0;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [browseTab, gridScope, mainMode, showGrid]);
 
   const exitManageToBrowse = useCallback(() => {
     setMainMode('browse');
@@ -377,7 +452,6 @@ export function PatientGalleryScreen({
     setManageEntryPoint('upload-flow');
     setShowDeleteAlbumConfirm(false);
     setMediaPendingDelete(null);
-    setMessage(null);
     void loadAll();
   }, [loadAll]);
 
@@ -553,15 +627,27 @@ export function PatientGalleryScreen({
     setShowGrid(false);
   };
 
-  const myAlbumItems = useMemo(
-    () => myAlbumCards.flatMap(({ items }) => items),
-    [myAlbumCards],
-  );
-
   const countUnseenMedia = useCallback(
     (items: GalleryAlbumMedia[]) =>
-      items.filter((item) => !viewedIds.has(item.id)).length,
-    [viewedIds],
+      items.filter((item) => isCircleGalleryMediaUnseenForMember(item, viewedIds, user.uid))
+        .length,
+    [user.uid, viewedIds],
+  );
+
+  const headerUnseenCount = useMemo(() => {
+    const attentionPool = showPatientTab
+      ? allMedia
+      : allMedia.filter((item) => item.source !== 'patient');
+    return countUnseenMedia(attentionPool);
+  }, [allMedia, countUnseenMedia, showPatientTab]);
+
+  const sharedUnseenCount = useMemo(
+    () => countUnseenMedia(circleMedia),
+    [circleMedia, countUnseenMedia],
+  );
+  const patientUnseenCount = useMemo(
+    () => countUnseenMedia(patientMedia),
+    [countUnseenMedia, patientMedia],
   );
 
   const sharedBrowseTabCounts = useMemo(
@@ -571,32 +657,34 @@ export function PatientGalleryScreen({
     > => ({
       photos: {
         total: circlePhotos.length,
-        unread: countUnseenMedia(circlePhotos),
+        unread: 0,
       },
       videos: {
         total: circleVideos.length,
-        unread: countUnseenMedia(circleVideos),
+        unread: 0,
       },
+      // Album chips show album counts (gray). Unseen media stays on each album’s “N NEW” badge.
       album: {
         total: visibleAlbumCards.length,
-        unread: countUnseenMedia(circleMedia),
+        unread: 0,
       },
       'my-albums': {
-        total: myAlbumItems.length,
-        unread: countUnseenMedia(myAlbumItems),
+        total: myAlbumCards.length,
+        unread: 0,
       },
+      // Newest = attention: others’ media not yet opened in the lightbox (red).
       newest: {
-        total: circleMedia.length,
+        total: 0,
         unread: countUnseenMedia(circleMedia),
       },
     }),
     [
       visibleAlbumCards.length,
+      myAlbumCards.length,
       circleMedia,
       circlePhotos,
       circleVideos,
       countUnseenMedia,
-      myAlbumItems,
     ],
   );
 
@@ -658,9 +746,19 @@ export function PatientGalleryScreen({
           key={item.id}
           type="button"
           onClick={() => openLightbox(items, index)}
-          className="aspect-square rounded-2xl overflow-hidden border border-slate-100 bg-slate-50"
+          className="relative aspect-square rounded-2xl overflow-hidden border border-slate-100 bg-slate-50"
         >
-          <GalleryThumb item={item} unseen={!viewedIds.has(item.id)} />
+          <GalleryThumb
+            item={item}
+            unseen={isCircleGalleryMediaUnseenForMember(item, viewedIds, user.uid)}
+          />
+          <CircleGalleryGridReactionOverlay
+            reactions={reactionsByMediaId[item.id] ?? []}
+            patientUid={patient.patientId}
+            patientFirstName={patientFirstName}
+            compact={compactAlbumTiles}
+            alwaysShow={Boolean(gridAlbum?.isReactions)}
+          />
         </button>
       ))}
     </div>
@@ -684,7 +782,6 @@ export function PatientGalleryScreen({
       if (created) {
         openManageAlbum(created, 'upload-flow');
       }
-      setMessage(t('gallery.toastAlbumCreated'));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('gallery.errorCreateAlbum'));
     } finally {
@@ -697,10 +794,9 @@ export function PatientGalleryScreen({
     const fileList = Array.from(files);
     setBusy(true);
     setError(null);
-    setMessage(null);
     setUploadProgress({ index: 1, total: fileList.length, phase: 'preparing' });
     try {
-      await uploadCircleGalleryMediaToAlbum({
+      const result = await uploadCircleGalleryMediaToAlbum({
         db,
         storage,
         patientId: patient.patientId,
@@ -715,11 +811,21 @@ export function PatientGalleryScreen({
       setUploadCaption('');
       await loadAll();
       await loadAlbumDetail(selectedAlbum);
-      setMessage(
-        fileList.length === 1
-          ? t('gallery.toastPhotoUploaded')
-          : t('gallery.toastItemsUploaded', { count: fileList.length }),
-      );
+
+      const uploaded = result.uploadedIds.length;
+      const failed = result.failed.length;
+      if (uploaded === 0) {
+        const first = result.failed[0]?.message;
+        setError(first || t('gallery.errorUploadFailed'));
+      } else if (failed > 0) {
+        setError(
+          t('gallery.errorUploadPartial', {
+            failed,
+            total: result.attempted,
+            detail: result.failed[0]?.message || '',
+          }),
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('gallery.errorUploadFailed'));
     } finally {
@@ -740,7 +846,6 @@ export function PatientGalleryScreen({
       setEditingMedia(null);
       await loadAll();
       if (selectedAlbum) await loadAlbumDetail(selectedAlbum);
-      setMessage(t('gallery.toastDescriptionSaved'));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('gallery.errorSaveDescription'));
     } finally {
@@ -756,7 +861,6 @@ export function PatientGalleryScreen({
       setMediaPendingDelete(null);
       await loadAll();
       if (selectedAlbum) await loadAlbumDetail(selectedAlbum);
-      setMessage(t('gallery.toastDeleted'));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('gallery.errorDelete'));
     } finally {
@@ -789,7 +893,6 @@ export function PatientGalleryScreen({
         setManageScreen('albums');
         await loadAll();
       }
-      setMessage(t('gallery.toastAlbumDeleted'));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('gallery.errorDeleteAlbum'));
     } finally {
@@ -809,7 +912,6 @@ export function PatientGalleryScreen({
       });
       await loadAll();
       await loadAlbumDetail(selectedAlbum);
-      setMessage(t('gallery.toastAddedToAlbum'));
       setShowAddExisting(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('gallery.errorAddToAlbum'));
@@ -827,7 +929,6 @@ export function PatientGalleryScreen({
     setManageScreen('album');
     setMainMode('manage');
     setRenamingAlbum(false);
-    setMessage(null);
     void loadAlbumDetail(album);
   };
 
@@ -852,7 +953,6 @@ export function PatientGalleryScreen({
       setSelectedAlbum({ ...selectedAlbum, title });
       setRenamingAlbum(false);
       await loadAll();
-      setMessage(t('gallery.toastAlbumRenamed'));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('gallery.errorRenameAlbum'));
     } finally {
@@ -872,6 +972,15 @@ export function PatientGalleryScreen({
                 iconClassName="text-blue-600"
                 title={t('gallery.title')}
                 subtitle={t('gallery.subtitle')}
+                titleExtra={
+                  headerUnseenCount > 0 ? (
+                    <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold inline-flex items-center justify-center tabular-nums">
+                      {t('gallery.actionBadge', {
+                        count: formatCircleBadgeCount(headerUnseenCount),
+                      })}
+                    </span>
+                  ) : undefined
+                }
                 trailing={
                   canUpload ? (
                     <button
@@ -879,13 +988,12 @@ export function PatientGalleryScreen({
                       onClick={() => {
                         setMainMode('manage');
                         setManageScreen('albums');
-                        setMessage(null);
                       }}
-                      className="shrink-0 w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm hover:bg-blue-700 transition-colors"
+                      className={circleHeaderActionButtonClass}
                       aria-label={t('gallery.uploadAriaLabel')}
                       title={t('gallery.uploadTitle')}
                     >
-                      <Upload size={18} />
+                      <Plus size={18} className="[@media(max-height:740px)]:size-4" />
                     </button>
                   ) : undefined
                 }
@@ -911,10 +1019,11 @@ export function PatientGalleryScreen({
                   <button
                     type="button"
                     onClick={() => setShowCreateAlbum((v) => !v)}
-                    className="shrink-0 flex items-center gap-1 text-sm font-semibold text-blue-600 px-2 py-1"
+                    className={circleHeaderActionButtonClass}
+                    aria-label={t('gallery.newAlbum')}
+                    title={t('gallery.newAlbum')}
                   >
-                    <FolderPlus size={16} />
-                    {t('gallery.newAlbum')}
+                    <Plus size={18} className="[@media(max-height:740px)]:size-4" />
                   </button>
                 )}
               </>
@@ -946,7 +1055,6 @@ export function PatientGalleryScreen({
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
-          {message && <p className="text-sm text-emerald-700">{message}</p>}
 
           {mainMode === 'browse' && (
             <div className={circleTabListClass} role="tablist" aria-label={t('gallery.gallerySectionsAria')}>
@@ -960,7 +1068,10 @@ export function PatientGalleryScreen({
                 }}
                 className={circleTabButtonClass(browseTab === 'shared')}
               >
-                {t('gallery.tabShared')}
+                <span className="inline-flex items-center justify-center gap-1.5">
+                  {t('gallery.tabShared')}
+                  <CircleFolderCountBadge unread={sharedUnseenCount} total={0} />
+                </span>
               </button>
               {showPatientTab && (
                 <button
@@ -974,9 +1085,14 @@ export function PatientGalleryScreen({
                   }}
                   className={circleTabButtonClass(browseTab === 'patient', 'truncate')}
                 >
-                  {t('gallery.tabFromPatient', {
-                    firstName: patient.displayName.split(' ')[0],
-                  })}
+                  <span className="inline-flex min-w-0 items-center justify-center gap-1.5">
+                    <span className="truncate">
+                      {t('gallery.tabFromPatient', {
+                        firstName: patient.displayName.split(' ')[0],
+                      })}
+                    </span>
+                    <CircleFolderCountBadge unread={patientUnseenCount} total={0} />
+                  </span>
                 </button>
               )}
             </div>
@@ -987,7 +1103,7 @@ export function PatientGalleryScreen({
           )}
         </div>
 
-        <div className={cn(circleSectionBodyClass, 'p-4')}>
+        <div ref={galleryBodyRef} className={cn(circleSectionBodyClass, 'p-4')}>
         {loading && mainMode === 'browse' && !showGrid && (
           <p className="text-sm text-slate-500">{t('gallery.loadingGallery')}</p>
         )}
@@ -1451,6 +1567,7 @@ export function PatientGalleryScreen({
           db={db}
           user={user}
           patientId={patient.patientId}
+          memberUid={user.uid}
           patientDisplayName={patient.displayName}
           items={lightbox.items}
           index={lightbox.index}

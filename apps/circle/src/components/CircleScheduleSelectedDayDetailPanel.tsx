@@ -1,7 +1,13 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 
 import type { Firestore } from 'firebase/firestore';
-import type { AnalyticsMetricId, AssessmentHistoryMap, AssessmentScheduleDayEvent, CareCalendarDayEvent } from '@medxforce/shared';
+import {
+  assessmentScheduleStatusI18n,
+  type AnalyticsMetricId,
+  type AssessmentHistoryMap,
+  type AssessmentScheduleDayEvent,
+  type CareCalendarDayEvent,
+} from '@medxforce/shared';
 import { assessmentScheduleIdToAnalyticsMetric } from '../lib/circleAssessmentScheduleMetrics';
 import type { CircleAssessmentScheduleContext } from '../lib/circleAssessmentScheduleMetrics';
 import {
@@ -10,6 +16,9 @@ import {
 } from '../lib/circleScheduleLayout';
 import { CircleScheduleDayAppointmentCard } from './CircleScheduleTodayView';
 import { cn } from '../lib/utils';
+import { useCircleScheduleShowAppointmentDetails } from '../hooks/useCircleScheduleShowAppointmentDetails';
+import { useCircleI18nContext } from '../lib/circleI18nContext';
+import { formatCircleDate } from '../lib/circleLanguages';
 
 type CircleScheduleSelectedDayDetailPanelProps = {
   selectedDateKey: string;
@@ -58,8 +67,11 @@ export function CircleScheduleSelectedDayDetailPanel({
 }: CircleScheduleSelectedDayDetailPanelProps) {
   const ct = (key: string, params?: Record<string, unknown>) =>
     t(`dashboard.careCalendar.${key}`, params);
+  const { language } = useCircleI18nContext();
+  const showAppointmentDetails = useCircleScheduleShowAppointmentDetails();
+  const appointmentCompact = !showAppointmentDetails;
 
-  const dayLabel = new Date(selectedDateKey + 'T12:00:00').toLocaleDateString(undefined, {
+  const dayLabel = formatCircleDate(new Date(selectedDateKey + 'T12:00:00'), language, {
     weekday: 'long',
     month: 'short',
     day: 'numeric',
@@ -84,6 +96,7 @@ export function CircleScheduleSelectedDayDetailPanel({
                 dateKey={selectedDateKey}
                 ct={ct}
                 t={t}
+                compact={appointmentCompact}
                 showTimingHighlight={selectedDateKey === todayKey}
                 assessmentSchedule={assessmentSchedule}
                 onOpen={() => onOpenAppointment(event)}
@@ -111,6 +124,7 @@ export function CircleScheduleSelectedDayDetailPanel({
           <ul className="space-y-3">
             {assessmentEvents.map((event) => {
               const metricId = assessmentScheduleIdToAnalyticsMetric(event.id);
+              const status = assessmentScheduleStatusI18n(event, selectedDateKey);
               return (
                 <li
                   key={event.id}
@@ -128,7 +142,10 @@ export function CircleScheduleSelectedDayDetailPanel({
                         event.status === 'completed' && 'text-emerald-600',
                       )}
                     >
-                      {t(`dashboard.assessmentScheduleCalendar.status.${event.status}`)}
+                      {t(
+                        `dashboard.assessmentScheduleCalendar.status.${status.key}`,
+                        status.date ? { date: status.date } : undefined,
+                      )}
                     </p>
                   </div>
                   {metricId && onOpenAssessment && event.status !== 'completed' ? (
