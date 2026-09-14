@@ -1541,12 +1541,12 @@ export function setRemoteAppMode(
   return next;
 }
 
-/** Apply ICU Standard vs Minimal distraction layout remotely (buttons; sounds applied on patient). */
+/** Apply ICU Standard vs Minimal distraction layout remotely (buttons; extras applied on patient). */
 export function setRemoteIntensiveCareExperience(
   doc: PatientRemoteSettingsDoc,
   variant: RemoteIntensiveCareExperience,
 ): PatientRemoteSettingsDoc {
-  const next: PatientRemoteSettingsDoc = {
+  let next: PatientRemoteSettingsDoc = {
     ...doc,
     appMode: 'intensive_care',
     intensiveCareExperience: variant,
@@ -1560,11 +1560,16 @@ export function setRemoteIntensiveCareExperience(
           showAttentionButton: true,
         }),
   };
-  return setRemoteSettingValue(
-    next,
-    'featuresVisibility.intensiveCarePainAssessment',
-    variant === 'standard',
-  );
+  if (variant === 'minimal_focus') {
+    return applyRemoteIntensiveCareOptionalFeatures(next, {
+      painAssessment: false,
+      doctorQuickAnswers: false,
+      boardLanguage: false,
+      soulMusic: false,
+      soulMediaLibrary: false,
+    });
+  }
+  return setRemoteSettingValue(next, 'featuresVisibility.intensiveCarePainAssessment', true);
 }
 
 export type RemoteIntensiveCareOptionalFeatures = {

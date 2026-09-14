@@ -746,16 +746,14 @@ export function CircleRemoteSettingsScreen({
     let next = setRemoteAppMode(settings, mode);
     if (mode === 'intensive_care') {
       next = setRemoteIntensiveCareExperience(next, pendingIcuExperience);
-      next = {
-        ...next,
-        showAlertButton: pendingShowAlertButton,
-        showAttentionButton: pendingShowAttentionButton,
-      };
-      next = applyRemoteIntensiveCareOptionalFeatures(next, {
-        ...pendingIcuFeatures,
-        painAssessment:
-          pendingIcuExperience === 'minimal_focus' ? false : pendingIcuFeatures.painAssessment,
-      });
+      if (pendingIcuExperience !== 'minimal_focus') {
+        next = {
+          ...next,
+          showAlertButton: pendingShowAlertButton,
+          showAttentionButton: pendingShowAttentionButton,
+        };
+        next = applyRemoteIntensiveCareOptionalFeatures(next, pendingIcuFeatures);
+      }
     } else if (mode === 'hospital') {
       next = applyRemoteHospitalOptionalFeatures(next, pendingHospitalFeatures);
     }
@@ -1028,11 +1026,7 @@ export function CircleRemoteSettingsScreen({
                       <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                         {remoteSettingsAppModeDescription(t, mode.key)}
                       </p>
-                      {mode.key === 'intensive_care' ? (
-                        <p className="text-[11px] font-semibold text-red-700/80 mt-1.5 leading-relaxed">
-                          {t('remoteSettings.modes.intensiveCareDashboardHint')}
-                        </p>
-                      ) : mode.key === 'hospital' ? (
+                      {mode.key === 'hospital' ? (
                         <p className="text-[11px] font-semibold text-amber-800/80 mt-1.5 leading-relaxed">
                           {t('remoteSettings.modes.hospitalDashboardHint')}
                         </p>
@@ -1061,6 +1055,7 @@ export function CircleRemoteSettingsScreen({
                             />
                           </div>
                         </div>
+                        {icuExperience !== 'minimal_focus' && (
                         <div className="space-y-2">
                           <p className="text-[10px] font-bold text-red-800/70 uppercase tracking-widest">
                             {t('remoteSettings.icuOptionalHeading')}
@@ -1089,6 +1084,7 @@ export function CircleRemoteSettingsScreen({
                             onToggleFeature={toggleIcuOptionalFeature}
                           />
                         </div>
+                        )}
                         <div className="space-y-2">
                           <p className="text-[10px] font-bold text-red-800/70 uppercase tracking-widest">
                             {t('remoteSettings.icuContentHeading')}
@@ -1600,6 +1596,8 @@ export function CircleRemoteSettingsScreen({
                       }}
                     />
                   </div>
+                  {pendingIcuExperience !== 'minimal_focus' && (
+                    <>
                   <p className="text-[10px] font-bold text-red-800/70 uppercase tracking-widest pt-1">
                     {t('remoteSettings.icuOptionalHeading')}
                   </p>
@@ -1618,6 +1616,8 @@ export function CircleRemoteSettingsScreen({
                       }))
                     }
                   />
+                    </>
+                  )}
                   <p className="text-[10px] font-bold text-red-800/70 uppercase tracking-widest pt-1">
                     {t('remoteSettings.icuContentHeading')}
                   </p>

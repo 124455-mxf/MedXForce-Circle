@@ -13,7 +13,7 @@ const remoteSettingsEnglish = {
   current: 'Current',
   icuExperienceHeading: 'ICU Layout',
   icuExperienceDesc:
-    'Choose between minimal distraction (enlarged emojis, no extra functions) and normal.',
+    'Minimal hides the sidebar and extra functions. Normal allows to add additional features',
   icuVariantMinimal: 'Minimal',
   icuVariantStandard: 'Normal',
   icuOptionalHeading: 'ICU Features',
@@ -171,8 +171,6 @@ const remoteSettingsEnglish = {
   modes: {
     intensiveCare: 'ICU',
     intensiveCareDesc: 'Intensive Care / Critical care — communication-first, minimal distractions, caregiver-controlled.',
-    intensiveCareDashboardHint:
-      'Daily check-in and the Dashboard tab are off by default (turn on manually).',
     hospital: 'Hospital',
     hospitalDashboardHint: 'The Dashboard tab is off by default (turn on manually).',
     hospitalDesc: 'Acute care and active recovery — structured support in hospital or rehab.',
@@ -382,7 +380,7 @@ const remoteSettingsGerman = {
   current: 'Aktiv',
   icuExperienceHeading: 'ICU-Layout',
   icuExperienceDesc:
-    'Wählen Sie zwischen minimaler Ablenkung (vergrößerte Emojis, keine Extrafunktionen) und normal.',
+    'Minimal blendet die Seitenleiste und Extrafunktionen aus. Normal erlaubt zusätzliche Funktionen.',
   icuVariantMinimal: 'Minimal',
   icuVariantStandard: 'Normal',
   icuOptionalHeading: 'ICU-Funktionen',
@@ -543,8 +541,6 @@ const remoteSettingsGerman = {
   modes: {
     intensiveCare: 'Intensivstation (ICU)',
     intensiveCareDesc: 'Intensivpflege / Critical Care — kommunikationsorientiert, wenig Ablenkung, betreuergesteuert.',
-    intensiveCareDashboardHint:
-      'Täglicher Check-in und der Dashboard-Tab sind standardmäßig aus (manuell einschalten).',
     hospital: 'Krankenhaus',
     hospitalDashboardHint: 'Der Dashboard-Tab ist standardmäßig aus (manuell einschalten).',
     hospitalDesc: 'Akutpflege und aktive Genesung — strukturierte Unterstützung im Krankenhaus oder in der Reha.',
@@ -755,7 +751,7 @@ const remoteSettingsSpanish = {
   current: 'Actual',
   icuExperienceHeading: 'Diseño de UCI',
   icuExperienceDesc:
-    'Elija entre distracción mínima (emojis ampliados, sin funciones extra) y normal.',
+    'Mínimo oculta la barra lateral y las funciones extra. Normal permite añadir funciones adicionales.',
   icuVariantMinimal: 'Mínimo',
   icuVariantStandard: 'Normal',
   icuOptionalHeading: 'Funciones de UCI',
@@ -915,8 +911,6 @@ const remoteSettingsSpanish = {
   modes: {
     intensiveCare: 'UCI',
     intensiveCareDesc: 'Cuidados intensivos / Cuidados críticos — comunicación primero, mínimas distracciones, control del cuidador.',
-    intensiveCareDashboardHint:
-      'El check-in diario y la pestaña Panel están desactivados por defecto (actívelos manualmente).',
     hospital: 'Hospital',
     hospitalDashboardHint: 'La pestaña Panel está desactivada por defecto (actívela manualmente).',
     hospitalDesc: 'Cuidados agudos y recuperación activa — apoyo en hospital o rehabilitación.',
@@ -1127,7 +1121,7 @@ const remoteSettingsPolish = {
   current: 'Aktywny',
   icuExperienceHeading: 'Układ OIOM',
   icuExperienceDesc:
-    'Wybierz między minimalnym rozproszeniem (powiększone emoji, bez dodatkowych funkcji) a normalnym.',
+    'Minimal ukrywa pasek boczny i dodatkowe funkcje. Normalny pozwala dodać dodatkowe funkcje.',
   icuVariantMinimal: 'Minimal',
   icuVariantStandard: 'Normalny',
   icuOptionalHeading: 'Funkcje OIOM',
@@ -1287,8 +1281,6 @@ const remoteSettingsPolish = {
   modes: {
     intensiveCare: 'OIOM',
     intensiveCareDesc: 'Opieka intensywna / Opieka krytyczna — komunikacja na pierwszym miejscu, minimum rozproszeń, kontrola opiekuna.',
-    intensiveCareDashboardHint:
-      'Codzienny check-in i zakładka Panel są domyślnie wyłączone (włącz ręcznie).',
     hospital: 'Szpital',
     hospitalDashboardHint: 'Zakładka Panel jest domyślnie wyłączona (włącz ręcznie).',
     hospitalDesc: 'Opieka ostrzowa i aktywna rekonwalescencja — wsparcie w szpitalu lub rehabilitacji.',
