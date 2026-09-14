@@ -37,7 +37,6 @@ export type IcuDailyBriefFeatureFlags = {
   communication: boolean;
   boardPhrases: boolean;
   boardCategories: boolean;
-  boardEmojis: boolean;
   boardUnicode: boolean;
   soulMusic: boolean;
   soulMedia: boolean;
@@ -70,7 +69,6 @@ export function remoteFlagsForIcuBrief(
     communication: vis?.communication !== false,
     boardPhrases: areas?.phrases !== false,
     boardCategories: areas?.categories !== false,
-    boardEmojis: areas?.emojis !== false,
     boardUnicode: areas?.unicode !== false,
     soulMusic: vis?.intensiveCareSoulMusic === true,
     soulMedia: vis?.intensiveCareSoulMediaLibrary === true,

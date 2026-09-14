@@ -321,7 +321,6 @@ export function CircleIcuDailyBriefSection({
               <>
                 <FeatureChip on={flags.boardPhrases} label={t('dashboard.icuBriefBoardSentences')} />
                 <FeatureChip on={flags.boardCategories} label={t('dashboard.icuBriefBoardWords')} />
-                <FeatureChip on={flags.boardEmojis} label={t('dashboard.icuBriefBoardPictures')} />
                 <FeatureChip on={flags.boardUnicode} label={t('dashboard.icuBriefBoardEmoji')} />
               </>
             )}
