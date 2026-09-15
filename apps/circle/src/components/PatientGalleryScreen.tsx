@@ -1521,14 +1521,24 @@ export function PatientGalleryScreen({
                 )}
               </div>
               <div className={photoGridClass}>
-                {albumMedia.map((item) => (
+                {albumMedia.map((item, index) => (
                   <div
                     key={item.id}
                     className="relative aspect-square rounded-2xl overflow-hidden border border-slate-100"
                   >
-                    <GalleryThumb item={item} />
+                    <button
+                      type="button"
+                      onClick={() => openLightbox(albumMedia, index)}
+                      aria-label={
+                        item.caption ||
+                        (item.isVideo ? t('gallery.viewVideoAria') : t('gallery.viewPhotoAria'))
+                      }
+                      className="absolute inset-0 bg-slate-50"
+                    >
+                      <GalleryThumb item={item} />
+                    </button>
                     {item.uploadedByUid === user.uid && (
-                      <div className="absolute top-1 right-1 flex gap-1">
+                      <div className="absolute top-1 right-1 z-10 flex gap-1">
                         <button
                           type="button"
                           aria-label={t('gallery.editAria')}
