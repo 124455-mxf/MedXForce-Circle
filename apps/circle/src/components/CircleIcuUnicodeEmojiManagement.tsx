@@ -6,14 +6,14 @@ import {
   UNICODE_EMOJIS_BY_CATEGORY,
   applyDefaultIcuUnicodeEmojiOverride,
   applyModeUnicodeEmojiOverrides,
+  buildDefaultIcuUnicodeEmojiOverride,
   clearModeUnicodeEmojiOverride,
+  flattenUnicodeEmojisForIcuBoard,
   hasModeUnicodeEmojiOverride,
   isDefaultIcuUnicodeEmojiOverride,
   readModeUnicodeEmojiOverride,
-  toggleModeUnicodeCategoryVisible,
   toggleModeUnicodeEmojiVisible,
-  updateModeUnicodeCategoryOrder,
-  updateModeUnicodeEmojiOrder,
+  updateModeUnicodeBoardOrder,
   type ModeUnicodeEmojiContentStore,
   type PatientRemoteSettingsDoc,
 } from '@medxforce/shared';
@@ -64,6 +64,35 @@ const ICU_EMOJI_LABEL_KEYS: Record<string, string> = {
   Bandage: 'bandage',
   Stethoscope: 'stethoscope',
   Food: 'food',
+  Pain: 'pain',
+  Scared: 'scared',
+  Hot: 'hot',
+  Cold: 'cold',
+  Air: 'air',
+  Hurt: 'hurt',
+  Stop: 'stop',
+  'OK hand': 'okHand',
+  Alarm: 'alarm',
+  Nurse: 'nurse',
+  Family: 'family',
+  Man: 'man',
+  Woman: 'woman',
+  Baby: 'baby',
+  Doctor: 'doctor',
+  Toilet: 'toilet',
+  Bed: 'bed',
+  Wheelchair: 'wheelchair',
+  Light: 'light',
+  Quiet: 'quiet',
+  Shower: 'shower',
+  Paper: 'paper',
+  Hear: 'hear',
+  See: 'see',
+  Glasses: 'glasses',
+  Meal: 'meal',
+  Syringe: 'syringe',
+  Phone: 'phone',
+  Toothbrush: 'toothbrush',
 };
 
 type CircleIcuUnicodeEmojiManagementProps = {
@@ -106,12 +135,27 @@ export function CircleIcuUnicodeEmojiManagement({
   const [collapsed, setCollapsed] = useState(true);
   const store = settings.modeUnicodeEmojiContent;
   const override = readModeUnicodeEmojiOverride(store);
-  const hasOverride = hasModeUnicodeEmojiOverride(store);
+  const followGlobal = override?.followGlobal === true;
   const isDefaultLayout = isDefaultIcuUnicodeEmojiOverride(override);
+  const effectiveOverride = useMemo(() => {
+    if (followGlobal) return undefined;
+    return override ?? buildDefaultIcuUnicodeEmojiOverride();
+  }, [followGlobal, override]);
 
   const { categories, emojisByCategory } = useMemo(
-    () => applyModeUnicodeEmojiOverrides(UNICODE_EMOJI_CATEGORIES, UNICODE_EMOJIS_BY_CATEGORY, override),
-    [override],
+    () => applyModeUnicodeEmojiOverrides(UNICODE_EMOJI_CATEGORIES, UNICODE_EMOJIS_BY_CATEGORY, effectiveOverride),
+    [effectiveOverride],
+  );
+  const boardItems = useMemo(
+    () =>
+      flattenUnicodeEmojisForIcuBoard(categories, emojisByCategory, effectiveOverride?.boardOrder, {
+        includeHidden: true,
+      }),
+    [categories, emojisByCategory, effectiveOverride?.boardOrder],
+  );
+  const categoryById = useMemo(
+    () => Object.fromEntries(categories.map((cat) => [cat.id, cat])),
+    [categories],
   );
 
   const persistStore = (nextStore: ModeUnicodeEmojiContentStore) => {
@@ -163,9 +207,7 @@ export function CircleIcuUnicodeEmojiManagement({
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden px-4 pb-4 space-y-4 border-t border-red-100"
           >
-            <p className="text-sm text-slate-600 leading-snug pt-3">{t('remoteSettings.icuEmoji.hint')}</p>
-
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 pt-3">
               <button
                 type="button"
                 disabled={isDefaultLayout}
@@ -182,116 +224,90 @@ export function CircleIcuUnicodeEmojiManagement({
               </button>
               <button
                 type="button"
-                disabled={!hasOverride}
+                disabled={followGlobal}
                 onClick={() => persistStore(clearModeUnicodeEmojiOverride(store))}
                 className={cn(
                   'flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs sm:text-sm font-bold border transition-colors min-w-0',
-                  hasOverride
-                    ? 'border-slate-200 text-slate-700 hover:bg-slate-50'
-                    : 'border-slate-100 text-slate-300 cursor-not-allowed',
+                  followGlobal
+                    ? 'border-slate-100 text-slate-300 cursor-not-allowed'
+                    : 'border-slate-200 text-slate-700 hover:bg-slate-50',
                 )}
               >
                 <Globe size={14} className="shrink-0" />
                 <span className="leading-snug text-center">{t('remoteSettings.icuEmoji.reset')}</span>
               </button>
+              <p className="text-xs text-slate-500 font-medium leading-snug whitespace-pre-line">
+                {t('remoteSettings.icuEmoji.defaultHint')}
+              </p>
+              <p className="text-xs text-slate-500 font-medium leading-snug">
+                {t('remoteSettings.icuEmoji.globalHint')}
+              </p>
             </div>
+            <p className="text-xs text-slate-500 font-medium leading-snug">
+              {t('remoteSettings.icuEmoji.icuOnly')}
+            </p>
 
             <Reorder.Group
               axis="y"
-              values={categories}
+              values={boardItems}
               onReorder={(newOrder) =>
-                persistStore(updateModeUnicodeCategoryOrder(store, newOrder.map((c) => c.id)))
+                persistStore(updateModeUnicodeBoardOrder(store, newOrder.map((item) => item.id)))
               }
-              className="space-y-4 touch-pan-y"
+              className="space-y-2 touch-pan-y"
             >
-              {categories.map((cat) => {
-                const catVisible = cat.visible !== false;
-                const emojis = emojisByCategory[cat.id] || [];
+              {boardItems.map((emoji) => {
+                const emojiVisible = emoji.visible !== false;
+                const category = categoryById[emoji.categoryId];
                 return (
                   <GripReorderItem
-                    key={cat.id}
-                    value={cat}
-                    className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3"
+                    key={`${emoji.categoryId}:${emoji.id}`}
+                    value={emoji}
+                    className={cn(
+                      'flex items-center gap-3 p-2 bg-white rounded-xl border border-slate-100',
+                      !emojiVisible && 'opacity-60',
+                    )}
                   >
-                    {(startCategoryDrag) => (
+                    {(startEmojiDrag) => (
                       <>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
                         <button
                           type="button"
-                          onPointerDown={startCategoryDrag}
+                          onPointerDown={startEmojiDrag}
                           className="touch-none shrink-0 p-1 -ml-1 rounded-lg text-slate-300 cursor-grab active:cursor-grabbing"
                         >
-                          <GripVertical size={18} />
+                          <GripVertical size={16} />
                         </button>
-                        <span className="font-bold text-slate-800 truncate">
-                          {categoryLabel(cat.id, cat.label)}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => persistStore(toggleModeUnicodeCategoryVisible(store, cat.id, catVisible))}
-                        className={cn(
-                          'p-2 rounded-xl transition-colors shrink-0',
-                          catVisible ? 'text-blue-600 hover:bg-blue-50' : 'text-slate-400 hover:bg-slate-100',
-                        )}
-                        title={catVisible ? t('remoteSettings.icuEmoji.hidden') : t('remoteSettings.icuEmoji.visible')}
-                      >
-                        {catVisible ? <Eye size={18} /> : <EyeOff size={18} />}
-                      </button>
-                    </div>
-
-                    <Reorder.Group
-                      axis="y"
-                      values={emojis}
-                      onReorder={(newOrder) =>
-                        persistStore(updateModeUnicodeEmojiOrder(store, cat.id, newOrder.map((e) => e.id)))
-                      }
-                      className="space-y-2 pl-6 touch-pan-y"
-                    >
-                      {emojis.map((emoji) => {
-                        const emojiVisible = emoji.visible !== false;
-                        return (
-                          <GripReorderItem
-                            key={emoji.id}
-                            value={emoji}
-                            className="flex items-center gap-3 p-2 bg-white rounded-xl border border-slate-100"
-                          >
-                            {(startEmojiDrag) => (
-                              <>
-                            <button
-                              type="button"
-                              onPointerDown={startEmojiDrag}
-                              className="touch-none shrink-0 p-1 -ml-1 rounded-lg text-slate-300 cursor-grab active:cursor-grabbing"
-                            >
-                              <GripVertical size={16} />
-                            </button>
-                            <span className="text-2xl w-10 text-center shrink-0">{emoji.char}</span>
-                            <span className="flex-1 text-sm font-medium text-slate-600 truncate">
-                              {emojiLabel(emoji.label)}
+                        <span className="text-2xl w-10 text-center shrink-0">{emoji.char}</span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-sm font-medium text-slate-700 truncate">
+                            {emojiLabel(emoji.label)}
+                          </span>
+                          {category ? (
+                            <span className="block text-[11px] text-slate-400 truncate">
+                              {categoryLabel(category.id, category.label)}
                             </span>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                persistStore(
-                                  toggleModeUnicodeEmojiVisible(store, cat.id, emoji.id, emojiVisible),
-                                )
-                              }
-                              className={cn(
-                                'p-1.5 rounded-lg transition-colors shrink-0',
-                                emojiVisible
-                                  ? 'text-blue-600 hover:bg-blue-50'
-                                  : 'text-slate-400 hover:bg-slate-100',
-                              )}
-                            >
-                              {emojiVisible ? <Eye size={16} /> : <EyeOff size={16} />}
-                            </button>
-                              </>
-                            )}
-                          </GripReorderItem>
-                        );
-                      })}
-                    </Reorder.Group>
+                          ) : null}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            persistStore(
+                              toggleModeUnicodeEmojiVisible(
+                                store,
+                                emoji.categoryId,
+                                emoji.id,
+                                emojiVisible,
+                              ),
+                            )
+                          }
+                          className={cn(
+                            'p-1.5 rounded-lg transition-colors shrink-0',
+                            emojiVisible
+                              ? 'text-blue-600 hover:bg-blue-50'
+                              : 'text-slate-400 hover:bg-slate-100',
+                          )}
+                        >
+                          {emojiVisible ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
                       </>
                     )}
                   </GripReorderItem>

@@ -1,4 +1,5 @@
 import {
+  ICU_UNICODE_DEFAULT_BOARD_ORDER,
   UNICODE_EMOJI_CATEGORIES,
   UNICODE_EMOJIS_BY_CATEGORY,
   type UnicodeEmoji,
@@ -10,7 +11,13 @@ export type ModeUnicodeEmojiOverride = {
   categoryVisible?: Record<string, boolean>;
   emojiOrder?: Record<string, string[]>;
   emojiVisible?: Record<string, Record<string, boolean>>;
+  /** ICU-only flat board order (emoji ids, any category). */
+  boardOrder?: string[];
+  /** When true, ICU uses the tablet catalog instead of the built-in ICU set. */
+  followGlobal?: boolean;
 };
+
+export type IcuUnicodeBoardItem = UnicodeEmoji & { categoryId: string };
 
 export type ModeUnicodeEmojiContentStore = {
   intensive_care?: ModeUnicodeEmojiOverride;
@@ -19,11 +26,16 @@ export type ModeUnicodeEmojiContentStore = {
 export const ICU_UNICODE_EMOJI_MODE = 'intensive_care' as const;
 
 const MAX_IDS = 80;
+const MAX_BOARD_ORDER = 200;
 
-function sanitizeIdList(raw: unknown): string[] | undefined {
+function sanitizeIdList(raw: unknown, max = MAX_IDS): string[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const ids = raw.filter((id): id is string => typeof id === 'string' && id.length > 0 && id.length < 80);
-  return ids.length ? ids.slice(0, MAX_IDS) : undefined;
+  return ids.length ? ids.slice(0, max) : undefined;
+}
+
+function sanitizeBoardOrder(raw: unknown): string[] | undefined {
+  return sanitizeIdList(raw, MAX_BOARD_ORDER);
 }
 
 function sanitizeBoolMap(raw: unknown): Record<string, boolean> | undefined {
@@ -70,10 +82,13 @@ export function sanitizeModeUnicodeEmojiOverride(raw: unknown): ModeUnicodeEmoji
   const categoryVisible = sanitizeBoolMap(d.categoryVisible);
   const emojiOrder = sanitizeEmojiOrder(d.emojiOrder);
   const emojiVisible = sanitizeNestedBoolMap(d.emojiVisible);
+  const boardOrder = sanitizeBoardOrder(d.boardOrder);
   if (categoryOrder) override.categoryOrder = categoryOrder;
   if (categoryVisible) override.categoryVisible = categoryVisible;
   if (emojiOrder) override.emojiOrder = emojiOrder;
   if (emojiVisible) override.emojiVisible = emojiVisible;
+  if (boardOrder) override.boardOrder = boardOrder;
+  if (d.followGlobal === true) override.followGlobal = true;
   return Object.keys(override).length ? override : undefined;
 }
 
@@ -100,7 +115,9 @@ export function modeUnicodeEmojiOverrideIsEmpty(override?: ModeUnicodeEmojiOverr
     override.categoryOrder?.length ||
     (override.categoryVisible && Object.keys(override.categoryVisible).length) ||
     (override.emojiOrder && Object.keys(override.emojiOrder).length) ||
-    (override.emojiVisible && Object.keys(override.emojiVisible).length)
+    (override.emojiVisible && Object.keys(override.emojiVisible).length) ||
+    override.boardOrder?.length ||
+    override.followGlobal === true
   );
 }
 
@@ -160,6 +177,33 @@ export function applyModeUnicodeEmojiOverrides(
   return { categories: ordered, emojisByCategory: mergedEmojis };
 }
 
+export function listIcuUnicodeBoardItems(
+  categories: UnicodeEmojiCategory[],
+  emojisByCategory: Record<string, UnicodeEmoji[]>,
+): IcuUnicodeBoardItem[] {
+  return categories.flatMap((cat) =>
+    (emojisByCategory[cat.id] || []).map((emoji) => ({ ...emoji, categoryId: cat.id })),
+  );
+}
+
+/** ICU board: one list, any category. Hidden folders do not drop items. */
+export function flattenUnicodeEmojisForIcuBoard(
+  categories: UnicodeEmojiCategory[],
+  emojisByCategory: Record<string, UnicodeEmoji[]>,
+  boardOrder?: string[] | null,
+  options?: { includeHidden?: boolean },
+): IcuUnicodeBoardItem[] {
+  let items = listIcuUnicodeBoardItems(categories, emojisByCategory);
+  if (boardOrder?.length) {
+    const rank = new Map(boardOrder.map((id, i) => [id, i]));
+    items = [...items].sort((a, b) => (rank.get(a.id) ?? 9999) - (rank.get(b.id) ?? 9999));
+  }
+  if (!options?.includeHidden) {
+    items = items.filter((emoji) => emoji.visible !== false);
+  }
+  return items;
+}
+
 function patchStore(
   store: ModeUnicodeEmojiContentStore | undefined,
   mode: string,
@@ -199,6 +243,17 @@ export function updateModeUnicodeEmojiOrder(
   });
 }
 
+export function updateModeUnicodeBoardOrder(
+  store: ModeUnicodeEmojiContentStore | undefined,
+  boardOrder: string[],
+  mode: string = ICU_UNICODE_EMOJI_MODE,
+): ModeUnicodeEmojiContentStore {
+  const prev = readModeUnicodeEmojiOverride(store, mode) || {};
+  const { followGlobal: _followGlobal, ...rest } = prev;
+  const base = Object.keys(rest).length ? rest : buildDefaultIcuUnicodeEmojiOverride();
+  return patchStore(store, mode, { ...base, boardOrder });
+}
+
 export function toggleModeUnicodeCategoryVisible(
   store: ModeUnicodeEmojiContentStore | undefined,
   catId: string,
@@ -220,11 +275,13 @@ export function toggleModeUnicodeEmojiVisible(
   mode: string = ICU_UNICODE_EMOJI_MODE,
 ): ModeUnicodeEmojiContentStore {
   const prev = readModeUnicodeEmojiOverride(store, mode) || {};
+  const { followGlobal: _followGlobal, ...rest } = prev;
+  const base = Object.keys(rest).length ? rest : buildDefaultIcuUnicodeEmojiOverride();
   return patchStore(store, mode, {
-    ...prev,
+    ...base,
     emojiVisible: {
-      ...prev.emojiVisible,
-      [catId]: { ...prev.emojiVisible?.[catId], [emojiId]: !currentlyVisible },
+      ...base.emojiVisible,
+      [catId]: { ...base.emojiVisible?.[catId], [emojiId]: !currentlyVisible },
     },
   });
 }
@@ -233,9 +290,10 @@ export function clearModeUnicodeEmojiOverride(
   store: ModeUnicodeEmojiContentStore | undefined,
   mode: string = ICU_UNICODE_EMOJI_MODE,
 ): ModeUnicodeEmojiContentStore {
-  const next: ModeUnicodeEmojiContentStore = { ...(store || {}) };
-  delete next[mode as keyof ModeUnicodeEmojiContentStore];
-  return next;
+  return {
+    ...(store || {}),
+    [mode]: { followGlobal: true },
+  };
 }
 
 function sameIdList(a?: string[], b?: string[]): boolean {
@@ -277,25 +335,60 @@ function sameIdListMap(a?: Record<string, string[]>, b?: Record<string, string[]
   return true;
 }
 
+function impliedBoardOrder(override?: ModeUnicodeEmojiOverride | null): string[] | undefined {
+  if (override?.boardOrder?.length) return override.boardOrder;
+  const fromMaps = override?.categoryOrder?.length && override.emojiOrder
+    ? override.categoryOrder.flatMap((id) => override.emojiOrder?.[id] || [])
+    : [];
+  if (fromMaps.length) return buildIcuBoardOrder(fromMaps);
+  return undefined;
+}
+
+function stockEmojiIdsInCatalogOrder(): string[] {
+  return UNICODE_EMOJI_CATEGORIES.flatMap((cat) =>
+    (UNICODE_EMOJIS_BY_CATEGORY[cat.id] || []).map((emoji) => emoji.id),
+  );
+}
+
+function buildIcuBoardOrder(stockAndLiveIds: string[]): string[] {
+  const remaining = new Set(stockAndLiveIds);
+  const ordered: string[] = [];
+  for (const id of ICU_UNICODE_DEFAULT_BOARD_ORDER) {
+    if (!remaining.has(id)) continue;
+    ordered.push(id);
+    remaining.delete(id);
+  }
+  for (const id of stockAndLiveIds) {
+    if (!remaining.has(id)) continue;
+    ordered.push(id);
+    remaining.delete(id);
+  }
+  return ordered;
+}
+
 export function modeUnicodeEmojiOverridesEqual(
   a?: ModeUnicodeEmojiOverride | null,
   b?: ModeUnicodeEmojiOverride | null,
 ): boolean {
   if (!a && !b) return true;
   if (!a || !b) return false;
+  if (!!a.followGlobal !== !!b.followGlobal) return false;
+  if (a.followGlobal) return true;
   return (
     sameIdList(a.categoryOrder, b.categoryOrder) &&
     sameBoolMap(a.categoryVisible, b.categoryVisible) &&
     sameIdListMap(a.emojiOrder, b.emojiOrder) &&
-    sameNestedBoolMap(a.emojiVisible, b.emojiVisible)
+    sameNestedBoolMap(a.emojiVisible, b.emojiVisible) &&
+    sameIdList(impliedBoardOrder(a), impliedBoardOrder(b))
   );
 }
 
-/** Built-in ICU set: stock catalog on, custom extras off, stock order. */
+/** Built-in ICU set: short default board, remaining stock hidden, custom extras off. */
 export function buildDefaultIcuUnicodeEmojiOverride(
   liveCategories: UnicodeEmojiCategory[] = UNICODE_EMOJI_CATEGORIES,
   liveEmojisByCategory: Record<string, UnicodeEmoji[]> = UNICODE_EMOJIS_BY_CATEGORY,
 ): ModeUnicodeEmojiOverride {
+  const defaultVisible = new Set<string>(ICU_UNICODE_DEFAULT_BOARD_ORDER);
   const stockCategoryIds = UNICODE_EMOJI_CATEGORIES.map((c) => c.id);
   const stockCategorySet = new Set(stockCategoryIds);
   const liveCategoryIds = liveCategories.map((c) => c.id);
@@ -311,6 +404,7 @@ export function buildDefaultIcuUnicodeEmojiOverride(
   const emojiOrder: Record<string, string[]> = {};
   const emojiVisible: Record<string, Record<string, boolean>> = {};
   const categoryIds = new Set(categoryOrder);
+  const allIds: string[] = [];
   for (const id of categoryIds) {
     const stock = UNICODE_EMOJIS_BY_CATEGORY[id] || [];
     const stockIds = stock.map((e) => e.id);
@@ -320,11 +414,18 @@ export function buildDefaultIcuUnicodeEmojiOverride(
     emojiOrder[id] = [...stockIds, ...liveIds.filter((emojiId) => !stockIdSet.has(emojiId))];
     emojiVisible[id] = {};
     for (const emojiId of emojiOrder[id]) {
-      emojiVisible[id][emojiId] = stockIdSet.has(emojiId);
+      emojiVisible[id][emojiId] = defaultVisible.has(emojiId);
     }
+    allIds.push(...emojiOrder[id]);
   }
 
-  return { categoryOrder, categoryVisible, emojiOrder, emojiVisible };
+  return {
+    categoryOrder,
+    categoryVisible,
+    emojiOrder,
+    emojiVisible,
+    boardOrder: buildIcuBoardOrder(allIds.length ? allIds : stockEmojiIdsInCatalogOrder()),
+  };
 }
 
 export function isDefaultIcuUnicodeEmojiOverride(
@@ -332,7 +433,8 @@ export function isDefaultIcuUnicodeEmojiOverride(
   liveCategories: UnicodeEmojiCategory[] = UNICODE_EMOJI_CATEGORIES,
   liveEmojisByCategory: Record<string, UnicodeEmoji[]> = UNICODE_EMOJIS_BY_CATEGORY,
 ): boolean {
-  if (!override) return false;
+  if (override?.followGlobal) return false;
+  if (!override) return true;
   return modeUnicodeEmojiOverridesEqual(
     override,
     buildDefaultIcuUnicodeEmojiOverride(liveCategories, liveEmojisByCategory),
@@ -345,9 +447,8 @@ export function applyDefaultIcuUnicodeEmojiOverride(
   liveEmojisByCategory: Record<string, UnicodeEmoji[]> = UNICODE_EMOJIS_BY_CATEGORY,
   mode: string = ICU_UNICODE_EMOJI_MODE,
 ): ModeUnicodeEmojiContentStore {
-  return patchStore(
-    store,
-    mode,
-    buildDefaultIcuUnicodeEmojiOverride(liveCategories, liveEmojisByCategory),
-  );
+  return {
+    ...(store || {}),
+    [mode]: buildDefaultIcuUnicodeEmojiOverride(liveCategories, liveEmojisByCategory),
+  };
 }
