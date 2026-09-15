@@ -16,6 +16,7 @@ import {
   REMOTE_PROXY_SECTIONS,
   REMOTE_QUICK_SETTING_TOGGLES,
   REMOTE_VISIBLE_AREA_TOGGLES,
+  COMMUNICATION_BOARD_PICTURES_ENABLED,
   applyRemoteHospitalOptionalFeatures,
   applyRemoteIntensiveCareOptionalFeatures,
   getRemoteFeatureToggleEnabled,
@@ -723,7 +724,13 @@ export function CircleRemoteSettingsScreen({
 
   const patch = useCallback(
     (next: PatientRemoteSettingsDoc) => {
-      persist({ ...next, patientId: patient.patientId });
+      persist({
+        ...next,
+        patientId: patient.patientId,
+        visibleAreas: COMMUNICATION_BOARD_PICTURES_ENABLED
+          ? next.visibleAreas
+          : { ...next.visibleAreas, emojis: false },
+      });
     },
     [persist, patient.patientId],
   );

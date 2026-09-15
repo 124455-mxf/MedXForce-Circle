@@ -453,10 +453,15 @@ export const REMOTE_QUICK_SETTING_TOGGLES: { path: string; label: string; descri
   { path: 'hideRightSidebar', label: 'Show right sidebar', description: 'Toggle the right-hand panel (inverted: hideRightSidebar).' },
 ];
 
+/** Keep in sync with Patient `src/lib/communicationBoardPictures.ts`. */
+export const COMMUNICATION_BOARD_PICTURES_ENABLED = false;
+
 export const REMOTE_VISIBLE_AREA_TOGGLES: { key: keyof RemoteVisibleAreas; label: string }[] = [
   { key: 'phrases', label: 'Sentences' },
   { key: 'categories', label: 'Words' },
-  { key: 'emojis', label: 'Pictures' },
+  ...(COMMUNICATION_BOARD_PICTURES_ENABLED
+    ? ([{ key: 'emojis', label: 'Pictures' }] as { key: keyof RemoteVisibleAreas; label: string }[])
+    : []),
   { key: 'unicode', label: 'Unicode' },
 ];
 
@@ -844,7 +849,9 @@ export function parsePatientRemoteSettings(
       ? {
           phrases: asBool((vaRaw as Record<string, unknown>).phrases),
           categories: asBool((vaRaw as Record<string, unknown>).categories),
-          emojis: asBool((vaRaw as Record<string, unknown>).emojis),
+          emojis: COMMUNICATION_BOARD_PICTURES_ENABLED
+            ? asBool((vaRaw as Record<string, unknown>).emojis)
+            : false,
           unicode: asBool((vaRaw as Record<string, unknown>).unicode),
         }
       : undefined;
@@ -1014,7 +1021,7 @@ export function extractRemoteSettingsFromPreferences(
     visibleAreas: {
       phrases: visibleAreas.phrases !== false,
       categories: visibleAreas.categories !== false,
-      emojis: visibleAreas.emojis !== false,
+      emojis: COMMUNICATION_BOARD_PICTURES_ENABLED && visibleAreas.emojis !== false,
       unicode: visibleAreas.unicode !== false,
     },
     quickAreasOrder: Array.isArray(preferences.quickAreasOrder)
@@ -1239,7 +1246,12 @@ const REMOTE_PROXY_PRESET_BY_MODE: Record<
 
 /** Remote-settings fields that match each application mode preset (subset of patient app modes). */
 function remotePresetPayloadForMode(mode: RemoteAppMode): RemoteSettingsPayload {
-  const visibleAll = { phrases: true, categories: true, emojis: true, unicode: true };
+  const visibleAll = {
+    phrases: true,
+    categories: true,
+    emojis: COMMUNICATION_BOARD_PICTURES_ENABLED,
+    unicode: true,
+  };
   const proxyPreset = REMOTE_PROXY_PRESET_BY_MODE[mode];
 
   if (mode === 'intensive_care') {
@@ -1409,9 +1421,15 @@ export function setRemoteVisibleArea(
   key: keyof RemoteVisibleAreas,
   value: boolean,
 ): PatientRemoteSettingsDoc {
+  const nextValue =
+    !COMMUNICATION_BOARD_PICTURES_ENABLED && key === 'emojis' ? false : value;
   return {
     ...doc,
-    visibleAreas: { ...doc.visibleAreas, [key]: value },
+    visibleAreas: {
+      ...doc.visibleAreas,
+      [key]: nextValue,
+      ...(!COMMUNICATION_BOARD_PICTURES_ENABLED ? { emojis: false } : {}),
+    },
   };
 }
 
