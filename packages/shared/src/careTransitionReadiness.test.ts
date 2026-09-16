@@ -35,7 +35,7 @@ const openHelp: CircleHelpTask = {
 };
 
 const draft = draftIcuToWard();
-assert.equal(careTransitionVisiblePackItems(draft, 'proxy').length, 4);
+assert.equal(careTransitionVisiblePackItems(draft, 'proxy').length, 6);
 assert.equal(careTransitionPackRemainingCount(draft, 'proxy'), 0);
 assert.equal(careTransitionDraftReviewCount(draft, 'proxy'), 1);
 assert.equal(careTransitionOpenItemCount(draft, 'proxy'), 1);
@@ -46,10 +46,10 @@ assert.deepEqual(careTransitionFolderCounts(draft, 'caregiver'), { total: 0, unr
 assert.equal(careTransitionOpenItemCount(draft, 'family'), 0);
 
 const live = draftIcuToWard({ packLive: true });
-assert.equal(careTransitionPackRemainingCount(live, 'proxy'), 4);
+assert.equal(careTransitionPackRemainingCount(live, 'proxy'), 6);
 assert.equal(careTransitionDraftReviewCount(live, 'proxy'), 0);
-assert.equal(careTransitionOpenItemCount(live, 'proxy'), 4);
-assert.deepEqual(careTransitionFolderCounts(live, 'proxy'), { total: 4, unread: 4 });
+assert.equal(careTransitionOpenItemCount(live, 'proxy'), 6);
+assert.deepEqual(careTransitionFolderCounts(live, 'proxy'), { total: 6, unread: 6 });
 
 const draftWithHelp = draftIcuToWard({ circleHelpTasks: [openHelp] });
 assert.equal(careTransitionPackRemainingCount(draftWithHelp, 'proxy'), 0);

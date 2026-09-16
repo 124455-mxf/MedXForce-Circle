@@ -110,6 +110,16 @@ export const careTransitionContentEnglish = {
       why: 'Keeps tablet layout and circle expectations aligned with the new setting.',
       when: 'After transfer settles',
     },
+    w5: {
+      title: 'Ask how to use the call light; do not get up unassisted',
+      why: 'Fewer monitors and staff on the floor. Unassisted bathroom trips are a common cause of falls. Confirm the call-light protocol with nursing.',
+      when: 'First hospital-floor day',
+    },
+    w6: {
+      title: "Check today's tray against the swallowing order",
+      why: 'Meal orders often reset after a transfer. Confirm the tray matches the speech-therapy texture before the first bite. Ask nursing if unsure.',
+      when: 'First hospital-floor meal',
+    },
     a1: {
       title: 'Ask case management for the discharge target date',
       why: 'Facility hunt only works with a real timeline.',
@@ -145,6 +155,16 @@ export const careTransitionContentEnglish = {
       why: 'One phone number for admissions / nursing for the first 48 hours.',
       when: 'Transfer day',
     },
+    a8: {
+      title: 'US: ask how often a doctor will see the patient here',
+      why: 'Hospital doctors may visit daily. In skilled nursing, an attending may come weekly. Ask so the circle is not surprised.',
+      when: 'First 48 hours at the facility',
+    },
+    a9: {
+      title: 'DE: ask how often a doctor will see the patient here',
+      why: 'Unlike the hospital, a nursing home or rehab facility often uses the Hausarzt or a Heimarzt — not daily ward rounds. Ask Sozialdienst or nursing.',
+      when: 'First 48 hours at the facility',
+    },
     r1: {
       title: 'Confirm therapy schedule expectations',
       why: 'Know how many sessions/day and what family can join.',
@@ -177,6 +197,16 @@ export const careTransitionContentEnglish = {
         'Doing everything for the patient can speed logistics but slow recovery and self-worth. Ask before assisting; celebrate small wins.',
       when: 'Ongoing in rehab',
     },
+    r7: {
+      title: 'Book family hands-on training before discharge papers',
+      why: 'Many rehab programs require caregiver sessions (transfers, wheelchair, bathroom) before discharge. Book early so the date does not slip.',
+      when: 'First rehab week',
+    },
+    r8: {
+      title: 'Ask which day the weekly care-team meeting is',
+      why: 'Stay length is often decided in that meeting. Know the day so someone can ask how progress is measured.',
+      when: 'First rehab week',
+    },
     h1: {
       title: 'Confirm discharge date and ride home',
       why: 'Transport is often the forgotten blocker on the day.',
@@ -198,9 +228,9 @@ export const careTransitionContentEnglish = {
       when: 'Before discharge',
     },
     h5: {
-      title: 'Meds list + who fills the first prescriptions',
-      why: 'Day-one gaps cause bounce-backs.',
-      when: 'Discharge day',
+      title: 'Have first medications filled and at bedside before leaving',
+      why: 'A prescription slip late on Friday often means missed weekend doses. Day-one gaps cause bounce-backs.',
+      when: 'Before leaving',
     },
     h6: {
       title: 'First follow-up appointment scheduled',
@@ -222,6 +252,16 @@ export const careTransitionContentEnglish = {
       why:
         'Leaving hospital can spike anxiety and grief about “who I am now.” One short family note reduces surprise and blame.',
       when: 'Before or day of return',
+    },
+    h10: {
+      title: 'US: write the home-health start date and who covers until then',
+      why: 'Agencies often take 48–72 hours after discharge for the first visit. Name who is in the home until then.',
+      when: 'Before leaving',
+    },
+    h11: {
+      title: 'DE: write when häusliche Krankenpflege starts and who covers until then',
+      why: 'Entlassmanagement books nursing, but the first visit may not be discharge day. Plan the gap.',
+      when: 'Before leaving',
     },
     s1: {
       title: 'Agree a week-1 check-in cadence',
@@ -254,6 +294,21 @@ export const careTransitionContentEnglish = {
       why:
         'Rushing, correcting, or speaking over the patient deepens shame. Slow down, wait for answers, and invite participation in small decisions.',
       when: 'Ongoing',
+    },
+    s7: {
+      title: 'Post the emergency plan on the fridge',
+      why: 'Fear of another stroke or crisis peaks in the first month. Write who to call, when to call emergency services, and the nearest hospital that treats stroke or brain injury — not “any ER.”',
+      when: 'First 7 days',
+    },
+    s8: {
+      title: 'US: book outpatient therapy before home health ends',
+      why: 'Home health often lasts only a few weeks. Outpatient PT/OT/speech waitlists can be 4–8 weeks. Start the referral early.',
+      when: 'First weeks home',
+    },
+    s9: {
+      title: 'DE: book outpatient therapy (Heilmittel) before home visits end',
+      why: 'Häusliche Therapie is time-limited. Ambulante Heilmittelverordnungen and clinic wait times lag. Ask the doctor to prescribe the next step early.',
+      when: 'First weeks home',
     },
   },
   know: {
@@ -417,6 +472,16 @@ export const careTransitionContentGerman = {
       why: 'Hält Tablet-Layout und Circle-Erwartungen im Einklang mit dem neuen Setting.',
       when: 'Nachdem die Verlegung sich eingespielt hat',
     },
+    w5: {
+      title: 'Nach der Klingel fragen; nicht unbegleitet aufstehen',
+      why: 'Weniger Monitore und Personal auf der Station. Unbegleitete Toilettengänge sind eine häufige Sturzursache. Das Klingel-Protokoll mit der Pflege klären.',
+      when: 'Erster Tag auf der Normalstation',
+    },
+    w6: {
+      title: 'Das Tablett mit der Schluckordnung abgleichen',
+      why: 'Essensbestellungen setzen sich nach einer Verlegung oft zurück. Vor dem ersten Bissen prüfen, ob das Tablett zur Kostform der Logopädie passt. Bei Unsicherheit die Pflege fragen.',
+      when: 'Erste Mahlzeit auf der Normalstation',
+    },
     a1: {
       title: 'Case Management nach dem Entlassungs-Zieldatum fragen',
       why: 'Die Suche nach einer Einrichtung funktioniert nur mit einem realen Zeitplan.',
@@ -452,6 +517,16 @@ export const careTransitionContentGerman = {
       why: 'Eine Telefonnummer für Aufnahme / Pflege für die ersten 48 Stunden.',
       when: 'Verlegungstag',
     },
+    a8: {
+      title: 'US: fragen, wie oft hier ein Arzt kommt',
+      why: 'Im Krankenhaus kann die Visite täglich sein. In einer Pflegeeinrichtung kommt der Attending oft nur wöchentlich. Nachfragen, damit der Circle nicht überrascht ist.',
+      when: 'Erste 48 Stunden in der Einrichtung',
+    },
+    a9: {
+      title: 'DE: fragen, wie oft hier ein Arzt kommt',
+      why: 'Anders als im Krankenhaus kommt in Pflegeheim oder Reha oft der Hausarzt oder ein Heimarzt — nicht die tägliche Stationsvisite. Sozialdienst oder Pflege fragen.',
+      when: 'Erste 48 Stunden in der Einrichtung',
+    },
     r1: {
       title: 'Erwartungen an den Therapieplan bestätigen',
       why: 'Wissen, wie viele Einheiten pro Tag und woran die Familie teilnehmen kann.',
@@ -484,6 +559,16 @@ export const careTransitionContentGerman = {
         'Alles für den Patienten zu erledigen beschleunigt Organisation, kann aber Genesung und Selbstwert bremsen. Vor dem Helfen fragen; kleine Fortschritte feiern.',
       when: 'Laufend in der Reha',
     },
+    r7: {
+      title: 'Angehörigen-Schulung vor den Entlassungsunterlagen buchen',
+      why: 'Viele Reha-Programme verlangen praktische Einheiten (Transfers, Rollstuhl, Bad), bevor entlassen wird. Früh buchen, damit der Termin nicht rutscht.',
+      when: 'Erste Reha-Woche',
+    },
+    r8: {
+      title: 'Fragen, an welchem Tag die wöchentliche Teambesprechung ist',
+      why: 'Die Verweildauer wird oft in dieser Besprechung entschieden. Den Tag kennen, damit jemand fragen kann, wie Fortschritt gemessen wird.',
+      when: 'Erste Reha-Woche',
+    },
     h1: {
       title: 'Entlassungsdatum und Heimfahrt bestätigen',
       why: 'Transport ist oft der vergessene Blockierer am Tag selbst.',
@@ -505,9 +590,9 @@ export const careTransitionContentGerman = {
       when: 'Vor der Entlassung',
     },
     h5: {
-      title: 'Medikamentenliste + wer die ersten Rezepte einlöst',
-      why: 'Lücken am ersten Tag führen zu Rücküberweisungen.',
-      when: 'Entlassungstag',
+      title: 'Erste Medikamente vor dem Gehen fertig und am Bett haben',
+      why: 'Ein Rezept am Freitagnachmittag bedeutet oft verpasste Wochenenddosen. Lücken am ersten Tag führen zu Rücküberweisungen.',
+      when: 'Vor dem Gehen',
     },
     h6: {
       title: 'Ersten Nachsorgetermin vereinbaren',
@@ -529,6 +614,16 @@ export const careTransitionContentGerman = {
       why:
         'Das Verlassen des Krankenhauses kann Angst und Trauer über „wer bin ich jetzt?“ verstärken. Eine kurze Familiennotiz mindert Überraschung und Vorwürfe.',
       when: 'Vor oder am Tag der Rückkehr',
+    },
+    h10: {
+      title: 'US: Startdatum der Home-Health-Pflege notieren und die Lücke planen',
+      why: 'Agenturen brauchen nach der Entlassung oft 48–72 Stunden bis zum ersten Besuch. Benennen, wer bis dahin zu Hause ist.',
+      when: 'Vor dem Gehen',
+    },
+    h11: {
+      title: 'DE: Start der häuslichen Krankenpflege notieren und die Lücke planen',
+      why: 'Entlassmanagement organisiert Pflege, aber der erste Besuch ist oft nicht am Entlassungstag. Die Lücke planen.',
+      when: 'Vor dem Gehen',
     },
     s1: {
       title: 'Check-in-Rhythmus für Woche 1 vereinbaren',
@@ -561,6 +656,21 @@ export const careTransitionContentGerman = {
       why:
         'Hetzen, Korrigieren oder Über-den-Patienten-Sprechen verstärkt Scham. Tempo drosseln, Antworten abwarten und zu kleinen Entscheidungen einladen.',
       when: 'Laufend',
+    },
+    s7: {
+      title: 'Den Notfallplan an den Kühlschrank hängen',
+      why: 'Die Angst vor einem erneuten Schlaganfall oder einer Krise ist im ersten Monat am höchsten. Aufschreiben: wen anrufen, wann 112, und das nächste Krankenhaus, das Schlaganfall oder Hirnverletzung behandelt — nicht „irgendeine Notaufnahme“.',
+      when: 'Erste 7 Tage',
+    },
+    s8: {
+      title: 'US: ambulante Therapie buchen, bevor die Hausbesuche enden',
+      why: 'Häusliche Therapie dauert oft nur wenige Wochen. Wartezeiten für ambulante PT/ET/Logopädie können 4–8 Wochen sein. Überweisung früh starten.',
+      when: 'Erste Wochen zu Hause',
+    },
+    s9: {
+      title: 'DE: ambulante Therapie (Heilmittel) buchen, bevor die Hausbesuche enden',
+      why: 'Häusliche Therapie ist zeitlich begrenzt. Heilmittelverordnungen und Terminwartezeiten hinken hinterher. Den Arzt früh um den nächsten Schritt bitten.',
+      when: 'Erste Wochen zu Hause',
     },
   },
   know: {
@@ -724,6 +834,16 @@ export const careTransitionContentSpanish = {
       why: 'Mantiene el diseño de la tableta y las expectativas del círculo alineados con el nuevo entorno.',
       when: 'Cuando el traslado se estabiliza',
     },
+    w5: {
+      title: 'Preguntar cómo usar el timbre; no levantarse sin ayuda',
+      why: 'En planta hay menos monitores y personal. Ir al baño sin ayuda es una causa frecuente de caídas. Confirme el protocolo del timbre con enfermería.',
+      when: 'Primer día en planta',
+    },
+    w6: {
+      title: 'Comprobar que la bandeja coincida con la pauta de deglución',
+      why: 'Los pedidos de comida a menudo se reinician tras un traslado. Antes del primer bocado, confirme que la textura coincide con la indicación de logopedia. Si duda, pregunte a enfermería.',
+      when: 'Primera comida en planta',
+    },
     a1: {
       title: 'Pedir a gestión de casos la fecha objetivo de alta',
       why: 'Buscar un centro solo funciona con un calendario real.',
@@ -759,6 +879,16 @@ export const careTransitionContentSpanish = {
       why: 'Un número de teléfono para admisiones / enfermería para las primeras 48 horas.',
       when: 'Día del traslado',
     },
+    a8: {
+      title: 'EE. UU.: preguntar con qué frecuencia verá un médico al paciente aquí',
+      why: 'En el hospital el médico puede pasar cada día. En un centro de enfermería especializada, el médico responsable a veces va una vez por semana. Pregunte para que el círculo no se sorprenda.',
+      when: 'Primeras 48 horas en el centro',
+    },
+    a9: {
+      title: 'DE: preguntar con qué frecuencia verá un médico al paciente aquí',
+      why: 'A diferencia del hospital, una residencia o centro de rehabilitación suele usar el Hausarzt o un Heimarzt — no pases diarios de planta. Pregunte al Sozialdienst o a enfermería.',
+      when: 'Primeras 48 horas en el centro',
+    },
     r1: {
       title: 'Confirmar las expectativas del horario de terapia',
       why: 'Sepa cuántas sesiones al día y en cuáles puede participar la familia.',
@@ -791,6 +921,16 @@ export const careTransitionContentSpanish = {
         'Hacerlo todo por el paciente puede acelerar la logística pero frenar la recuperación y la autoestima. Pregunte antes de ayudar; celebre logros pequeños.',
       when: 'Continuo en rehabilitación',
     },
+    r7: {
+      title: 'Reservar la formación práctica familiar antes de los papeles de alta',
+      why: 'Muchos programas de rehabilitación exigen sesiones con el cuidador (traslados, silla de ruedas, baño) antes del alta. Reserve pronto para que la fecha no se retrase.',
+      when: 'Primera semana de rehabilitación',
+    },
+    r8: {
+      title: 'Preguntar qué día es la reunión semanal del equipo',
+      why: 'La duración de la estancia suele decidirse en esa reunión. Sepa el día para que alguien pueda preguntar cómo se mide el progreso.',
+      when: 'Primera semana de rehabilitación',
+    },
     h1: {
       title: 'Confirmar la fecha de alta y el transporte a casa',
       why: 'El transporte suele ser el bloqueo olvidado del día.',
@@ -812,9 +952,9 @@ export const careTransitionContentSpanish = {
       when: 'Antes del alta',
     },
     h5: {
-      title: 'Lista de medicamentos + quién retira las primeras recetas',
-      why: 'Los huecos del primer día provocan reingresos.',
-      when: 'Día del alta',
+      title: 'Tener los primeros medicamentos listos y a pie de cama antes de irse',
+      why: 'Una receta el viernes por la tarde suele significar dosis perdidas el fin de semana. Los huecos del primer día provocan reingresos.',
+      when: 'Antes de irse',
     },
     h6: {
       title: 'Primera cita de seguimiento programada',
@@ -836,6 +976,16 @@ export const careTransitionContentSpanish = {
       why:
         'Salir del hospital puede disparar ansiedad y duelo por “quién soy ahora.” Una nota breve a la familia reduce sorpresas y culpas.',
       when: 'Antes o el día del regreso',
+    },
+    h10: {
+      title: 'EE. UU.: anotar la fecha de inicio de home health y quién cubre hasta entonces',
+      why: 'Las agencias suelen tardar 48–72 horas tras el alta en la primera visita. Nombre quién está en casa hasta entonces.',
+      when: 'Antes de irse',
+    },
+    h11: {
+      title: 'DE: anotar cuándo empieza la häusliche Krankenpflege y quién cubre hasta entonces',
+      why: 'El Entlassmanagement organiza la enfermería, pero la primera visita puede no ser el día del alta. Planifique el hueco.',
+      when: 'Antes de irse',
     },
     s1: {
       title: 'Acordar un ritmo de check-in en la semana 1',
@@ -868,6 +1018,21 @@ export const careTransitionContentSpanish = {
       why:
         'Apresurar, corregir o hablar por encima del paciente profundiza la vergüenza. Vaya más despacio, espere las respuestas e invite a participar en decisiones pequeñas.',
       when: 'Continuo',
+    },
+    s7: {
+      title: 'Colocar el plan de emergencia en la nevera',
+      why: 'El miedo a otro ictus o crisis es más alto el primer mes. Escriba a quién llamar, cuándo llamar a emergencias y el hospital más cercano que trata ictus o lesión cerebral — no “cualquier urgencia.”',
+      when: 'Primeros 7 días',
+    },
+    s8: {
+      title: 'EE. UU.: reservar terapia ambulatoria antes de que termine home health',
+      why: 'La atención a domicilio suele durar solo unas semanas. Las listas de espera de FT/TO/logopedia ambulatoria pueden ser de 4–8 semanas. Empiece la derivación pronto.',
+      when: 'Primeras semanas en casa',
+    },
+    s9: {
+      title: 'DE: reservar terapia ambulatoria (Heilmittel) antes de que terminen las visitas a domicilio',
+      why: 'La terapia a domicilio es limitada en el tiempo. Las Heilmittelverordnungen y las esperas en consulta se retrasan. Pida al médico el siguiente paso pronto.',
+      when: 'Primeras semanas en casa',
     },
   },
   know: {
@@ -1031,6 +1196,16 @@ export const careTransitionContentPolish = {
       why: 'Utrzymuje układ tabletu i oczekiwania kręgu zgodne z nowym miejscem.',
       when: 'Gdy przeniesienie się ustabilizuje',
     },
+    w5: {
+      title: 'Zapytać o dzwonek przywołania; nie wstawać bez pomocy',
+      why: 'Na oddziale jest mniej monitorów i personelu. Samodzielne wyjście do toalety to częsta przyczyna upadków. Potwierdzić z pielęgniarstwem, jak działa dzwonek.',
+      when: 'Pierwszy dzień na oddziale',
+    },
+    w6: {
+      title: 'Sprawdzić tacę z posiłkiem wobec zaleceń połykania',
+      why: 'Zamówienia posiłków często się resetują po przeniesieniu. Przed pierwszym kęsem potwierdzić, że konsystencja zgadza się z zaleceniem logopedii. W razie wątpliwości zapytać pielęgniarstwo.',
+      when: 'Pierwszy posiłek na oddziale',
+    },
     a1: {
       title: 'Zapytać case management o docelową datę wypisu',
       why: 'Szukanie placówki działa tylko przy realnym harmonogramie.',
@@ -1066,6 +1241,16 @@ export const careTransitionContentPolish = {
       why: 'Jeden numer telefonu do przyjęć / pielęgniarstwa na pierwsze 48 godzin.',
       when: 'Dzień przeniesienia',
     },
+    a8: {
+      title: 'USA: zapytać, jak często lekarz zobaczy tu pacjenta',
+      why: 'W szpitalu lekarz może przychodzić codziennie. W placówce pielęgniarskiej lekarz prowadzący bywa raz w tygodniu. Zapytać, żeby krąg nie był zaskoczony.',
+      when: 'Pierwsze 48 godzin w placówce',
+    },
+    a9: {
+      title: 'DE: zapytać, jak często lekarz zobaczy tu pacjenta',
+      why: 'W przeciwieństwie do szpitala, dom opieki lub rehabilitacja często korzysta z Hausarzt albo Heimarzt — nie z codziennych obchodów. Zapytać Sozialdienst lub pielęgniarstwo.',
+      when: 'Pierwsze 48 godzin w placówce',
+    },
     r1: {
       title: 'Potwierdzić oczekiwania wobec harmonogramu terapii',
       why: 'Wiedzieć, ile sesji dziennie i w czym może uczestniczyć rodzina.',
@@ -1098,6 +1283,16 @@ export const careTransitionContentPolish = {
         'Robienie wszystkiego za pacjenta przyspiesza logistykę, ale może spowolnić powrót do sprawności i poczucie wartości. Pytać przed pomocą; świętować małe sukcesy.',
       when: 'Na bieżąco w rehabilitacji',
     },
+    r7: {
+      title: 'Zarezerwować szkolenie praktyczne rodziny przed dokumentami wypisu',
+      why: 'Wiele programów rehabilitacji wymaga zajęć z opiekunem (przenoszenie, wózek, łazienka) przed wypisem. Rezerwować wcześnie, żeby termin się nie przesunął.',
+      when: 'Pierwszy tydzień rehabilitacji',
+    },
+    r8: {
+      title: 'Zapytać, którego dnia jest tygodniowe zebranie zespołu',
+      why: 'Długość pobytu często ustala się na tym zebraniu. Znać dzień, żeby ktoś mógł zapytać, jak mierzy się postęp.',
+      when: 'Pierwszy tydzień rehabilitacji',
+    },
     h1: {
       title: 'Potwierdzić datę wypisu i dojazd do domu',
       why: 'Transport to często zapomniana przeszkoda w dniu wypisu.',
@@ -1119,9 +1314,9 @@ export const careTransitionContentPolish = {
       when: 'Przed wypisem',
     },
     h5: {
-      title: 'Lista leków + kto realizuje pierwsze recepty',
-      why: 'Luki pierwszego dnia powodują powroty do szpitala.',
-      when: 'Dzień wypisu',
+      title: 'Mieć pierwsze leki zrealizowane i przy łóżku przed wyjściem',
+      why: 'Recepta w piątek po południu często oznacza pominięte dawki w weekend. Luki pierwszego dnia powodują powroty do szpitala.',
+      when: 'Przed wyjściem',
     },
     h6: {
       title: 'Umówiona pierwsza wizyta kontrolna',
@@ -1143,6 +1338,16 @@ export const careTransitionContentPolish = {
       why:
         'Opuszczenie szpitala może nasilić lęk i żałobę po „kim jestem teraz.” Krótka notatka dla rodziny zmniejsza zaskoczenie i obwinianie.',
       when: 'Przed powrotem lub w dniu powrotu',
+    },
+    h10: {
+      title: 'USA: zapisać datę startu opieki domowej i kto pokrywa czas do wizyty',
+      why: 'Agencje często potrzebują 48–72 godzin po wypisie na pierwszą wizytę. Wskazać, kto jest w domu do tego czasu.',
+      when: 'Przed wyjściem',
+    },
+    h11: {
+      title: 'DE: zapisać start häusliche Krankenpflege i kto pokrywa czas do wizyty',
+      why: 'Entlassmanagement organizuje pielęgniarstwo, ale pierwsza wizyta może nie przypadać w dniu wypisu. Zaplanować lukę.',
+      when: 'Przed wyjściem',
     },
     s1: {
       title: 'Uzgodnić rytm check-inów w tygodniu 1',
@@ -1175,6 +1380,21 @@ export const careTransitionContentPolish = {
       why:
         'Pośpiech, poprawianie lub mówienie za pacjenta pogłębia wstyd. Zwolnić, poczekać na odpowiedzi i zapraszać do małych decyzji.',
       when: 'Na bieżąco',
+    },
+    s7: {
+      title: 'Wywiesić plan nagły na lodówce',
+      why: 'Lęk przed kolejnym udarem lub kryzysem jest najwyższy w pierwszym miesiącu. Zapisać, do kogo dzwonić, kiedy wzywać pogotowie i najbliższy szpital leczący udar lub uraz mózgu — nie „byle SOR”.',
+      when: 'Pierwsze 7 dni',
+    },
+    s8: {
+      title: 'USA: umówić terapię ambulatoryjną, zanim skończy się opieka domowa',
+      why: 'Opieka domowa trwa często tylko kilka tygodni. Kolejki na ambulatoryjną FT/OT/logopedię bywają 4–8 tygodni. Wcześnie zacząć skierowanie.',
+      when: 'Pierwsze tygodnie w domu',
+    },
+    s9: {
+      title: 'DE: umówić terapię ambulatoryjną (Heilmittel), zanim skończą się wizyty domowe',
+      why: 'Terapia w domu jest ograniczona w czasie. Heilmittelverordnung i terminy w poradni się spóźniają. Wcześnie poprosić lekarza o kolejny krok.',
+      when: 'Pierwsze tygodnie w domu',
     },
   },
   know: {
