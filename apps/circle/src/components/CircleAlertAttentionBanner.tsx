@@ -1,6 +1,7 @@
 import { AlertCircle, Bell, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { CircleAlertAttentionItem } from '../hooks/useCircleAlertAttentionState';
+import { useCircleLocaleTimeFormat } from '../hooks/useCircleLocaleTimeFormat';
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import { formatDashboardTimestamp } from '../lib/dashboardI18n';
 import { resolveAlertAttentionMessageDisplay } from '../lib/alertAttentionNotificationCopy';
@@ -30,6 +31,7 @@ function BannerRow({
 }) {
   const t = useCircleT();
   const { language } = useCircleI18nContext();
+  const timeFormat = useCircleLocaleTimeFormat();
   const Icon = item.kind === 'alert' ? AlertCircle : Bell;
   const kindLabel =
     item.kind === 'alert' ? t('alertAttention.alert') : t('alertAttention.attention');
@@ -67,7 +69,7 @@ function BannerRow({
           </p>
           {item.createdAt > 0 && (
             <span className="text-[10px] text-slate-400 shrink-0 tabular-nums whitespace-nowrap">
-              {formatDashboardTimestamp(t, language, item.createdAt)}
+              {formatDashboardTimestamp(t, language, item.createdAt, timeFormat)}
             </span>
           )}
         </div>

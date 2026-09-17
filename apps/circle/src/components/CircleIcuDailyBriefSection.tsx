@@ -9,6 +9,7 @@ import type {
   PatientRemoteSettingsDoc,
 } from '@medxforce/shared';
 import { useCircleI18nContext, useCircleT, type CircleTranslator } from '../lib/circleI18nContext';
+import { useCircleLocaleTimeFormat } from '../hooks/useCircleLocaleTimeFormat';
 import { cn } from '../lib/utils';
 import {
   circleHorizontalScrollInnerClass,
@@ -106,6 +107,7 @@ export function CircleIcuDailyBriefSection({
 }: CircleIcuDailyBriefSectionProps) {
   const t = useCircleT();
   const { language } = useCircleI18nContext();
+  const timeFormat = useCircleLocaleTimeFormat();
   const flags = useMemo(() => remoteFlagsForIcuBrief(remoteSettings), [remoteSettings]);
   const dateKeys = useMemo(() => rollingLast7DateKeys(), []);
   const todayKey = dateKeys[dateKeys.length - 1] ?? '';
@@ -202,7 +204,7 @@ export function CircleIcuDailyBriefSection({
             </div>
             <p className="text-sm text-slate-700">
               {day.firstLoginAt
-                ? formatDashboardTimestamp(t, language, day.firstLoginAt)
+                ? formatDashboardTimestamp(t, language, day.firstLoginAt, timeFormat)
                 : t('dashboard.icuBriefNoLogin')}
             </p>
           </div>

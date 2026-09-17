@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { doc, onSnapshot, type Firestore } from 'firebase/firestore';
+import { formatCircleClockTime } from '../lib/circleLocaleDisplayPreferences';
 
 /** Match patient app — online if seen within 2 minutes. */
 const PRESENCE_ONLINE_THRESHOLD_MS = 2 * 60 * 1000;
@@ -20,7 +21,7 @@ export function formatPatientLastSeen(lastSeen: number, now = Date.now()): strin
   if (!lastSeen) return 'Unknown';
 
   const seen = new Date(lastSeen);
-  const time = seen.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const time = formatCircleClockTime(seen);
   const today = new Date(now);
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);

@@ -10,6 +10,7 @@ import {
 } from '@medxforce/shared';
 import { formatPatientOnlineDurationMinutes } from '../hooks/usePatientOnlinePresence';
 import type { CircleTranslator } from './circleI18nContext';
+import { formatCircleClockTime, type CircleLocaleTimeFormat } from './circleLocaleDisplayPreferences';
 import {
   circleUiLanguageToLocale,
   circleUiLanguageLabel,
@@ -30,21 +31,23 @@ export function formatPatientLastSeenT(
   t: CircleTranslator,
   language: CircleUiLanguage,
   lastSeen: number,
+  timeFormat?: CircleLocaleTimeFormat,
 ): string {
   if (!lastSeen) return t('presence.unknown');
-  return formatDashboardTimestamp(t, language, lastSeen);
+  return formatDashboardTimestamp(t, language, lastSeen, timeFormat);
 }
 
 export function formatDashboardTimestamp(
   t: CircleTranslator,
   language: CircleUiLanguage,
   ts: number | null | undefined,
+  timeFormat?: CircleLocaleTimeFormat,
 ): string {
   if (!ts) return t('dashboard.notRecordedYet');
 
   const d = new Date(ts);
   const locale = circleUiLanguageToLocale(language);
-  const time = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  const time = formatCircleClockTime(d, { locale, timeFormat });
   const today = new Date();
 
   if (d.toDateString() === today.toDateString()) {
