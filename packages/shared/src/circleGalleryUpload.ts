@@ -39,7 +39,9 @@ export async function uploadCircleGalleryMedia(params: {
   const isVideo = prepared.isVideo;
 
   const maxBytes = isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
-  if (params.file.size > maxBytes) {
+  // Prefer prepared size (post HEIC→JPEG / resize); fall back to original.
+  const uploadBytes = prepared.blob.size || params.file.size;
+  if (uploadBytes > maxBytes) {
     throw new Error(isVideo ? 'Video is too large (max 200 MB).' : 'Photo is too large (max 25 MB).');
   }
 

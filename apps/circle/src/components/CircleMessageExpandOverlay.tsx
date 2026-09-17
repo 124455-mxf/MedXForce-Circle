@@ -10,6 +10,7 @@ export function CircleMessageExpandOverlay({
   subtitle,
   onClose,
   children,
+  footer,
   t,
   zClassName = 'z-[160]',
 }: {
@@ -18,6 +19,7 @@ export function CircleMessageExpandOverlay({
   subtitle?: string;
   onClose: () => void;
   children: ReactNode;
+  footer?: ReactNode;
   t: CircleTranslator;
   zClassName?: string;
 }) {
@@ -40,6 +42,11 @@ export function CircleMessageExpandOverlay({
         </button>
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-5">{children}</div>
+      {footer ? (
+        <div className="shrink-0 p-3 sm:p-4 border-t border-slate-200 bg-white shadow-[0_-4px_12px_rgba(15,23,42,0.06)]">
+          {footer}
+        </div>
+      ) : null}
     </div>,
     document.body,
   );

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import {
+  isDiaryEntryPrivate,
   isDiaryEntrySharedWithCircle,
   subscribeCircleDiaryEntries,
   type CircleDiaryEntry,
@@ -48,7 +49,10 @@ export function useCircleDiaryEntries(
 
   const visibleEntries = useMemo(() => {
     if (filter === 'mine') {
-      return entries.filter((e) => e.authorUid === user.uid);
+      // Private personal notes only — shared posts belong in Circle story.
+      return entries.filter(
+        (e) => e.authorUid === user.uid && isDiaryEntryPrivate(e),
+      );
     }
     return entries.filter((e) => isDiaryEntrySharedWithCircle(e));
   }, [entries, filter, user.uid]);

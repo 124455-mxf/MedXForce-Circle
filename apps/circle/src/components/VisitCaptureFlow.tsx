@@ -9,7 +9,6 @@ import {
   Mic,
   Shield,
   Square,
-  Stethoscope,
   Trash2,
   X,
 } from 'lucide-react';
@@ -55,6 +54,8 @@ export type VisitCaptureFlowProps = {
   capturedBy: VisitCaptureCapturedBy;
   /** When set, links this capture to a schedule appointment. */
   careCalendarEntryId?: string | null;
+  /** Appointment already has a published recording that a new share would replace. */
+  replacesExistingRecording?: boolean;
 };
 
 function formatElapsed(ms: number): string {
@@ -71,6 +72,7 @@ export function VisitCaptureFlow({
   patientId,
   capturedBy,
   careCalendarEntryId = null,
+  replacesExistingRecording = false,
 }: VisitCaptureFlowProps) {
   const apiConfigured = isVisitCaptureApiConfigured();
   const { language: recorderLanguage, t } = useCircleI18nContext();
@@ -277,19 +279,27 @@ export function VisitCaptureFlow({
   };
 
   const publishThreadKind = visitCapturePublishThreadKind(capturedBy.role);
+  const fromAppointment = Boolean(careCalendarEntryId?.trim());
   const recorderSeesThread =
     publishThreadKind === 'open'
       ? canParticipateInCircleOpenThread(capturedBy.role)
       : canViewCareCoordinationCaptures(capturedBy.role);
   const publishShareLabel =
     publishThreadKind === 'open'
-      ? t('visitCapture.shareWithCircle')
-      : t('visitCapture.shareWithCareTeam');
+      ? t(fromAppointment ? 'visitCapture.shareWithCircleAppointment' : 'visitCapture.shareWithCircle')
+      : t(
+          fromAppointment
+            ? 'visitCapture.shareWithCareTeamAppointment'
+            : 'visitCapture.shareWithCareTeam',
+        );
 
   if (!open || typeof document === 'undefined') return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 sm:p-6 bg-slate-900/55 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-[500] flex items-center justify-center p-4 sm:p-6 bg-slate-900/55 backdrop-blur-sm"
+      style={{ zIndex: 500 }}
+    >
       <div
         className="bg-white w-full max-w-lg rounded-[28px] shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
@@ -297,7 +307,7 @@ export function VisitCaptureFlow({
             <div className="p-6 sm:p-8 space-y-5">
               <div className="flex items-start justify-between gap-3">
                 <span className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                  <Stethoscope size={22} />
+                  <Mic size={22} />
                 </span>
                 <button
                   type="button"
@@ -313,9 +323,19 @@ export function VisitCaptureFlow({
               <div>
                 <h2 className="text-xl font-bold text-slate-900">{t('visitCapture.title')}</h2>
                 <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-                  {t('visitCapture.subtitle')}
+                  {t(fromAppointment ? 'visitCapture.subtitleAppointment' : 'visitCapture.subtitle')}
                 </p>
               </div>
+
+              {fromAppointment && replacesExistingRecording && (step === 'consent' || step === 'preview') ? (
+                <p className="text-sm text-amber-950 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 leading-relaxed">
+                  {t(
+                    step === 'preview'
+                      ? 'visitCapture.replaceExistingShareHint'
+                      : 'visitCapture.replaceExistingWarning',
+                  )}
+                </p>
+              ) : null}
 
               {!apiConfigured && (
                 <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
@@ -544,12 +564,16 @@ export function VisitCaptureFlow({
               {step === 'done' && (
                 <div className="space-y-4 py-4 text-center">
                   <CheckCircle2 size={40} className="mx-auto text-emerald-600" />
-                  <p className="font-bold text-slate-800">{t('visitCapture.doneTitle')}</p>
-                  {!recorderSeesThread && (
+                  <p className="font-bold text-slate-800">
+                    {t(fromAppointment ? 'visitCapture.doneTitleAppointment' : 'visitCapture.doneTitle')}
+                  </p>
+                  {fromAppointment ? (
+                    <p className="text-sm text-slate-500">{t('visitCapture.doneHintAppointment')}</p>
+                  ) : !recorderSeesThread ? (
                     <p className="text-sm text-slate-500">
                       {t('visitCapture.doneHiddenHint')}
                     </p>
-                  )}
+                  ) : null}
                   <button
                     type="button"
                     onClick={onClose}

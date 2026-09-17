@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
@@ -9,11 +9,13 @@ import {
   signOut,
   type User,
 } from 'firebase/auth';
-import { LogOut, Users } from 'lucide-react';
+import { Loader2, LogOut, Users } from 'lucide-react';
 import { MedXForceBrandLogo } from './components/MedXForceBrandLogo';
 import {
   acceptPendingCircleInvites,
   ensureMemberCapabilitiesForUser,
+  ensureManagedContactsForAcceptedMembersForUser,
+  syncManagedContactNamesFromMemberProfilesForUser,
   repairInactiveAcceptedMemberDocsForUser,
   repairOrphanAcceptedInvitesForUser,
   reconcileAcceptedMemberRolesForUser,
@@ -36,19 +38,27 @@ import { useCircleStartupSequence } from './hooks/useCircleStartupSequence';
 import { collection, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import { consumeAuthRedirectOnce, firebase } from './lib/firebaseClient';
 import { CIRCLE_BUILD_ID } from './lib/circleBuildId';
-import { sendWelcomeEmailsForAcceptedInvites } from './services/circleWelcomeEmailApi';
+import { sendWelcomeEmailsForAcceptedInvites, proxySlotDemotionToastMessage } from './services/circleWelcomeEmailApi';
+import { useCircleToast } from './hooks/useCircleToast';
+import { CircleAppToast } from './components/CircleAppToast';
 import { useCircleI18n } from './hooks/useCircleI18n';
 import { CircleI18nProvider } from './lib/circleI18nContext';
+import { hydrateCircleUiLanguageFromContacts } from './lib/circleUiLanguageHydration';
+import { hydrateCircleMemberTimeZone } from './lib/circleMemberTimeZoneHydration';
+import { useCircleTextSize } from './hooks/useCircleTextSize';
+import { CircleTextSizeProvider } from './lib/circleTextSizeContext';
 import { CirclePatientSwitcher } from './components/CirclePatientSwitcher';
 import {
   firstActivePatient,
   hasActivePatientBesides,
   pickPreferredPatientId,
-  pickStartupPatientId,
 } from './lib/circlePatientSelection';
 import { useCircleAccountPhoto } from './hooks/useCircleAccountPhoto';
 import { clearCircleActiveSessionStorage } from './lib/circleSessionStorage';
+import { cn } from './lib/utils';
 import {
+  clearStartupPatientId,
+  loadStartupPatientId,
   readStartupPatientId,
   writeStartupPatientId,
 } from './lib/circleStartupPatient';
@@ -67,7 +77,13 @@ export default function App() {
   const [pendingSwitcherOpen, setPendingSwitcherOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [startupPatientId, setStartupPatientId] = useState<string | null>(null);
+  const [startupPreferenceReady, setStartupPreferenceReady] = useState(false);
+  const patientRefreshInFlightRef = useRef<
+    Promise<{ list: CirclePatientSummary[]; accepted: Awaited<ReturnType<typeof acceptPendingCircleInvites>> }> | null
+  >(null);
   const { language, t, setLanguage } = useCircleI18n(firebase.db, user);
+  const { textSize, setTextSize } = useCircleTextSize(firebase.db, user);
+  const { toast, showToast } = useCircleToast(7000);
 
   const selectedPatientForSettings = useMemo(() => {
     if (patients.length === 0) return null;
@@ -81,25 +97,42 @@ export default function App() {
   useEffect(() => {
     if (!user?.uid) {
       setStartupPatientId(null);
+      setStartupPreferenceReady(true);
       return;
     }
+    setStartupPreferenceReady(false);
+    // Local cache first for instant UI, then sync from Firestore (cross-device).
     setStartupPatientId(readStartupPatientId(user.uid));
+    let cancelled = false;
+    void loadStartupPatientId(firebase.db, user.uid).then((id) => {
+      if (cancelled) return;
+      setStartupPatientId(id);
+      setStartupPreferenceReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [user?.uid]);
 
   useEffect(() => {
+    if (!startupPreferenceReady) return;
     if (patients.length === 0) {
       setSelectedPatientId(null);
       return;
     }
     if (!selectedPatientId || !patients.some((p) => p.patientId === selectedPatientId)) {
-      setSelectedPatientId(pickStartupPatientId(patients, user?.uid));
+      const preferred =
+        startupPatientId && patients.some((p) => p.patientId === startupPatientId)
+          ? startupPatientId
+          : pickPreferredPatientId(patients);
+      setSelectedPatientId(preferred);
     }
-  }, [patients, selectedPatientId, user?.uid]);
+  }, [patients, selectedPatientId, startupPatientId, startupPreferenceReady]);
 
   const handleSetStartupPatient = (patient: CirclePatientSummary) => {
     if (!user?.uid) return;
-    writeStartupPatientId(user.uid, patient.patientId);
     setStartupPatientId(patient.patientId);
+    void writeStartupPatientId(firebase.db, user.uid, patient.patientId);
   };
 
   const handleDismissPendingSetup = () => {
@@ -122,35 +155,90 @@ export default function App() {
       setPatients(remaining);
       setPendingSwitcherOpen(false);
 
+      const nextStartup =
+        startupPatientId === patient.patientId
+          ? pickPreferredPatientId(remaining)
+          : startupPatientId && remaining.some((p) => p.patientId === startupPatientId)
+            ? startupPatientId
+            : pickPreferredPatientId(remaining);
+
       if (selectedPatientId === patient.patientId) {
-        setSelectedPatientId(pickStartupPatientId(remaining, user.uid));
+        setSelectedPatientId(nextStartup);
       }
 
       if (startupPatientId === patient.patientId) {
-        const nextStartup = pickPreferredPatientId(remaining);
         if (nextStartup) {
-          writeStartupPatientId(user.uid, nextStartup);
           setStartupPatientId(nextStartup);
+          void writeStartupPatientId(firebase.db, user.uid, nextStartup);
         } else {
           setStartupPatientId(null);
+          void clearStartupPatientId(firebase.db, user.uid);
         }
       }
     },
     [patients, selectedPatientId, startupPatientId, user],
   );
 
-  const refreshPatients = async (currentUser: User) => {
-    const accepted = await acceptPendingCircleInvites(firebase.db, currentUser);
-    await repairOrphanAcceptedInvitesForUser(firebase.db, currentUser.uid);
-    await repairInactiveAcceptedMemberDocsForUser(firebase.db, currentUser.uid);
-    await reconcileAcceptedMemberRolesForUser(firebase.db, currentUser.uid);
-    await ensureMemberCapabilitiesForUser(firebase.db, currentUser.uid);
-    const list = await listCirclePatientsAndProvisionsForUser(firebase.db, currentUser.uid);
-    setPatients(list);
-    void sendWelcomeEmailsForAcceptedInvites(currentUser, accepted, list).catch((err) => {
-      console.warn('[Circle] Welcome email dispatch failed:', err);
-    });
-    return { list, accepted };
+  const refreshPatients = (currentUser: User) => {
+    const existing = patientRefreshInFlightRef.current;
+    if (existing) return existing;
+
+    const refresh = (async () => {
+      const accepted = await acceptPendingCircleInvites(firebase.db, currentUser);
+      await repairOrphanAcceptedInvitesForUser(firebase.db, currentUser.uid);
+      await repairInactiveAcceptedMemberDocsForUser(firebase.db, currentUser.uid);
+      await reconcileAcceptedMemberRolesForUser(firebase.db, currentUser.uid);
+      await ensureMemberCapabilitiesForUser(firebase.db, currentUser.uid);
+      if (currentUser.email) {
+        await ensureManagedContactsForAcceptedMembersForUser(
+          firebase.db,
+          currentUser.uid,
+          currentUser.email,
+        );
+        await syncManagedContactNamesFromMemberProfilesForUser(
+          firebase.db,
+          currentUser.uid,
+          currentUser.email,
+        );
+      }
+      const list = await listCirclePatientsAndProvisionsForUser(firebase.db, currentUser.uid);
+      if (firebase.auth.currentUser?.uid === currentUser.uid) {
+        setPatients(list);
+      }
+      const welcomeLanguage = await hydrateCircleUiLanguageFromContacts(
+        firebase.db,
+        currentUser,
+        list.map((patient) => patient.patientId),
+        setLanguage,
+      );
+      void hydrateCircleMemberTimeZone(firebase.db, currentUser);
+      for (const invite of accepted) {
+        const demotionMessage = proxySlotDemotionToastMessage(invite);
+        if (demotionMessage) {
+          showToast(demotionMessage, 'info');
+          break;
+        }
+      }
+      void sendWelcomeEmailsForAcceptedInvites(
+        firebase.db,
+        currentUser,
+        accepted,
+        list,
+        welcomeLanguage,
+      ).catch((err) => {
+        console.warn('[Circle] Welcome email dispatch failed:', err);
+      });
+      return { list, accepted };
+    })();
+
+    patientRefreshInFlightRef.current = refresh;
+    const clear = () => {
+      if (patientRefreshInFlightRef.current === refresh) {
+        patientRefreshInFlightRef.current = null;
+      }
+    };
+    void refresh.then(clear, clear);
+    return refresh;
   };
 
   const handleRefreshPatients = async () => {
@@ -340,6 +428,7 @@ export default function App() {
   const appReady = !authLoading && (!user || !patientsHydrating);
   const startup = useCircleStartupSequence(appReady);
   const accountPhotoUrl = useCircleAccountPhoto(firebase.db, user);
+  const accessPlaceholderLayout = patients.length === 0;
 
   const handleSignOut = async () => {
     clearCircleActiveSessionStorage();
@@ -351,6 +440,7 @@ export default function App() {
       phase={startup.phase}
       exiting={startup.exiting}
       tagline={t('brand.startupTagline')}
+      t={t}
     />
   ) : !user ? (
     <div className="min-h-screen flex items-center justify-center p-6">
@@ -416,19 +506,52 @@ export default function App() {
       </div>
     </div>
   ) : (
-    <div className="flex flex-col h-dvh max-h-dvh overflow-hidden box-border max-w-2xl mx-auto w-full pt-4 px-3 pb-2.5 sm:pt-5 sm:px-4 sm:pb-3 [@media(max-height:740px)]:pt-3.5 [@media(max-height:740px)]:px-2.5 [@media(max-height:740px)]:pb-2">
-      {patients.length === 0 ? (
+    <div
+      className={cn(
+        'flex flex-col h-dvh max-h-dvh box-border max-w-2xl mx-auto w-full min-w-0',
+        'pt-[max(1rem,env(safe-area-inset-top))] pb-[max(0.625rem,env(safe-area-inset-bottom))]',
+        'pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]',
+        accessPlaceholderLayout ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden',
+      )}
+    >
+      {patientsHydrating && patients.length === 0 ? (
         <>
-          <div className="flex items-center gap-3 shrink-0 mb-6">
-            <div className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shrink-0">
-              <MedXForceBrandLogo />
+          <CircleAccessBrandHeader title={t('auth.title')} subtitle={t('common.friendsFamily')} />
+          <div className="min-w-0 w-full overflow-hidden bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-5">
+            <div className="flex items-center gap-2 text-slate-700">
+              <Users size={18} />
+              <h2 className="font-bold">{t('patients.yourPatients')}</h2>
             </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-bold text-slate-800">{t('auth.title')}</h1>
-              <p className="text-xs text-slate-500 truncate">{t('common.friendsFamily')}</p>
+            <div className="flex flex-col items-center text-center gap-3 py-6">
+              <Loader2 size={28} className="animate-spin text-blue-600" aria-hidden />
+              <p className="text-sm font-semibold text-slate-800">{t('patients.checkingAccess')}</p>
+              <p className="text-xs text-slate-500 leading-relaxed max-w-sm">
+                {t('patients.checkingAccessHint')}
+              </p>
+              <div
+                className="mt-2 h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-slate-100"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={t('patients.checkingAccess')}
+              >
+                <div className="h-full w-2/5 rounded-full bg-blue-500 animate-pulse" />
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => void handleSignOut()}
+              className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-blue-600"
+            >
+              <LogOut size={16} />
+              {t('common.signOut')}
+            </button>
           </div>
-          <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-4">
+        </>
+      ) : patients.length === 0 ? (
+        <>
+          <CircleAccessBrandHeader title={t('auth.title')} subtitle={t('common.friendsFamily')} />
+          <div className="min-w-0 w-full overflow-hidden bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-4">
             <div className="flex items-center justify-between gap-2 text-slate-700">
               <div className="flex items-center gap-2">
                 <Users size={18} />
@@ -596,8 +719,27 @@ export default function App() {
 
   return (
     <CircleI18nProvider language={language} t={t} setLanguage={setLanguage}>
-      {appBody}
+      <CircleTextSizeProvider textSize={textSize} setTextSize={setTextSize}>
+        {appBody}
+        <CircleAppToast message={toast?.message ?? null} tone={toast?.tone} />
+      </CircleTextSizeProvider>
     </CircleI18nProvider>
+  );
+}
+
+function CircleAccessBrandHeader({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="flex items-center gap-3 shrink-0 sticky top-0 z-10 mb-6 bg-[#F8FAFC] py-1">
+      <div className="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 shrink-0">
+        <MedXForceBrandLogo />
+      </div>
+      <div className="min-w-0 flex-1">
+        <h1 className="text-xl font-bold text-slate-800 leading-tight break-words [overflow-wrap:anywhere]">
+          {title}
+        </h1>
+        <p className="text-xs text-slate-500 truncate">{subtitle}</p>
+      </div>
+    </div>
   );
 }
 

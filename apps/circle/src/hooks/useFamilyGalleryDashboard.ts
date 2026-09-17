@@ -2,6 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import { canViewPatientUploads, type PatientCapabilities } from '@medxforce/shared';
+import {
+  CIRCLE_GALLERY_VIEWED_CHANGED,
+  getCircleGalleryViewedIds,
+  type CircleGalleryViewedChangedDetail,
+} from '../lib/circleGalleryViews';
+import { useCircleGalleryViewedSync } from './useCircleGalleryViewedSync';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PREVIEW_PHOTO_LIMIT = 24;
@@ -12,12 +18,18 @@ export type FamilyGalleryPreviewPhoto = {
   thumbnailUrl?: string;
   caption: string;
   senderName: string;
+  uploadedByUid?: string;
   timestamp: number;
+  source?: 'patient' | 'circle';
 };
 
 export type FamilyGalleryDashboardStats = {
   previewPhotos: FamilyGalleryPreviewPhoto[];
+  /** Member and patient gallery items (no preview cap; used for Warmth media counts). */
+  engagementPhotos: FamilyGalleryPreviewPhoto[];
   photoCount: number;
+  /** Media the member can see and has not opened yet (excludes own uploads; includes patient). */
+  unseenMediaCount: number;
   /** Reactions on any gallery photo (all uploaders). */
   totalReactions: number;
   reactionsLast7: number;
@@ -34,7 +46,9 @@ export type FamilyGalleryDashboardStats = {
 
 const EMPTY: FamilyGalleryDashboardStats = {
   previewPhotos: [],
+  engagementPhotos: [],
   photoCount: 0,
+  unseenMediaCount: 0,
   totalReactions: 0,
   reactionsLast7: 0,
   myUploadCount: 0,
@@ -56,7 +70,9 @@ export function useFamilyGalleryDashboard(
   windowDays = 7,
 ): FamilyGalleryDashboardStats {
   const [previewPhotos, setPreviewPhotos] = useState<FamilyGalleryPreviewPhoto[]>([]);
+  const [engagementPhotos, setEngagementPhotos] = useState<FamilyGalleryPreviewPhoto[]>([]);
   const [photoCount, setPhotoCount] = useState(0);
+  const [attentionMediaIds, setAttentionMediaIds] = useState<string[]>([]);
   const [myMediaIds, setMyMediaIds] = useState<Set<string>>(new Set());
   const [latestMyUploadAt, setLatestMyUploadAt] = useState<number | null>(null);
   const [reactions, setReactions] = useState<
@@ -64,14 +80,29 @@ export function useFamilyGalleryDashboard(
   >([]);
   const [loadingMedia, setLoadingMedia] = useState(true);
   const [loadingReactions, setLoadingReactions] = useState(true);
+  const [viewedTick, setViewedTick] = useState(0);
 
   const canViewCircle = !!(capabilities?.viewCircleMedia || capabilities?.richMediaUpload);
   const canViewPatient = canViewPatientUploads(capabilities);
+  useCircleGalleryViewedSync(db, patientId, memberUid);
+
+  useEffect(() => {
+    if (!patientId) return undefined;
+    const onViewed = (event: Event) => {
+      const detail = (event as CustomEvent<CircleGalleryViewedChangedDetail>).detail;
+      if (detail?.patientId !== patientId) return;
+      setViewedTick((n) => n + 1);
+    };
+    window.addEventListener(CIRCLE_GALLERY_VIEWED_CHANGED, onViewed);
+    return () => window.removeEventListener(CIRCLE_GALLERY_VIEWED_CHANGED, onViewed);
+  }, [patientId]);
 
   useEffect(() => {
     if (!patientId || !memberUid || (!canViewCircle && !canViewPatient)) {
       setPreviewPhotos([]);
+      setEngagementPhotos([]);
       setPhotoCount(0);
+      setAttentionMediaIds([]);
       setMyMediaIds(new Set());
       setLatestMyUploadAt(null);
       setLoadingMedia(false);
@@ -86,6 +117,7 @@ export function useFamilyGalleryDashboard(
       (snapshot) => {
         const photos: FamilyGalleryPreviewPhoto[] = [];
         const myIds = new Set<string>();
+        const attentionIds: string[] = [];
         let photosTotal = 0;
         let latestMyUploadAt: number | null = null;
 
@@ -97,6 +129,8 @@ export function useFamilyGalleryDashboard(
 
           const isVideo = !!data.isVideo;
           if (!isVideo) photosTotal += 1;
+
+          attentionIds.push(snap.id);
 
           if (String(data.uploadedByUid || '') === memberUid) {
             myIds.add(snap.id);
@@ -119,20 +153,26 @@ export function useFamilyGalleryDashboard(
             thumbnailUrl,
             caption: String(data.caption || ''),
             senderName: String(data.senderName || 'Family Member'),
+            uploadedByUid: String(data.uploadedByUid || ''),
             timestamp: typeof data.timestamp === 'number' ? data.timestamp : 0,
+            source,
           });
         }
 
         photos.sort((a, b) => b.timestamp - a.timestamp);
         setPreviewPhotos(photos.slice(0, PREVIEW_PHOTO_LIMIT));
+        setEngagementPhotos(photos);
         setPhotoCount(photosTotal);
+        setAttentionMediaIds(attentionIds);
         setMyMediaIds(myIds);
         setLatestMyUploadAt(latestMyUploadAt);
         setLoadingMedia(false);
       },
       () => {
         setPreviewPhotos([]);
+        setEngagementPhotos([]);
         setPhotoCount(0);
+        setAttentionMediaIds([]);
         setMyMediaIds(new Set());
         setLatestMyUploadAt(null);
         setLoadingMedia(false);
@@ -201,9 +241,21 @@ export function useFamilyGalleryDashboard(
       if (reaction.userId === patientId) patientReactionsOnMyUploads += 1;
     }
 
+    void viewedTick;
+    const viewedIds = patientId
+      ? getCircleGalleryViewedIds(patientId, memberUid)
+      : new Set<string>();
+    let unseenMediaCount = 0;
+    for (const id of attentionMediaIds) {
+      if (myMediaIds.has(id)) continue;
+      if (!viewedIds.has(id)) unseenMediaCount += 1;
+    }
+
     return {
       previewPhotos,
+      engagementPhotos,
       photoCount,
+      unseenMediaCount,
       totalReactions,
       reactionsLast7,
       myUploadCount: myMediaIds.size,
@@ -216,6 +268,7 @@ export function useFamilyGalleryDashboard(
       loading: loadingMedia || loadingReactions,
     };
   }, [
+    attentionMediaIds,
     loadingMedia,
     loadingReactions,
     memberUid,
@@ -224,7 +277,9 @@ export function useFamilyGalleryDashboard(
     patientId,
     photoCount,
     previewPhotos,
+    engagementPhotos,
     reactions,
+    viewedTick,
     windowDays,
   ]);
 }

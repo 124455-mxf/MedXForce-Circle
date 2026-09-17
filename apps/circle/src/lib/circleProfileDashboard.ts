@@ -1,64 +1,48 @@
 import type { CirclePatientProfileSnapshot } from '@medxforce/shared';
+import { formatTreatmentPhaseLabelEn } from '@medxforce/shared';
 
 import type { AlertAttentionRecencyUrgency } from './circleDashboardStats';
-
-const TREATMENT_PHASE_LABELS: Record<string, string> = {
-  icu: 'ICU',
-  acute: 'Acute',
-  vitality: 'Vitality',
-  maintenance: 'Maintenance',
-  palliative: 'Palliative',
-  'pre-op': 'Pre-op',
-  'post-op': 'Post-op',
-};
 
 function hasText(value: string | undefined | null): boolean {
   return !!value?.trim();
 }
 
+export type CoreCircleProfileField =
+  | 'firstName'
+  | 'lastName'
+  | 'dob'
+  | 'language'
+  | 'sex';
+
+const CORE_CIRCLE_PROFILE_FIELDS: CoreCircleProfileField[] = [
+  'firstName',
+  'lastName',
+  'dob',
+  'language',
+  'sex',
+];
+
 /** Minimum fields needed to operate well with the patient. */
 export function isCoreCircleProfileComplete(snapshot: CirclePatientProfileSnapshot): boolean {
-  const { firstName, lastName, dob, language } = snapshot.identity;
-  return (
-    hasText(firstName) &&
-    hasText(lastName) &&
-    hasText(dob) &&
-    hasText(language) &&
-    hasText(snapshot.extended.sex)
-  );
+  return getMissingCoreCircleProfileFields(snapshot).length === 0;
+}
+
+/** Core identity fields still empty (name, DOB, language, sex). */
+export function getMissingCoreCircleProfileFields(
+  snapshot: CirclePatientProfileSnapshot | null | undefined,
+): CoreCircleProfileField[] {
+  if (!snapshot) return [...CORE_CIRCLE_PROFILE_FIELDS];
+  const missing: CoreCircleProfileField[] = [];
+  if (!hasText(snapshot.identity.firstName)) missing.push('firstName');
+  if (!hasText(snapshot.identity.lastName)) missing.push('lastName');
+  if (!hasText(snapshot.identity.dob)) missing.push('dob');
+  if (!hasText(snapshot.identity.language)) missing.push('language');
+  if (!hasText(snapshot.extended.sex)) missing.push('sex');
+  return missing;
 }
 
 function isIdentityComplete(snapshot: CirclePatientProfileSnapshot): boolean {
   return isCoreCircleProfileComplete(snapshot);
-}
-
-function hasNeutralProfileExtras(snapshot: CirclePatientProfileSnapshot): boolean {
-  return (
-    hasText(snapshot.clinical.dateOfOnset) ||
-    hasText(snapshot.clinical.treatmentPhase) ||
-    hasText(snapshot.clinical.primaryDiagnosis) ||
-    (snapshot.lifestyle.assistiveDevices ?? []).some((device) => hasText(device))
-  );
-}
-
-function hasGreenProfileExtras(snapshot: CirclePatientProfileSnapshot): boolean {
-  const { engagement, lifestyle } = snapshot;
-  const hasHobbies =
-    engagement.activeHobbies.length > 0 || engagement.passiveHobbies.length > 0;
-  const hasOccupation = hasText(lifestyle.occupation);
-  const hasTopicTriggers = engagement.topicTriggers.length > 0;
-  return hasHobbies || hasOccupation || hasTopicTriggers;
-}
-
-/** Tint for User Profile card from core, clinical, and engagement completeness. */
-export function getUserProfileRecencyUrgency(
-  snapshot: CirclePatientProfileSnapshot | null,
-): AlertAttentionRecencyUrgency {
-  if (!snapshot) return 'neutral';
-  if (!isCoreCircleProfileComplete(snapshot)) return 'red';
-  if (hasGreenProfileExtras(snapshot)) return 'green';
-  if (hasNeutralProfileExtras(snapshot)) return 'neutral';
-  return 'orange';
 }
 
 function isClinicalComplete(snapshot: CirclePatientProfileSnapshot): boolean {
@@ -91,6 +75,27 @@ function isEngagementComplete(snapshot: CirclePatientProfileSnapshot): boolean {
   );
 }
 
+/** Non-identity profile areas still empty — shown as chips on the Home tile. */
+export type CircleProfileGapSection =
+  | 'diagnosis'
+  | 'dailyAbilities'
+  | 'homeLife'
+  | 'interests';
+
+export function getMissingCircleProfileSections(
+  snapshot: CirclePatientProfileSnapshot | null | undefined,
+): CircleProfileGapSection[] {
+  if (!snapshot) {
+    return ['diagnosis', 'dailyAbilities', 'homeLife', 'interests'];
+  }
+  const missing: CircleProfileGapSection[] = [];
+  if (!hasText(snapshot.clinical.primaryDiagnosis)) missing.push('diagnosis');
+  if (!isFunctionalComplete(snapshot)) missing.push('dailyAbilities');
+  if (!isLifestyleComplete(snapshot)) missing.push('homeLife');
+  if (!isEngagementComplete(snapshot)) missing.push('interests');
+  return missing;
+}
+
 export function isCircleProfileDataComplete(snapshot: CirclePatientProfileSnapshot): boolean {
   return (
     isIdentityComplete(snapshot) &&
@@ -99,6 +104,15 @@ export function isCircleProfileDataComplete(snapshot: CirclePatientProfileSnapsh
     isLifestyleComplete(snapshot) &&
     isEngagementComplete(snapshot)
   );
+}
+
+/** Tint for User Profile card: muted green when complete, amber/red when incomplete. */
+export function getUserProfileRecencyUrgency(
+  snapshot: CirclePatientProfileSnapshot | null,
+): AlertAttentionRecencyUrgency {
+  if (!snapshot || !isCoreCircleProfileComplete(snapshot)) return 'red';
+  if (isCircleProfileDataComplete(snapshot)) return 'green';
+  return 'orange';
 }
 
 export function getCircleProfileCompletenessLabel(
@@ -113,8 +127,7 @@ export function getCircleProfileCompletenessLabel(
 export function formatTreatmentPhaseLabel(phase: string | undefined | null): string {
   const raw = phase?.trim() ?? '';
   if (!raw) return 'Not set';
-  const key = raw.toLowerCase();
-  return TREATMENT_PHASE_LABELS[key] ?? raw;
+  return formatTreatmentPhaseLabelEn(raw) || raw;
 }
 
 export function formatAssistiveDeviceLabel(devices: string[] | undefined | null): string {

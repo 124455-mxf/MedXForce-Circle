@@ -85,6 +85,11 @@ export function dedupeGalleryAlbumsForDisplay<
   });
 }
 
+/** Empty albums stay for the owner to refill later; other Circle members and the patient should not see them. */
+export function galleryAlbumVisibleToSharedViewers(itemCount: number): boolean {
+  return itemCount > 0;
+}
+
 export async function findDefaultGalleryAlbum(
   db: Firestore,
   patientId: string,

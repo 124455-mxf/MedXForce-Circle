@@ -1,4 +1,5 @@
 import { cn } from '../lib/utils';
+import { useCircleT } from '../lib/circleI18nContext';
 
 type PatientOnlineIndicatorProps = {
   online: boolean;
@@ -11,9 +12,13 @@ type PatientOnlineIndicatorProps = {
 export function PatientOnlineIndicator({
   online,
   className,
-  title = online ? 'Patient app is active' : 'Patient app is not active',
+  title,
   showWhenOffline = false,
 }: PatientOnlineIndicatorProps) {
+  const t = useCircleT();
+  const resolvedTitle =
+    title ?? (online ? t('presence.patientAppActive') : t('presence.patientAppInactive'));
+
   if (!online && !showWhenOffline) return null;
 
   return (
@@ -23,8 +28,8 @@ export function PatientOnlineIndicator({
         online ? 'bg-emerald-500' : 'bg-slate-300',
         className,
       )}
-      title={title}
-      aria-label={title}
+      title={resolvedTitle}
+      aria-label={resolvedTitle}
       role="status"
     />
   );

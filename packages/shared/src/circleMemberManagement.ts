@@ -23,7 +23,11 @@ export interface CircleInviteListItem {
   proxyTier?: 'primary' | 'backup';
   status: CircleInviteStatus;
   updatedAt: number;
+  createdAt?: number;
+  /** When the introduction / invite email was sent (patient API). */
+  introductionEmailSentAt?: number;
   acceptedByUid?: string;
+  contactId?: string;
 }
 
 /** List circle invites for a patient (proxy / patient owner). */
@@ -49,7 +53,13 @@ export async function listCircleInvitesForPatient(
           data.proxyTier === 'backup' || data.proxyTier === 'primary' ? data.proxyTier : undefined,
         status,
         updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : 0,
+        createdAt: typeof data.createdAt === 'number' ? data.createdAt : undefined,
+        introductionEmailSentAt:
+          typeof data.introductionEmailSentAt === 'number'
+            ? data.introductionEmailSentAt
+            : undefined,
         acceptedByUid: typeof data.acceptedByUid === 'string' ? data.acceptedByUid : undefined,
+        contactId: typeof data.contactId === 'string' ? data.contactId : undefined,
       };
     })
     .filter((item) => item.invitedEmail)
@@ -81,6 +91,7 @@ export async function revokeCircleInviteByEmail(
 
   const actorUid = options.actorUid?.trim();
   const acceptedByUid = typeof data?.acceptedByUid === 'string' ? data.acceptedByUid.trim() : '';
+  // Soft-block self-revoke in the Circle access list (UI also hides Revoke on "YOU").
   if (actorUid && acceptedByUid && actorUid === acceptedByUid) {
     return false;
   }
@@ -92,6 +103,7 @@ export async function revokeCircleInviteByEmail(
   });
 
   if (acceptedByUid) {
+    // Requires firestore.rules: invite managers may delete other members' docs.
     batch.delete(doc(db, 'patients', patientId, 'members', acceptedByUid));
   }
 

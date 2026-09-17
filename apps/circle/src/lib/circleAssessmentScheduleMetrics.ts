@@ -15,6 +15,7 @@ const ANALYTIC_METRIC_TO_HISTORY: Partial<Record<AnalyticsMetricId, keyof Assess
   numbness: 'numbness',
   temperature: 'temperature',
   vision: 'vision',
+  speech: 'speech',
   neurological: 'neurological',
   psychological: 'psychological',
 };
@@ -26,8 +27,26 @@ const SCHEDULE_ID_TO_METRIC: Partial<Record<AssessmentScheduleId, AnalyticsMetri
   mobility: 'mobility',
   numbness: 'numbness',
   temperature: 'temperature',
+  balance: 'balance',
   vision: 'vision',
+  speech: 'speech',
   neurological: 'neurological',
+  physiological: 'physiological',
+  psychological: 'psychological',
+};
+
+const METRIC_ID_TO_SCHEDULE: Partial<Record<AnalyticsMetricId, AssessmentScheduleId>> = {
+  impact: 'impact',
+  pain: 'physical',
+  'strength-reflex': 'strength-reflex',
+  mobility: 'mobility',
+  numbness: 'numbness',
+  temperature: 'temperature',
+  balance: 'balance',
+  vision: 'vision',
+  speech: 'speech',
+  neurological: 'neurological',
+  physiological: 'physiological',
   psychological: 'psychological',
 };
 
@@ -49,18 +68,27 @@ export function assessmentScheduleIdToAnalyticsMetric(
   return SCHEDULE_ID_TO_METRIC[id] ?? null;
 }
 
+export function analyticsMetricIdToAssessmentScheduleId(
+  metricId: string,
+): AssessmentScheduleId | null {
+  return METRIC_ID_TO_SCHEDULE[metricId as AnalyticsMetricId] ?? null;
+}
+
 export function buildCircleAssessmentSchedulePreferences(params: {
   treatmentPhase?: string | null;
   appMode?: string | null;
-  healthAssessmentsEnabled?: boolean;
+  scheduleEnabled?: boolean;
+  featuresVisibility?: Record<string, unknown>;
 }): {
-  featuresVisibility: { healthAssessments: boolean };
+  featuresVisibility: Record<string, unknown>;
   appMode?: string;
   fullUserDetails: { clinical: { treatmentPhase?: string } };
 } {
   return {
     featuresVisibility: {
-      healthAssessments: params.healthAssessmentsEnabled !== false,
+      ...(params.featuresVisibility ?? {}),
+      // Circle Schedule stays available to the care team even if the tablet Schedule tab is off.
+      schedule: params.scheduleEnabled !== false,
     },
     appMode: params.appMode ?? undefined,
     fullUserDetails: {
@@ -79,14 +107,16 @@ export function buildCircleAssessmentScheduleContext(params: {
   byMetricId: Map<string, PatientAnalyticsSummary>;
   treatmentPhase?: string | null;
   appMode?: string | null;
-  healthAssessmentsEnabled?: boolean;
+  scheduleEnabled?: boolean;
+  featuresVisibility?: Record<string, unknown>;
   remoteAssessmentSchedule?: RemoteAssessmentSchedule;
 }): CircleAssessmentScheduleContext {
   return {
     preferences: buildCircleAssessmentSchedulePreferences({
       treatmentPhase: params.treatmentPhase,
       appMode: params.appMode,
-      healthAssessmentsEnabled: params.healthAssessmentsEnabled,
+      scheduleEnabled: params.scheduleEnabled,
+      featuresVisibility: params.featuresVisibility,
     }),
     remoteAssessmentSchedule: params.remoteAssessmentSchedule,
     histories: buildAssessmentHistoryMapFromAnalytics(params.byMetricId),

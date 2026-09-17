@@ -21,7 +21,7 @@ import type {
   CareCalendarEntry,
   CareCalendarEntryKind,
 } from './careCalendar';
-import { formatCareCalendarTimeRange, isCareCalendarAppointmentPast } from './careCalendar';
+import { formatCareCalendarTimeRange, isCareCalendarAppointmentPast, careCalendarDateKey, parseCareCalendarDateKey, expandCareEntryDateKeys } from './careCalendar';
 import {
   canParticipateInCircleOpenThread,
   canViewCircleAppointmentInvites,
@@ -36,6 +36,9 @@ export type {
 } from './careCalendar';
 
 export const APPOINTMENT_INVITE_POST_MARKER = 'Appointment invite —';
+
+/** Pending accept/decline invites surface in Tasks for this many days ahead. */
+export const SCHEDULE_PENDING_RSVP_HORIZON_DAYS = 90;
 
 export type ParsedAppointmentInvitePost = {
   entryId: string;
@@ -179,11 +182,16 @@ export function formatAppointmentInvitePostText(params: {
   startDateKey: string;
   startTimeMinutes?: number;
   endTimeMinutes?: number;
+  timezoneId?: string;
   kind: CareCalendarEntryKind;
   visitSubtype?: string;
   inviteeNames: string[];
 }): string {
-  const timeLabel = formatCareCalendarTimeRange(params.startTimeMinutes, params.endTimeMinutes);
+  const timeLabel = formatCareCalendarTimeRange(
+    params.startTimeMinutes,
+    params.endTimeMinutes,
+    params.timezoneId,
+  );
   const dateLabel = new Date(`${params.startDateKey}T12:00:00`).toLocaleDateString(undefined, {
     weekday: 'short',
     month: 'short',
@@ -836,6 +844,7 @@ export async function publishCareCalendarInvitePosts(
       | 'startDateKey'
       | 'startTimeMinutes'
       | 'endTimeMinutes'
+      | 'timezoneId'
       | 'kind'
       | 'visitSubtype'
       | 'attendees'
@@ -879,9 +888,10 @@ export async function publishCareCalendarInvitePosts(
       entryId: params.entry.id,
       title: params.entry.title,
       startDateKey: params.entry.startDateKey,
-      startTimeMinutes: params.entry.startTimeMinutes,
-      endTimeMinutes: params.entry.endTimeMinutes,
-      kind: params.entry.kind,
+    startTimeMinutes: params.entry.startTimeMinutes,
+    endTimeMinutes: params.entry.endTimeMinutes,
+    timezoneId: params.entry.timezoneId,
+    kind: params.entry.kind,
       visitSubtype: params.entry.visitSubtype,
       inviteeNames: invitees.map((attendee) => attendee.name),
     });
@@ -960,13 +970,30 @@ export async function respondToCareCalendarInvite(
     memberRole?: string;
   },
 ): Promise<void> {
-  const entryRef = doc(db, 'patients', patientId, 'care_calendar', entryId);
-  const entrySnap = await getDoc(entryRef);
-  if (!entrySnap.exists()) {
-    throw new Error('Appointment not found.');
+  try {
+    await syncCircleMemberInviteContactId(
+      db,
+      patientId,
+      memberUid,
+      options?.managedContactId,
+      options?.memberDocContactId,
+      options?.memberRole,
+    );
+  } catch {
+    /* Member contactId repair helps family/friend RSVP rules; RSVP can still proceed. */
   }
 
-  const entryData = entrySnap.data() as Record<string, unknown>;
+  const entryRef = doc(db, 'patients', patientId, 'care_calendar', entryId);
+  let entryData: Record<string, unknown> | undefined;
+  try {
+    const entrySnap = await getDoc(entryRef);
+    if (entrySnap.exists()) {
+      entryData = entrySnap.data() as Record<string, unknown>;
+    }
+  } catch {
+    /* Family/friend invitees may be able to RSVP without reading the calendar doc. */
+  }
+
   const inviteContext: CareCalendarMemberInviteContext = {
     memberUid,
     contactId: options?.managedContactId ?? memberContactId,
@@ -974,33 +1001,46 @@ export async function respondToCareCalendarInvite(
     inviteContactId: options?.inviteContactId,
     displayName: options?.displayName,
   };
-  const parsedEntry = {
-    inviteeContactIds: Array.isArray(entryData.inviteeContactIds)
-      ? entryData.inviteeContactIds.map((id) => String(id)).filter(Boolean)
-      : undefined,
-    inviteeMemberUidByContactId:
-      entryData.inviteeMemberUidByContactId &&
-      typeof entryData.inviteeMemberUidByContactId === 'object'
-        ? Object.fromEntries(
-            Object.entries(
-              entryData.inviteeMemberUidByContactId as Record<string, unknown>,
-            ).map(([key, value]) => [key, String(value)]),
-          )
-        : undefined,
-    attendees: Array.isArray(entryData.attendees)
-      ? (entryData.attendees as CareCalendarAttendee[])
-      : undefined,
-    attendeeResponseSummary: parseAttendeeResponseSummary(
-      entryData.attendeeResponseSummary,
-    ),
-  };
-  const rsvpContactId = resolveCareCalendarRsvpContactIdForEntry(parsedEntry, inviteContext);
+  const parsedEntry = entryData
+    ? {
+        inviteeContactIds: Array.isArray(entryData.inviteeContactIds)
+          ? entryData.inviteeContactIds.map((id) => String(id)).filter(Boolean)
+          : undefined,
+        inviteeMemberUidByContactId:
+          entryData.inviteeMemberUidByContactId &&
+          typeof entryData.inviteeMemberUidByContactId === 'object'
+            ? Object.fromEntries(
+                Object.entries(
+                  entryData.inviteeMemberUidByContactId as Record<string, unknown>,
+                ).map(([key, value]) => [key, String(value)]),
+              )
+            : undefined,
+        attendees: Array.isArray(entryData.attendees)
+          ? (entryData.attendees as CareCalendarAttendee[])
+          : undefined,
+        attendeeResponseSummary: parseAttendeeResponseSummary(
+          entryData.attendeeResponseSummary,
+        ),
+      }
+    : {
+        inviteeContactIds: undefined,
+        inviteeMemberUidByContactId: undefined,
+        attendees: undefined,
+        attendeeResponseSummary: undefined,
+      };
+  const rsvpContactId = (
+    resolveCareCalendarRsvpContactIdForEntry(parsedEntry, inviteContext) ||
+    memberContactId.trim() ||
+    options?.managedContactId?.trim() ||
+    options?.inviteContactId?.trim() ||
+    ''
+  );
   if (!rsvpContactId) {
     throw new Error('Could not resolve invite contact for RSVP.');
   }
 
   const now = Date.now();
-  const beforeUids = Array.isArray(entryData.inviteeMemberUids)
+  const beforeUids = Array.isArray(entryData?.inviteeMemberUids)
     ? (entryData.inviteeMemberUids as string[]).map(String)
     : [];
   const needsUidBackfill =
@@ -1025,27 +1065,18 @@ export async function respondToCareCalendarInvite(
   }
 
   await updateDoc(entryRef, patch);
-  const verifySnap = await getDoc(entryRef);
-  const verifyData = verifySnap.data() as Record<string, unknown> | undefined;
-  const verifySummary = parseAttendeeResponseSummary(verifyData?.attendeeResponseSummary);
-  const verifyRow = verifySummary?.[rsvpContactId];
-  if (verifyRow?.response !== response || verifyRow.respondedByUid !== memberUid) {
-    throw new Error('Missing or insufficient permissions.');
-  }
 
   try {
-    if (options?.managedContactId) {
-      await syncCircleMemberInviteContactId(
-        db,
-        patientId,
-        memberUid,
-        options.managedContactId,
-        options.memberDocContactId,
-        options.memberRole,
-      );
+    const verifySnap = await getDoc(entryRef);
+    const verifyData = verifySnap.data() as Record<string, unknown> | undefined;
+    const verifySummary = parseAttendeeResponseSummary(verifyData?.attendeeResponseSummary);
+    const verifyRow = verifySummary?.[rsvpContactId];
+    if (verifyRow && (verifyRow.response !== response || verifyRow.respondedByUid !== memberUid)) {
+      throw new Error('Could not save your response.');
     }
-  } catch {
-    /* RSVP succeeded; member contact sync is best-effort */
+  } catch (err) {
+    if (err instanceof Error && err.message === 'Could not save your response.') throw err;
+    /* Re-read is optional: family/friend may lack calendar read after a successful RSVP write. */
   }
 }
 
@@ -1148,20 +1179,44 @@ export function isSyntheticAppointmentInvitePostId(id: string): boolean {
   return id.startsWith(SYNTHETIC_APPOINTMENT_INVITE_POST_ID_PREFIX);
 }
 
+function attendeeMatchingContextContactIds(
+  context: CareCalendarMemberInviteContext,
+): string[] {
+  const effective = memberEffectiveInviteContactId(context);
+  const rest = memberInviteContactIds(context).filter((id) => id !== effective);
+  return effective ? [effective, ...rest] : rest;
+}
+
+function attendeeForMappedMemberUid(
+  attendees: CareCalendarAttendee[],
+  memberUid: string,
+  inviteeMemberUidByContactId?: Record<string, string>,
+): CareCalendarAttendee | undefined {
+  if (!inviteeMemberUidByContactId) return undefined;
+  for (const [contactId, uid] of Object.entries(inviteeMemberUidByContactId)) {
+    if (uid !== memberUid) continue;
+    const match = attendees.find((attendee) => attendee.contactId === contactId);
+    if (match) return match;
+  }
+  return undefined;
+}
+
 export function findCareCalendarAttendeeForMember(
   attendees: CareCalendarAttendee[] | undefined,
   context: CareCalendarMemberInviteContext,
+  inviteeMemberUidByContactId?: Record<string, string>,
 ): CareCalendarAttendee | undefined {
   if (!attendees?.length) return undefined;
-  const contactIds = [
-    context.contactId,
-    context.memberDocContactId,
-    context.inviteContactId,
-  ].filter((id): id is string => Boolean(id));
-  for (const id of contactIds) {
+  for (const id of attendeeMatchingContextContactIds(context)) {
     const match = attendees.find((attendee) => attendee.contactId === id);
     if (match) return match;
   }
+  const byUid = attendeeForMappedMemberUid(
+    attendees,
+    context.memberUid,
+    inviteeMemberUidByContactId,
+  );
+  if (byUid) return byUid;
   const normalizedName = context.displayName
     ? normalizeContactLabel(context.displayName)
     : '';
@@ -1190,37 +1245,94 @@ function attendeeInviteResponseForMember(
     entry.attendeeResponseSummary,
     entry.inviteeMemberUidByContactId,
   );
-  const self = findCareCalendarAttendeeForMember(attendees, context);
+  const self = findCareCalendarAttendeeForMember(
+    attendees,
+    context,
+    entry.inviteeMemberUidByContactId,
+  );
+  return self?.response ?? 'pending';
+}
+
+/**
+ * Current member's invite RSVP for a calendar day event, or null when they are not
+ * an invitee who needs to accept/decline.
+ */
+export function resolveSelfInviteRsvpForCareEvent(
+  event: {
+    attendees?: CareCalendarAttendee[];
+    attendeeResponseSummary?: CareCalendarEntry['attendeeResponseSummary'];
+    inviteeMemberUidByContactId?: Record<string, string>;
+    inviteeMemberUids?: string[];
+  },
+  context: CareCalendarMemberInviteContext,
+): CareCalendarAttendeeResponse | null {
+  if (!context.memberUid) return null;
+  const attendees = mergeAttendeeResponses(
+    event.attendees,
+    event.attendeeResponseSummary,
+    event.inviteeMemberUidByContactId,
+  );
+  const invitedByUid =
+    (event.inviteeMemberUids ?? []).includes(context.memberUid) ||
+    Object.values(event.inviteeMemberUidByContactId ?? {}).includes(context.memberUid);
+  const self = findCareCalendarAttendeeForMember(
+    attendees,
+    context,
+    event.inviteeMemberUidByContactId,
+  );
+  if (!invitedByUid && (!self || !attendeeNeedsAppointmentInvite(self))) return null;
   return self?.response ?? 'pending';
 }
 
 export function pendingAppointmentInviteEntriesForMember(
   entries: CareCalendarEntry[],
   context: CareCalendarMemberInviteContext,
-): CareCalendarEntry[] {
+  options?: { now?: Date; horizonDays?: number },
+): Array<{ entry: CareCalendarEntry; dateKey: string }> {
   if (!context.memberUid) return [];
-  return entries.filter((entry) => {
-    if (entry.cancelledAt) return false;
-    if (
-      isCareCalendarAppointmentPast(
-        entry.startDateKey,
-        entry.startTimeMinutes,
-        entry.endTimeMinutes,
-      )
-    ) {
-      return false;
-    }
+  const now = options?.now ?? new Date();
+  const horizonDays = Math.max(0, options?.horizonDays ?? SCHEDULE_PENDING_RSVP_HORIZON_DAYS);
+  const todayKey = careCalendarDateKey(now);
+  const rangeStart = parseCareCalendarDateKey(todayKey);
+  const rangeEnd = new Date(rangeStart);
+  rangeEnd.setDate(rangeEnd.getDate() + horizonDays);
+
+  const rows: Array<{ entry: CareCalendarEntry; dateKey: string }> = [];
+  for (const entry of entries) {
+    if (entry.cancelledAt) continue;
+
+    const upcomingDateKeys = expandCareEntryDateKeys(entry, rangeStart, rangeEnd).filter(
+      (key) =>
+        !isCareCalendarAppointmentPast(
+          key,
+          entry.startTimeMinutes,
+          entry.endTimeMinutes,
+          now,
+          entry.timezoneId,
+        ),
+    );
+    if (!upcomingDateKeys.length) continue;
+
     const attendees = mergeAttendeeResponses(
       entry.attendees,
       entry.attendeeResponseSummary,
       entry.inviteeMemberUidByContactId,
     );
-    const invitedByUid = (entry.inviteeMemberUids ?? []).includes(context.memberUid);
-    const self = findCareCalendarAttendeeForMember(attendees, context);
-    if (!invitedByUid && (!self || !attendeeNeedsAppointmentInvite(self))) return false;
+    const invitedByUid =
+      (entry.inviteeMemberUids ?? []).includes(context.memberUid) ||
+      Object.values(entry.inviteeMemberUidByContactId ?? {}).includes(context.memberUid);
+    const self = findCareCalendarAttendeeForMember(
+      attendees,
+      context,
+      entry.inviteeMemberUidByContactId,
+    );
+    if (!invitedByUid && (!self || !attendeeNeedsAppointmentInvite(self))) continue;
     const response = attendeeInviteResponseForMember(entry, context);
-    return response !== 'accepted' && response !== 'declined';
-  });
+    if (response === 'accepted' || response === 'declined') continue;
+
+    rows.push({ entry, dateKey: upcomingDateKeys[0]! });
+  }
+  return rows;
 }
 
 function hasVisibleInvitePostForEntry(
@@ -1254,6 +1366,7 @@ export function buildSyntheticAppointmentInvitePost(
     startDateKey: entry.startDateKey,
     startTimeMinutes: entry.startTimeMinutes,
     endTimeMinutes: entry.endTimeMinutes,
+    timezoneId: entry.timezoneId,
     kind: entry.kind,
     visitSubtype: entry.visitSubtype,
     inviteeNames: invitees.map((attendee) => attendee.name),
@@ -1284,8 +1397,8 @@ export function mergeAppointmentInvitePostsWithCareCalendar(
   if (memberRole && !canViewCircleAppointmentInvites(memberRole)) return posts;
   const pending = pendingAppointmentInviteEntriesForMember(entries, context);
   const synthetic = pending
-    .filter((entry) => !hasVisibleInvitePostForEntry(posts, entry.id, context))
-    .map((entry) => buildSyntheticAppointmentInvitePost(entry, patientId, context.memberUid));
+    .filter(({ entry }) => !hasVisibleInvitePostForEntry(posts, entry.id, context))
+    .map(({ entry }) => buildSyntheticAppointmentInvitePost(entry, patientId, context.memberUid));
   if (!synthetic.length) return posts;
   return [...posts, ...synthetic];
 }

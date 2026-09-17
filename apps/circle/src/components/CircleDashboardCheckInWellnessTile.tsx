@@ -1,15 +1,25 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
+import { useMemo } from 'react';
 import { Activity } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type {
   CheckInWellnessRingFrame,
   DailyCheckInMetricAverages,
 } from '../lib/circleCheckInWellnessMetrics';
-import { CheckInWellnessRingVisual } from './CheckInWellnessRingVisual';
+import {
+  DASHBOARD_RECENCY_TINT_CLASSES,
+  type AlertAttentionRecencyUrgency,
+} from '../lib/circleDashboardStats';
+import { useCheckInWellnessDayPlayback } from '../hooks/useCheckInWellnessDayPlayback';
+import { CheckInWellnessWeekControls } from './CheckInWellnessRingVisual';
+import { CheckInWellnessBarsVisual } from './CheckInWellnessBarsVisual';
 
 type CircleDashboardCheckInWellnessTileProps = {
   averages: DailyCheckInMetricAverages;
   frames?: CheckInWellnessRingFrame[];
+  recencyTint?: AlertAttentionRecencyUrgency;
+  /** Full-row layout: title + day picker left, bars right. */
+  wide?: boolean;
   onOpenModal?: () => void;
   onOpenDetails?: () => void;
   t: (key: string, params?: Record<string, unknown>) => string;
@@ -18,9 +28,18 @@ type CircleDashboardCheckInWellnessTileProps = {
   className?: string;
 };
 
+const WELLNESS_ICON_TONE_CLASSES: Record<AlertAttentionRecencyUrgency, string> = {
+  neutral: 'bg-blue-100 text-blue-700 group-hover:bg-blue-600 group-hover:text-white',
+  green: 'bg-emerald-100 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white',
+  orange: 'bg-amber-100 text-amber-800 group-hover:bg-amber-600 group-hover:text-white',
+  red: 'bg-rose-100 text-rose-700 group-hover:bg-rose-600 group-hover:text-white',
+};
+
 export function CircleDashboardCheckInWellnessTile({
-  averages,
-  frames,
+  averages: _averages,
+  frames = [],
+  recencyTint = 'neutral',
+  wide = false,
   onOpenModal,
   onOpenDetails,
   t,
@@ -28,10 +47,53 @@ export function CircleDashboardCheckInWellnessTile({
   bodyClassName,
   className,
 }: CircleDashboardCheckInWellnessTileProps) {
+  const weekFrameKey = useMemo(
+    () =>
+      frames
+        .map((frame) => `${frame.date}:${frame.hasCheckIn}:${frame.mood}:${frame.pain}:${frame.sleep}`)
+        .join('|'),
+    [frames],
+  );
+  const { selectedIndex, setSelectedIndex, playbackRootRef } = useCheckInWellnessDayPlayback(
+    frames.length,
+    weekFrameKey,
+    frames.length > 0,
+  );
+
+  const cta = onOpenDetails ? (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        onOpenDetails();
+      }}
+      className={cn(
+        'relative z-20 pointer-events-auto text-left text-[11px] font-bold uppercase tracking-wider text-emerald-600 hover:text-emerald-700 transition-colors',
+        !wide && 'mt-2',
+        bodyClassName,
+      )}
+    >
+      {t('dashboard.checkInWellnessRing.tileCta')}
+    </button>
+  ) : (
+    <p
+      className={cn(
+        'relative text-[11px] font-bold uppercase tracking-wider text-emerald-600',
+        !wide && 'mt-2',
+        bodyClassName,
+      )}
+    >
+      {t('dashboard.checkInWellnessRing.tileCta')}
+    </p>
+  );
+
   return (
     <div
+      ref={playbackRootRef}
       className={cn(
-        'relative p-4 sm:p-5 w-full h-full flex flex-col bg-white rounded-[28px] border border-emerald-100 shadow-sm hover:shadow-lg hover:border-emerald-200 transition-all group overflow-hidden',
+        'relative p-4 sm:p-5 w-full h-full flex rounded-[28px] border shadow-sm hover:shadow-lg transition-all group overflow-hidden',
+        DASHBOARD_RECENCY_TINT_CLASSES[recencyTint],
+        wide ? 'flex-row items-stretch gap-3 sm:gap-5' : 'flex-col',
         className,
       )}
     >
@@ -46,56 +108,79 @@ export function CircleDashboardCheckInWellnessTile({
 
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.06),transparent_55%)]" />
 
-      <div className="relative z-10 flex flex-col h-full pointer-events-none">
-        <div className="relative flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+      <div
+        className={cn(
+          'relative z-10 flex min-w-0',
+          wide
+            ? 'w-[42%] sm:w-[40%] h-full flex-col shrink-0'
+            : 'flex-col h-full pointer-events-none',
+        )}
+      >
+        <div className={cn('flex items-center gap-2.5 min-w-0', !wide && 'mb-2')}>
+          <div
+            className={cn(
+              'w-10 h-10 rounded-xl flex items-center justify-center transition-colors shrink-0',
+              WELLNESS_ICON_TONE_CLASSES[recencyTint],
+            )}
+          >
             <Activity size={20} />
           </div>
-          <div className="min-w-0">
-            <p className={cn('font-bold text-slate-800', titleClassName)}>
-              {t('dashboard.checkInWellnessRing.title')}
-            </p>
-            <p className={cn('text-xs text-slate-500', bodyClassName)}>
-              {t('dashboard.checkInWellnessRing.tileSubtitle', { days: averages.windowDays })}
-            </p>
-          </div>
-        </div>
-
-        <div className="relative z-20 flex-1 min-h-0 -mx-2 pointer-events-auto">
-          <CheckInWellnessRingVisual
-            averages={averages}
-            frames={frames}
-            compact
-            t={t}
-            className="h-full cursor-pointer"
-          />
-        </div>
-
-        {onOpenDetails ? (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpenDetails();
-            }}
-            className={cn(
-              'relative z-20 pointer-events-auto text-left mt-2 text-[11px] font-bold uppercase tracking-wider text-emerald-600 hover:text-emerald-700 transition-colors',
-              bodyClassName,
-            )}
-          >
-            {t('dashboard.checkInWellnessRing.tileCta')}
-          </button>
-        ) : (
           <p
             className={cn(
-              'relative text-[11px] font-bold uppercase tracking-wider text-emerald-600 mt-2',
-              bodyClassName,
+              'font-bold text-slate-800 text-sm leading-tight line-clamp-2 min-w-0',
+              titleClassName,
             )}
           >
-            {t('dashboard.checkInWellnessRing.tileCta')}
+            {t('dashboard.checkInWellnessRing.title')}
           </p>
-        )}
+        </div>
+
+        {wide && frames.length > 0 ? (
+          <div className="relative z-20 flex-1 min-h-0 flex flex-col justify-center pointer-events-auto">
+            <CheckInWellnessWeekControls
+              frames={frames}
+              selectedIndex={selectedIndex}
+              onSelect={setSelectedIndex}
+              compact
+              aside
+              t={t}
+            />
+          </div>
+        ) : null}
+
+        {wide ? <div className="shrink-0">{cta}</div> : null}
+
+        {!wide ? (
+          <>
+            <div className="relative z-20 flex-1 min-h-0 -mx-2 pointer-events-auto">
+              <CheckInWellnessBarsVisual
+                frames={frames}
+                compact
+                selectedIndex={selectedIndex}
+                onSelectedIndexChange={setSelectedIndex}
+                t={t}
+                className="h-full"
+              />
+            </div>
+            {cta}
+          </>
+        ) : null}
       </div>
+
+      {wide ? (
+        <div className="relative z-20 flex-1 min-h-0 min-w-0 -my-2 -mr-2 sm:-my-2.5 sm:-mr-2.5 pointer-events-auto">
+          <CheckInWellnessBarsVisual
+            frames={frames}
+            compact
+            hideWeekControls
+            selectedIndex={selectedIndex}
+            onSelectedIndexChange={setSelectedIndex}
+            t={t}
+            className="h-full"
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
+

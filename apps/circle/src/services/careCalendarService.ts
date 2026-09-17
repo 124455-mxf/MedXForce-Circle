@@ -7,6 +7,7 @@ import {
   orderBy,
   query,
   updateDoc,
+  waitForPendingWrites,
   where,
   type Firestore,
   type Unsubscribe,
@@ -29,11 +30,15 @@ import {
   parseCircleMemberThreadPost,
 } from '@medxforce/shared';
 import {
+  buildCareCalendarEpisodeFirestorePatch,
+  isEpisodeOnlyCareCalendarUpdate,
   isValidVisitSubtypeForKind,
   parseCareCalendarAppointmentTasks,
-  sanitizeCareCalendarAppointmentTasks,
+  parseClinicalReferenceIds,
   supportsCareCalendarAppointmentEpisode,
   type CareCalendarAppointmentTask,
+  type CareCalendarVisitBrief,
+  type CareCalendarVisitDebrief,
   type CareCalendarVisitSubtype,
 } from '@medxforce/shared';
 import {
@@ -45,7 +50,10 @@ import {
   publishCareCalendarInvitePosts,
   resolveInviteeMemberMaps,
   sanitizeCareCalendarAddressForFirestore,
+  parseCareCalendarVisitBrief,
+  parseCareCalendarVisitDebrief,
 } from '@medxforce/shared';
+import { patchCareCalendarEpisodeFields } from './careCalendarEpisodeApi';
 
 const entriesCollection = (db: Firestore, patientId: string) =>
   collection(db, 'patients', patientId, 'care_calendar');
@@ -143,17 +151,31 @@ function parseVisitSubtype(
 function episodeFieldsFromData(
   kind: CareCalendarEntryKind,
   data: Record<string, unknown>,
-): Pick<CareCalendarEntry, 'visitSubtype' | 'supportingNotes' | 'appointmentTasks'> {
+): Pick<
+  CareCalendarEntry,
+  | 'visitSubtype'
+  | 'supportingNotes'
+  | 'appointmentTasks'
+  | 'clinicalReferenceIds'
+  | 'visitBrief'
+  | 'visitDebrief'
+> {
   if (!supportsCareCalendarAppointmentEpisode(kind)) {
     return {};
   }
   const visitSubtype = parseVisitSubtype(kind, data.visitSubtype);
   const supportingNotes = data.supportingNotes ? String(data.supportingNotes).trim() : undefined;
   const appointmentTasks = parseCareCalendarAppointmentTasks(data.appointmentTasks);
+  const clinicalReferenceIds = parseClinicalReferenceIds(data.clinicalReferenceIds);
+  const visitBrief = parseCareCalendarVisitBrief(data.visitBrief);
+  const visitDebrief = parseCareCalendarVisitDebrief(data.visitDebrief);
   return {
     ...(visitSubtype ? { visitSubtype } : {}),
     ...(supportingNotes ? { supportingNotes: supportingNotes.slice(0, 2000) } : {}),
     ...(appointmentTasks ? { appointmentTasks } : {}),
+    ...(clinicalReferenceIds ? { clinicalReferenceIds } : {}),
+    ...(visitBrief ? { visitBrief } : {}),
+    ...(visitDebrief ? { visitDebrief } : {}),
   };
 }
 
@@ -187,6 +209,10 @@ function parseEntry(id: string, data: Record<string, unknown>): CareCalendarEntr
     startTimeMinutes:
       data.startTimeMinutes != null ? Number(data.startTimeMinutes) : undefined,
     endTimeMinutes: data.endTimeMinutes != null ? Number(data.endTimeMinutes) : undefined,
+    timezoneId:
+      typeof data.timezoneId === 'string' && data.timezoneId.trim()
+        ? data.timezoneId.trim()
+        : undefined,
     recurrence: parseRecurrence(data.recurrence),
     address: parseAddress(data.address),
     attendees,
@@ -422,12 +448,16 @@ export type CareCalendarEntryInput = {
   startDateKey: string;
   startTimeMinutes?: number;
   endTimeMinutes?: number;
+  timezoneId?: string;
   recurrence: CareCalendarRecurrence;
   address?: CareCalendarAddress;
   attendees?: CareCalendarAttendee[];
   visitSubtype?: CareCalendarVisitSubtype;
   supportingNotes?: string;
   appointmentTasks?: CareCalendarAppointmentTask[];
+  clinicalReferenceIds?: string[];
+  visitBrief?: CareCalendarVisitBrief | null;
+  visitDebrief?: CareCalendarVisitDebrief | null;
   doctorName?: string;
   source: 'patient' | 'circle';
   createdByName: string;
@@ -462,56 +492,34 @@ function attendeesFirestorePayload(
 
 function episodeFirestorePayload(
   kind: CareCalendarEntryKind,
-  input: Pick<CareCalendarEntryInput, 'visitSubtype' | 'supportingNotes' | 'appointmentTasks'>,
+  input: Pick<
+    CareCalendarEntryInput,
+    | 'visitSubtype'
+    | 'supportingNotes'
+    | 'appointmentTasks'
+    | 'clinicalReferenceIds'
+    | 'visitBrief'
+    | 'visitDebrief'
+  >,
 ): Record<string, unknown> {
-  if (!supportsCareCalendarAppointmentEpisode(kind)) {
-    return {
-      visitSubtype: null,
-      supportingNotes: null,
-      appointmentTasks: null,
-    };
-  }
-  const tasks = input.appointmentTasks?.length
-    ? sanitizeCareCalendarAppointmentTasks(input.appointmentTasks)
-    : [];
-  return {
-    visitSubtype:
-      input.visitSubtype && isValidVisitSubtypeForKind(kind, input.visitSubtype)
-        ? input.visitSubtype
-        : null,
-    supportingNotes: input.supportingNotes?.trim().slice(0, 2000) || null,
-    appointmentTasks: tasks.length ? tasks : null,
-  };
+  return buildCareCalendarEpisodeFirestorePatch(kind, input);
 }
 
 function episodeFirestorePatch(
   kind: CareCalendarEntryKind,
-  input: Partial<Pick<CareCalendarEntryInput, 'visitSubtype' | 'supportingNotes' | 'appointmentTasks'>>,
+  input: Partial<
+    Pick<
+      CareCalendarEntryInput,
+      | 'visitSubtype'
+      | 'supportingNotes'
+      | 'appointmentTasks'
+      | 'clinicalReferenceIds'
+      | 'visitBrief'
+      | 'visitDebrief'
+    >
+  >,
 ): Record<string, unknown> {
-  if (!supportsCareCalendarAppointmentEpisode(kind)) {
-    return {
-      visitSubtype: null,
-      supportingNotes: null,
-      appointmentTasks: null,
-    };
-  }
-  const patch: Record<string, unknown> = {};
-  if (input.visitSubtype !== undefined) {
-    patch.visitSubtype =
-      input.visitSubtype && isValidVisitSubtypeForKind(kind, input.visitSubtype)
-        ? input.visitSubtype
-        : null;
-  }
-  if (input.supportingNotes !== undefined) {
-    patch.supportingNotes = input.supportingNotes?.trim().slice(0, 2000) || null;
-  }
-  if (input.appointmentTasks !== undefined) {
-    const tasks = input.appointmentTasks?.length
-      ? sanitizeCareCalendarAppointmentTasks(input.appointmentTasks)
-      : [];
-    patch.appointmentTasks = tasks.length ? tasks : null;
-  }
-  return patch;
+  return buildCareCalendarEpisodeFirestorePatch(kind, input);
 }
 
 export type CareCalendarSaveResult = {
@@ -542,6 +550,7 @@ export async function createCareCalendarEntry(
     startDateKey: input.startDateKey,
     startTimeMinutes: input.startTimeMinutes ?? null,
     endTimeMinutes: input.endTimeMinutes ?? null,
+    timezoneId: input.timezoneId?.trim() || null,
     recurrence: input.recurrence,
     address: sanitizeCareCalendarAddressForFirestore(input.address),
     attendees: attendeePayload.attendees,
@@ -570,9 +579,10 @@ export async function createCareCalendarEntry(
         startDateKey: input.startDateKey,
         startTimeMinutes: input.startTimeMinutes,
         endTimeMinutes: input.endTimeMinutes,
+        timezoneId: input.timezoneId,
         kind: input.kind,
         visitSubtype: input.visitSubtype,
-        attendees: attendeePayload.attendees,
+        attendees: attendeePayload.attendees ?? undefined,
       },
       previousAttendees: inviteContext.previousAttendees,
       authorUid: inviteContext.authorUid,
@@ -592,6 +602,46 @@ export async function updateCareCalendarEntry(
   input: Partial<CareCalendarEntryInput>,
   inviteContext?: CareCalendarInviteContext,
 ): Promise<void> {
+  if (isEpisodeOnlyCareCalendarUpdate(input as Record<string, unknown>)) {
+    const episodePatch = episodeFirestorePatch(input.kind!, {
+      ...(input.visitSubtype !== undefined ? { visitSubtype: input.visitSubtype } : {}),
+      ...(input.supportingNotes !== undefined ? { supportingNotes: input.supportingNotes } : {}),
+      ...(input.appointmentTasks !== undefined ? { appointmentTasks: input.appointmentTasks } : {}),
+      ...(input.clinicalReferenceIds !== undefined
+        ? { clinicalReferenceIds: input.clinicalReferenceIds }
+        : {}),
+      ...(input.visitBrief !== undefined ? { visitBrief: input.visitBrief } : {}),
+      ...(input.visitDebrief !== undefined ? { visitDebrief: input.visitDebrief } : {}),
+    });
+    try {
+      await updateDoc(doc(db, 'patients', patientId, 'care_calendar', entryId), {
+        ...episodePatch,
+        updatedAt: Date.now(),
+      });
+      await waitForPendingWrites(db);
+      return;
+    } catch (err) {
+      try {
+        await patchCareCalendarEpisodeFields({
+          patientId,
+          entryId,
+          kind: input.kind!,
+          ...(input.visitSubtype !== undefined ? { visitSubtype: input.visitSubtype } : {}),
+          ...(input.supportingNotes !== undefined ? { supportingNotes: input.supportingNotes } : {}),
+          ...(input.appointmentTasks !== undefined ? { appointmentTasks: input.appointmentTasks } : {}),
+          ...(input.clinicalReferenceIds !== undefined
+            ? { clinicalReferenceIds: input.clinicalReferenceIds }
+            : {}),
+          ...(input.visitBrief !== undefined ? { visitBrief: input.visitBrief } : {}),
+          ...(input.visitDebrief !== undefined ? { visitDebrief: input.visitDebrief } : {}),
+        });
+        return;
+      } catch {
+        throw err;
+      }
+    }
+  }
+
   const patch: Record<string, unknown> = { updatedAt: Date.now() };
   if (input.kind) patch.kind = input.kind;
   if (input.title != null) patch.title = input.title.trim();
@@ -602,6 +652,9 @@ export async function updateCareCalendarEntry(
   }
   if (input.endTimeMinutes !== undefined) {
     patch.endTimeMinutes = input.endTimeMinutes ?? null;
+  }
+  if (input.timezoneId !== undefined) {
+    patch.timezoneId = input.timezoneId?.trim() || null;
   }
   if (input.recurrence) patch.recurrence = input.recurrence;
   if (input.address !== undefined) {
@@ -630,12 +683,16 @@ export async function updateCareCalendarEntry(
     } else if (
       input.visitSubtype !== undefined ||
       input.supportingNotes !== undefined ||
-      input.appointmentTasks !== undefined
+      input.appointmentTasks !== undefined ||
+      input.clinicalReferenceIds !== undefined ||
+      input.visitBrief !== undefined ||
+      input.visitDebrief !== undefined
     ) {
       const isFullEpisodeSave =
         input.visitSubtype !== undefined &&
         input.supportingNotes !== undefined &&
-        input.appointmentTasks !== undefined;
+        input.appointmentTasks !== undefined &&
+        input.clinicalReferenceIds !== undefined;
       Object.assign(
         patch,
         isFullEpisodeSave
@@ -662,9 +719,10 @@ export async function updateCareCalendarEntry(
             startDateKey: input.startDateKey || '',
             startTimeMinutes: input.startTimeMinutes,
             endTimeMinutes: input.endTimeMinutes,
+            timezoneId: input.timezoneId,
             kind: input.kind || 'doctor',
             visitSubtype: input.visitSubtype,
-            attendees: attendeePayload.attendees,
+            attendees: attendeePayload.attendees ?? undefined,
           },
           previousAttendees: inviteContext.previousAttendees,
           authorUid: inviteContext.authorUid,

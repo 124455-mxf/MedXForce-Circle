@@ -16,6 +16,8 @@ type CircleDiaryEntryModalProps = {
   open: boolean;
   mode: 'create' | 'edit';
   entry?: CircleDiaryEntry;
+  /** Used for new entries so My journal starts private and Circle story starts shared. */
+  defaultVisibility?: Extract<CircleDiaryEntryDraft['visibility'], 'private' | 'circle'>;
   saving?: boolean;
   onClose: () => void;
   onSave: (draft: CircleDiaryEntryDraft) => void;
@@ -37,12 +39,15 @@ export function CircleDiaryEntryModal({
   open,
   mode,
   entry,
+  defaultVisibility = 'circle',
   saving = false,
   onClose,
   onSave,
 }: CircleDiaryEntryModalProps) {
   const t = useCircleT();
-  const [draft, setDraft] = useState<CircleDiaryEntryDraft>(() => emptyDiaryDraft());
+  const [draft, setDraft] = useState<CircleDiaryEntryDraft>(() =>
+    emptyDiaryDraft(Date.now(), defaultVisibility),
+  );
   const { isRecording, micError, setMicError, toggleRecording, stopRecording } = useDictation();
 
   const setBody = useCallback((body: string) => {
@@ -54,10 +59,10 @@ export function CircleDiaryEntryModal({
     if (mode === 'edit' && entry) {
       setDraft(diaryEntryToDraft(entry));
     } else {
-      setDraft(emptyDiaryDraft());
+      setDraft(emptyDiaryDraft(Date.now(), defaultVisibility));
     }
     setMicError(null);
-  }, [open, mode, entry, setMicError]);
+  }, [open, mode, entry, defaultVisibility, setMicError]);
 
   useEffect(() => {
     if (!open) stopRecording();
@@ -232,7 +237,7 @@ export function CircleDiaryEntryModal({
                 className={cn(
                   'flex flex-col items-center gap-2 p-3 rounded-xl border text-left transition-colors',
                   draft.visibility === 'circle'
-                    ? 'border-violet-200 bg-violet-50 text-violet-700'
+                    ? 'border-blue-200 bg-blue-50 text-blue-700'
                     : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
                 )}
               >

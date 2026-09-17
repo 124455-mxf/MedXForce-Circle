@@ -4,24 +4,83 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import type { FirebaseStorage } from 'firebase/storage';
-import { Camera, ClipboardList, Loader2, UserRound } from 'lucide-react';
+import { Camera, ChevronDown, ClipboardList, Loader2, UserRound } from 'lucide-react';
 import {
   displayProfileName,
   EMPTY_CIRCLE_PROFILE_SNAPSHOT,
+  canManageClinicalReferences,
   isAcceptedProfilePhotoFile,
   normalizeProfilePhotoFile,
   parseCircleProfileMeta,
   parseCircleProfileSnapshot,
   updateCirclePatientProfileFromProxy,
+  recordCareDiaryMilestones,
+  canManageCareTransitionPack,
+  careTransitionRegionFromCountry,
+  canonicalizeProfileCountry,
+  getBrowserTimeZone,
+  normalizeTimeZoneId,
+  normalizeMemberRole,
+  readCareTransitionReadinessState,
+  writeCareTransitionReadinessState,
+  ensureDraftCareTransitionPackForPhase,
   type CirclePatientProfileSnapshot,
   type CirclePatientSummary,
 } from '@medxforce/shared';
 import { CirclePatientProfileEditorModal } from './CirclePatientProfileEditorModal';
 import { CirclePatientProfileReview } from './CirclePatientProfileReview';
+import { CircleClinicalReferencesSection } from './CircleClinicalReferencesSection';
+import { CircleCareTransitionReadinessPanel } from './CircleCareTransitionReadinessPanel';
 import { CircleProfilePhotoCropModal } from './CircleProfilePhotoCropModal';
 import { dataUrlToBlob } from '../lib/imageCrop';
 import { isFirestoreQuotaError, pauseFirestoreBackgroundWrites } from '../lib/firestoreQuota';
 import { useCircleT } from '../lib/circleI18nContext';
+import { cn } from '../lib/utils';
+import { treatmentPhaseLabelT } from '../lib/dashboardI18n';
+import {
+  treatmentPhaseBadgeClass,
+  treatmentPhaseCardClass,
+} from '../lib/appModeUi';
+
+function accountInfoCollapsedStorageKey(patientId: string): string {
+  return `circle:patientAccountCollapsed:${patientId}`;
+}
+
+function readAccountInfoCollapsed(patientId: string): boolean {
+  try {
+    const raw = localStorage.getItem(accountInfoCollapsedStorageKey(patientId));
+    if (raw == null) return true;
+    return raw === '1';
+  } catch {
+    return true;
+  }
+}
+
+function AccountInfoField({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 space-y-1">
+      <span className="block text-slate-500 text-[10px] font-bold uppercase tracking-wide leading-snug">
+        {label}
+      </span>
+      <span
+        className={cn(
+          'block break-all leading-snug',
+          mono ? 'font-mono text-xs text-slate-800' : 'text-sm font-semibold text-slate-900',
+        )}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
 
 type EditableSection =
   | 'identity'
@@ -38,6 +97,11 @@ interface CirclePatientProfilePanelProps {
   patient: CirclePatientSummary;
   /** Admin embed: hide section icon/title (shown on collapsible summary instead). */
   compact?: boolean;
+  /** Work-tab embed: chrome/header provided by CirclePatientProfileScreen. */
+  embedded?: boolean;
+  onOpenCircleHelp?: () => void;
+  onOpenCareTransition?: () => void;
+  onOpenRemoteSettingsApplicationMode?: () => void;
 }
 
 function buildInitialProfileSnapshot(patient: CirclePatientSummary): CirclePatientProfileSnapshot {
@@ -60,6 +124,10 @@ export function CirclePatientProfilePanel({
   storage,
   patient,
   compact = false,
+  embedded = false,
+  onOpenCircleHelp,
+  onOpenCareTransition,
+  onOpenRemoteSettingsApplicationMode,
 }: CirclePatientProfilePanelProps) {
   const t = useCircleT();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -78,9 +146,13 @@ export function CirclePatientProfilePanel({
   const [error, setError] = useState<string | null>(null);
   const [editSection, setEditSection] = useState<EditableSection | null>(null);
   const [fileToCrop, setFileToCrop] = useState<File | null>(null);
+  const [accountCollapsed, setAccountCollapsed] = useState(() =>
+    readAccountInfoCollapsed(patient.patientId),
+  );
 
   const canEdit = !!patient.capabilities.remoteSettings;
   const showClinical = !!patient.capabilities.viewClinicalData;
+  const showClinicalReferences = canManageClinicalReferences(patient.capabilities);
   const workingSnapshot = snapshot ?? draftSnapshot;
 
   useEffect(() => {
@@ -94,10 +166,24 @@ export function CirclePatientProfilePanel({
   }, [canEdit, loading, patient, snapshot]);
 
   useEffect(() => {
+    // Clear immediately on patient switch so a save/photo cannot write the previous
+    // patient's snapshot into the newly selected patientId.
+    let cancelled = false;
     setLoading(true);
-    return onSnapshot(
-      doc(db, 'patients', patient.patientId),
+    setSnapshot(null);
+    setDraftSnapshot(null);
+    setMetaSummary(null);
+    setAccountInfo(null);
+    setEditSection(null);
+    setFileToCrop(null);
+    setError(null);
+    setSaving(false);
+    setUploadingPhoto(false);
+    const subscribedPatientId = patient.patientId;
+    const unsub = onSnapshot(
+      doc(db, 'patients', subscribedPatientId),
       (snap) => {
+        if (cancelled) return;
         if (!snap.exists()) {
           setSnapshot(null);
           setMetaSummary(null);
@@ -120,26 +206,94 @@ export function CirclePatientProfilePanel({
         setLoading(false);
       },
       (err) => {
+        if (cancelled) return;
         console.warn('[CirclePatientProfilePanel]', err);
         setError(t('admin.profile.loadError'));
         setLoading(false);
       },
     );
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, [db, patient.patientId, t]);
 
   const handleSaveSection = useCallback(
-    async (next: CirclePatientProfileSnapshot) => {
+    async (
+      next: CirclePatientProfileSnapshot,
+      options?: { applyRecommendedTabletLayout?: boolean; startCareTransitionPack?: boolean },
+    ) => {
+      const targetPatientId = patient.patientId;
       setSaving(true);
       setError(null);
+      const previousPhase = workingSnapshot?.clinical?.treatmentPhase?.trim() || '';
+      const nextPhase = next.clinical.treatmentPhase?.trim() || '';
+      const normalizedNext: CirclePatientProfileSnapshot = {
+        ...next,
+        identity: {
+          ...next.identity,
+          country: canonicalizeProfileCountry(next.identity.country),
+          timezoneId: normalizeTimeZoneId(next.identity.timezoneId, getBrowserTimeZone()),
+        },
+      };
       try {
+        if (targetPatientId !== patient.patientId) {
+          throw new Error('Patient switched during profile save');
+        }
         await updateCirclePatientProfileFromProxy(
           db,
-          patient.patientId,
-          next,
+          targetPatientId,
+          normalizedNext,
           user.uid,
           patient.displayName,
           user.displayName || undefined,
+          options,
         );
+        void recordCareDiaryMilestones(db, {
+          patientId: targetPatientId,
+          authorUid: user.uid,
+          language: normalizedNext.identity.language || workingSnapshot?.identity.language,
+          treatmentPhase: { from: previousPhase, to: nextPhase },
+        }).catch((err) => console.warn('[careDiaryMilestone]', err));
+
+        if (
+          previousPhase !== nextPhase &&
+          options?.startCareTransitionPack !== false &&
+          canManageCareTransitionPack(normalizeMemberRole(patient.role))
+        ) {
+          void ensureDraftCareTransitionPackForPhase(
+            db,
+            targetPatientId,
+            previousPhase,
+            nextPhase,
+            user.uid,
+            { country: normalizedNext.identity.country, skipIfSameDraft: false },
+          ).catch((err) => console.warn('[careTransitionReadiness]', err));
+        }
+
+        // Keep care-transition region aligned with profile country unless manually overridden.
+        const previousCountry = workingSnapshot?.identity?.country ?? '';
+        const nextCountry = normalizedNext.identity.country ?? '';
+        if (
+          previousCountry !== nextCountry &&
+          canManageCareTransitionPack(normalizeMemberRole(patient.role))
+        ) {
+          void readCareTransitionReadinessState(db, targetPatientId)
+            .then(async (current) => {
+              if (targetPatientId !== patient.patientId) return;
+              if (current.regionManual) return;
+              const region = careTransitionRegionFromCountry(nextCountry);
+              if (region === current.region) return;
+              await writeCareTransitionReadinessState(
+                db,
+                targetPatientId,
+                { ...current, region, regionManual: false },
+                user.uid,
+              );
+            })
+            .catch((err) => console.warn('[careTransitionReadiness] region sync', err));
+        }
+
         setDraftSnapshot(null);
         setEditSection(null);
       } catch (err) {
@@ -154,7 +308,7 @@ export function CirclePatientProfilePanel({
         setSaving(false);
       }
     },
-    [db, patient.displayName, patient.patientId, t, user.uid],
+    [db, patient.displayName, patient.patientId, patient.role, t, user.uid, workingSnapshot],
   );
 
   const handleEditSection = (sectionId: string) => {
@@ -198,14 +352,18 @@ export function CirclePatientProfilePanel({
     if (!workingSnapshot) {
       throw new Error(t('admin.profile.profileNotLoaded'));
     }
+    const targetPatientId = patient.patientId;
     setUploadingPhoto(true);
     setError(null);
     try {
       const blob = await dataUrlToBlob(croppedDataUrl);
       // Proxy uploads use circle_profiles/{uid}/… — already allowed by Storage rules.
-      const path = `circle_profiles/${user.uid}/patient_${patient.patientId}_avatar.jpg`;
+      const path = `circle_profiles/${user.uid}/patient_${targetPatientId}_avatar.jpg`;
       const storageRef = ref(storage, path);
       await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' });
+      if (targetPatientId !== patient.patientId) {
+        throw new Error('Patient switched during photo upload');
+      }
       const url = await getDownloadURL(storageRef);
       const next: CirclePatientProfileSnapshot = {
         ...workingSnapshot,
@@ -213,7 +371,7 @@ export function CirclePatientProfilePanel({
       };
       await updateCirclePatientProfileFromProxy(
         db,
-        patient.patientId,
+        targetPatientId,
         next,
         user.uid,
         patient.displayName,
@@ -253,9 +411,9 @@ export function CirclePatientProfilePanel({
 
   return (
     <div className={compact ? 'p-4 space-y-4' : 'space-y-4'}>
-      {!compact && (
+      {!compact && !embedded && (
         <div className="flex items-start gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
+          <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
             <UserRound size={20} />
           </div>
           <div className="min-w-0 flex-1">
@@ -270,42 +428,70 @@ export function CirclePatientProfilePanel({
       )}
 
       {!patient.isPendingProvision && (
-        <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 space-y-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-blue-900">
-            {t('admin.profile.accountTitle')}
-          </p>
-          <div className="grid gap-2 text-sm">
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-600 shrink-0">{t('admin.profile.accountLoginEmail')}</span>
-              <span className="font-semibold text-slate-900 text-right break-all">
-                {accountInfo?.claimedLoginEmail || t('admin.profile.emptyValue')}
-              </span>
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => {
+              setAccountCollapsed((collapsed) => {
+                const next = !collapsed;
+                try {
+                  localStorage.setItem(accountInfoCollapsedStorageKey(patient.patientId), next ? '1' : '0');
+                } catch {
+                  /* ignore */
+                }
+                return next;
+              });
+            }}
+            className="w-full flex items-center justify-between gap-2 px-0.5 text-left"
+            aria-expanded={!accountCollapsed}
+            aria-label={
+              accountCollapsed
+                ? t('admin.profile.accountShowAria')
+                : t('admin.profile.accountHideAria')
+            }
+          >
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              {t('admin.profile.accountTitle')}
+            </h4>
+            <ChevronDown
+              size={16}
+              className={cn(
+                'shrink-0 text-slate-400 transition-transform',
+                accountCollapsed && '-rotate-90',
+              )}
+              aria-hidden
+            />
+          </button>
+          {!accountCollapsed ? (
+            <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-3 space-y-2">
+              <AccountInfoField
+                label={t('admin.profile.accountLoginEmail')}
+                value={accountInfo?.claimedLoginEmail || t('admin.profile.emptyValue')}
+              />
+              <AccountInfoField
+                label={t('admin.profile.accountUid')}
+                value={patient.patientId}
+                mono
+              />
+              {accountInfo?.claimedAt ? (
+                <AccountInfoField
+                  label={t('admin.profile.accountClaimedAt')}
+                  value={formatClaimedAt(accountInfo.claimedAt) || t('admin.profile.emptyValue')}
+                />
+              ) : null}
+              {accountInfo?.createdByProvisionId ? (
+                <AccountInfoField
+                  label={t('admin.profile.accountProvisionId')}
+                  value={accountInfo.createdByProvisionId}
+                  mono
+                />
+              ) : accountInfo?.provisioningPath === 'proxy_led' ? (
+                <p className="text-xs text-slate-500 leading-relaxed px-1 pt-1">
+                  {t('admin.profile.accountSelfSetup')}
+                </p>
+              ) : null}
             </div>
-            <div className="flex justify-between gap-3">
-              <span className="text-slate-600 shrink-0">{t('admin.profile.accountUid')}</span>
-              <span className="font-mono text-xs text-slate-800 text-right break-all">
-                {patient.patientId}
-              </span>
-            </div>
-            {accountInfo?.claimedAt ? (
-              <div className="flex justify-between gap-3">
-                <span className="text-slate-600 shrink-0">{t('admin.profile.accountClaimedAt')}</span>
-                <span className="font-medium text-slate-800 text-right">
-                  {formatClaimedAt(accountInfo.claimedAt)}
-                </span>
-              </div>
-            ) : null}
-            {accountInfo?.createdByProvisionId ? (
-              <div className="flex justify-between gap-3">
-                <span className="text-slate-600 shrink-0">{t('admin.profile.accountProvisionId')}</span>
-                <span className="font-mono text-xs text-slate-800 text-right break-all">
-                  {accountInfo.createdByProvisionId}
-                </span>
-              </div>
-            ) : accountInfo?.provisioningPath === 'proxy_led' ? (
-              <p className="text-xs text-slate-600 leading-relaxed">{t('admin.profile.accountSelfSetup')}</p>
-            ) : null}
-          </div>
+          ) : null}
         </div>
       )}
 
@@ -332,16 +518,16 @@ export function CirclePatientProfilePanel({
         </div>
       ) : (
         <>
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center gap-4">
+          <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center gap-4">
             <div className="relative shrink-0">
               {photoUrl ? (
                 <img
                   src={photoUrl}
                   alt=""
-                  className="w-16 h-16 rounded-2xl object-cover border border-slate-200 bg-white"
+                  className="w-16 h-16 rounded-2xl object-cover border border-slate-100 bg-white"
                 />
               ) : (
-                <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-300">
+                <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300">
                   <UserRound size={28} />
                 </div>
               )}
@@ -351,7 +537,7 @@ export function CirclePatientProfilePanel({
                     type="button"
                     onClick={() => fileRef.current?.click()}
                     disabled={uploadingPhoto || saving}
-                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-md disabled:opacity-50"
+                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-200 disabled:opacity-50 hover:bg-blue-700"
                     aria-label={t('admin.profile.changePhotoAria')}
                   >
                     {uploadingPhoto ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
@@ -374,9 +560,46 @@ export function CirclePatientProfilePanel({
               <p className="text-lg font-bold text-slate-800">
                 {displayProfileName(workingSnapshot, patient.displayName)}
               </p>
-              {workingSnapshot.identity.email && (
-                <p className="text-sm text-slate-500 truncate">{workingSnapshot.identity.email}</p>
-              )}
+              {showClinical && workingSnapshot.clinical.treatmentPhase ? (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <button
+                    type="button"
+                    onClick={() => (canEdit ? handleEditSection('clinical') : undefined)}
+                    disabled={!canEdit}
+                    className={cn(
+                      'inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-left transition-colors',
+                      treatmentPhaseCardClass(workingSnapshot.clinical.treatmentPhase, true),
+                      canEdit ? 'hover:opacity-95 cursor-pointer' : 'cursor-default',
+                    )}
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                      {t('admin.profile.fieldTreatmentPhase')}
+                    </span>
+                    <span
+                      className={cn(
+                        'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                        treatmentPhaseBadgeClass(workingSnapshot.clinical.treatmentPhase),
+                      )}
+                    >
+                      {treatmentPhaseLabelT(t, workingSnapshot.clinical.treatmentPhase)}
+                    </span>
+                  </button>
+                  {canEdit && onOpenRemoteSettingsApplicationMode ? (
+                    <button
+                      type="button"
+                      onClick={onOpenRemoteSettingsApplicationMode}
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-700 px-0.5"
+                    >
+                      {t('admin.profile.openApplicationModeSettings')}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+              {workingSnapshot.identity.email &&
+              workingSnapshot.identity.email.trim().toLowerCase() !==
+                (accountInfo?.claimedLoginEmail?.trim().toLowerCase() ?? '') ? (
+                <p className="text-sm text-slate-500 break-all">{workingSnapshot.identity.email}</p>
+              ) : null}
               {metaSummary && <p className="text-xs text-slate-500">{metaSummary}</p>}
             </div>
           </div>
@@ -384,12 +607,26 @@ export function CirclePatientProfilePanel({
           <CirclePatientProfileReview
             snapshot={workingSnapshot}
             showClinical={showClinical}
+            showReferences={showClinicalReferences}
             canEdit={canEdit}
             onEditSection={handleEditSection}
+            referencesContent={
+              showClinicalReferences ? (
+                <CircleClinicalReferencesSection
+                  db={db}
+                  patientId={patient.patientId}
+                  user={user}
+                  memberRole={patient.role}
+                  memberDisplayName={
+                    user.displayName || displayProfileName(workingSnapshot, patient.displayName)
+                  }
+                />
+              ) : undefined
+            }
           />
 
           {canEdit && (
-            <p className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 leading-relaxed">
+            <p className="text-xs text-slate-500 bg-blue-50/60 border border-blue-100 rounded-2xl px-3 py-2 leading-relaxed">
               {t('admin.profile.editableNote', {
                 clinical: showClinical ? t('admin.profile.editableClinicalSuffix') : '',
               })}
@@ -402,6 +639,17 @@ export function CirclePatientProfilePanel({
               {t('admin.profile.readOnlyLimited')}
             </p>
           )}
+
+          <CircleCareTransitionReadinessPanel
+            user={user}
+            db={db}
+            patient={patient}
+            compact
+            collapsible
+            profileSummary
+            onExpand={onOpenCareTransition}
+            onOpenCircleHelp={onOpenCircleHelp}
+          />
         </>
       )}
 

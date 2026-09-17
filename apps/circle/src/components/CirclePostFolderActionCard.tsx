@@ -1,4 +1,4 @@
-import { MessageCircle, Stethoscope } from 'lucide-react';
+import { CalendarClock, CircleDot, MessageCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { useCircleT } from '../lib/circleI18nContext';
 
@@ -7,7 +7,9 @@ export type CirclePostFolderActionVariant =
   | 'drop_in_resume'
   | 'drop_in_offline'
   | 'drop_in_dnd'
-  | 'record_visit';
+  | 'drop_in_disabled'
+  | 'record_visit'
+  | 'open_schedule';
 
 interface CirclePostFolderActionCardProps {
   variant: CirclePostFolderActionVariant;
@@ -23,7 +25,8 @@ export function CirclePostFolderActionCard({
   className,
 }: CirclePostFolderActionCardProps) {
   const isDropIn = variant.startsWith('drop_in_');
-  const isBlocked = variant === 'drop_in_offline' || variant === 'drop_in_dnd';
+  const isBlocked =
+    variant === 'drop_in_offline' || variant === 'drop_in_dnd' || variant === 'drop_in_disabled';
   const isResume = variant === 'drop_in_resume';
   const isActionable = !isBlocked && !!onAction;
 
@@ -37,8 +40,12 @@ export function CirclePostFolderActionCard({
         return t('circle.folderActionDropInOfflineTitle');
       case 'drop_in_dnd':
         return t('circle.folderActionDropInDndTitle');
+      case 'drop_in_disabled':
+        return t('dashboard.dropIn');
       case 'record_visit':
         return t('circle.folderActionRecordVisit');
+      case 'open_schedule':
+        return t('circle.folderActionAddInSchedule');
       default:
         return '';
     }
@@ -54,14 +61,20 @@ export function CirclePostFolderActionCard({
         return t('circle.folderActionDropInOfflineHint');
       case 'drop_in_dnd':
         return t('circle.folderActionDropInDndHint');
+      case 'drop_in_disabled':
+        return t('dashboard.dropInDisabledHint');
       case 'record_visit':
         return t('circle.folderActionRecordVisitHint');
+      case 'open_schedule':
+        return t('circle.folderActionAddInScheduleHint');
       default:
         return '';
     }
   })();
 
-  const Icon = isDropIn ? MessageCircle : Stethoscope;
+  const Icon =
+    variant === 'open_schedule' ? CalendarClock : isDropIn ? MessageCircle : CircleDot;
+  const isSchedule = variant === 'open_schedule';
 
   const content = (
     <>
@@ -70,11 +83,13 @@ export function CirclePostFolderActionCard({
           'w-10 h-10 rounded-2xl flex items-center justify-center shrink-0',
           isBlocked
             ? 'bg-slate-100 text-slate-400'
-            : isDropIn
-              ? isResume
-                ? 'bg-indigo-600 text-white'
-                : 'bg-indigo-50 text-indigo-600'
-              : 'bg-blue-50 text-blue-600',
+            : isSchedule
+              ? 'bg-amber-50 text-amber-700'
+              : isDropIn
+                ? isResume
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-indigo-50 text-indigo-600'
+                : 'bg-blue-50 text-blue-600',
         )}
       >
         <Icon size={18} aria-hidden />
@@ -95,9 +110,11 @@ export function CirclePostFolderActionCard({
           'w-full flex items-center gap-3 p-3 rounded-2xl border text-left transition-colors',
           isResume
             ? 'border-indigo-200 bg-indigo-50/80 hover:bg-indigo-100/80'
-            : isDropIn
-              ? 'border-indigo-100 bg-white hover:bg-indigo-50/50'
-              : 'border-blue-100 bg-white hover:bg-blue-50/50',
+            : isSchedule
+              ? 'border-amber-100 bg-white hover:bg-amber-50/50'
+              : isDropIn
+                ? 'border-indigo-100 bg-white hover:bg-indigo-50/50'
+                : 'border-blue-100 bg-white hover:bg-blue-50/50',
           className,
         )}
       >

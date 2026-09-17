@@ -10,19 +10,21 @@ import {
   Sparkles,
   SlidersHorizontal,
   TestTube2,
+  UserRound,
   Users,
   type LucideIcon,
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import {
   canViewAnalyticsTab,
+  canViewPatientProfileTab,
   canViewRemoteSettingsTab,
   normalizeMemberRole,
   type CircleMemberRole,
   type PatientCapabilities,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
-import { CircleNavBadge } from './CircleCountBadge';
+import { CircleNavBadge, CircleNavDot } from './CircleCountBadge';
 import { useCircleT } from '../lib/circleI18nContext';
 import type { CircleTranslator } from '../lib/circleI18nContext';
 
@@ -33,6 +35,7 @@ export type CircleMainTab =
   | 'media'
   | 'circle'
   | 'admin'
+  | 'patient-profile'
   | 'analytics'
   | 'diary'
   | 'know'
@@ -53,7 +56,10 @@ export interface CircleBottomNavBadges {
   messages?: number;
   circle?: number;
   schedule?: number;
+  media?: number;
   more?: number;
+  /** Red dot on More (no number) when e.g. Media under More has unseen items. */
+  moreDot?: boolean;
 }
 
 export type CircleBottomNavUrgencyKind = 'alert' | 'attention';
@@ -83,6 +89,7 @@ function badgeCountForTab(tab: CircleMainTab, badges?: CircleBottomNavBadges): n
   if (tab === 'messages') return badges.messages ?? 0;
   if (tab === 'circle') return badges.circle ?? 0;
   if (tab === 'schedule') return badges.schedule ?? 0;
+  if (tab === 'media') return badges.media ?? 0;
   return 0;
 }
 
@@ -202,7 +209,8 @@ export function CircleBottomNav({
             >
               <NavIconSlot>
                 <MoreHorizontal size={compact ? 18 : 19} strokeWidth={moreActive ? 2.25 : 1.75} />
-                <CircleNavBadge count={moreOpen ? 0 : (badges?.more ?? 0)} />
+                {!moreOpen && badges?.moreDot ? <CircleNavDot onActive={moreActive} /> : null}
+                <CircleNavBadge count={moreOpen ? 0 : (badges?.more ?? 0)} onActive={moreActive} />
               </NavIconSlot>
               <span
                 className={cn(
@@ -240,6 +248,7 @@ export function CircleBottomNav({
                 {defaultMoreItems.map((item) => {
                   const Icon = item.icon;
                   const active = item.id === activeTab;
+                  const itemBadge = badgeCountForTab(item.id, badges);
                   return (
                     <button
                       key={item.id}
@@ -254,13 +263,14 @@ export function CircleBottomNav({
                     >
                       <div
                         className={cn(
-                          'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200',
+                          'relative w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200',
                           active
                             ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
                             : 'bg-white text-slate-500 border border-slate-100',
                         )}
                       >
                         <Icon size={20} />
+                        <CircleNavBadge count={itemBadge} onActive={active} />
                       </div>
                       <div className="min-w-0">
                         <p className={cn('font-bold text-sm', active ? 'text-blue-700' : 'text-slate-800')}>
@@ -333,7 +343,11 @@ export function CircleBottomNav({
 
 export type CircleNavBuildOptions = {
   memberRole?: CircleMemberRole;
-  healthAssessmentsEnabled?: boolean;
+  /**
+   * @deprecated Ignored. Circle Schedule stays available for care roles so proxies can
+   * manage appointments even when the patient tablet Schedule tab is off.
+   */
+  scheduleEnabled?: boolean;
 };
 
 export function primaryNavItemsForPatient(
@@ -341,8 +355,11 @@ export function primaryNavItemsForPatient(
   options: CircleNavBuildOptions = {},
 ): CircleNavItem[] {
   const memberRole = options.memberRole ? normalizeMemberRole(options.memberRole) : undefined;
-  const showSchedule =
-    memberRole !== 'friend' && options.healthAssessmentsEnabled !== false;
+  // Care calendar in Circle is independent of patient-tablet Schedule visibility.
+  const showSchedule = memberRole !== 'friend';
+  const showMediaInPrimary =
+    memberRole === 'friend' &&
+    (capabilities.viewCircleMedia || capabilities.richMediaUpload);
 
   const items: CircleNavItem[] = [{ id: 'dashboard', label: 'Home', icon: LayoutDashboard }];
 
@@ -350,8 +367,22 @@ export function primaryNavItemsForPatient(
     items.push({ id: 'messages', label: 'Messages', icon: MessageSquare });
   }
 
+  items.push({
+    id: 'circle',
+    label: 'Circle',
+    icon: Users,
+  });
+
   if (showSchedule) {
     items.push({ id: 'schedule', label: 'Schedule', icon: Calendar });
+  }
+
+  if (showMediaInPrimary) {
+    items.push({
+      id: 'media',
+      label: 'Media',
+      icon: Image,
+    });
   }
 
   items.push({
@@ -360,24 +391,26 @@ export function primaryNavItemsForPatient(
     icon: ScrollText,
   });
 
-  items.push({
-    id: 'circle',
-    label: 'Circle',
-    icon: Users,
-  });
-
   return items;
 }
 
-export function moreNavItemsForPatient(capabilities: PatientCapabilities): CircleNavItem[] {
+export function moreNavItemsForPatient(
+  capabilities: PatientCapabilities,
+  options: CircleNavBuildOptions = {},
+): CircleNavItem[] {
+  const memberRole = options.memberRole ? normalizeMemberRole(options.memberRole) : undefined;
+  const mediaInPrimary =
+    memberRole === 'friend' &&
+    (capabilities.viewCircleMedia || capabilities.richMediaUpload);
+
   const items: CircleNavItem[] = [];
 
-  if (capabilities.viewCircleMedia || capabilities.richMediaUpload) {
+  if (canViewPatientProfileTab(capabilities)) {
     items.push({
-      id: 'media',
-      label: 'Media',
-      icon: Image,
-      description: 'Photos & gallery',
+      id: 'patient-profile',
+      label: 'Patient profile',
+      icon: UserRound,
+      description: 'Identity, care context & references',
     });
   }
 
@@ -386,7 +419,7 @@ export function moreNavItemsForPatient(capabilities: PatientCapabilities): Circl
       id: 'admin',
       label: 'Admin',
       icon: Settings2,
-      description: 'Patient management',
+      description: 'Circle & user management',
     });
   }
   if (canViewAnalyticsTab(capabilities)) {
@@ -403,6 +436,16 @@ export function moreNavItemsForPatient(capabilities: PatientCapabilities): Circl
       label: 'Remote Settings',
       icon: SlidersHorizontal,
       description: 'Configure patient tablet',
+    });
+  }
+
+  // Media follows Remote Settings for proxy/caregiver (and any role with media access).
+  if ((capabilities.viewCircleMedia || capabilities.richMediaUpload) && !mediaInPrimary) {
+    items.push({
+      id: 'media',
+      label: 'Media',
+      icon: Image,
+      description: 'Photos & gallery',
     });
   }
 
@@ -428,7 +471,7 @@ export function allNavItemsForPatient(
   capabilities: PatientCapabilities,
   options: CircleNavBuildOptions = {},
 ): CircleNavItem[] {
-  return [...primaryNavItemsForPatient(capabilities, options), ...moreNavItemsForPatient(capabilities)];
+  return [...primaryNavItemsForPatient(capabilities, options), ...moreNavItemsForPatient(capabilities, options)];
 }
 
 /** @deprecated Use primaryNavItemsForPatient + moreNavItemsForPatient */
@@ -447,6 +490,7 @@ const NAV_LABEL_KEYS: Record<CircleMainTab, string> = {
   circle: 'nav.circle',
   diary: 'nav.diary',
   admin: 'nav.admin',
+  'patient-profile': 'nav.patientProfile',
   analytics: 'nav.analytics',
   'remote-settings': 'nav.remoteSettings',
   know: 'nav.know',
@@ -455,6 +499,7 @@ const NAV_LABEL_KEYS: Record<CircleMainTab, string> = {
 
 const NAV_DESC_KEYS: Partial<Record<CircleMainTab, string>> = {
   media: 'nav.mediaDesc',
+  'patient-profile': 'nav.patientProfileDesc',
   admin: 'nav.adminDesc',
   analytics: 'nav.analyticsDesc',
   'remote-settings': 'nav.remoteSettingsDesc',

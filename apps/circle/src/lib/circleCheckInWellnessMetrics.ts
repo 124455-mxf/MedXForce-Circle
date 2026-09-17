@@ -12,6 +12,9 @@ export type DailyCheckInMetricAverages = {
 };
 
 export type CheckInWellnessRingFrame = {
+  date: string;
+  /** Days before today: 0 = today, 1 = yesterday, etc. */
+  dayOffset: number;
   label: string;
   mood: number | null;
   pain: number | null;
@@ -19,20 +22,43 @@ export type CheckInWellnessRingFrame = {
   moodSamples: number;
   painSamples: number;
   sleepSamples: number;
+  hasCheckIn: boolean;
 };
+
+export const CHECK_IN_WELLNESS_WEEK_DAYS = 7;
 
 function average(values: number[]): number | null {
   if (values.length === 0) return null;
   return values.reduce((acc, value) => acc + value, 0) / values.length;
 }
 
-function sliceTrend(
-  answerTrend: DailyCheckInAnswerTrendPoint[] | undefined,
-  windowDays: number,
-): DailyCheckInAnswerTrendPoint[] {
-  const trend = Array.isArray(answerTrend) ? answerTrend : [];
-  if (trend.length === 0) return [];
-  return trend.slice(-windowDays);
+export function todayDateKey(d = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function dateKeyToUtcMs(dateKey: string): number {
+  return Date.parse(`${dateKey}T12:00:00`);
+}
+
+function dateKeyDaysAgo(dayOffset: number, todayKey = todayDateKey()): string {
+  const ms = dateKeyToUtcMs(todayKey) - dayOffset * 24 * 60 * 60 * 1000;
+  return todayDateKey(new Date(ms));
+}
+
+export function daysAgoFromToday(dateKey: string, todayKey = todayDateKey()): number {
+  const diffMs = dateKeyToUtcMs(todayKey) - dateKeyToUtcMs(dateKey);
+  return Math.max(0, Math.round(diffMs / (24 * 60 * 60 * 1000)));
+}
+
+export function formatCheckInDayOffsetLabel(
+  dayOffset: number,
+  t: (key: string, params?: Record<string, unknown>) => string,
+): string {
+  if (dayOffset === 0) return t('dashboard.checkInWellnessRing.dayToday');
+  return `-${dayOffset}`;
 }
 
 function collectMetricValues(
@@ -48,7 +74,7 @@ export function getCheckInWellnessAveragesFromTrend(
   answerTrend: DailyCheckInAnswerTrendPoint[] | undefined,
   windowDays = 30,
 ): DailyCheckInMetricAverages {
-  const trend = sliceTrend(answerTrend, windowDays);
+  const trend = Array.isArray(answerTrend) ? answerTrend.slice(-windowDays) : [];
   const moodValues = collectMetricValues(trend, 'mood');
   const painValues = collectMetricValues(trend, 'pain');
   const sleepValues = collectMetricValues(trend, 'sleep');
@@ -64,37 +90,65 @@ export function getCheckInWellnessAveragesFromTrend(
   };
 }
 
-export function buildCheckInWellnessAnimationFramesFromTrend(
-  answerTrend: DailyCheckInAnswerTrendPoint[] | undefined,
-  windowDays = 30,
-): CheckInWellnessRingFrame[] {
-  const trend = sliceTrend(answerTrend, windowDays);
-  if (trend.length === 0) return [];
+function trendPointToFrame(
+  point: DailyCheckInAnswerTrendPoint,
+  todayKey: string,
+): CheckInWellnessRingFrame {
+  const dayOffset = daysAgoFromToday(point.date, todayKey);
+  return {
+    date: point.date,
+    dayOffset,
+    label: point.label,
+    mood: point.mood ?? null,
+    pain: point.pain ?? null,
+    sleep: point.sleep ?? null,
+    moodSamples: point.mood != null ? 1 : 0,
+    painSamples: point.pain != null ? 1 : 0,
+    sleepSamples: point.sleep != null ? 1 : 0,
+    hasCheckIn: true,
+  };
+}
 
-  const moodAcc: number[] = [];
-  const painAcc: number[] = [];
-  const sleepAcc: number[] = [];
+function emptyWeekFrame(dayOffset: number, todayKey: string): CheckInWellnessRingFrame {
+  const date = dateKeyDaysAgo(dayOffset, todayKey);
+  return {
+    date,
+    dayOffset,
+    label: date.slice(5).replace('-', '/'),
+    mood: null,
+    pain: null,
+    sleep: null,
+    moodSamples: 0,
+    painSamples: 0,
+    sleepSamples: 0,
+    hasCheckIn: false,
+  };
+}
+
+/** Last 7 calendar days (oldest → today), with check-in data merged where available. */
+export function buildCheckInWellnessWeekFramesFromTrend(
+  answerTrend: DailyCheckInAnswerTrendPoint[] | undefined,
+): CheckInWellnessRingFrame[] {
+  const todayKey = todayDateKey();
+  const trend = Array.isArray(answerTrend) ? answerTrend : [];
+  const byDate = new Map(trend.map((point) => [point.date, point]));
   const frames: CheckInWellnessRingFrame[] = [];
 
-  for (const point of trend) {
-    if (point.mood != null) moodAcc.push(point.mood);
-    if (point.pain != null) painAcc.push(point.pain);
-    if (point.sleep != null) sleepAcc.push(point.sleep);
-
-    if (moodAcc.length + painAcc.length + sleepAcc.length === 0) continue;
-
-    frames.push({
-      label: point.label,
-      mood: average(moodAcc),
-      pain: average(painAcc),
-      sleep: average(sleepAcc),
-      moodSamples: moodAcc.length,
-      painSamples: painAcc.length,
-      sleepSamples: sleepAcc.length,
-    });
+  for (let dayOffset = CHECK_IN_WELLNESS_WEEK_DAYS - 1; dayOffset >= 0; dayOffset -= 1) {
+    const date = dateKeyDaysAgo(dayOffset, todayKey);
+    const point = byDate.get(date);
+    frames.push(point ? trendPointToFrame(point, todayKey) : emptyWeekFrame(dayOffset, todayKey));
   }
 
   return frames;
+}
+
+/** @deprecated Use buildCheckInWellnessWeekFramesFromTrend */
+export function buildCheckInWellnessAnimationFramesFromTrend(
+  answerTrend: DailyCheckInAnswerTrendPoint[] | undefined,
+  _windowDays = 30,
+): CheckInWellnessRingFrame[] {
+  return buildCheckInWellnessWeekFramesFromTrend(answerTrend);
 }
 
 export function formatMoodAverage(score: number | null): 'good' | 'ok' | 'low' | null {
@@ -181,41 +235,12 @@ export function buildCheckInWellnessRingMetricsFromValues(values: {
 
 export function buildCheckInWellnessPreviewFrames(): CheckInWellnessRingFrame[] {
   return [
-    {
-      label: '01/08',
-      mood: 2.0,
-      pain: 6.2,
-      sleep: 1.8,
-      moodSamples: 1,
-      painSamples: 1,
-      sleepSamples: 1,
-    },
-    {
-      label: '01/15',
-      mood: 2.2,
-      pain: 5.1,
-      sleep: 2.1,
-      moodSamples: 2,
-      painSamples: 2,
-      sleepSamples: 2,
-    },
-    {
-      label: '01/22',
-      mood: 2.5,
-      pain: 4.0,
-      sleep: 2.3,
-      moodSamples: 3,
-      painSamples: 3,
-      sleepSamples: 3,
-    },
-    {
-      label: '01/29',
-      mood: 2.6,
-      pain: 3.4,
-      sleep: 2.2,
-      moodSamples: 4,
-      painSamples: 4,
-      sleepSamples: 4,
-    },
+    { date: '2026-06-28', dayOffset: 6, label: '06/28', mood: 1.0, pain: 9.0, sleep: 1.0, moodSamples: 1, painSamples: 1, sleepSamples: 1, hasCheckIn: true },
+    { date: '2026-06-29', dayOffset: 5, label: '06/29', mood: 2.0, pain: 8.0, sleep: 1.0, moodSamples: 1, painSamples: 1, sleepSamples: 1, hasCheckIn: true },
+    { date: '2026-06-30', dayOffset: 4, label: '06/30', mood: 1.0, pain: 10.0, sleep: 2.0, moodSamples: 1, painSamples: 1, sleepSamples: 1, hasCheckIn: true },
+    { date: '2026-07-01', dayOffset: 3, label: '07/01', mood: 2.0, pain: 10.0, sleep: 2.0, moodSamples: 1, painSamples: 1, sleepSamples: 1, hasCheckIn: true },
+    { date: '2026-07-02', dayOffset: 2, label: '07/02', mood: 1.0, pain: 8.0, sleep: 2.0, moodSamples: 1, painSamples: 1, sleepSamples: 1, hasCheckIn: true },
+    { date: '2026-07-03', dayOffset: 1, label: '07/03', mood: 1.0, pain: 10.0, sleep: 2.0, moodSamples: 1, painSamples: 1, sleepSamples: 1, hasCheckIn: true },
+    { date: '2026-07-04', dayOffset: 0, label: '07/04', mood: 3.0, pain: 2.0, sleep: 3.0, moodSamples: 1, painSamples: 1, sleepSamples: 1, hasCheckIn: true },
   ];
 }

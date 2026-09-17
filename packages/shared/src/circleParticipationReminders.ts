@@ -6,20 +6,54 @@ export const PARTICIPATION_REMINDER_WINDOW_MS = 28 * 24 * 60 * 60 * 1000;
 /** Care-team and profile reminders resurface sooner — proxy action is time-sensitive. */
 export const CARE_ACTION_REMINDER_SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
 
-/** Celebration tiles (birthday / onset) use the same window as the UI (-3 to +7 days). */
+/** Follow-up care nudges (e.g. missed scheduled assessments) stay hidden a bit longer. */
+export const CARE_FOLLOWUP_REMINDER_SNOOZE_MS = 14 * 24 * 60 * 60 * 1000;
+
+/** Celebration tiles (birthday / onset): patient-aligned window (~7 days before through a few days after). */
 export const CELEBRATION_REMINDER_SNOOZE_MS = 11 * 24 * 60 * 60 * 1000;
 
 export type CircleParticipationReminderKind =
   | 'galleryUpload'
   | 'diaryEntry'
   | 'assessmentAfterFirstComm'
+  | 'scheduledAssessmentMissed'
   | 'profileIncomplete'
   | 'teamCoverage'
+  | 'pendingInvites'
   | 'birthday'
-  | 'onsetMilestone';
+  | 'onsetMilestone'
+  | 'hospitalFeatureMessaging'
+  | 'hospitalFeatureDashboard'
+  | 'hospitalFeatureVitality'
+  | 'hospitalFeatureAssessments'
+  | 'modeStepUpStandard'
+  | 'modeStepUpHospital'
+  | 'icuSoulMusic'
+  | 'icuSoulMediaLibrary'
+  | 'icuDailyCheckIn'
+  | 'circleInitiateMessages'
+  | 'circleDropIn';
 
 export function reminderSnoozeDurationMs(kind: CircleParticipationReminderKind): number {
-  if (kind === 'teamCoverage' || kind === 'profileIncomplete') {
+  if (kind === 'scheduledAssessmentMissed') {
+    return CARE_FOLLOWUP_REMINDER_SNOOZE_MS;
+  }
+  if (
+    kind === 'teamCoverage' ||
+    kind === 'pendingInvites' ||
+    kind === 'profileIncomplete' ||
+    kind === 'hospitalFeatureMessaging' ||
+    kind === 'hospitalFeatureDashboard' ||
+    kind === 'hospitalFeatureVitality' ||
+    kind === 'hospitalFeatureAssessments' ||
+    kind === 'modeStepUpStandard' ||
+    kind === 'modeStepUpHospital' ||
+    kind === 'icuSoulMusic' ||
+    kind === 'icuSoulMediaLibrary' ||
+    kind === 'icuDailyCheckIn' ||
+    kind === 'circleInitiateMessages' ||
+    kind === 'circleDropIn'
+  ) {
     return CARE_ACTION_REMINDER_SNOOZE_MS;
   }
   if (kind === 'birthday' || kind === 'onsetMilestone') {
@@ -53,17 +87,56 @@ export function parseMemberReminderSnoozes(
   if (typeof map.assessmentAfterFirstComm === 'number' && map.assessmentAfterFirstComm > 0) {
     next.assessmentAfterFirstComm = map.assessmentAfterFirstComm;
   }
+  if (typeof map.scheduledAssessmentMissed === 'number' && map.scheduledAssessmentMissed > 0) {
+    next.scheduledAssessmentMissed = map.scheduledAssessmentMissed;
+  }
   if (typeof map.profileIncomplete === 'number' && map.profileIncomplete > 0) {
     next.profileIncomplete = map.profileIncomplete;
   }
   if (typeof map.teamCoverage === 'number' && map.teamCoverage > 0) {
     next.teamCoverage = map.teamCoverage;
   }
+  if (typeof map.pendingInvites === 'number' && map.pendingInvites > 0) {
+    next.pendingInvites = map.pendingInvites;
+  }
   if (typeof map.birthday === 'number' && map.birthday > 0) {
     next.birthday = map.birthday;
   }
   if (typeof map.onsetMilestone === 'number' && map.onsetMilestone > 0) {
     next.onsetMilestone = map.onsetMilestone;
+  }
+  if (typeof map.hospitalFeatureMessaging === 'number' && map.hospitalFeatureMessaging > 0) {
+    next.hospitalFeatureMessaging = map.hospitalFeatureMessaging;
+  }
+  if (typeof map.hospitalFeatureDashboard === 'number' && map.hospitalFeatureDashboard > 0) {
+    next.hospitalFeatureDashboard = map.hospitalFeatureDashboard;
+  }
+  if (typeof map.hospitalFeatureVitality === 'number' && map.hospitalFeatureVitality > 0) {
+    next.hospitalFeatureVitality = map.hospitalFeatureVitality;
+  }
+  if (typeof map.hospitalFeatureAssessments === 'number' && map.hospitalFeatureAssessments > 0) {
+    next.hospitalFeatureAssessments = map.hospitalFeatureAssessments;
+  }
+  if (typeof map.modeStepUpStandard === 'number' && map.modeStepUpStandard > 0) {
+    next.modeStepUpStandard = map.modeStepUpStandard;
+  }
+  if (typeof map.modeStepUpHospital === 'number' && map.modeStepUpHospital > 0) {
+    next.modeStepUpHospital = map.modeStepUpHospital;
+  }
+  if (typeof map.icuSoulMusic === 'number' && map.icuSoulMusic > 0) {
+    next.icuSoulMusic = map.icuSoulMusic;
+  }
+  if (typeof map.icuSoulMediaLibrary === 'number' && map.icuSoulMediaLibrary > 0) {
+    next.icuSoulMediaLibrary = map.icuSoulMediaLibrary;
+  }
+  if (typeof map.icuDailyCheckIn === 'number' && map.icuDailyCheckIn > 0) {
+    next.icuDailyCheckIn = map.icuDailyCheckIn;
+  }
+  if (typeof map.circleInitiateMessages === 'number' && map.circleInitiateMessages > 0) {
+    next.circleInitiateMessages = map.circleInitiateMessages;
+  }
+  if (typeof map.circleDropIn === 'number' && map.circleDropIn > 0) {
+    next.circleDropIn = map.circleDropIn;
   }
   return next;
 }

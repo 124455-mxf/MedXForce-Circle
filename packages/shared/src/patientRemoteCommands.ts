@@ -128,7 +128,7 @@ export function patientRemoteCommandCircleAwaitingBody(
     case 'open_daily_check_in':
       return 'The patient will see a prompt to open daily check-in. This request closes automatically if there is no response.';
     case 'open_doctor_visit':
-      return 'The patient will see a prompt to start doctor visit capture. This request closes automatically if there is no response.';
+      return 'The patient will see a prompt to start recording a meeting. This request closes automatically if there is no response.';
     case 'open_quick_answers':
       return 'The patient will see a prompt to open Quick Answers. This request closes automatically if there is no response.';
     default:
@@ -156,7 +156,7 @@ export function patientRemoteCommandLabel(type: PatientRemoteCommandType): strin
     case 'open_daily_check_in':
       return 'Daily check-in';
     case 'open_doctor_visit':
-      return 'Doctor visit capture';
+      return 'Record a meeting';
     case 'open_quick_answers':
       return 'Quick Answers';
     default:
@@ -169,7 +169,7 @@ export function patientRemoteCommandCircleConfirmTitle(type: PatientRemoteComman
     case 'open_daily_check_in':
       return 'Prompt daily check-in on patient tablet?';
     case 'open_doctor_visit':
-      return 'Open doctor visit capture on patient tablet?';
+      return 'Start meeting recording on the patient tablet?';
     case 'open_quick_answers':
       return 'Open Quick Answers on patient tablet?';
     default:
@@ -182,7 +182,7 @@ export function patientRemoteCommandCircleConfirmBody(type: PatientRemoteCommand
     case 'open_daily_check_in':
       return 'The patient will see a prompt on their tablet to open the daily check-in. They can accept or dismiss it.';
     case 'open_doctor_visit':
-      return 'The patient will see a prompt to start doctor visit recording on their tablet. They can accept or dismiss it.';
+      return 'The patient will see a prompt to start recording a meeting on their tablet. They can accept or dismiss it.';
     case 'open_quick_answers':
       return 'The patient will see a prompt to open Quick Answers on their tablet. They can accept or dismiss it.';
     default:
@@ -198,7 +198,7 @@ export function patientRemoteCommandPatientBannerText(
     case 'open_daily_check_in':
       return `${who} is asking you to complete your daily check-in.`;
     case 'open_doctor_visit':
-      return `${who} is asking you to start doctor visit capture.`;
+      return `${who} is asking you to start recording a meeting.`;
     case 'open_quick_answers':
       return `${who} is asking you to open Quick Answers.`;
     default:
