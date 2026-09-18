@@ -52,7 +52,7 @@ export async function resolveCircleUiLanguageForMember(
           };
         }
       } catch (err) {
-        console.warn('[Circle] Contact language lookup skipped —', patientId, err);
+        console.warn('[Circle] Contact language lookup skipped —', err);
       }
     }
   }
@@ -136,7 +136,7 @@ export async function resolveContactLanguageForPatient(
       || '';
     return raw || undefined;
   } catch (err) {
-    console.warn('[Circle] Welcome contact language lookup skipped —', patientId, err);
+    console.warn('[Circle] Welcome contact language lookup skipped —', err);
     return undefined;
   }
 }

@@ -162,5 +162,8 @@ export function startCircleMemberPresenceHeartbeat(
     window.clearInterval(interval);
     document.removeEventListener('visibilitychange', onVisibility);
     window.removeEventListener('online', onOnline);
+    void markCircleMemberPresenceOffline(db, patientId, uid).catch((err) => {
+      console.debug('[circlePresence] offline mark failed:', err);
+    });
   };
 }

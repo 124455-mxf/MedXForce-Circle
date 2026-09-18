@@ -736,7 +736,7 @@ export function CircleMainShell({
   if (!selectedPatient) {
     return (
       <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-6">
-        <p className="text-sm text-slate-500">No patient selected.</p>
+        <p className="text-sm text-slate-500">{t('common.noPatientSelected')}</p>
       </div>
     );
   }

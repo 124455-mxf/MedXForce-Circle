@@ -17,6 +17,10 @@ export const appShellEnglish = {
     cropErrorReady: 'Move or zoom the image so the crop area is ready, then try again.',
     cropErrorFailed: 'Could not apply crop.',
     cropErrorCrop: 'Could not crop image.',
+    noPatientSelected: 'No patient selected.',
+    firestoreQuotaError:
+      'Firestore daily write limit reached. Messages and sync may not work until the quota resets (midnight Pacific).',
+    loadPatientsFailed: 'Could not load your circle patients.',
     languageEnglish: 'English (EN)',
     languageGerman: 'German (DE)',
     languageSpanish: 'Spanish (ES)',
@@ -1442,6 +1446,10 @@ export const appShellGerman = {
     cropErrorReady: 'Bild verschieben oder zoomen, bis der Zuschnitt bereit ist, und erneut versuchen.',
     cropErrorFailed: 'Zuschnitt konnte nicht übernommen werden.',
     cropErrorCrop: 'Bild konnte nicht zugeschnitten werden.',
+    noPatientSelected: 'Kein Patient ausgewählt.',
+    firestoreQuotaError:
+      'Tägliches Firestore-Schreibkontingent erreicht. Nachrichten und Sync funktionieren erst wieder, wenn das Kontingent zurückgesetzt wird (Mitternacht Pazifikzeit).',
+    loadPatientsFailed: 'Ihre Circle-Patienten konnten nicht geladen werden.',
     languageEnglish: 'Englisch (EN)',
     languageGerman: 'Deutsch (DE)',
     languageSpanish: 'Spanisch (ES)',
@@ -2867,6 +2875,10 @@ export const appShellSpanish = {
     cropErrorReady: 'Mueva o amplíe la imagen para que el recorte esté listo e inténtelo de nuevo.',
     cropErrorFailed: 'No se pudo aplicar el recorte.',
     cropErrorCrop: 'No se pudo recortar la imagen.',
+    noPatientSelected: 'Ningún paciente seleccionado.',
+    firestoreQuotaError:
+      'Se alcanzó el límite diario de escritura de Firestore. Los mensajes y la sincronización pueden no funcionar hasta que se restablezca la cuota (medianoche, hora del Pacífico).',
+    loadPatientsFailed: 'No se pudieron cargar los pacientes de su círculo.',
     languageEnglish: 'Inglés (EN)',
     languageGerman: 'Alemán (DE)',
     languageSpanish: 'Español (ES)',
@@ -4292,6 +4304,10 @@ export const appShellPolish = {
     cropErrorReady: 'Przesuń lub powiększ obraz, aż obszar przycięcia będzie gotowy, i spróbuj ponownie.',
     cropErrorFailed: 'Nie udało się zastosować przycięcia.',
     cropErrorCrop: 'Nie udało się przyciąć obrazu.',
+    noPatientSelected: 'Nie wybrano pacjenta.',
+    firestoreQuotaError:
+      'Osiągnięto dzienny limit zapisów Firestore. Wiadomości i synchronizacja mogą nie działać, dopóki limit się nie zresetuje (północ czasu pacyficznego).',
+    loadPatientsFailed: 'Nie udało się załadować pacjentów kręgu.',
     languageEnglish: 'Angielski (EN)',
     languageGerman: 'Niemiecki (DE)',
     languageSpanish: 'Hiszpański (ES)',

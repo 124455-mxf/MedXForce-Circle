@@ -265,6 +265,7 @@ export function PatientGalleryScreen({
     Record<string, GalleryReactionRecord[]>
   >({});
   const galleryBodyRef = useRef<HTMLDivElement>(null);
+  const loadGenRef = useRef(0);
 
   const patientFirstName = circleDisplayFirstName(patient.displayName, patient.firstName);
 
@@ -350,6 +351,7 @@ export function PatientGalleryScreen({
   }, [refreshViewed]);
 
   const loadAll = useCallback(async () => {
+    const gen = ++loadGenRef.current;
     setLoading(true);
     setError(null);
     try {
@@ -361,13 +363,15 @@ export function PatientGalleryScreen({
         listGalleryAlbums(db, patient.patientId),
         listAllGalleryMediaForPatient(db, patient.patientId),
       ]);
+      if (gen !== loadGenRef.current) return;
       setAlbums(dedupeGalleryAlbumsForDisplay(albumList));
       setAllMedia(media);
       refreshViewed();
     } catch (err) {
+      if (gen !== loadGenRef.current) return;
       setError(err instanceof Error ? err.message : t('gallery.errorLoadGallery'));
     } finally {
-      setLoading(false);
+      if (gen === loadGenRef.current) setLoading(false);
     }
   }, [db, patient.patientId, refreshViewed, t, user.uid]);
 
@@ -473,6 +477,7 @@ export function PatientGalleryScreen({
 
   const loadAlbumDetail = useCallback(
     async (album: GalleryAlbum) => {
+      const gen = ++loadGenRef.current;
       setLoading(true);
       setError(null);
       try {
@@ -483,12 +488,14 @@ export function PatientGalleryScreen({
         const loose = canUpload
           ? await listUnassignedCircleMedia(db, patient.patientId, user.uid)
           : [];
+        if (gen !== loadGenRef.current) return;
         setAlbumMedia(items);
         setUnassigned(loose);
       } catch (err) {
+        if (gen !== loadGenRef.current) return;
         setError(err instanceof Error ? err.message : t('gallery.errorLoadAlbum'));
       } finally {
-        setLoading(false);
+        if (gen === loadGenRef.current) setLoading(false);
       }
     },
     [canUpload, db, patient.patientId, reactedMediaIds, user.uid, t],

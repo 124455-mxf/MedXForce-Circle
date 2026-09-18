@@ -31,7 +31,7 @@ function storagePathFromDownloadUrl(url: string): string | null {
 async function deleteStorageUrl(storage: FirebaseStorage, url: string | undefined): Promise<void> {
   if (!url) return;
   const path = storagePathFromDownloadUrl(url);
-  if (!path) return;
+  if (!path || !/^gallery\/[^/]+\/[^/]+$/.test(path)) return;
   try {
     await deleteObject(ref(storage, path));
   } catch {

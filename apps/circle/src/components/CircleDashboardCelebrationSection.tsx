@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   Cake,
@@ -467,6 +467,26 @@ export function CircleDashboardCelebrationSection({
   const [enablingKind, setEnablingKind] = useState<
     HospitalFeatureReminderKind | IcuProgressionReminderKind | 'icuDailyCheckIn' | null
   >(null);
+  const enablingClearTimerRef = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (enablingClearTimerRef.current != null) {
+        window.clearTimeout(enablingClearTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  const clearEnablingSoon = () => {
+    if (enablingClearTimerRef.current != null) {
+      window.clearTimeout(enablingClearTimerRef.current);
+    }
+    enablingClearTimerRef.current = window.setTimeout(() => {
+      enablingClearTimerRef.current = null;
+      setEnablingKind(null);
+    }, 600);
+  };
 
   const patientFirstName = circlePatientFirstName(snapshot, patient.displayName);
   const birthday = localizeBirthdayReminder(t, language, snapshot, patient.displayName);
@@ -659,7 +679,7 @@ export function CircleDashboardCelebrationSection({
         console.warn('[Circle] Reminder dismiss after enable failed:', err);
       });
     } finally {
-      window.setTimeout(() => setEnablingKind(null), 600);
+      clearEnablingSoon();
     }
   };
 
@@ -697,7 +717,7 @@ export function CircleDashboardCelebrationSection({
         console.warn('[Circle] Reminder dismiss after enable failed:', err);
       });
     } finally {
-      window.setTimeout(() => setEnablingKind(null), 600);
+      clearEnablingSoon();
     }
   };
 
@@ -726,7 +746,7 @@ export function CircleDashboardCelebrationSection({
         });
       }
     } finally {
-      window.setTimeout(() => setEnablingKind(null), 600);
+      clearEnablingSoon();
     }
   };
 

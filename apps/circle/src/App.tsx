@@ -300,11 +300,9 @@ export default function App() {
         } catch (err) {
           console.error(err);
           if (isFirestoreQuotaError(err)) {
-            setAuthError(
-              'Firestore daily write limit reached. Messages and sync may not work until the quota resets (midnight Pacific).',
-            );
+            setAuthError(t('common.firestoreQuotaError'));
           } else {
-            setAuthError(err instanceof Error ? err.message : 'Could not load your circle patients.');
+            setAuthError(err instanceof Error ? err.message : t('common.loadPatientsFailed'));
           }
         } finally {
           setPatientsHydrating(false);

@@ -39,14 +39,28 @@ export function useCircleStartupSequence(appReady: boolean) {
   const [visible, setVisible] = useState(true);
   const [exiting, setExiting] = useState(false);
   const finishedRef = useRef(false);
+  const exitTimerRef = useRef<number | null>(null);
 
   const finish = useCallback(() => {
     if (finishedRef.current) return;
     finishedRef.current = true;
     markStartupShownThisSession();
     setExiting(true);
-    window.setTimeout(() => setVisible(false), EXIT_MS);
+    exitTimerRef.current = window.setTimeout(() => {
+      exitTimerRef.current = null;
+      setVisible(false);
+    }, EXIT_MS);
   }, []);
+
+  useEffect(
+    () => () => {
+      if (exitTimerRef.current != null) {
+        window.clearTimeout(exitTimerRef.current);
+        exitTimerRef.current = null;
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (fastPath) return undefined;

@@ -11,12 +11,14 @@ import {
   type CirclePatientSummary,
   type PatientRemoteSettingsDoc,
 } from '@medxforce/shared';
+import { useCircleT } from '../lib/circleI18nContext';
 
 export function useCircleRemoteSettings(
   db: Firestore,
   patient: CirclePatientSummary | null,
   user: User | null,
 ) {
+  const t = useCircleT();
   const [settings, setSettings] = useState<PatientRemoteSettingsDoc | null>(null);
   const [fromFirestore, setFromFirestore] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -136,7 +138,7 @@ export function useCircleRemoteSettings(
           setSavedAt(Date.now());
         } catch (err) {
           if (patientIdRef.current !== targetPatientId) return;
-          setError(err instanceof Error ? err.message : 'Could not save remote settings.');
+          setError(err instanceof Error ? err.message : t('remoteSettings.saveFailed'));
         } finally {
           if (patientIdRef.current === targetPatientId) {
             savingRef.current = false;
@@ -145,7 +147,7 @@ export function useCircleRemoteSettings(
         }
       }, 600);
     },
-    [db, patient, settings?.primaryLanguage, user],
+    [db, patient, settings?.primaryLanguage, t, user],
   );
 
   useEffect(() => {
