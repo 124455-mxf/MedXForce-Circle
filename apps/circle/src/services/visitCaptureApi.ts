@@ -2,6 +2,7 @@ import type {
   VisitCaptureCapturedBy,
   VisitCaptureSession,
 } from '@medxforce/shared';
+import { firebase } from '../lib/firebaseClient';
 
 function resolveApiBase(): string {
   const explicit = (import.meta.env.VITE_MEDXFORCE_API_URL as string | undefined)?.trim();
@@ -12,6 +13,17 @@ function resolveApiBase(): string {
 
 function apiBase(): string {
   return resolveApiBase();
+}
+
+async function visitCaptureFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  const user = firebase.auth.currentUser;
+  if (!user) {
+    throw new Error('Sign in required');
+  }
+  const token = await user.getIdToken();
+  const headers = new Headers(init.headers);
+  headers.set('Authorization', `Bearer ${token}`);
+  return fetch(input, { ...init, headers });
 }
 
 async function parseJson<T>(res: Response): Promise<T> {
@@ -47,7 +59,7 @@ export async function createVisitCaptureSession(params: {
   careCalendarEntryId?: string;
 }): Promise<VisitCaptureSession> {
   const { careCalendarEntryId, ...rest } = params;
-  const res = await fetch(`${apiBase()}/api/visit-capture/sessions`, {
+  const res = await visitCaptureFetch(`${apiBase()}/api/visit-capture/sessions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -72,7 +84,7 @@ export async function uploadVisitCaptureSegment(params: {
   if (params.durationMs != null) form.append('durationMs', String(params.durationMs));
   form.append('audio', params.blob, `segment-${params.segmentIndex}.webm`);
 
-  const res = await fetch(
+  const res = await visitCaptureFetch(
     `${apiBase()}/api/visit-capture/sessions/${params.sessionId}/segments`,
     { method: 'POST', body: form },
   );
@@ -85,7 +97,7 @@ export async function finishVisitCaptureSession(params: {
   sessionId: string;
   previewLanguage?: string;
 }): Promise<VisitCaptureSession> {
-  const res = await fetch(
+  const res = await visitCaptureFetch(
     `${apiBase()}/api/visit-capture/sessions/${params.sessionId}/finish`,
     {
       method: 'POST',
@@ -104,7 +116,7 @@ export async function publishVisitCaptureSession(params: {
   patientId: string;
   sessionId: string;
 }): Promise<VisitCaptureSession> {
-  const res = await fetch(
+  const res = await visitCaptureFetch(
     `${apiBase()}/api/visit-capture/sessions/${params.sessionId}/publish`,
     {
       method: 'POST',
@@ -120,7 +132,7 @@ export async function discardVisitCaptureSession(params: {
   patientId: string;
   sessionId: string;
 }): Promise<void> {
-  const res = await fetch(
+  const res = await visitCaptureFetch(
     `${apiBase()}/api/visit-capture/sessions/${params.sessionId}/discard`,
     {
       method: 'POST',
