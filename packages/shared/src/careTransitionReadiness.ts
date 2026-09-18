@@ -27,6 +27,19 @@ export type CareTransitionKnowCourse = {
   href: string;
 };
 
+const KNOW_COURSE_HREF_MAX = 500;
+
+/** Know course links must be https — same rule as clinical reference URLs. */
+export function isValidKnowCourseUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed || trimmed.length > KNOW_COURSE_HREF_MAX) return false;
+  try {
+    return new URL(trimmed).protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export type CareTransitionChecklistItem = {
   id: string;
   title: string;
@@ -1152,7 +1165,7 @@ function parseKnowCourses(raw: unknown): CareTransitionKnowCourse[] {
     const id = typeof row.id === 'string' ? row.id : '';
     const title = typeof row.title === 'string' ? row.title.trim() : '';
     const href = typeof row.href === 'string' ? row.href.trim() : '';
-    if (!id || !title || !href) continue;
+    if (!id || !title || !isValidKnowCourseUrl(href)) continue;
     out.push({
       id: id.slice(0, 80),
       title: title.slice(0, 200),

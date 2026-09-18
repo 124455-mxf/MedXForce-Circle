@@ -28,6 +28,7 @@ import {
   normalizeMemberRole,
   parseCareTransitionReadinessState,
   writeCareTransitionReadinessState,
+  isValidKnowCourseUrl,
   type CareTransitionChecklistItem,
   type CareTransitionCustomTask,
   type CareTransitionKnowCourse,
@@ -314,6 +315,7 @@ export function useCareTransitionReadiness(
   const attachKnowCourse = useCallback(
     async (course: CareTransitionKnowCourse) => {
       if (!state || !canManage) return;
+      if (!isValidKnowCourseUrl(course.href)) return;
       if (state.attachedKnow.some((c) => c.id === course.id)) return;
       if (pack?.suggestedKnow.some((c) => c.id === course.id)) return;
       await persist({

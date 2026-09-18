@@ -6,6 +6,8 @@ import {
   careTransitionPackRemainingCount,
   careTransitionVisiblePackItems,
   EMPTY_CARE_TRANSITION_STATE,
+  isValidKnowCourseUrl,
+  parseCareTransitionReadinessState,
   planCareTransitionDraftForPhase,
   suggestedPackForPhaseTransition,
   type CareTransitionReadinessState,
@@ -96,5 +98,19 @@ const circleReplacesLive = planCareTransitionDraftForPhase(
 );
 assert.equal('packId' in circleReplacesLive && circleReplacesLive.packId, 'icu-to-ward');
 assert.equal('next' in circleReplacesLive && circleReplacesLive.next.packLive, false);
+
+assert.equal(isValidKnowCourseUrl('https://know.medxforce.example/courses/custom'), true);
+assert.equal(isValidKnowCourseUrl('javascript:alert(1)'), false);
+assert.equal(isValidKnowCourseUrl('http://example.com/course'), false);
+assert.equal(isValidKnowCourseUrl(''), false);
+
+const parsedKnow = parseCareTransitionReadinessState({
+  attachedKnow: [
+    { id: 'ok', title: 'Safe', href: 'https://know.medxforce.example/courses/ok' },
+    { id: 'xss', title: 'Bad', href: 'javascript:alert(1)' },
+  ],
+});
+assert.equal(parsedKnow.attachedKnow.length, 1);
+assert.equal(parsedKnow.attachedKnow[0]?.id, 'ok');
 
 console.log('careTransitionReadiness.test.ts: ok');

@@ -30,6 +30,7 @@ import {
   type CircleHelpTask,
   type CirclePatientSummary,
   getCareTransitionPack,
+  isValidKnowCourseUrl,
 } from '@medxforce/shared';
 import { useCareTransitionReadiness } from '../hooks/useCareTransitionReadiness';
 import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfileSnapshot';
@@ -106,6 +107,26 @@ function readCareTransitionCollapsed(patientId: string): boolean {
   } catch {
     return true;
   }
+}
+
+const DEFAULT_CUSTOM_KNOW_HREF = 'https://know.medxforce.example/courses/custom';
+
+function knowHrefFromDraft(raw: string): string {
+  return raw.trim() || DEFAULT_CUSTOM_KNOW_HREF;
+}
+
+function KnowCourseOpenLink({ href, label }: { href: string; label: string }) {
+  if (!isValidKnowCourseUrl(href)) return null;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-xs font-semibold text-blue-600"
+    >
+      {label}
+    </a>
+  );
 }
 
 export function CircleCareTransitionReadinessPanel({
@@ -1381,14 +1402,7 @@ export function CircleCareTransitionReadinessPanel({
                 <p className="text-xs text-slate-400">
                   {course.duration} · {course.audience}
                 </p>
-                <a
-                  href={course.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs font-semibold text-blue-600"
-                >
-                  {t('careTransition.openKnow')}
-                </a>
+                <KnowCourseOpenLink href={course.href} label={t('careTransition.openKnow')} />
               </div>
             ))}
             {canManage ? (
@@ -1405,18 +1419,19 @@ export function CircleCareTransitionReadinessPanel({
                   placeholder={t('careTransition.knowUrlPlaceholder')}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                 />
+                {draftKnowUrl.trim() && !isValidKnowCourseUrl(draftKnowUrl) ? (
+                  <p className="text-xs text-red-600">{t('careTransition.knowUrlHttpsOnly')}</p>
+                ) : null}
                 <button
                   type="button"
-                  disabled={saving || !draftKnowTitle.trim()}
+                  disabled={saving || !draftKnowTitle.trim() || !isValidKnowCourseUrl(knowHrefFromDraft(draftKnowUrl))}
                   onClick={() => {
                     void attachKnowCourse({
                       id: `know-custom-${Date.now()}`,
                       title: draftKnowTitle.trim(),
                       duration: 'Link',
                       audience: 'Circle',
-                      href:
-                        draftKnowUrl.trim() ||
-                        'https://know.medxforce.example/courses/custom',
+                      href: knowHrefFromDraft(draftKnowUrl),
                     }).then(() => {
                       setDraftKnowTitle('');
                       setDraftKnowUrl('');
@@ -1759,14 +1774,7 @@ export function CircleCareTransitionReadinessPanel({
                   <p className="text-xs text-slate-400">
                     {course.duration} · {course.audience}
                   </p>
-                  <a
-                    href={course.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs font-semibold text-blue-600"
-                  >
-                    {t('careTransition.openKnow')}
-                  </a>
+                  <KnowCourseOpenLink href={course.href} label={t('careTransition.openKnow')} />
                 </div>
               ))}
               <div className="space-y-2 pt-2 border-t border-slate-100">
@@ -1782,18 +1790,19 @@ export function CircleCareTransitionReadinessPanel({
                   placeholder={t('careTransition.knowUrlPlaceholder')}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                 />
+                {draftKnowUrl.trim() && !isValidKnowCourseUrl(draftKnowUrl) ? (
+                  <p className="text-xs text-red-600">{t('careTransition.knowUrlHttpsOnly')}</p>
+                ) : null}
                 <button
                   type="button"
-                  disabled={saving || !draftKnowTitle.trim()}
+                  disabled={saving || !draftKnowTitle.trim() || !isValidKnowCourseUrl(knowHrefFromDraft(draftKnowUrl))}
                   onClick={() => {
                     void attachKnowCourse({
                       id: `know-custom-${Date.now()}`,
                       title: draftKnowTitle.trim(),
                       duration: 'Link',
                       audience: 'Circle',
-                      href:
-                        draftKnowUrl.trim() ||
-                        'https://know.medxforce.example/courses/custom',
+                      href: knowHrefFromDraft(draftKnowUrl),
                     }).then(() => {
                       setDraftKnowTitle('');
                       setDraftKnowUrl('');
