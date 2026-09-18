@@ -26,10 +26,26 @@ export function useCircleRemoteSettings(
   const saveTimerRef = useRef<number | null>(null);
   const pendingSaveRef = useRef<PatientRemoteSettingsDoc | null>(null);
   const savingRef = useRef(false);
+  const patientIdRef = useRef('');
 
   const patientId = patient?.patientId ?? '';
+  patientIdRef.current = patientId;
+
+  const cancelPendingSave = useCallback(() => {
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    pendingSaveRef.current = null;
+    savingRef.current = false;
+  }, []);
 
   useEffect(() => {
+    cancelPendingSave();
+    setSaving(false);
+    setError(null);
+    setSavedAt(null);
+
     if (!patientId) {
       setSettings(null);
       setFromFirestore(false);
@@ -37,37 +53,49 @@ export function useCircleRemoteSettings(
       return;
     }
 
+    setSettings(null);
+    setFromFirestore(false);
     setLoading(true);
-    setError(null);
 
     return subscribeRemoteSettings(
       db,
       patientId,
       (remote) => {
-        setFromFirestore(remote != null);
+        if (patientIdRef.current !== patientId) return;
         // Do not cancel a pending proxy save when the patient app echoes remote_settings.
         if (pendingSaveRef.current || savingRef.current) {
           setLoading(false);
           return;
         }
+        setFromFirestore(remote != null);
         setSettings(remote ?? createDefaultRemoteSettings(patientId));
         setLoading(false);
       },
       (message) => {
+        if (patientIdRef.current !== patientId) return;
         setError(message);
         setLoading(false);
       },
     );
-  }, [db, patientId]);
+  }, [cancelPendingSave, db, patientId]);
 
   const persist = useCallback(
     (next: PatientRemoteSettingsDoc) => {
       if (!user || !patient) return;
+      const targetPatientId = patient.patientId;
+      const targetRole = patient.role;
+      const targetDisplayName = patient.displayName;
       const previousPrimaryLanguage = settings?.primaryLanguage;
       pendingSaveRef.current = next;
       setSettings(next);
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
       saveTimerRef.current = window.setTimeout(async () => {
+        if (patientIdRef.current !== targetPatientId) {
+          pendingSaveRef.current = null;
+          savingRef.current = false;
+          setSaving(false);
+          return;
+        }
         const draft = pendingSaveRef.current ?? next;
         savingRef.current = true;
         setSaving(true);
@@ -75,14 +103,18 @@ export function useCircleRemoteSettings(
         try {
           const payload: PatientRemoteSettingsDoc = {
             ...draft,
-            patientId: patient.patientId,
+            patientId: targetPatientId,
             updatedAt: Date.now(),
             updatedByUid: user.uid,
             updatedByName: user.displayName || user.email || 'Circle member',
-            updatedByRole: patient.role,
+            updatedByRole: targetRole,
             source: 'circle',
           };
           await writeRemoteSettings(db, payload);
+          if (patientIdRef.current !== targetPatientId) {
+            pendingSaveRef.current = null;
+            return;
+          }
           if (
             payload.primaryLanguage &&
             payload.primaryLanguage !== previousPrimaryLanguage
@@ -90,10 +122,10 @@ export function useCircleRemoteSettings(
             try {
               await syncCirclePatientProfileLanguageFromRemoteSettings(
                 db,
-                patient.patientId,
+                targetPatientId,
                 payload.primaryLanguage,
                 user.uid,
-                patient.displayName,
+                targetDisplayName,
                 user.displayName || undefined,
               );
             } catch (err) {
@@ -103,10 +135,13 @@ export function useCircleRemoteSettings(
           pendingSaveRef.current = null;
           setSavedAt(Date.now());
         } catch (err) {
+          if (patientIdRef.current !== targetPatientId) return;
           setError(err instanceof Error ? err.message : 'Could not save remote settings.');
         } finally {
-          savingRef.current = false;
-          setSaving(false);
+          if (patientIdRef.current === targetPatientId) {
+            savingRef.current = false;
+            setSaving(false);
+          }
         }
       }, 600);
     },
@@ -116,17 +151,13 @@ export function useCircleRemoteSettings(
   useEffect(() => {
     if (!settings || !fromFirestore || !user || !patient) return;
     if (pendingSaveRef.current || savingRef.current) return;
+    if (settings.patientId && settings.patientId !== patient.patientId) return;
     const checkIn = applyDailyCheckInDefaultOnAllStages(settings);
     const schedule = applyDailyLifeAssessmentScheduleIfNeeded(checkIn.next);
     if (checkIn.changed || schedule.changed) persist(schedule.next);
   }, [settings, fromFirestore, user, patient, persist]);
 
-  useEffect(
-    () => () => {
-      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
-    },
-    [],
-  );
+  useEffect(() => () => cancelPendingSave(), [cancelPendingSave]);
 
   return { settings, fromFirestore, loading, saving, error, savedAt, persist, setSettings };
 }
