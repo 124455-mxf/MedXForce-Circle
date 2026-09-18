@@ -90,6 +90,23 @@ export function VisitCaptureFlow({
   const streamRef = useRef<MediaStream | null>(null);
   const segmentStartRef = useRef(0);
   const timerRef = useRef<number | null>(null);
+  const patientIdWhenOpenedRef = useRef<string | null>(null);
+
+  const releaseMedia = useCallback(() => {
+    if (timerRef.current) window.clearInterval(timerRef.current);
+    timerRef.current = null;
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== 'inactive') {
+      try {
+        recorder.stop();
+      } catch {
+        // Already stopped or not started.
+      }
+    }
+    mediaRecorderRef.current = null;
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+  }, []);
 
   const resetState = useCallback(() => {
     setStep('consent');
@@ -101,16 +118,30 @@ export function VisitCaptureFlow({
     setError(null);
     setBusy(false);
     chunksRef.current = [];
-    if (timerRef.current) window.clearInterval(timerRef.current);
-    timerRef.current = null;
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    mediaRecorderRef.current = null;
-  }, []);
+    releaseMedia();
+  }, [releaseMedia]);
 
   useEffect(() => {
     if (!open) resetState();
   }, [open, resetState]);
+
+  useEffect(() => () => {
+    releaseMedia();
+  }, [releaseMedia]);
+
+  useEffect(() => {
+    if (!open) {
+      patientIdWhenOpenedRef.current = null;
+      return;
+    }
+    if (patientIdWhenOpenedRef.current == null) {
+      patientIdWhenOpenedRef.current = patientId;
+      return;
+    }
+    if (patientIdWhenOpenedRef.current !== patientId) {
+      onClose();
+    }
+  }, [open, patientId, onClose]);
 
   const stopTimer = () => {
     if (timerRef.current) window.clearInterval(timerRef.current);

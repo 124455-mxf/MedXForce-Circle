@@ -444,6 +444,13 @@ export function CircleMainShell({
     }
   }, []);
 
+  const selectedPatientId = selectedPatient?.patientId;
+  useEffect(() => {
+    visitCaptureSheetRestoreRef.current = null;
+    setVisitCaptureOpen(false);
+    setVisitCaptureEntryId(null);
+  }, [selectedPatientId]);
+
   useEffect(() => {
     if (!visitCaptureOpen || !visitCaptureEntryId || !selectedPatient?.patientId) {
       setVisitCaptureReplacesExisting(false);
