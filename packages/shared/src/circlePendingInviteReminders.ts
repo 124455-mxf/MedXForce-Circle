@@ -74,7 +74,7 @@ export function shouldShowPendingInviteReminder(input: {
 
 /** Display names for the reminder body (max 2 + overflow). */
 export function formatStalePendingInviteNames(
-  staleInvites: readonly StalePendingInvite[],
+  staleInvites: readonly { displayName?: string; invitedEmail: string }[],
   formatOverflow: (count: number) => string,
   maxNamed = 2,
 ): string {

@@ -20,6 +20,7 @@ export type CircleParticipationReminderKind =
   | 'profileIncomplete'
   | 'teamCoverage'
   | 'pendingInvites'
+  | 'inactiveMembers'
   | 'birthday'
   | 'onsetMilestone'
   | 'hospitalFeatureMessaging'
@@ -41,6 +42,7 @@ export function reminderSnoozeDurationMs(kind: CircleParticipationReminderKind):
   if (
     kind === 'teamCoverage' ||
     kind === 'pendingInvites' ||
+    kind === 'inactiveMembers' ||
     kind === 'profileIncomplete' ||
     kind === 'hospitalFeatureMessaging' ||
     kind === 'hospitalFeatureDashboard' ||
@@ -98,6 +100,9 @@ export function parseMemberReminderSnoozes(
   }
   if (typeof map.pendingInvites === 'number' && map.pendingInvites > 0) {
     next.pendingInvites = map.pendingInvites;
+  }
+  if (typeof map.inactiveMembers === 'number' && map.inactiveMembers > 0) {
+    next.inactiveMembers = map.inactiveMembers;
   }
   if (typeof map.birthday === 'number' && map.birthday > 0) {
     next.birthday = map.birthday;

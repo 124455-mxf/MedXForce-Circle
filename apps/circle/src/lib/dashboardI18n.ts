@@ -750,6 +750,29 @@ export function localizePreviewPendingInviteReminder(t: CircleTranslator): Local
   };
 }
 
+export function localizeInactiveMemberReminder(
+  t: CircleTranslator,
+  count: number,
+  names: string,
+): LocalizedReminderCopy {
+  return {
+    headline: t(
+      count === 1
+        ? 'dashboard.reminders.inactiveMembersHeadline_one'
+        : 'dashboard.reminders.inactiveMembersHeadline_other',
+      { count },
+    ),
+    body: t('dashboard.reminders.inactiveMembersBody', { names }),
+  };
+}
+
+export function localizePreviewInactiveMemberReminder(t: CircleTranslator): LocalizedReminderCopy {
+  return {
+    headline: t('dashboard.reminders.previewInactiveMembersHeadline'),
+    body: t('dashboard.reminders.previewInactiveMembersBody'),
+  };
+}
+
 export function insightHintT(t: CircleTranslator, key: CirclePatientInsightKey): string | undefined {
   const path = `dashboard.insightHints.${key}`;
   const translated = t(path);

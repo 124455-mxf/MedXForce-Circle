@@ -33,14 +33,15 @@ import {
   isHospitalFeatureReminderKind,
   isIcuProgressionReminderKind,
   isParticipationReminderSnoozed,
-  isScheduleEnabled,
-  resolveEffectiveAssessmentScheduleRules,
   isPatientInsightsPreviewRemindersEnabled,
+  isScheduleEnabled,
   listHospitalFeatureRemindersToShow,
   listIcuProgressionRemindersToShow,
+  listInactiveCircleMembers,
   listStalePendingInvites,
   parseCircleInitiateMessagesConfig,
   getRemoteSettingValue,
+  resolveEffectiveAssessmentScheduleRules,
   setRemoteAppMode,
   setRemoteDailyCheckIn,
   setRemoteIntensiveCareExperience,
@@ -51,6 +52,7 @@ import {
   shouldShowDiaryEntryReminder,
   shouldShowGalleryUploadReminder,
   shouldShowIcuDailyCheckInReminder,
+  shouldShowInactiveMemberReminder,
   shouldShowPendingInviteReminder,
   shouldShowProfileIncompleteReminder,
   shouldShowScheduledAssessmentMissedReminder,
@@ -78,6 +80,8 @@ import {
   localizePreviewParticipationGalleryReminder,
   localizePreviewCareAssessmentReminder,
   localizePreviewCareProfileReminder,
+  localizeInactiveMemberReminder,
+  localizePreviewInactiveMemberReminder,
   localizePreviewPendingInviteReminder,
   localizePreviewTeamCoverageReminder,
   localizeCareAssessmentReminder,
@@ -95,6 +99,7 @@ import {
 import { dashboardSectionTitleClass } from '../lib/circleSectionStyles';
 import { cn } from '../lib/utils';
 import type { CircleMainTab } from './CircleBottomNav';
+import { useCircleMemberActivityByUid } from '../hooks/useCircleMemberActivityByUid';
 import { useCircleParticipationReminderSnoozes } from '../hooks/useCircleParticipationReminderSnoozes';
 import { useCircleTeamCoverageFromDashboard } from '../context/CircleTeamCoverageContext';
 import {
@@ -160,6 +165,7 @@ function isCareStyleDismissKind(kind: CircleParticipationReminderKind): boolean 
   return (
     kind === 'teamCoverage' ||
     kind === 'pendingInvites' ||
+    kind === 'inactiveMembers' ||
     kind === 'profileIncomplete' ||
     kind === 'icuDailyCheckIn' ||
     kind === 'scheduledAssessmentMissed' ||
@@ -602,6 +608,37 @@ export function CircleDashboardCelebrationSection({
     () => (teamCoverageLoading ? [] : listStalePendingInvites(invites)),
     [invites, teamCoverageLoading],
   );
+  const inactiveMemberUids = useMemo(() => {
+    const uids: string[] = [];
+    const seen = new Set<string>();
+    for (const invite of invites) {
+      if (invite.status !== 'accepted') continue;
+      const role = String(invite.role || '')
+        .trim()
+        .toLowerCase();
+      if (role !== 'family' && role !== 'friend') continue;
+      const uid = invite.acceptedByUid?.trim();
+      if (!uid || uid === user.uid || seen.has(uid)) continue;
+      seen.add(uid);
+      uids.push(uid);
+    }
+    return uids;
+  }, [invites, user.uid]);
+  const {
+    lastOpenByUid,
+    presenceByUid,
+    loading: memberActivityLoading,
+  } = useCircleMemberActivityByUid(db, patient.patientId, inactiveMemberUids);
+  const inactiveCircleMembers = useMemo(
+    () =>
+      listInactiveCircleMembers({
+        invites,
+        lastOpenByUid,
+        presenceByUid,
+        excludeUid: user.uid,
+      }),
+    [invites, lastOpenByUid, presenceByUid, user.uid],
+  );
   const openAdminAccess = () => {
     if (onOpenAdminAccess) onOpenAdminAccess();
     else onGoToTab('admin');
@@ -610,6 +647,12 @@ export function CircleDashboardCelebrationSection({
     enabled: canManageTeam,
     staleInvites: stalePendingInvites,
     loading: teamCoverageLoading || snoozeLoading,
+    snoozes,
+  });
+  const showInactiveMemberReminder = shouldShowInactiveMemberReminder({
+    enabled: canManageTeam,
+    members: inactiveCircleMembers,
+    loading: teamCoverageLoading || snoozeLoading || memberActivityLoading,
     snoozes,
   });
 
@@ -994,6 +1037,35 @@ export function CircleDashboardCelebrationSection({
       key: 'preview-pending-invites',
       tone: 'care',
       icon: UserPlus,
+      headline: preview.headline,
+      body: preview.body,
+      isPreview: true,
+      onOpen: openAdminAccess,
+    });
+  }
+
+  if (showInactiveMemberReminder) {
+    const names = formatStalePendingInviteNames(inactiveCircleMembers, (count) =>
+      count === 1
+        ? t('dashboard.insightList.andOneMore')
+        : t('dashboard.insightList.andMore', { count }),
+    );
+    const copy = localizeInactiveMemberReminder(t, inactiveCircleMembers.length, names);
+    tiles.push({
+      key: 'inactive-members',
+      tone: 'care',
+      icon: UserRound,
+      headline: copy.headline,
+      body: copy.body,
+      dismissKind: 'inactiveMembers',
+      onOpen: openAdminAccess,
+    });
+  } else if (previewReminders && canManageTeam) {
+    const preview = localizePreviewInactiveMemberReminder(t);
+    tiles.push({
+      key: 'preview-inactive-members',
+      tone: 'care',
+      icon: UserRound,
       headline: preview.headline,
       body: preview.body,
       isPreview: true,
