@@ -25,7 +25,7 @@ export type FamilyGalleryPreviewPhoto = {
 
 export type FamilyGalleryDashboardStats = {
   previewPhotos: FamilyGalleryPreviewPhoto[];
-  /** Member and patient gallery items (no preview cap; used for Warmth media counts). */
+  /** Member and patient gallery items (no preview cap; used for Closeness media counts). */
   engagementPhotos: FamilyGalleryPreviewPhoto[];
   photoCount: number;
   /** Media the member can see and has not opened yet (excludes own uploads; includes patient). */

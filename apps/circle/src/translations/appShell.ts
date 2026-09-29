@@ -543,11 +543,11 @@ export const appShellEnglish = {
       previewPatient: 'Patient',
       centerLabel: 'You',
       ariaMap: 'Interactive map of the care circle',
-      warmthScore: 'Warmth',
+      warmthScore: 'Closeness',
       modes: {
         roles: 'Roles',
         relationships: 'Relationships',
-        engagement: 'Warmth',
+        engagement: 'Closeness',
         members: 'Members',
       },
       subtitle: {
