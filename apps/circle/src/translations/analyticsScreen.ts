@@ -91,7 +91,7 @@ export const analyticsScreenEnglish = {
     vitality: 'Vitality',
   },
   metrics: {
-    alertAttention: 'Alert & attention',
+    alertAttention: 'Alarm & Attention',
     messages: 'Messages',
     messaging: 'Messaging',
     communication: 'Communication',
@@ -116,9 +116,9 @@ export const analyticsScreenEnglish = {
     soulVitality: 'Soul gallery',
   },
   alertAttention: {
-    alert: 'Alert',
+    alert: 'Alarm',
     attention: 'Attention',
-    alertHint: 'Urgent alerts the patient sent in {{window}}.',
+    alertHint: 'Urgent alarms the patient sent in {{window}}.',
     attentionHint: 'Attention requests the patient sent in {{window}}.',
   },
   messages: {
@@ -412,7 +412,7 @@ export const analyticsScreenGerman = {
     vitality: 'Vitalität',
   },
   metrics: {
-    alertAttention: 'Alarm & Aufmerksamkeit',
+    alertAttention: 'Alarm & Achtung',
     messages: 'Nachrichten',
     messaging: 'Nachrichten',
     communication: 'Kommunikation',
@@ -438,9 +438,9 @@ export const analyticsScreenGerman = {
   },
   alertAttention: {
     alert: 'Alarm',
-    attention: 'Aufmerksamkeit',
+    attention: 'Achtung',
     alertHint: 'Dringende Alarme, die der Patient in {{window}} gesendet hat.',
-    attentionHint: 'Aufmerksamkeitsanfragen, die der Patient in {{window}} gesendet hat.',
+    attentionHint: 'Achtung-Anfragen, die der Patient in {{window}} gesendet hat.',
   },
   messages: {
     communication: 'Kommunikation',
@@ -734,7 +734,7 @@ export const analyticsScreenSpanish = {
     vitality: 'Vitalidad',
   },
   metrics: {
-    alertAttention: 'Alerta y atención',
+    alertAttention: 'Alarma y atención',
     messages: 'Mensajes',
     messaging: 'Mensajería',
     communication: 'Comunicación',
@@ -759,9 +759,9 @@ export const analyticsScreenSpanish = {
     soulVitality: 'Galería del alma',
   },
   alertAttention: {
-    alert: 'Alerta',
+    alert: 'Alarma',
     attention: 'Atención',
-    alertHint: 'Alertas urgentes que el paciente envió en {{window}}.',
+    alertHint: 'Alarmas urgentes que el paciente envió en {{window}}.',
     attentionHint: 'Solicitudes de atención que el paciente envió en {{window}}.',
   },
   messages: {
@@ -1055,7 +1055,7 @@ export const analyticsScreenPolish = {
     vitality: 'Witalność',
   },
   metrics: {
-    alertAttention: 'Alarm i uwaga',
+    alertAttention: 'Alarm i Uwaga',
     messages: 'Wiadomości',
     messaging: 'Wiadomości',
     communication: 'Komunikacja',

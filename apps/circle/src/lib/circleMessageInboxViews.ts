@@ -44,7 +44,7 @@ function isThreadUnread(
   return threadHasUnreadPatientReply(replies, patientId, msg.id, msg);
 }
 
-/** Unread alert/attention stay in In/Out until acknowledged; all appear under Alerts & attention. */
+/** Unread alarm/attention stay in In/Out until acknowledged; all appear under Alarm & Attention. */
 export function shouldShowInInOutDirectList(
   msg: InboxMessage,
   replies: { isPatient?: boolean; timestamp: number }[],

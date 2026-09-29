@@ -130,8 +130,8 @@ export const ANALYTICS_METRIC_DEFINITIONS: Record<AnalyticsMetricId, AnalyticsMe
   'alert-attention': {
     id: 'alert-attention',
     audience: 'engagement',
-    title: 'Alert & attention',
-    description: 'Historical data on alertness and focus.',
+    title: 'Alarm & Attention',
+    description: 'Historical data on alarm and attention requests.',
     isReleased: true,
     sectionId: 'communication',
   },

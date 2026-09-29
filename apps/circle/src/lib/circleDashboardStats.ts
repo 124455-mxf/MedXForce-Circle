@@ -263,7 +263,7 @@ export function getDiaryRecencyUrgency(
   return 'neutral';
 }
 
-/** Tint for Alerts & attention card from last confirmed alert/attention date. */
+/** Tint for Alarm & Attention card from last confirmed alarm/attention date. */
 export function getAlertAttentionRecencyUrgency(
   latestAt: number | null | undefined,
 ): AlertAttentionRecencyUrgency {

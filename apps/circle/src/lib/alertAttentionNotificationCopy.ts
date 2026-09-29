@@ -11,8 +11,8 @@ export type AlertAttentionCopy = {
 const COPY: Record<CircleUiLanguage, Record<AlertAttentionNotificationKind, AlertAttentionCopy>> = {
   English: {
     emergency: {
-      subject: 'Emergency alert',
-      text: 'Please check on the user immediately. An emergency alert was triggered in MedXForce.',
+      subject: 'Emergency alarm',
+      text: 'Please check on the user immediately. An emergency alarm was triggered in MedXForce.',
     },
     attention: {
       subject: 'Attention request',
@@ -25,14 +25,14 @@ const COPY: Record<CircleUiLanguage, Record<AlertAttentionNotificationKind, Aler
       text: 'Bitte sehen Sie umgehend nach dem Angehörigen. In MedXForce wurde ein Notfallalarm ausgelöst.',
     },
     attention: {
-      subject: 'Aufmerksamkeitsanfrage',
-      text: 'Bitte sehen Sie nach dem Angehörigen, sobald Sie können. In MedXForce wurde eine Aufmerksamkeitsanfrage ausgelöst.',
+      subject: 'Achtung-Anfrage',
+      text: 'Bitte sehen Sie nach dem Angehörigen, sobald Sie können. In MedXForce wurde eine Achtung-Anfrage ausgelöst.',
     },
   },
   Spanish: {
     emergency: {
-      subject: 'Alerta de emergencia',
-      text: 'Compruebe el estado del usuario de inmediato. Se activó una alerta de emergencia en MedXForce.',
+      subject: 'Alarma de emergencia',
+      text: 'Compruebe el estado del usuario de inmediato. Se activó una alarma de emergencia en MedXForce.',
     },
     attention: {
       subject: 'Solicitud de atención',
@@ -41,8 +41,8 @@ const COPY: Record<CircleUiLanguage, Record<AlertAttentionNotificationKind, Aler
   },
   Polish: {
     emergency: {
-      subject: 'Alert alarmowy',
-      text: 'Proszę natychmiast sprawdzić stan użytkownika. W MedXForce uruchomiono alert alarmowy.',
+      subject: 'Alarm awaryjny',
+      text: 'Proszę natychmiast sprawdzić stan użytkownika. W MedXForce uruchomiono alarm awaryjny.',
     },
     attention: {
       subject: 'Prośba o uwagę',
@@ -62,8 +62,8 @@ const LOVED_ONE: Record<CircleUiLanguage, string> = {
 const IN_APP_COPY: Record<CircleUiLanguage, Record<AlertAttentionNotificationKind, AlertAttentionCopy>> = {
   English: {
     emergency: {
-      subject: 'Emergency alert',
-      text: 'Please check on {{name}} now. This is an emergency alert from MedXForce.',
+      subject: 'Emergency alarm',
+      text: 'Please check on {{name}} now. This is an emergency alarm from MedXForce.',
     },
     attention: {
       subject: 'Attention request',
@@ -76,14 +76,14 @@ const IN_APP_COPY: Record<CircleUiLanguage, Record<AlertAttentionNotificationKin
       text: 'Bitte sehen Sie jetzt nach {{name}}. Das ist ein Notfallalarm aus MedXForce.',
     },
     attention: {
-      subject: 'Aufmerksamkeitsanfrage',
-      text: 'Bitte sehen Sie nach {{name}}, sobald Sie können. Es gibt eine Aufmerksamkeitsanfrage in MedXForce.',
+      subject: 'Achtung-Anfrage',
+      text: 'Bitte sehen Sie nach {{name}}, sobald Sie können. Es gibt eine Achtung-Anfrage in MedXForce.',
     },
   },
   Spanish: {
     emergency: {
-      subject: 'Alerta de emergencia',
-      text: 'Compruebe cómo está {{name}} ahora. Esta es una alerta de emergencia de MedXForce.',
+      subject: 'Alarma de emergencia',
+      text: 'Compruebe cómo está {{name}} ahora. Esta es una alarma de emergencia de MedXForce.',
     },
     attention: {
       subject: 'Solicitud de atención',
@@ -92,8 +92,8 @@ const IN_APP_COPY: Record<CircleUiLanguage, Record<AlertAttentionNotificationKin
   },
   Polish: {
     emergency: {
-      subject: 'Alert alarmowy',
-      text: 'Sprawdź teraz, jak się ma {{name}}. To alert alarmowy z MedXForce.',
+      subject: 'Alarm awaryjny',
+      text: 'Sprawdź teraz, jak się ma {{name}}. To alarm awaryjny z MedXForce.',
     },
     attention: {
       subject: 'Prośba o uwagę',

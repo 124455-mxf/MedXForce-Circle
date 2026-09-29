@@ -12,19 +12,19 @@ const recent = resolveAlertAttentionMessageDisplay(
   'English',
   'Demo',
 );
-assert.equal(recent?.subject, 'Emergency alert');
+assert.equal(recent?.subject, 'Emergency alarm');
 assert.match(recent?.text ?? '', /Please check on Demo now/);
 
 const older = resolveAlertAttentionMessageDisplay(
   {
     type: 'emergency',
     createdAt: Date.now() - 8 * dayMs,
-    text: 'Please check on Demo now. This is an emergency alert from MedXForce.',
+    text: 'Please check on Demo now. This is an emergency alarm from MedXForce.',
   },
   'English',
   'Demo',
 );
-assert.equal(older?.subject, 'Emergency alert');
+assert.equal(older?.subject, 'Emergency alarm');
 assert.equal(older?.text, '');
 
 const olderAttention = resolveAlertAttentionMessageDisplay(

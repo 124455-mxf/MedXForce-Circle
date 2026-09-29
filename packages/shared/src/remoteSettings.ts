@@ -485,12 +485,12 @@ export const REMOTE_PROXY_SECTIONS: {
   },
   {
     id: 'alerts',
-    title: 'Alerts & Attention',
+    title: 'Alarm & Attention',
     toggles: [
       {
         path: 'showAlertButton',
-        label: 'Emergency alert button',
-        description: 'Show the emergency alert button on the tablet.',
+        label: 'Emergency alarm button',
+        description: 'Show the emergency alarm button on the tablet.',
       },
       {
         path: 'showAttentionButton',
