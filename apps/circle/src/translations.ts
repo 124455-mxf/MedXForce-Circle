@@ -112,7 +112,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
         'If an account exists for this email, a reset link was sent. Check inbox and spam.',
       tooManyRequests: 'Too many attempts. Wait a few minutes and try again.',
       googleHint:
-        'MedXForce patient app uses Google — use Continue with Google if you already sign in there. The Google email must match the Family & Friends invite exactly.',
+        'Security: Never share your password with anyone. MedXForce will never ask you for your password by email, text, or phone.',
       wrongPassword:
         'Wrong password — or this account uses Google sign-in. Try Continue with Google, or Forgot password.',
       emailInUse:
@@ -185,7 +185,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
         'Falls ein Konto zu dieser E-Mail existiert, wurde ein Reset-Link gesendet. Prüfen Sie Posteingang und Spam.',
       tooManyRequests: 'Zu viele Versuche. Warten Sie ein paar Minuten und versuchen Sie es erneut.',
       googleHint:
-        'Die MedXForce-Patienten-App nutzt Google — verwenden Sie „Mit Google fortfahren“, wenn Sie sich dort bereits anmelden. Die Google-E-Mail muss exakt mit der Familie-&-Freunde-Einladung übereinstimmen.',
+        'Sicherheit: Geben Sie Ihr Passwort niemals an Dritte weiter. MedXForce wird Sie niemals per E-Mail, SMS oder Telefon nach Ihrem Passwort fragen.',
       wrongPassword:
         'Falsches Passwort — oder dieses Konto nutzt Google-Anmeldung. Versuchen Sie „Mit Google fortfahren“.',
       emailInUse:
@@ -259,7 +259,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
         'Si existe una cuenta para este correo, se envió un enlace de restablecimiento. Revise bandeja de entrada y spam.',
       tooManyRequests: 'Demasiados intentos. Espere unos minutos e inténtelo de nuevo.',
       googleHint:
-        'La app del paciente MedXForce usa Google — use Continuar con Google si ya inicia sesión allí. El correo de Google debe coincidir exactamente con la invitación de Familia y amigos.',
+        'Seguridad: Nunca comparta su contraseña con nadie. MedXForce nunca le pedirá la contraseña por correo, mensaje de texto o teléfono.',
       wrongPassword:
         'Contraseña incorrecta — o esta cuenta usa Google. Pruebe Continuar con Google.',
       emailInUse:
@@ -333,7 +333,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
         'Jeśli istnieje konto dla tego e-maila, wysłano link resetujący. Sprawdź skrzynkę i spam.',
       tooManyRequests: 'Zbyt wiele prób. Poczekaj kilka minut i spróbuj ponownie.',
       googleHint:
-        'Aplikacja pacjenta MedXForce używa Google — wybierz Kontynuuj z Google, jeśli tam się logujesz. Adres Google musi dokładnie odpowiadać zaproszeniu Rodzina i przyjaciele.',
+        'Bezpieczeństwo: Nigdy nie udostępniaj hasła nikomu. MedXForce nigdy nie poprosi Cię o hasło e-mailem, SMS-em ani telefonem.',
       wrongPassword:
         'Błędne hasło — lub to konto używa logowania Google. Spróbuj Kontynuuj z Google.',
       emailInUse:
