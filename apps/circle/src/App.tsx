@@ -3,6 +3,7 @@ import {
   createUserWithEmailAndPassword,
   GoogleAuthProvider,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
@@ -69,6 +70,7 @@ export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
+  const [resetNotice, setResetNotice] = useState<string | null>(null);
   const [googleSigningIn, setGoogleSigningIn] = useState(false);
   const [patients, setPatients] = useState<CirclePatientSummary[]>([]);
   const [patientsHydrating, setPatientsHydrating] = useState(false);
@@ -369,6 +371,7 @@ export default function App() {
 
   const handleSignIn = async () => {
     setAuthError(null);
+    setResetNotice(null);
     try {
       await signInWithEmailAndPassword(firebase.auth, email.trim(), password);
     } catch (err: unknown) {
@@ -387,6 +390,7 @@ export default function App() {
 
   const handleCreateAccount = async () => {
     setAuthError(null);
+    setResetNotice(null);
     try {
       await createUserWithEmailAndPassword(firebase.auth, email.trim(), password);
     } catch (err) {
@@ -396,6 +400,7 @@ export default function App() {
 
   const handleGoogleSignIn = async () => {
     setAuthError(null);
+    setResetNotice(null);
     setGoogleSigningIn(true);
     const provider = new GoogleAuthProvider();
     provider.addScope('email');
@@ -427,6 +432,35 @@ export default function App() {
   const startup = useCircleStartupSequence(appReady);
   const accountPhotoUrl = useCircleAccountPhoto(firebase.db, user);
   const accessPlaceholderLayout = patients.length === 0;
+
+  const handleForgotPassword = async () => {
+    setAuthError(null);
+    setResetNotice(null);
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setAuthError(t('auth.enterEmailForReset'));
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(firebase.auth, trimmed, {
+        url: window.location.origin,
+      });
+      setResetNotice(t('auth.passwordResetSent'));
+    } catch (err) {
+      const code = err && typeof err === 'object' && 'code' in err ? String(err.code) : '';
+      if (code === 'auth/unauthorized-continue-uri' || code === 'auth/invalid-continue-uri') {
+        try {
+          await sendPasswordResetEmail(firebase.auth, trimmed);
+          setResetNotice(t('auth.passwordResetSent'));
+          return;
+        } catch (retryErr) {
+          setAuthError(friendlyAuthError(retryErr, t));
+          return;
+        }
+      }
+      setAuthError(friendlyAuthError(err, t));
+    }
+  };
 
   const handleSignOut = async () => {
     clearCircleActiveSessionStorage();
@@ -467,7 +501,19 @@ export default function App() {
             placeholder={t('auth.passwordPlaceholder')}
             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl"
           />
+          <button
+            type="button"
+            onClick={() => void handleForgotPassword()}
+            className="text-sm font-semibold text-blue-600 hover:text-blue-800 text-left"
+          >
+            {t('auth.forgotPassword')}
+          </button>
           {authError && <p className="text-sm text-red-600">{authError}</p>}
+          {resetNotice && (
+            <p className="text-sm text-emerald-700 leading-relaxed" role="status">
+              {resetNotice}
+            </p>
+          )}
           <button
             type="button"
             onClick={handleGoogleSignIn}
@@ -758,6 +804,8 @@ function friendlyAuthError(
       return t('auth.invalidEmail');
     case 'auth/user-not-found':
       return t('auth.userNotFound');
+    case 'auth/too-many-requests':
+      return t('auth.tooManyRequests');
     default:
       return err instanceof Error ? err.message : t('auth.authFailed');
   }

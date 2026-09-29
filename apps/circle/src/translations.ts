@@ -106,12 +106,17 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       orEmailPassword: 'or email & password',
       signIn: 'Sign in',
       createAccount: 'Create account',
+      forgotPassword: 'Forgot password?',
+      enterEmailForReset: 'Enter your email first, then tap Forgot password.',
+      passwordResetSent:
+        'If an account exists for this email, a reset link was sent. Check inbox and spam.',
+      tooManyRequests: 'Too many attempts. Wait a few minutes and try again.',
       googleHint:
         'MedXForce patient app uses Google — use Continue with Google if you already sign in there. The Google email must match the Family & Friends invite exactly.',
       wrongPassword:
-        'Wrong password — or this account uses Google sign-in. Try Continue with Google instead.',
+        'Wrong password — or this account uses Google sign-in. Try Continue with Google, or Forgot password.',
       emailInUse:
-        'This email already has an account (often via Google). Use Continue with Google, or reset password in Firebase Authentication.',
+        'This email already has an account (often via Google). Use Continue with Google, or Forgot password.',
       weakPassword: 'Password must be at least 6 characters.',
       invalidEmail: 'Enter a valid email address.',
       userNotFound: 'No account for this email yet. Use Create account instead.',
@@ -174,12 +179,17 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       orEmailPassword: 'oder E-Mail & Passwort',
       signIn: 'Anmelden',
       createAccount: 'Konto erstellen',
+      forgotPassword: 'Passwort vergessen?',
+      enterEmailForReset: 'Geben Sie zuerst Ihre E-Mail ein und tippen Sie dann auf Passwort vergessen.',
+      passwordResetSent:
+        'Falls ein Konto zu dieser E-Mail existiert, wurde ein Reset-Link gesendet. Prüfen Sie Posteingang und Spam.',
+      tooManyRequests: 'Zu viele Versuche. Warten Sie ein paar Minuten und versuchen Sie es erneut.',
       googleHint:
         'Die MedXForce-Patienten-App nutzt Google — verwenden Sie „Mit Google fortfahren“, wenn Sie sich dort bereits anmelden. Die Google-E-Mail muss exakt mit der Familie-&-Freunde-Einladung übereinstimmen.',
       wrongPassword:
         'Falsches Passwort — oder dieses Konto nutzt Google-Anmeldung. Versuchen Sie „Mit Google fortfahren“.',
       emailInUse:
-        'Diese E-Mail hat bereits ein Konto (oft über Google). Nutzen Sie Google oder setzen Sie das Passwort in Firebase Authentication zurück.',
+        'Diese E-Mail hat bereits ein Konto (oft über Google). Nutzen Sie Google oder „Passwort vergessen“.',
       weakPassword: 'Das Passwort muss mindestens 6 Zeichen haben.',
       invalidEmail: 'Geben Sie eine gültige E-Mail-Adresse ein.',
       userNotFound: 'Kein Konto für diese E-Mail. Nutzen Sie „Konto erstellen“.',
@@ -243,12 +253,17 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       orEmailPassword: 'o correo y contraseña',
       signIn: 'Iniciar sesión',
       createAccount: 'Crear cuenta',
+      forgotPassword: '¿Olvidó la contraseña?',
+      enterEmailForReset: 'Escriba primero su correo y pulse ¿Olvidó la contraseña?',
+      passwordResetSent:
+        'Si existe una cuenta para este correo, se envió un enlace de restablecimiento. Revise bandeja de entrada y spam.',
+      tooManyRequests: 'Demasiados intentos. Espere unos minutos e inténtelo de nuevo.',
       googleHint:
         'La app del paciente MedXForce usa Google — use Continuar con Google si ya inicia sesión allí. El correo de Google debe coincidir exactamente con la invitación de Familia y amigos.',
       wrongPassword:
         'Contraseña incorrecta — o esta cuenta usa Google. Pruebe Continuar con Google.',
       emailInUse:
-        'Este correo ya tiene una cuenta (a menudo con Google). Use Google o restablezca la contraseña en Firebase Authentication.',
+        'Este correo ya tiene una cuenta (a menudo con Google). Use Google o ¿Olvidó la contraseña?',
       weakPassword: 'La contraseña debe tener al menos 6 caracteres.',
       invalidEmail: 'Introduzca un correo válido.',
       userNotFound: 'No hay cuenta para este correo. Use Crear cuenta.',
@@ -312,12 +327,17 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       orEmailPassword: 'lub e-mail i hasło',
       signIn: 'Zaloguj się',
       createAccount: 'Utwórz konto',
+      forgotPassword: 'Nie pamiętasz hasła?',
+      enterEmailForReset: 'Najpierw wpisz e-mail, potem naciśnij Nie pamiętasz hasła?',
+      passwordResetSent:
+        'Jeśli istnieje konto dla tego e-maila, wysłano link resetujący. Sprawdź skrzynkę i spam.',
+      tooManyRequests: 'Zbyt wiele prób. Poczekaj kilka minut i spróbuj ponownie.',
       googleHint:
         'Aplikacja pacjenta MedXForce używa Google — wybierz Kontynuuj z Google, jeśli tam się logujesz. Adres Google musi dokładnie odpowiadać zaproszeniu Rodzina i przyjaciele.',
       wrongPassword:
         'Błędne hasło — lub to konto używa logowania Google. Spróbuj Kontynuuj z Google.',
       emailInUse:
-        'Ten e-mail ma już konto (często przez Google). Użyj Google lub zresetuj hasło w Firebase Authentication.',
+        'Ten e-mail ma już konto (często przez Google). Użyj Google lub Nie pamiętasz hasła?',
       weakPassword: 'Hasło musi mieć co najmniej 6 znaków.',
       invalidEmail: 'Wprowadź prawidłowy adres e-mail.',
       userNotFound: 'Brak konta dla tego e-maila. Użyj Utwórz konto.',
