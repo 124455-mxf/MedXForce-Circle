@@ -596,7 +596,7 @@ const remoteSettingsGerman = {
     groupFriends: 'Freundinnen und Freunde',
   },
   circleDropIn: {
-    groups: 'Wer drop-in nutzen darf',
+    groups: 'Wer Drop-in nutzen darf',
     groupsDesc:
       'Nur Circle-App-Nutzer in diesen Gruppen. Proxy und Betreuende bleiben eingeschaltet, solange Drop-in aktiv ist.',
     people: 'Diese Personen zusätzlich erlauben',
@@ -1001,7 +1001,7 @@ const remoteSettingsSpanish = {
     groupFriends: 'Amigos',
   },
   circleDropIn: {
-    groups: 'Quién puede hacer drop-in',
+    groups: 'Quién puede usar Drop-in',
     groupsDesc:
       'Solo usuarios de la app Circle en estos grupos. Proxy y cuidadores permanecen activados mientras el drop-in esté encendido.',
     people: 'Permitir también a estas personas',
@@ -1406,7 +1406,7 @@ const remoteSettingsPolish = {
     groupFriends: 'Przyjaciele',
   },
   circleDropIn: {
-    groups: 'Kto może korzystać z drop-in',
+    groups: 'Kto może korzystać z Drop-in',
     groupsDesc:
       'Tylko użytkownicy aplikacji Circle w tych grupach. Pełnomocnik i opiekunowie pozostają włączeni, gdy drop-in jest aktywny.',
     people: 'Dodatkowo pozwól tym osobom',

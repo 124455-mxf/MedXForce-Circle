@@ -849,7 +849,7 @@ export const circleScreenPolish = {
   tabDiscussion: 'Dyskusja',
   tabAnnouncement: 'Ogłoszenie',
   tabCareTransition: 'Zadania',
-  tabDropIns: 'Drop-iny',
+  tabDropIns: 'Drop-ins',
   tabVisitCaptures: 'Nagrania spotkań',
   tabAppointments: 'Wizyty',
   tabHidden: 'Usunięte z widoku',
@@ -957,7 +957,7 @@ export const circleScreenPolish = {
   inboxListHeadingVisitCaptures: 'Nagrania spotkań',
   inboxListHeadingAppointments: 'Wizyty',
   inboxListHeadingHidden: 'Zarchiwizowane / Usunięte',
-  inboxListHeadingDropIns: 'Podsumowania drop-inów',
+  inboxListHeadingDropIns: 'Podsumowania Drop-ins',
   inboxOlderAnnouncement_one: '{{count}} starsze ogłoszenie',
   inboxOlderAnnouncement_other: '{{count}} starszych ogłoszeń',
   inboxOlderClosedPoll_one: '{{count}} starsza zamknięta ankieta',
@@ -971,7 +971,7 @@ export const circleScreenPolish = {
   inboxEmptyAnnouncementReadOnly:
     'Pełnomocnicy i opiekunowie publikują tu ogłoszenia. Aby się wypowiedzieć, rozpocznij dyskusję.',
   inboxEmptyCareTransition: 'Brak otwartych zadań gotowości przejścia.',
-  inboxEmptyDropIns: 'Brak drop-inów.',
+  inboxEmptyDropIns: 'Brak Drop-ins.',
   inboxEmptyVisitCaptures: 'Brak nagrań spotkań.',
   inboxEmptyAppointments: 'Brak zaproszeń na wizyty.',
   folderActionDropInStartHint:
