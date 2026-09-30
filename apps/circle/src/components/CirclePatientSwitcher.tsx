@@ -16,7 +16,6 @@ import { CirclePatientSwitchList } from './CirclePatientSwitchList';
 import { useCirclePatientsAttention } from '../context/CirclePatientsAttentionContext';
 import { useCircleT } from '../lib/circleI18nContext';
 import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfileSnapshot';
-import { formatCircleBadgeCount } from './CircleCountBadge';
 
 interface CirclePatientSwitcherProps {
   patients: CirclePatientSummary[];
@@ -85,12 +84,8 @@ export function CirclePatientSwitcher({
 
   const otherAttentionLabel =
     otherPatientsSummary.patientCount === 1
-      ? t('drawer.otherPatientNeedsAttention', {
-          count: formatCircleBadgeCount(otherPatientsSummary.totalUnread),
-        })
-      : t('drawer.otherPatientsNeedAttention', {
-          count: formatCircleBadgeCount(otherPatientsSummary.totalUnread),
-        });
+      ? t('drawer.otherPatientNeedsAttention')
+      : t('drawer.otherPatientsNeedAttention');
 
   return (
     <>

@@ -433,7 +433,7 @@ export function moreNavItemsForPatient(
   if (canViewRemoteSettingsTab(capabilities)) {
     items.push({
       id: 'remote-settings',
-      label: 'Remote Settings',
+      label: 'Application Mode',
       icon: SlidersHorizontal,
       description: 'Configure patient tablet',
     });

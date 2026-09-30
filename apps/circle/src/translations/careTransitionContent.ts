@@ -533,7 +533,7 @@ export const careTransitionContentGerman = {
       when: 'Erste Reha-Woche',
     },
     r2: {
-      title: 'MedXForce-Assessments und Check-ins abstimmen',
+      title: 'MedXForce-Bewertungen und Check-ins abstimmen',
       why: 'Überlastung vermeiden: Tablet-Anfragen an die Reha-Energie anpassen.',
       when: 'Erste Reha-Woche',
     },

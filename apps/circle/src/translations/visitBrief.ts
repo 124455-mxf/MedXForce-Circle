@@ -41,13 +41,13 @@ const visitBriefEnglish = {
 const visitBriefGerman = {
   title: 'Besuchsvorbereitung',
   subtitle:
-    'KI-Zusammenfassung für das Pflegeteam vor diesem Termin — Profil, Assessments und ausgewählte Referenzen.',
+    'KI-Zusammenfassung für das Pflegeteam vor diesem Termin — Profil, Bewertungen und ausgewählte Referenzen.',
   generate: 'Vorbereitung erstellen',
   regenerate: 'Neu erstellen',
   generating: 'Wird erstellt…',
   generateError: 'Besuchsvorbereitung konnte nicht erstellt werden.',
   empty:
-    'Erstellen Sie eine Vorbereitung, wenn Sie bereit sind — sie nutzt das Patientenprofil, Assessments und die oben ausgewählten Referenzen.',
+    'Erstellen Sie eine Vorbereitung, wenn Sie bereit sind — sie nutzt das Patientenprofil, Bewertungen und die oben ausgewählten Referenzen.',
   keyTopics: 'Schwerpunkte',
   medications: 'Medikamente besprechen',
   references: 'Ausgewählte Referenzen',

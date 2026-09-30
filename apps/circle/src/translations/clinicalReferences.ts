@@ -151,7 +151,7 @@ const clinicalReferencesGerman = {
   patientSummary: {
     title: 'KI-Patientenzusammenfassung',
     subtitle:
-      'Snapshot für das Pflegeteam aus Profil, identitätsgeprüften Dokumenten und Patienten-App-Assessments — mit Quelle und Alter für jeden Eintrag.',
+      'Snapshot für das Pflegeteam aus Profil, identitätsgeprüften Dokumenten und Patienten-App-Bewertungen — mit Quelle und Alter für jeden Eintrag.',
     generate: 'Patient zusammenfassen',
     regenerate: 'Zusammenfassung neu erstellen',
     generating: 'Wird zusammengefasst…',
@@ -181,7 +181,7 @@ const clinicalReferencesGerman = {
     viewSummary: 'Zusammenfassung ansehen',
     expandedHint: 'Vollseiten-Ansicht für das Pflegeteam',
     pdf: 'PDF',
-    assessmentTrends: 'Assessment-Trends',
+    assessmentTrends: 'Bewertungs-Trends',
     trendAverage: 'Ø',
     trendEntries: 'Einträge',
     trendActivity: 'Aktivität (30 Tage)',
