@@ -24,7 +24,7 @@ export function CircleAnalyticsChartFooter({
       />
       <CircleAnalyticsChartLegendRow items={legend} />
       {sparsePointCount != null && sparsePointCount > 0 && sparsePointCount <= 5 && (
-        <p className="text-[9px] text-slate-400 text-center leading-snug pt-1 px-2">
+        <p className="text-[11px] text-slate-400 text-center leading-snug pt-1 px-2">
           Dots mark actual check-in dates ({sparsePointCount} in this period) — not every day has
           data.
         </p>

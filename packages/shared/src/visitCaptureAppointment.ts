@@ -41,3 +41,35 @@ export function canOfferRecordVisitForAppointmentOnDate(
     isAppointmentToday: appointmentDateKey === todayKey,
   });
 }
+
+/** Offer written visit notes during today's doctor appointments and after they end. */
+export function canOfferVisitNotesForAppointment(
+  kind: CareCalendarEntryKind,
+  timing: CareCalendarDayEventTiming,
+  options?: { isAppointmentToday?: boolean },
+): boolean {
+  if (!supportsVisitCaptureForAppointmentKind(kind)) return false;
+  if (timing === 'past') return true;
+  if (!options?.isAppointmentToday) return false;
+  return timing === 'in_progress' || timing === 'upcoming' || timing === 'unscheduled';
+}
+
+export function canOfferVisitNotesForAppointmentOnDate(
+  kind: CareCalendarEntryKind,
+  appointmentDateKey: string,
+  startTimeMinutes?: number,
+  endTimeMinutes?: number,
+  now = new Date(),
+): boolean {
+  if (!appointmentDateKey.trim()) return false;
+  const todayKey = careCalendarDateKey(now);
+  const timing = careCalendarDayEventTiming(
+    appointmentDateKey,
+    startTimeMinutes,
+    endTimeMinutes,
+    now,
+  );
+  return canOfferVisitNotesForAppointment(kind, timing, {
+    isAppointmentToday: appointmentDateKey === todayKey,
+  });
+}

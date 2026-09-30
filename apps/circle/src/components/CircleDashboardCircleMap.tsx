@@ -1,12 +1,14 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Users, X } from 'lucide-react';
+import { MessageSquare, Sparkles, Users, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import type { CircleMapGalleryPhoto, CircleMapOnlineMember } from '../lib/circleMapModel';
 import {
   buildCircleMapModel,
   buildCircleMapPreviewModel,
+  circleMapMemberDetailLine,
+  groupCircleMapMembersByRole,
   type CircleMapNode,
   type CircleMapViewMode,
 } from '../lib/circleMapModel';
@@ -27,9 +29,15 @@ type DashboardCircleMapModalProps = {
   onlineNow?: CircleMapOnlineMember[];
   photosByEmail?: Record<string, string>;
   photosByContactId?: Record<string, string>;
+  uidByEmail?: Record<string, string>;
+  uidByContactId?: Record<string, string>;
   patientPhotoUrl?: string;
   preview?: boolean;
   onManageContacts?: () => void;
+  onMessageMember?: (recipientKey: string) => void;
+  messagingEnabled?: boolean;
+  initialMode?: CircleMapViewMode;
+  subtitle?: string;
   t: (key: string, params?: Record<string, unknown>) => string;
 };
 
@@ -42,13 +50,25 @@ export function DashboardCircleMapModal({
   onlineNow,
   photosByEmail,
   photosByContactId,
+  uidByEmail,
+  uidByContactId,
   patientPhotoUrl,
   preview = false,
   onManageContacts,
+  onMessageMember,
+  messagingEnabled = false,
+  initialMode = 'roles',
+  subtitle,
   t,
 }: DashboardCircleMapModalProps) {
-  const [mode, setMode] = useState<CircleMapViewMode>('roles');
+  const [mode, setMode] = useState<CircleMapViewMode>(initialMode);
   const [selected, setSelected] = useState<CircleMapNode | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setMode(initialMode);
+    setSelected(null);
+  }, [initialMode, isOpen]);
 
   const model = useMemo(() => {
     if (preview) return buildCircleMapPreviewModel(t);
@@ -59,13 +79,36 @@ export function DashboardCircleMapModal({
       onlineNow,
       photosByEmail,
       photosByContactId,
+      uidByEmail,
+      uidByContactId,
       patientPhotoUrl,
       mode,
       t,
     });
-  }, [galleryPhotos, messages, mode, onlineNow, patientPhotoUrl, photosByContactId, photosByEmail, preferences, preview, t]);
+  }, [
+    galleryPhotos,
+    messages,
+    mode,
+    onlineNow,
+    patientPhotoUrl,
+    photosByContactId,
+    photosByEmail,
+    uidByContactId,
+    uidByEmail,
+    preferences,
+    preview,
+    t,
+  ]);
+
+  const membersList = useMemo(
+    () => groupCircleMapMembersByRole(model.nodes),
+    [model.nodes],
+  );
+  const memberCount = membersList.reduce((sum, group) => sum + group.members.length, 0);
 
   if (!isOpen) return null;
+
+  const showMembersList = mode === 'members';
 
   return (
     <AnimatePresence>
@@ -73,7 +116,7 @@ export function DashboardCircleMapModal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-950/55 backdrop-blur-md"
+        className="fixed inset-0 z-[130] flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto overscroll-contain bg-slate-950/55 backdrop-blur-md"
         onClick={onClose}
       >
         <motion.div
@@ -81,20 +124,22 @@ export function DashboardCircleMapModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 10 }}
           transition={{ type: 'spring', stiffness: 260, damping: 24 }}
-          className="relative w-full max-w-2xl overflow-hidden rounded-[36px] border border-violet-100 bg-white shadow-2xl"
+          className="relative w-full max-w-[min(100%,40rem)] sm:max-w-2xl md:max-w-3xl my-auto max-h-[calc(100dvh-1.5rem)] flex flex-col overflow-hidden rounded-[28px] sm:rounded-[36px] border border-violet-100 bg-white shadow-2xl"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="relative p-6 sm:p-8 space-y-5">
+          <div className="relative overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4 sm:space-y-5 flex-1 min-h-0">
             <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
+              <div className="space-y-1 min-w-0 pr-2">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-100 text-violet-700 text-[11px] font-black uppercase tracking-wider">
                   <Sparkles size={12} />
                   {t('dashboard.circleMap.badge')}
                 </div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                   {t('dashboard.circleMap.title')}
                 </h2>
-                <p className="text-sm text-slate-500 max-w-md">{t(`dashboard.circleMap.subtitle.${mode}`)}</p>
+                <p className="text-sm text-slate-500 max-w-md">
+                  {subtitle ?? t(`dashboard.circleMap.subtitle.${mode}`)}
+                </p>
                 {mode === 'relationships' && (
                   <p className="text-xs text-violet-700/90 font-medium max-w-md">
                     {t('dashboard.circleMap.relationshipsHint')}
@@ -104,7 +149,7 @@ export function DashboardCircleMapModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2.5 rounded-2xl bg-white/80 border border-slate-100 text-slate-500 hover:text-slate-800 hover:bg-white transition-colors"
+                className="p-2.5 rounded-2xl bg-white/80 border border-slate-100 text-slate-500 hover:text-slate-800 hover:bg-white transition-colors shrink-0"
                 aria-label={t('common.close')}
               >
                 <X size={18} />
@@ -113,31 +158,129 @@ export function DashboardCircleMapModal({
 
             <CircleMapModeTabs mode={mode} onChange={setMode} t={t} />
 
-            <div className="rounded-[28px] border border-slate-100 bg-white p-3 sm:p-4 shadow-sm">
-              <CircleMapVisual
-                model={model}
-                mode={mode}
-                selectedId={selected?.id ?? null}
-                onSelectNode={setSelected}
-                t={t}
-                className="aspect-square max-h-[min(62vh,520px)] mx-auto"
-              />
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {[...model.rings].sort((a, b) => a.index - b.index).map((ring) => (
-                <span
-                  key={ring.key}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 border border-slate-100 text-xs font-bold text-slate-600"
-                >
-                  <span
-                    className={cn('w-2.5 h-2.5 rounded-full', ring.dashed && 'border border-dashed border-current bg-transparent')}
-                    style={ring.dashed ? { borderColor: ring.color, color: ring.color } : { backgroundColor: ring.color }}
+            {showMembersList ? (
+              <div className="space-y-3">
+                <p className="text-xs text-slate-400 font-medium">
+                  {t('dashboard.circleMap.membersCount', { count: memberCount })}
+                </p>
+                <div className="space-y-4 max-h-[min(55dvh,480px)] overflow-y-auto overscroll-contain pr-0.5">
+                  {membersList.map((group) => (
+                    <section key={group.key} className="space-y-2">
+                      <h3 className="flex items-center gap-2 px-0.5 text-[11px] font-black uppercase tracking-wider text-slate-500">
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: group.color }}
+                          aria-hidden
+                        />
+                        {group.label}
+                      </h3>
+                      <ul className="space-y-2">
+                        {group.members.map((node) => {
+                          const canMessage = messagingEnabled && node.canMessage && !!onMessageMember;
+                          const detail = circleMapMemberDetailLine(node, group.label);
+                          return (
+                            <li
+                              key={node.id}
+                              className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-3 py-2.5 shadow-sm"
+                            >
+                              <div className="relative shrink-0">
+                                {node.photoUrl ? (
+                                  <img
+                                    src={node.photoUrl}
+                                    alt=""
+                                    className="w-11 h-11 rounded-full object-cover border-2 border-white shadow-sm"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                ) : (
+                                  <div
+                                    className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-black text-white shadow-sm"
+                                    style={{ backgroundColor: node.color }}
+                                  >
+                                    {node.initials}
+                                  </div>
+                                )}
+                                {node.isOnline ? (
+                                  <span
+                                    className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white"
+                                    title={t('dashboard.circleMap.online')}
+                                  />
+                                ) : null}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="font-bold text-slate-800 truncate">{node.name}</p>
+                                {detail ? (
+                                  <p className="text-xs text-slate-500 truncate">{detail}</p>
+                                ) : null}
+                              </div>
+                              {canMessage ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    onClose();
+                                    onMessageMember?.(node.recipientKey);
+                                  }}
+                                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-700 transition-colors"
+                                >
+                                  <MessageSquare size={14} />
+                                  {t('dashboard.circleMap.message')}
+                                </button>
+                              ) : null}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </section>
+                  ))}
+                </div>
+                {memberCount === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-8">
+                    {t('dashboard.circleMap.membersEmpty')}
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <>
+                <div className="rounded-[28px] border border-slate-100 bg-white p-3 sm:p-4 shadow-sm">
+                  <CircleMapVisual
+                    model={model}
+                    mode={mode}
+                    selectedId={selected?.id ?? null}
+                    onSelectNode={setSelected}
+                    t={t}
+                    className="aspect-square max-h-[min(62vh,520px)] mx-auto"
                   />
-                  {ring.label}
-                </span>
-              ))}
-            </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {[...model.rings].sort((a, b) => a.index - b.index).map((ring) => (
+                    <span
+                      key={ring.key}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 border border-slate-100 text-xs font-bold text-slate-600"
+                    >
+                      <span
+                        className={cn('w-2.5 h-2.5 rounded-full', ring.dashed && 'border border-dashed border-current bg-transparent')}
+                        style={ring.dashed ? { borderColor: ring.color, color: ring.color } : { backgroundColor: ring.color }}
+                      />
+                      {ring.label}
+                    </span>
+                  ))}
+                </div>
+
+                {selected && messagingEnabled && selected.canMessage && onMessageMember ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onMessageMember(selected.recipientKey);
+                    }}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-violet-50 border border-violet-200 text-violet-700 font-bold hover:bg-violet-100 transition-colors w-full sm:w-auto"
+                  >
+                    <MessageSquare size={16} />
+                    {t('dashboard.circleMap.messagePerson', { name: selected.name })}
+                  </button>
+                ) : null}
+              </>
+            )}
 
             <div className="flex flex-wrap gap-3 pt-1">
               {onManageContacts && (
@@ -147,7 +290,7 @@ export function DashboardCircleMapModal({
                     onClose();
                     onManageContacts();
                   }}
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-violet-600 text-white font-bold hover:bg-violet-700 transition-colors shadow-lg shadow-violet-200"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
                 >
                   <Users size={16} />
                   {t('dashboard.circleMap.manageContacts')}
@@ -175,12 +318,13 @@ type DashboardCircleMapTileProps = {
   onlineNow?: CircleMapOnlineMember[];
   photosByEmail?: Record<string, string>;
   photosByContactId?: Record<string, string>;
+  uidByEmail?: Record<string, string>;
+  uidByContactId?: Record<string, string>;
   patientPhotoUrl?: string;
   preview?: boolean;
+  variant?: 'visual' | 'compact';
   onOpen: () => void;
   t: (key: string, params?: Record<string, unknown>) => string;
-  titleClassName?: string;
-  bodyClassName?: string;
 };
 
 export function DashboardCircleMapTile({
@@ -190,12 +334,13 @@ export function DashboardCircleMapTile({
   onlineNow,
   photosByEmail,
   photosByContactId,
+  uidByEmail,
+  uidByContactId,
   patientPhotoUrl,
   preview = false,
+  variant = 'compact',
   onOpen,
   t,
-  titleClassName,
-  bodyClassName,
 }: DashboardCircleMapTileProps) {
   const model = useMemo(() => {
     if (preview) return buildCircleMapPreviewModel(t);
@@ -206,39 +351,93 @@ export function DashboardCircleMapTile({
       onlineNow,
       photosByEmail,
       photosByContactId,
+      uidByEmail,
+      uidByContactId,
       patientPhotoUrl,
       mode: 'roles',
       t,
     });
-  }, [galleryPhotos, messages, onlineNow, patientPhotoUrl, photosByContactId, photosByEmail, preferences, preview, t]);
+  }, [
+    galleryPhotos,
+    messages,
+    onlineNow,
+    patientPhotoUrl,
+    photosByContactId,
+    photosByEmail,
+    uidByContactId,
+    uidByEmail,
+    preferences,
+    preview,
+    t,
+  ]);
+
+  const memberCount = model.nodes.length;
+
+  if (variant === 'compact') {
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        className="w-full text-left p-3.5 sm:p-4 rounded-2xl border border-slate-100 bg-white shadow-sm hover:border-blue-200 hover:bg-blue-50/30 transition-colors flex flex-col"
+      >
+        <div className="flex items-center gap-2.5 mb-2 min-w-0">
+          <span className="w-9 h-9 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
+            <Sparkles size={18} aria-hidden />
+          </span>
+          <p className="text-sm font-bold text-slate-800 leading-tight truncate">
+            {t('dashboard.circleMap.compactHomeTitle')}
+          </p>
+        </div>
+        <div className="flex items-center justify-between gap-3 min-w-0">
+          <p className="font-bold tracking-tight leading-none text-3xl sm:text-[2rem] text-slate-900 tabular-nums">
+            {memberCount}
+          </p>
+          <p className="text-sm font-medium text-slate-700 text-right">
+            {t('dashboard.circleMap.membersCount', { count: memberCount })}
+          </p>
+        </div>
+      </button>
+    );
+  }
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="text-left p-4 sm:p-5 w-full h-full flex flex-col bg-white rounded-[28px] border border-violet-100 shadow-sm hover:shadow-lg hover:border-violet-200 transition-all group overflow-hidden relative"
+      className="text-left w-full h-full flex bg-white rounded-[28px] border border-violet-100 shadow-sm hover:shadow-lg hover:border-violet-200 transition-all group overflow-hidden relative flex-row items-stretch pl-4 sm:pl-5 py-3 sm:py-4 pr-1 sm:pr-2 gap-2 sm:gap-3"
     >
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none bg-[radial-gradient(circle_at_30%_20%,rgba(139,92,246,0.06),transparent_55%)]" />
-      <div className="relative flex items-center gap-3 mb-2">
-        <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center group-hover:bg-violet-600 group-hover:text-white transition-colors">
-          <Sparkles size={20} />
-        </div>
-        <div className="min-w-0">
-          <p className={cn('font-bold text-slate-800', titleClassName)}>{t('dashboard.circleMap.tileTitle')}</p>
-          <p className={cn('text-xs text-slate-500', bodyClassName)}>
-            {t('dashboard.circleMap.tileSubtitle', {
-              count: model.nodes.length,
-              name: model.patientName,
-            })}
+      <div className="relative flex min-w-0 w-[30%] sm:w-[28%] flex-col justify-between shrink-0 py-1">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center group-hover:bg-violet-600 group-hover:text-white transition-colors shrink-0">
+            <Sparkles size={20} />
+          </div>
+          <p className="font-bold text-slate-800 text-sm leading-tight line-clamp-2 min-w-0">
+            {t('dashboard.circleMap.tileTitle')}
           </p>
         </div>
+        <div className="relative flex-1 flex flex-col justify-center min-h-0 py-1">
+          <p className="font-bold tracking-tight leading-none text-3xl sm:text-[2rem] text-slate-900">
+            {memberCount}
+          </p>
+          <p className="mt-1.5 text-[13px] text-slate-600 leading-snug">
+            {t('dashboard.circleMap.membersCount', { count: memberCount })}
+          </p>
+        </div>
+        <p className="relative text-[11px] font-bold uppercase tracking-wider text-violet-600">
+          {t('dashboard.circleMap.tileCta')}
+        </p>
       </div>
-      <div className="relative flex-1 min-h-0 -mx-2">
-        <CircleMapVisual model={model} mode="roles" compact t={t} className="h-full" />
+      <div className="relative min-h-0 min-w-0 flex-1">
+        <CircleMapVisual
+          model={model}
+          mode="roles"
+          compact
+          emphasized
+          t={t}
+          className="h-full"
+        />
       </div>
-      <p className={cn('relative text-[11px] font-bold uppercase tracking-wider text-violet-600 mt-2', bodyClassName)}>
-        {t('dashboard.circleMap.tileCta')}
-      </p>
     </button>
   );
 }

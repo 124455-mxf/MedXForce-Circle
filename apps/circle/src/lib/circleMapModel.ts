@@ -4,6 +4,7 @@ import { circleRoleFromContact, normalizeInviteEmail, type CircleMemberRole } fr
 export type CircleMapGalleryPhoto = {
   source?: string;
   senderName?: string;
+  uploadedByUid?: string;
   date?: number;
 };
 
@@ -27,7 +28,7 @@ function circleRoleLabelKey(role: CircleMemberRole): string {
   return 'dashboard.circleMap.roles.contact';
 }
 
-export type CircleMapViewMode = 'roles' | 'relationships' | 'engagement';
+export type CircleMapViewMode = 'roles' | 'relationships' | 'engagement' | 'members';
 
 export type CircleMapEngagement = {
   messagesSent: number;
@@ -40,6 +41,7 @@ export type CircleMapNode = {
   id: string;
   name: string;
   email: string;
+  recipientKey: string;
   initials: string;
   photoUrl?: string;
   ringKey: string;
@@ -51,6 +53,7 @@ export type CircleMapNode = {
   accent: string;
   isOnline: boolean;
   isMessagingOnly: boolean;
+  canMessage: boolean;
   engagement: CircleMapEngagement;
   angle: number;
   radius: number;
@@ -79,6 +82,62 @@ const ROLE_RING_ORDER: { key: string; labelKey: string; color: string; accent: s
   { key: 'friend', labelKey: 'dashboard.circleMap.roles.friend', color: '#0d9488', accent: '#2dd4bf' },
   { key: 'contact', labelKey: 'dashboard.circleMap.roles.contact', color: '#64748b', accent: '#94a3b8' },
 ];
+
+export type CircleMapMemberRoleGroup = {
+  key: string;
+  label: string;
+  color: string;
+  members: CircleMapNode[];
+};
+
+export function groupCircleMapMembersByRole(nodes: CircleMapNode[]): CircleMapMemberRoleGroup[] {
+  const byKey = new Map<string, CircleMapNode[]>();
+  for (const node of nodes) {
+    const key = node.ringKey || 'contact';
+    const list = byKey.get(key) ?? [];
+    list.push(node);
+    byKey.set(key, list);
+  }
+
+  const knownKeys = ROLE_RING_ORDER.map((ring) => ring.key);
+  const extraKeys = [...byKey.keys()].filter((key) => !knownKeys.includes(key));
+
+  return [...knownKeys, ...extraKeys]
+    .map((key) => {
+      const members = [...(byKey.get(key) ?? [])].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
+      );
+      if (members.length === 0) return null;
+      const ring = ROLE_RING_ORDER.find((item) => item.key === key);
+      return {
+        key,
+        label: members[0].ringLabel,
+        color: ring?.color ?? members[0].color,
+        members,
+      };
+    })
+    .filter((group): group is CircleMapMemberRoleGroup => group != null);
+}
+
+function normalizeCircleMapLabel(value: string): string {
+  return value.trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+/** Relationship under a grouped member name; omit if it only repeats the section heading. */
+export function circleMapMemberDetailLine(node: CircleMapNode, groupLabel: string): string {
+  const relationship = node.relationshipDisplay?.trim() ?? '';
+  if (!relationship) return '';
+  const normalized = normalizeCircleMapLabel(relationship);
+  if (!normalized) return '';
+  const headings = [groupLabel, node.roleDisplay, node.ringLabel]
+    .map((label) => normalizeCircleMapLabel(label))
+    .filter(Boolean);
+  const repeatsHeading = headings.some(
+    (heading) =>
+      normalized === heading || heading.startsWith(normalized) || normalized.startsWith(heading),
+  );
+  return repeatsHeading ? '' : relationship;
+}
 
 const RELATIONSHIP_PALETTE = [
   { color: '#db2777', accent: '#f472b6' },
@@ -229,22 +288,83 @@ export function resolveCircleMapContactPhoto(
   const email = normalizeInviteEmail(String(contact.email || ''));
   if (email && options.photosByEmail?.[email]) return options.photosByEmail[email];
 
+  const fromContact =
+    String(contact.photoUrl || contact.avatarUrl || contact.profilePicture || '').trim();
+  if (fromContact) return fromContact;
+
   const online = options.onlineNow?.find(
     (member) => normalizeInviteEmail(member.email) === email,
   );
   return online?.photoUrl;
 }
 
+function contactMatchesPerson(
+  contact: Record<string, unknown>,
+  name?: string,
+  email?: string,
+): boolean {
+  const contactEmail = normalizeInviteEmail(String(contact.email || ''));
+  const contactName = normalizeComparable(String(contact.name || ''));
+  const contactFirst = normalizeComparable(String(contact.firstName || ''));
+  const personEmail = emailLooksLikeAddress(email)
+    ? normalizeInviteEmail(email || '')
+    : emailLooksLikeAddress(name)
+      ? normalizeInviteEmail(name || '')
+      : '';
+  const personName = normalizeComparable(name || '');
+  if (personEmail && contactEmail && personEmail === contactEmail) return true;
+  if (personName && contactName && personName === contactName) return true;
+  if (personName && contactFirst && personName === contactFirst) return true;
+  if (namesShareFirstAndLast(contactName, personName)) return true;
+  return false;
+}
+
+function emailLooksLikeAddress(value?: string): boolean {
+  return !!value && value.includes('@');
+}
+
+function namesShareFirstAndLast(a: string, b: string): boolean {
+  const aParts = a.split(/\s+/).filter(Boolean);
+  const bParts = b.split(/\s+/).filter(Boolean);
+  if (aParts.length < 2 || bParts.length < 2) return false;
+  return aParts[0] === bParts[0] && aParts[aParts.length - 1] === bParts[bParts.length - 1];
+}
+
+function resolveContactMemberUid(
+  contact: Record<string, unknown>,
+  uidByEmail?: Record<string, string>,
+  uidByContactId?: Record<string, string>,
+): string {
+  const id = String(contact.id || '').trim();
+  if (id && uidByContactId?.[id]) return uidByContactId[id];
+  const email = normalizeInviteEmail(String(contact.email || ''));
+  if (email && uidByEmail?.[email]) return uidByEmail[email];
+  return '';
+}
+
+function activityMatchesContact(
+  contact: Record<string, unknown>,
+  activity: { name?: string; email?: string; uid?: string },
+  memberUid: string,
+): boolean {
+  const activityUid = String(activity.uid || '').trim();
+  if (memberUid && activityUid && activityUid === memberUid) return true;
+  return contactMatchesPerson(contact, activity.name, activity.email);
+}
+
 function countEngagement(
   contact: Record<string, unknown>,
   messages: unknown[],
   galleryPhotos: CircleMapGalleryPhoto[],
-  windowDays = 90,
+  options: {
+    uidByEmail?: Record<string, string>;
+    uidByContactId?: Record<string, string>;
+    windowDays?: number;
+  } = {},
 ): CircleMapEngagement {
-  const email = normalizeInviteEmail(String(contact.email || ''));
-  const selectionKey = getRecipientSelectionKey(contact as { id?: string; email?: string });
-  const nameNorm = normalizeComparable(String(contact.name || ''));
+  const windowDays = options.windowDays ?? 90;
   const cutoff = Date.now() - windowDays * 86_400_000;
+  const memberUid = resolveContactMemberUid(contact, options.uidByEmail, options.uidByContactId);
 
   let messagesSent = 0;
   let repliesReceived = 0;
@@ -254,15 +374,19 @@ function countEngagement(
     const ts = typeof msg.timestamp === 'number' ? msg.timestamp : 0;
     if (ts && ts < cutoff) continue;
 
-    const recipients = Array.isArray(msg.recipients) ? msg.recipients : [];
-    const hitRecipient = recipients.some((recipient) => {
-      const value = String(recipient || '').trim();
-      return (
-        (email && normalizeInviteEmail(value) === email) ||
-        value === selectionKey
-      );
-    });
-    if (hitRecipient) messagesSent += 1;
+    if (
+      activityMatchesContact(
+        contact,
+        {
+          name: String(msg.senderName || msg.sender || ''),
+          email: String(msg.senderEmail || ''),
+          uid: String(msg.senderUid || ''),
+        },
+        memberUid,
+      )
+    ) {
+      messagesSent += 1;
+    }
 
     const replies = Array.isArray(msg.replies) ? msg.replies : [];
     for (const rawReply of replies) {
@@ -270,9 +394,17 @@ function countEngagement(
       const replyTs = typeof reply.timestamp === 'number' ? reply.timestamp : 0;
       if (replyTs && replyTs < cutoff) continue;
       if (!isIncomingReply(reply)) continue;
-      const replyEmail = normalizeInviteEmail(String(reply.senderEmail || ''));
-      const replyName = normalizeComparable(String(reply.senderName || reply.sender || ''));
-      if ((email && replyEmail === email) || (nameNorm && replyName === nameNorm)) {
+      if (
+        activityMatchesContact(
+          contact,
+          {
+            name: String(reply.senderName || reply.sender || ''),
+            email: String(reply.senderEmail || ''),
+            uid: String(reply.senderUid || ''),
+          },
+          memberUid,
+        )
+      ) {
         repliesReceived += 1;
       }
     }
@@ -281,9 +413,19 @@ function countEngagement(
   let mediaShared = 0;
   for (const photo of galleryPhotos) {
     if (photo.source === 'patient') continue;
-    if (photo.date && photo.date < cutoff) continue;
-    const sender = normalizeComparable(photo.senderName || '');
-    if (nameNorm && sender === nameNorm) mediaShared += 1;
+    if (
+      activityMatchesContact(
+        contact,
+        {
+          name: photo.senderName || '',
+          email: photo.senderName || '',
+          uid: photo.uploadedByUid || '',
+        },
+        memberUid,
+      )
+    ) {
+      mediaShared += 1;
+    }
   }
 
   const rawScore = messagesSent * 4 + repliesReceived * 5 + mediaShared * 6;
@@ -336,9 +478,13 @@ function layoutNodes(
     const members = grouped.get(ring.key) ?? [];
     members.sort((a, b) => a.name.localeCompare(b.name));
     const radius = radiusByKey.get(ring.key) ?? ringStart + ringPosition * ringStep;
+    const count = Math.max(members.length, 1);
+    // Twist each ring so nodes don't stack on the same rays across rings.
+    const ringTwist = ringPosition * ((Math.PI * 2) / 5);
+    // With 1–2 people, start near the east so they sit left/right instead of top/bottom.
+    const baseAngle = count <= 2 ? ringTwist : -Math.PI / 2 + ringTwist;
     members.forEach((node, index) => {
-      const angle =
-        (Math.PI * 2 * index) / Math.max(members.length, 1) - Math.PI / 2 + ringPosition * 0.1;
+      const angle = baseAngle + (Math.PI * 2 * index) / count;
       laidOut.push({ ...node, radius, angle });
     });
   });
@@ -360,6 +506,12 @@ function engagementAccent(score: number): string {
   return '#cbd5e1';
 }
 
+function canReceiveDirectMessage(contact: Record<string, unknown>): boolean {
+  const email = normalizeInviteEmail(String(contact.email || ''));
+  if (!email) return false;
+  return contact.message !== false;
+}
+
 export function buildCircleMapModel(params: {
   preferences: {
     userName?: string;
@@ -373,10 +525,13 @@ export function buildCircleMapModel(params: {
   onlineNow?: CircleMapOnlineMember[];
   photosByEmail?: Record<string, string>;
   photosByContactId?: Record<string, string>;
+  uidByEmail?: Record<string, string>;
+  uidByContactId?: Record<string, string>;
   patientPhotoUrl?: string;
   mode: CircleMapViewMode;
   t: (key: string, params?: Record<string, unknown>) => string;
 }): CircleMapModel {
+  const layoutMode: CircleMapViewMode = params.mode === 'members' ? 'roles' : params.mode;
   const patientName =
     params.preferences.fullUserDetails?.identity?.nickName?.trim() ||
     params.preferences.fullUserDetails?.identity?.firstName?.trim() ||
@@ -403,10 +558,14 @@ export function buildCircleMapModel(params: {
       contact,
       params.messages ?? [],
       params.galleryPhotos ?? [],
+      {
+        uidByEmail: params.uidByEmail,
+        uidByContactId: params.uidByContactId,
+      },
     );
 
     const ring =
-      params.mode === 'relationships'
+      layoutMode === 'relationships'
         ? {
             key: relationshipRing.key,
             label: relationshipRing.label,
@@ -414,7 +573,7 @@ export function buildCircleMapModel(params: {
             color: relationshipRing.color,
             accent: relationshipRing.accent,
           }
-        : params.mode === 'engagement'
+        : layoutMode === 'engagement'
           ? {
               key: 'engagement',
               label: params.t('dashboard.circleMap.modes.engagement'),
@@ -430,10 +589,12 @@ export function buildCircleMapModel(params: {
               accent: roleRing.accent,
             };
 
+    const recipientKey = getRecipientSelectionKey(contact as { id?: string; email?: string });
     rawPeople.push({
       id: String(contact.id || email || name),
       name: name || email,
       email,
+      recipientKey,
       initials: initialsFromName(name || email),
       photoUrl: resolveCircleMapContactPhoto(contact, {
         photosByEmail: params.photosByEmail,
@@ -449,6 +610,7 @@ export function buildCircleMapModel(params: {
       accent: ring.accent,
       isOnline: !!email && onlineEmails.has(normalizeInviteEmail(email)),
       isMessagingOnly,
+      canMessage: canReceiveDirectMessage(contact),
       engagement,
     });
   };
@@ -476,7 +638,7 @@ export function buildCircleMapModel(params: {
     ring.radius = ringStart + index * ringStep;
   });
 
-  const nodes = layoutNodes(rawPeople, params.mode, rings);
+  const nodes = layoutNodes(rawPeople, layoutMode, rings);
 
   return { patientName, patientPhotoUrl: params.patientPhotoUrl, nodes, rings };
 }
@@ -487,6 +649,7 @@ export function buildCircleMapPreviewModel(t: (key: string) => string): CircleMa
       id: '1',
       name: 'Alex Proxy',
       email: '',
+      recipientKey: '1',
       initials: 'AP',
       ringKey: 'proxy',
       ringLabel: t('dashboard.circleMap.roles.proxy'),
@@ -497,6 +660,7 @@ export function buildCircleMapPreviewModel(t: (key: string) => string): CircleMa
       accent: '#a78bfa',
       isOnline: true,
       isMessagingOnly: false,
+      canMessage: true,
       engagement: { messagesSent: 12, repliesReceived: 9, mediaShared: 4, score: 82 },
       angle: -1.2,
       radius: 58,
@@ -505,6 +669,7 @@ export function buildCircleMapPreviewModel(t: (key: string) => string): CircleMa
       id: '2',
       name: 'Jordan',
       email: '',
+      recipientKey: '2',
       initials: 'JO',
       ringKey: 'family',
       ringLabel: t('dashboard.circleMap.roles.family'),
@@ -515,6 +680,7 @@ export function buildCircleMapPreviewModel(t: (key: string) => string): CircleMa
       accent: '#fb923c',
       isOnline: false,
       isMessagingOnly: false,
+      canMessage: true,
       engagement: { messagesSent: 6, repliesReceived: 4, mediaShared: 8, score: 71 },
       angle: 0.4,
       radius: 94,
@@ -523,6 +689,7 @@ export function buildCircleMapPreviewModel(t: (key: string) => string): CircleMa
       id: '3',
       name: 'Sam',
       email: '',
+      recipientKey: '3',
       initials: 'SA',
       ringKey: 'friend',
       ringLabel: t('dashboard.circleMap.roles.friend'),
@@ -533,6 +700,7 @@ export function buildCircleMapPreviewModel(t: (key: string) => string): CircleMa
       accent: '#2dd4bf',
       isOnline: true,
       isMessagingOnly: false,
+      canMessage: true,
       engagement: { messagesSent: 3, repliesReceived: 2, mediaShared: 1, score: 38 },
       angle: 1.8,
       radius: 130,
@@ -541,6 +709,7 @@ export function buildCircleMapPreviewModel(t: (key: string) => string): CircleMa
       id: '4',
       name: 'Riley',
       email: '',
+      recipientKey: '4',
       initials: 'RI',
       ringKey: 'contact',
       ringLabel: t('dashboard.circleMap.roles.contact'),
@@ -551,6 +720,7 @@ export function buildCircleMapPreviewModel(t: (key: string) => string): CircleMa
       accent: '#94a3b8',
       isOnline: false,
       isMessagingOnly: true,
+      canMessage: false,
       engagement: { messagesSent: 1, repliesReceived: 0, mediaShared: 0, score: 12 },
       angle: 2.6,
       radius: 166,

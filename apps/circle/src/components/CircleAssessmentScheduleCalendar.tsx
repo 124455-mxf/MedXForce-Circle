@@ -1,35 +1,48 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Firestore } from 'firebase/firestore';
 import { Calendar, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import {
   assessmentScheduleDateKey,
+  assessmentScheduleStatusI18n,
+  dayHasAssessmentCalendarDot,
   getAssessmentScheduleCalendar,
   getCalendarWeekDays,
   getCareCalendarByDay,
-  formatCareCalendarTimeRange,
+  isCareCalendarInternalMeeting,
+  isScheduleEnabled,
   parseCareCalendarDateKey,
   careCalendarDateKey,
+  normalizeMemberRole,
+  countScheduleTabBadge,
   type AssessmentScheduleDayEvent,
   type CareCalendarDayEvent,
   type CareCalendarEntry,
   type CareCalendarAppointmentTask,
+  type CareCalendarVisitDebrief,
 } from '@medxforce/shared';
-import { CircleCareCalendarMapsLinks } from './CircleCareCalendarMapsLinks';
-import { CircleScheduleTodayView } from './CircleScheduleTodayView';
+import { formatCircleBadgeCount } from './CircleCountBadge';
+import { CircleScheduleTodayView, CircleScheduleDayAppointmentCard } from './CircleScheduleTodayView';
 import { CircleScheduleTasksView } from './CircleScheduleTasksView';
 import {
   CircleScheduleAppointmentDetailSheet,
+  resolveCircleScheduleAppointmentSelection,
   type CircleScheduleAppointmentSelection,
 } from './CircleScheduleWeekView';
 import { CircleScheduleWeekView } from './CircleScheduleWeekView';
-import { CircleScheduleSelectedDayDetailPanel } from './CircleScheduleSelectedDayDetailPanel';
 import type { AnalyticsMetricId } from '@medxforce/shared';
 import {
   assessmentScheduleIdToAnalyticsMetric,
   type CircleAssessmentScheduleContext,
 } from '../lib/circleAssessmentScheduleMetrics';
 import { cn } from '../lib/utils';
+import { circleHeaderActionButtonClass } from '../lib/circleSectionStyles';
+import { useCircleScheduleDefaultView } from '../hooks/useCircleScheduleDefaultView';
+import { useCircleScheduleShowAppointmentDetails } from '../hooks/useCircleScheduleShowAppointmentDetails';
+import { getCircleScheduleDefaultView } from '../lib/circleSchedulePreferences';
+import type { CircleScheduleAppointmentFocus, CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
+import { useCircleI18nContext } from '../lib/circleI18nContext';
+import { formatCircleDate } from '../lib/circleLanguages';
 
 type CircleAssessmentScheduleCalendarProps = {
   schedule: CircleAssessmentScheduleContext;
@@ -43,7 +56,19 @@ type CircleAssessmentScheduleCalendarProps = {
     kind: CareCalendarDayEvent['kind'],
     tasks: CareCalendarAppointmentTask[],
   ) => void | Promise<void>;
+  onClinicalReferenceIdsChange?: (
+    entryId: string,
+    kind: CareCalendarDayEvent['kind'],
+    ids: string[],
+  ) => void | Promise<void>;
+  onManageClinicalReferences?: () => void;
+  onVisitDebriefChange?: (
+    entryId: string,
+    kind: CareCalendarDayEvent['kind'],
+    debrief: CareCalendarVisitDebrief,
+  ) => void | Promise<void>;
   currentUserUid?: string;
+  currentUserName?: string;
   patientId?: string;
   db?: Firestore;
   memberContactId?: string;
@@ -51,10 +76,17 @@ type CircleAssessmentScheduleCalendarProps = {
   inviteContactId?: string;
   memberDisplayName?: string;
   memberRole?: string;
+  viewerTimezoneId?: string;
   compact?: boolean;
   hideHeader?: boolean;
   enableViewModes?: boolean;
+  hideInlineAddButton?: boolean;
   onRecordVisit?: (entryId: string) => void;
+  /** Called with the Tasks-screen card count so header / nav can stay in sync. */
+  onOpenCountChange?: (count: number) => void;
+  viewIntent?: CircleScheduleViewIntent | null;
+  appointmentFocus?: CircleScheduleAppointmentFocus | null;
+  onAppointmentFocusConsumed?: () => void;
 };
 
 type ScheduleViewMode = 'today' | 'week' | 'month' | 'tasks';
@@ -62,6 +94,11 @@ type ScheduleViewMode = 'today' | 'week' | 'month' | 'tasks';
 const WEEKDAY_KEYS = [0, 1, 2, 3, 4, 5, 6] as const;
 const VIEW_MODES: ScheduleViewMode[] = ['today', 'week', 'month', 'tasks'];
 const EMPTY_ASSESSMENT_CALENDAR = new Map<string, AssessmentScheduleDayEvent[]>();
+
+function hideEmptyMonthPrompt(memberRole?: string): boolean {
+  const role = memberRole ? normalizeMemberRole(memberRole) : null;
+  return role === 'proxy' || role === 'caregiver' || role === 'professional_caregiver';
+}
 
 function buildMonthGrid(year: number, month: number): (Date | null)[] {
   const first = new Date(year, month, 1);
@@ -83,18 +120,6 @@ function weekdayLabel(
   return t(`remoteSettings.assessmentSchedule.weekdayShort.${day}`);
 }
 
-function daySummary(events: AssessmentScheduleDayEvent[]): {
-  due: number;
-  upcoming: number;
-  completed: number;
-} {
-  return {
-    due: events.filter((e) => e.status === 'due').length,
-    upcoming: events.filter((e) => e.status === 'upcoming').length,
-    completed: events.filter((e) => e.status === 'completed').length,
-  };
-}
-
 function assessmentLabel(
   event: AssessmentScheduleDayEvent,
   t: CircleAssessmentScheduleCalendarProps['t'],
@@ -112,7 +137,11 @@ export function CircleAssessmentScheduleCalendar({
   onAddAppointment,
   onEditAppointment,
   onAppointmentTasksChange,
+  onClinicalReferenceIdsChange,
+  onManageClinicalReferences,
+  onVisitDebriefChange,
   currentUserUid,
+  currentUserName,
   patientId,
   db,
   memberContactId,
@@ -120,23 +149,85 @@ export function CircleAssessmentScheduleCalendar({
   inviteContactId,
   memberDisplayName,
   memberRole,
+  viewerTimezoneId,
   compact = false,
   hideHeader = false,
   enableViewModes = false,
+  hideInlineAddButton = false,
   onRecordVisit,
+  onOpenCountChange,
+  viewIntent = null,
+  appointmentFocus = null,
+  onAppointmentFocusConsumed,
 }: CircleAssessmentScheduleCalendarProps) {
+  const { language } = useCircleI18nContext();
   const ct = (key: string, params?: Record<string, unknown>) =>
     t(`dashboard.careCalendar.${key}`, params);
+  const skipEmptyMonthPrompt = hideEmptyMonthPrompt(memberRole);
 
   const today = new Date();
   const todayKey = assessmentScheduleDateKey(today);
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedDateKey, setSelectedDateKey] = useState(todayKey);
-  const [viewMode, setViewMode] = useState<ScheduleViewMode>(enableViewModes ? 'today' : 'month');
+  const defaultScheduleView = useCircleScheduleDefaultView();
+  const [viewMode, setViewMode] = useState<ScheduleViewMode>(() => {
+    if (enableViewModes && (viewIntent === 'tasks' || viewIntent === 'today' || viewIntent === 'week')) {
+      return viewIntent;
+    }
+    return enableViewModes ? getCircleScheduleDefaultView() : 'month';
+  });
+  const appliedViewIntentRef = useRef<CircleScheduleViewIntent | null>(
+    viewIntent === 'tasks' || viewIntent === 'today' || viewIntent === 'week' ? viewIntent : null,
+  );
   const [weekAnchor, setWeekAnchor] = useState(today);
   const [appointmentSelection, setAppointmentSelection] =
     useState<CircleScheduleAppointmentSelection | null>(null);
+
+  useEffect(() => {
+    if (!enableViewModes) return;
+    if (viewIntent === 'tasks' || viewIntent === 'today' || viewIntent === 'week') {
+      if (appliedViewIntentRef.current !== viewIntent) {
+        appliedViewIntentRef.current = viewIntent;
+        setViewMode(viewIntent);
+        if (viewIntent === 'today' || viewIntent === 'week') {
+          const now = new Date();
+          setSelectedDateKey(todayKey);
+          setWeekAnchor(now);
+          setViewYear(now.getFullYear());
+          setViewMonth(now.getMonth());
+        }
+      }
+      return;
+    }
+    appliedViewIntentRef.current = null;
+    setViewMode(defaultScheduleView);
+  }, [defaultScheduleView, enableViewModes, todayKey, viewIntent]);
+
+  useEffect(() => {
+    if (!appointmentFocus?.entryId) return;
+    const entry = careEntries.find((item) => item.id === appointmentFocus.entryId);
+    if (!entry) return;
+    const dateKey = appointmentFocus.dateKey?.trim() || entry.startDateKey;
+    if (!dateKey) return;
+    const day = parseCareCalendarDateKey(dateKey);
+    const dayEvents = getCareCalendarByDay([entry], day, day).get(dateKey) ?? [];
+    const event = dayEvents.find((item) => item.entryId === appointmentFocus.entryId);
+    if (!event) return;
+    if (!appointmentFocus.preserveView) {
+      setViewMode('today');
+    }
+    setSelectedDateKey(dateKey);
+    setViewYear(day.getFullYear());
+    setViewMonth(day.getMonth());
+    setWeekAnchor(day);
+    setAppointmentSelection({
+      dateKey,
+      event,
+      episodeTab: appointmentFocus.episodeTab,
+    });
+    onAppointmentFocusConsumed?.();
+  }, [appointmentFocus, careEntries, onAppointmentFocusConsumed]);
 
   const rangeStart = useMemo(() => new Date(viewYear, viewMonth, 1), [viewYear, viewMonth]);
   const rangeEnd = useMemo(() => new Date(viewYear, viewMonth + 1, 0), [viewYear, viewMonth]);
@@ -199,8 +290,15 @@ export function CircleAssessmentScheduleCalendar({
     [careEntries, rangeStart, rangeEnd],
   );
 
+  const resolvedAppointmentSelection = useMemo(() => {
+    if (!appointmentSelection) return null;
+    const dayEvents =
+      (viewMode === 'month' ? monthCareByDay : careByDay).get(appointmentSelection.dateKey) ?? [];
+    return resolveCircleScheduleAppointmentSelection(appointmentSelection, dayEvents);
+  }, [appointmentSelection, careByDay, monthCareByDay, viewMode]);
+
   const monthCells = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
-  const assessmentsEnabled = schedule.preferences.featuresVisibility.healthAssessments;
+  const assessmentsEnabled = isScheduleEnabled(schedule.preferences);
   const visibleCalendarByDay = assessmentsEnabled ? calendarByDay : EMPTY_ASSESSMENT_CALENDAR;
   const visibleMonthCalendarByDay = assessmentsEnabled ? monthCalendarByDay : EMPTY_ASSESSMENT_CALENDAR;
 
@@ -224,14 +322,6 @@ export function CircleAssessmentScheduleCalendar({
     });
   }, [viewMode, weekAnchor, weekDayKeys, todayKey]);
 
-  const weekDetailCareEvents = useMemo(() => {
-    return [...(careByDay.get(selectedDateKey) ?? [])].sort(
-      (a, b) => (a.startTimeMinutes ?? 0) - (b.startTimeMinutes ?? 0),
-    );
-  }, [careByDay, selectedDateKey]);
-
-  const weekDetailAssessmentEvents = visibleCalendarByDay.get(selectedDateKey) ?? [];
-
   const shiftMonth = (delta: number) => {
     const next = new Date(viewYear, viewMonth + delta, 1);
     setViewYear(next.getFullYear());
@@ -250,12 +340,12 @@ export function CircleAssessmentScheduleCalendar({
     setSelectedDateKey(careCalendarDateKey(next));
   };
 
-  const monthLabel = new Date(viewYear, viewMonth, 1).toLocaleDateString(undefined, {
+  const monthLabel = formatCircleDate(new Date(viewYear, viewMonth, 1), language, {
     month: 'long',
     year: 'numeric',
   });
 
-  const dayLabel = new Date(selectedDateKey + 'T12:00:00').toLocaleDateString(undefined, {
+  const dayLabel = formatCircleDate(new Date(selectedDateKey + 'T12:00:00'), language, {
     weekday: 'short',
     month: 'long',
     day: 'numeric',
@@ -265,42 +355,96 @@ export function CircleAssessmentScheduleCalendar({
   const addDateKey = selectedDateKey;
 
   const weekDays = useMemo(() => getCalendarWeekDays(weekAnchor), [weekAnchor]);
-  const weekLabel = `${weekDays[0].toLocaleDateString(undefined, {
+  const weekLabel = `${formatCircleDate(weekDays[0], language, {
     month: 'short',
     day: 'numeric',
-  })} – ${weekDays[6].toLocaleDateString(undefined, {
+  })} – ${formatCircleDate(weekDays[6], language, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   })}`;
   const isCurrentWeek = weekDays.some((day) => assessmentScheduleDateKey(day) === todayKey);
+  const isCurrentMonth =
+    viewYear === today.getFullYear() && viewMonth === today.getMonth();
+
+  const goToCurrentMonth = () => {
+    setViewYear(today.getFullYear());
+    setViewMonth(today.getMonth());
+    setSelectedDateKey(todayKey);
+  };
+
+  const inviteContextForBadge = useMemo(
+    () =>
+      currentUserUid
+        ? {
+            memberUid: currentUserUid,
+            contactId: memberContactId,
+            memberDocContactId,
+            inviteContactId,
+            displayName: memberDisplayName,
+          }
+        : undefined,
+    [
+      currentUserUid,
+      inviteContactId,
+      memberContactId,
+      memberDisplayName,
+      memberDocContactId,
+    ],
+  );
+
+  const tasksBadgeCount = useMemo(() => {
+    return countScheduleTabBadge(careEntries, {
+      inviteContext: inviteContextForBadge,
+      memberRole: memberRole ?? 'friend',
+      viewerUid: currentUserUid,
+      preferences: schedule.preferences,
+      histories: schedule.histories,
+    });
+  }, [
+    careEntries,
+    currentUserUid,
+    inviteContextForBadge,
+    memberRole,
+    schedule.histories,
+    schedule.preferences,
+  ]);
+
+  useEffect(() => {
+    onOpenCountChange?.(tasksBadgeCount);
+  }, [onOpenCountChange, tasksBadgeCount]);
 
   const viewModeSelector = enableViewModes ? (
-    <div className="flex w-full rounded-xl border border-slate-100 p-0.5 bg-slate-50 shrink-0">
+    <div className="flex w-full rounded-2xl border border-slate-100 p-1.5 bg-slate-100 shrink-0">
       {VIEW_MODES.map((mode) => (
         <button
           key={mode}
           type="button"
           onClick={() => setViewMode(mode)}
           className={cn(
-            'flex-1 min-w-0 px-2 py-1.5 rounded-lg text-xs font-bold leading-none whitespace-nowrap text-center transition-colors',
+            'relative flex flex-1 min-w-0 items-center justify-center gap-1 px-3 py-2.5 rounded-xl text-sm font-bold leading-none whitespace-nowrap text-center transition-colors',
             viewMode === mode
-              ? 'bg-white text-slate-800 shadow-sm'
+              ? 'bg-white text-blue-600 shadow-sm'
               : 'text-slate-500 hover:text-slate-700',
           )}
         >
-          {t(`schedulePage.views.${mode}`)}
+          <span>{t(`schedulePage.views.${mode === 'today' ? 'day' : mode}`)}</span>
+          {mode === 'tasks' && tasksBadgeCount > 0 ? (
+            <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold inline-flex items-center justify-center tabular-nums">
+              {formatCircleBadgeCount(tasksBadgeCount)}
+            </span>
+          ) : null}
         </button>
       ))}
     </div>
   ) : null;
 
   const dateNavButtonClass =
-    'shrink-0 p-2 rounded-xl border border-slate-100 text-slate-500 hover:bg-slate-50';
+    'shrink-0 p-2.5 rounded-xl border border-slate-100 text-slate-500 hover:bg-slate-50';
   const dateNavLabelClass =
-    'flex-1 min-w-0 px-1 text-xs font-bold text-slate-700 text-center truncate';
+    'flex-1 min-w-0 px-1 text-sm sm:text-base font-bold text-slate-700 text-center truncate';
   const dateNavJumpClass =
-    'shrink-0 px-2.5 py-1.5 rounded-xl border border-slate-100 text-xs font-bold text-slate-600 hover:bg-slate-50 whitespace-nowrap';
+    'shrink-0 px-3 py-2 rounded-xl border border-slate-100 text-sm font-bold text-slate-600 hover:bg-slate-50 whitespace-nowrap';
 
   const dateNavigation = enableViewModes ? (
     <div className="flex flex-row items-center justify-center gap-1 w-full min-w-0">
@@ -312,7 +456,7 @@ export function CircleAssessmentScheduleCalendar({
             className={dateNavButtonClass}
             aria-label={t('schedulePage.views.prevDay')}
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={20} />
           </button>
           {selectedDateKey !== todayKey ? (
             <button
@@ -330,19 +474,28 @@ export function CircleAssessmentScheduleCalendar({
             className={dateNavButtonClass}
             aria-label={t('schedulePage.views.nextDay')}
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={20} />
           </button>
         </>
       )}
       {viewMode === 'month' && (
         <>
+          {!isCurrentMonth ? (
+            <button
+              type="button"
+              onClick={goToCurrentMonth}
+              className={dateNavJumpClass}
+            >
+              {t('schedulePage.views.thisMonth')}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => shiftMonth(-1)}
             className={dateNavButtonClass}
             aria-label={t('dashboard.assessmentScheduleCalendar.prevMonth')}
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={20} />
           </button>
           <span className={dateNavLabelClass}>{monthLabel}</span>
           <button
@@ -351,7 +504,7 @@ export function CircleAssessmentScheduleCalendar({
             className={dateNavButtonClass}
             aria-label={t('dashboard.assessmentScheduleCalendar.nextMonth')}
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={20} />
           </button>
         </>
       )}
@@ -372,7 +525,7 @@ export function CircleAssessmentScheduleCalendar({
             className={dateNavButtonClass}
             aria-label={t('schedulePage.views.prevWeek')}
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={20} />
           </button>
           <span className={dateNavLabelClass}>{weekLabel}</span>
           <button
@@ -381,7 +534,7 @@ export function CircleAssessmentScheduleCalendar({
             className={dateNavButtonClass}
             aria-label={t('schedulePage.views.nextWeek')}
           >
-            <ChevronRight size={18} />
+            <ChevronRight size={20} />
           </button>
         </>
       )}
@@ -417,10 +570,11 @@ export function CircleAssessmentScheduleCalendar({
               <button
                 type="button"
                 onClick={() => onAddAppointment(selectedDateKey)}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-violet-600 text-white text-[10px] font-bold hover:bg-violet-700"
+                className={circleHeaderActionButtonClass}
+                aria-label={ct('addTitle')}
+                title={ct('addTitle')}
               >
-                <Plus size={14} />
-                {ct('addShort')}
+                <Plus size={18} className="[@media(max-height:740px)]:size-4" />
               </button>
             )}
             <button
@@ -445,7 +599,7 @@ export function CircleAssessmentScheduleCalendar({
           </div>
         </div>
 
-        {!hasAnyEvents ? (
+        {!hasAnyEvents && !skipEmptyMonthPrompt ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-2 py-4">
             <p className="text-xs text-slate-400 text-center">
               {t('dashboard.assessmentScheduleCalendar.emptyMonth')}
@@ -454,7 +608,7 @@ export function CircleAssessmentScheduleCalendar({
               <button
                 type="button"
                 onClick={() => onAddAppointment(selectedDateKey)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-700"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700"
               >
                 <Plus size={14} />
                 {ct('addShort')}
@@ -476,26 +630,41 @@ export function CircleAssessmentScheduleCalendar({
             onEditAppointment={onEditAppointment}
             onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
             onSelectAppointment={setAppointmentSelection}
+            assessmentSchedule={schedule}
+            onRecordVisit={onRecordVisit}
+            db={db}
+            patientId={patientId}
+            memberContactId={memberContactId}
+            memberDocContactId={memberDocContactId}
+            inviteContactId={inviteContactId}
+            memberDisplayName={memberDisplayName}
+            memberRole={memberRole}
+            currentUserUid={currentUserUid}
+            viewerTimezoneId={viewerTimezoneId}
           />
         )}
 
-        {appointmentSelection ? (
+        {resolvedAppointmentSelection ? (
           <CircleScheduleAppointmentDetailSheet
-            selection={appointmentSelection}
+            selection={resolvedAppointmentSelection}
             ct={ct}
             t={t}
             onClose={() => setAppointmentSelection(null)}
             onEdit={
               onEditAppointment
                 ? () => {
-                    const entryId = appointmentSelection.event.entryId;
+                    const entryId = resolvedAppointmentSelection.event.entryId;
                     setAppointmentSelection(null);
                     onEditAppointment(entryId);
                   }
                 : undefined
             }
             onAppointmentTasksChange={onAppointmentTasksChange}
+            onClinicalReferenceIdsChange={onClinicalReferenceIdsChange}
+            onManageClinicalReferences={onManageClinicalReferences}
+            onVisitDebriefChange={onVisitDebriefChange}
             currentUserUid={currentUserUid}
+            currentUserName={currentUserName}
             patientId={patientId}
             db={db}
             memberContactId={memberContactId}
@@ -506,6 +675,7 @@ export function CircleAssessmentScheduleCalendar({
             assessmentSchedule={schedule}
             onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
             onRecordVisit={onRecordVisit}
+            viewerTimezoneId={viewerTimezoneId}
           />
         ) : null}
       </div>
@@ -515,7 +685,13 @@ export function CircleAssessmentScheduleCalendar({
   return (
     <div
       className={cn(
-        'h-full min-h-0 rounded-2xl border border-slate-100 bg-white flex flex-col overflow-hidden p-5 space-y-4',
+        'h-full min-h-0 flex flex-col',
+        viewMode === 'month'
+          ? 'overflow-y-auto overscroll-contain'
+          : 'overflow-hidden',
+        enableViewModes
+          ? 'px-4 pb-4 space-y-4'
+          : 'rounded-2xl border border-slate-100 bg-white p-5 space-y-4',
         viewMode === 'week' && 'min-h-0 tablet-portrait:min-h-0',
       )}
     >
@@ -527,14 +703,15 @@ export function CircleAssessmentScheduleCalendar({
       >
         <div className="flex items-center gap-2">
           <div className="flex-1 min-w-0">{viewModeSelector}</div>
-          {onAddAppointment && (
+          {onAddAppointment && !hideInlineAddButton && (
             <button
               type="button"
               onClick={() => onAddAppointment(addDateKey)}
-              className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-700"
+              className={circleHeaderActionButtonClass}
+              aria-label={ct('addTitle')}
+              title={ct('addTitle')}
             >
-              <Plus size={16} />
-              {ct('addShort')}
+              <Plus size={18} className="[@media(max-height:740px)]:size-4" />
             </button>
           )}
         </div>
@@ -552,6 +729,9 @@ export function CircleAssessmentScheduleCalendar({
           onEditAppointment={onEditAppointment}
           onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
           onAppointmentTasksChange={onAppointmentTasksChange}
+          onClinicalReferenceIdsChange={onClinicalReferenceIdsChange}
+          onManageClinicalReferences={onManageClinicalReferences}
+          onVisitDebriefChange={onVisitDebriefChange}
           db={db}
           patientId={patientId}
           memberContactId={memberContactId}
@@ -560,8 +740,10 @@ export function CircleAssessmentScheduleCalendar({
           memberDisplayName={memberDisplayName}
           memberRole={memberRole}
           currentUserUid={currentUserUid}
+          currentUserName={currentUserName}
           assessmentSchedule={schedule}
           onRecordVisit={onRecordVisit}
+          viewerTimezoneId={viewerTimezoneId}
         />
       )}
 
@@ -571,8 +753,20 @@ export function CircleAssessmentScheduleCalendar({
           preferences={schedule.preferences}
           histories={schedule.histories}
           memberRole={memberRole}
+          inviteContext={
+            currentUserUid
+              ? {
+                  memberUid: currentUserUid,
+                  contactId: memberContactId,
+                  memberDocContactId,
+                  inviteContactId,
+                  displayName: memberDisplayName,
+                }
+              : undefined
+          }
           t={t}
           compact={compact}
+          viewerTimezoneId={viewerTimezoneId}
           onOpenAppointment={(dateKey, event) => {
             setSelectedDateKey(dateKey);
             setAppointmentSelection({ dateKey, event });
@@ -581,59 +775,39 @@ export function CircleAssessmentScheduleCalendar({
       )}
 
       {viewMode === 'week' && (
-        <>
-          <CircleScheduleWeekView
-            weekAnchor={weekAnchor}
-            calendarByDay={visibleCalendarByDay}
-            careByDay={careByDay}
-            todayKey={todayKey}
-            selectedDayDateKey={selectedDateKey}
-            onSelectedDayChange={setSelectedDateKey}
-            preferences={schedule.preferences}
-            histories={schedule.histories}
-            t={t}
-            onEditAppointment={onEditAppointment}
-            onAppointmentTasksChange={onAppointmentTasksChange}
-            currentUserUid={currentUserUid}
-            patientId={patientId}
-            db={db}
-            memberContactId={memberContactId}
-            memberDocContactId={memberDocContactId}
-            inviteContactId={inviteContactId}
-            memberDisplayName={memberDisplayName}
-            memberRole={memberRole}
-            assessmentSchedule={schedule}
-            onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
-            onRecordVisit={onRecordVisit}
-          />
-          <CircleScheduleSelectedDayDetailPanel
-            selectedDateKey={selectedDateKey}
-            todayKey={todayKey}
-            careEvents={weekDetailCareEvents}
-            assessmentEvents={weekDetailAssessmentEvents}
-            t={t}
-            assessmentLabel={(event) => assessmentLabel(event, t)}
-            onOpenAppointment={(event) =>
-              setAppointmentSelection({ dateKey: selectedDateKey, event })
-            }
-            onEditAppointment={onEditAppointment}
-            onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
-            assessmentSchedule={schedule}
-            onRecordVisit={onRecordVisit}
-            db={db}
-            patientId={patientId}
-            memberContactId={memberContactId}
-            memberDocContactId={memberDocContactId}
-            inviteContactId={inviteContactId}
-            memberDisplayName={memberDisplayName}
-            memberRole={memberRole}
-            currentUserUid={currentUserUid}
-            className="shrink-0 mt-3 tablet-portrait:mt-2 tablet-portrait:flex-1 tablet-portrait:min-h-0 tablet-portrait:overflow-y-auto"
-          />
-        </>
+        <CircleScheduleWeekView
+          weekAnchor={weekAnchor}
+          calendarByDay={visibleCalendarByDay}
+          careByDay={careByDay}
+          todayKey={todayKey}
+          selectedDayDateKey={selectedDateKey}
+          onSelectedDayChange={setSelectedDateKey}
+          preferences={schedule.preferences}
+          histories={schedule.histories}
+          t={t}
+          assessmentLabel={(event) => assessmentLabel(event, t)}
+          onEditAppointment={onEditAppointment}
+          onAppointmentTasksChange={onAppointmentTasksChange}
+          onClinicalReferenceIdsChange={onClinicalReferenceIdsChange}
+          onManageClinicalReferences={onManageClinicalReferences}
+          onVisitDebriefChange={onVisitDebriefChange}
+          currentUserUid={currentUserUid}
+          currentUserName={currentUserName}
+          patientId={patientId}
+          db={db}
+          memberContactId={memberContactId}
+          memberDocContactId={memberDocContactId}
+          inviteContactId={inviteContactId}
+          memberDisplayName={memberDisplayName}
+          memberRole={memberRole}
+          assessmentSchedule={schedule}
+          onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
+          onRecordVisit={onRecordVisit}
+          viewerTimezoneId={viewerTimezoneId}
+        />
       )}
 
-      {viewMode === 'month' && !hasAnyEvents ? (
+      {viewMode === 'month' && !hasAnyEvents && !skipEmptyMonthPrompt ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-2 py-8">
           <p className="text-sm text-slate-400 text-center">
             {t('dashboard.assessmentScheduleCalendar.emptyMonth')}
@@ -642,7 +816,7 @@ export function CircleAssessmentScheduleCalendar({
             <button
               type="button"
               onClick={() => onAddAppointment(selectedDateKey)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-600 text-white text-xs font-bold hover:bg-violet-700"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700"
             >
               <Plus size={16} />
               {ct('addShort')}
@@ -664,27 +838,42 @@ export function CircleAssessmentScheduleCalendar({
           onEditAppointment={onEditAppointment}
           onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
           onSelectAppointment={setAppointmentSelection}
+          assessmentSchedule={schedule}
+          onRecordVisit={onRecordVisit}
+          db={db}
+          patientId={patientId}
+          memberContactId={memberContactId}
+          memberDocContactId={memberDocContactId}
+          inviteContactId={inviteContactId}
+          memberDisplayName={memberDisplayName}
+          memberRole={memberRole}
+          currentUserUid={currentUserUid}
+          viewerTimezoneId={viewerTimezoneId}
           fullSize
         />
       ) : null}
 
-      {appointmentSelection ? (
+      {resolvedAppointmentSelection ? (
         <CircleScheduleAppointmentDetailSheet
-          selection={appointmentSelection}
+          selection={resolvedAppointmentSelection}
           ct={ct}
           t={t}
           onClose={() => setAppointmentSelection(null)}
           onEdit={
             onEditAppointment
               ? () => {
-                  const entryId = appointmentSelection.event.entryId;
+                  const entryId = resolvedAppointmentSelection.event.entryId;
                   setAppointmentSelection(null);
                   onEditAppointment(entryId);
                 }
               : undefined
           }
           onAppointmentTasksChange={onAppointmentTasksChange}
+          onClinicalReferenceIdsChange={onClinicalReferenceIdsChange}
+          onManageClinicalReferences={onManageClinicalReferences}
+          onVisitDebriefChange={onVisitDebriefChange}
           currentUserUid={currentUserUid}
+          currentUserName={currentUserName}
           patientId={patientId}
           db={db}
           memberContactId={memberContactId}
@@ -695,6 +884,7 @@ export function CircleAssessmentScheduleCalendar({
           assessmentSchedule={schedule}
           onOpenAssessment={assessmentsEnabled ? onOpenAssessment : undefined}
           onRecordVisit={onRecordVisit}
+          viewerTimezoneId={viewerTimezoneId}
         />
       ) : null}
     </div>
@@ -716,6 +906,17 @@ function MonthCalendarBody({
   onEditAppointment,
   onOpenAssessment,
   onSelectAppointment,
+  assessmentSchedule,
+  onRecordVisit,
+  db,
+  patientId,
+  memberContactId,
+  memberDocContactId,
+  inviteContactId,
+  memberDisplayName,
+  memberRole,
+  currentUserUid,
+  viewerTimezoneId,
 }: {
   compact: boolean;
   fullSize?: boolean;
@@ -731,7 +932,23 @@ function MonthCalendarBody({
   onEditAppointment?: (entryId: string) => void;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
   onSelectAppointment?: (selection: CircleScheduleAppointmentSelection) => void;
+  assessmentSchedule?: CircleAssessmentScheduleContext;
+  onRecordVisit?: (entryId: string) => void;
+  db?: Firestore;
+  patientId?: string;
+  memberContactId?: string;
+  memberDocContactId?: string;
+  inviteContactId?: string;
+  memberDisplayName?: string;
+  memberRole?: string;
+  currentUserUid?: string;
+  viewerTimezoneId?: string;
 }) {
+  const { language } = useCircleI18nContext();
+  const ct = (key: string, params?: Record<string, unknown>) =>
+    t(`dashboard.careCalendar.${key}`, params);
+  const showAppointmentDetails = useCircleScheduleShowAppointmentDetails();
+  const appointmentCompact = !showAppointmentDetails;
   return (
     <>
       <div className="shrink-0 -mx-0.5 px-0.5">
@@ -759,12 +976,16 @@ function MonthCalendarBody({
             const dateKey = assessmentScheduleDateKey(date);
             const events = monthCalendarByDay.get(dateKey) ?? [];
             const careEvents = monthCareByDay.get(dateKey) ?? [];
-            const summary = daySummary(events);
             const isToday = dateKey === todayKey;
             const isSelected = dateKey === selectedDateKey;
-            const hasDue = summary.due > 0;
             const hasCare = careEvents.length > 0;
-            const hasAssessments = events.length > 0;
+            const hasInternal = careEvents.some((event) =>
+              isCareCalendarInternalMeeting(event.kind),
+            );
+            const hasAppointment = careEvents.some(
+              (event) => !isCareCalendarInternalMeeting(event.kind),
+            );
+            const hasAssessments = dayHasAssessmentCalendarDot(events);
 
             return (
               <button
@@ -776,12 +997,23 @@ function MonthCalendarBody({
                   compact ? 'min-h-[2rem] py-0.5' : fullSize ? 'min-h-[3rem] py-1' : 'min-h-[2.75rem] py-1',
                   !hasAssessments && !hasCare
                     ? 'border-transparent text-slate-300'
-                    : hasCare
-                      ? 'border-violet-200 bg-violet-50/70 hover:bg-violet-50'
-                      : 'border-slate-100 hover:border-blue-200 hover:bg-blue-50/40',
-                  isSelected && hasCare && 'ring-1 ring-violet-300/70 border-violet-300',
-                  isSelected && !hasCare && 'border-blue-300 bg-blue-50/70 ring-1 ring-blue-200/60',
-                  isToday && !isSelected && (hasCare ? 'border-violet-300' : 'border-blue-200'),
+                    : hasInternal && !hasAppointment && !hasAssessments
+                      ? 'border-emerald-200 bg-emerald-50/70 hover:bg-emerald-50'
+                      : hasAppointment
+                        ? 'border-pink-200 bg-pink-50/70 hover:bg-pink-50'
+                        : 'border-sky-200 bg-sky-50/50 hover:bg-sky-50/80',
+                  isSelected && hasInternal && !hasAppointment && 'ring-1 ring-emerald-300/70 border-emerald-300',
+                  isSelected && hasAppointment && 'ring-1 ring-pink-300/70 border-pink-300',
+                  isSelected && !hasCare && hasAssessments && 'border-sky-300 bg-sky-50/70 ring-1 ring-sky-200/60',
+                  isToday &&
+                    !isSelected &&
+                    (hasInternal && !hasAppointment
+                      ? 'border-emerald-300'
+                      : hasAppointment
+                        ? 'border-pink-300'
+                        : hasAssessments
+                          ? 'border-sky-300'
+                          : 'border-blue-200'),
                 )}
               >
                 <span
@@ -795,24 +1027,42 @@ function MonthCalendarBody({
                 </span>
                 {(hasAssessments || hasCare) && (
                   <div className="flex gap-0.5">
-                    {hasCare && <span className="w-1 h-1 rounded-full bg-violet-500" />}
-                    {summary.due > 0 && <span className="w-1 h-1 rounded-full bg-rose-500" />}
-                    {summary.upcoming > 0 && <span className="w-1 h-1 rounded-full bg-amber-400" />}
-                    {summary.completed > 0 && !hasDue && summary.upcoming === 0 && (
-                      <span className="w-1 h-1 rounded-full bg-emerald-400" />
-                    )}
+                    {hasAssessments && <span className="w-1.5 h-1.5 rounded-full bg-sky-600" />}
+                    {hasAppointment && <span className="w-1.5 h-1.5 rounded-full bg-pink-500" />}
+                    {hasInternal && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
                   </div>
                 )}
               </button>
             );
           })}
         </div>
+        <div
+          className={cn(
+            'mt-2 flex flex-wrap gap-3 font-bold uppercase tracking-wider text-slate-500',
+            fullSize ? 'text-[10px]' : 'text-[9px]',
+          )}
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-600" />
+            {ct('legendAssessment')}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-pink-500" />
+            {ct('legendAppointment')}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            {ct('kinds.wellness')}
+          </span>
+        </div>
       </div>
 
       <div
         className={cn(
-          'flex-1 min-h-0 mt-2 pt-2 border-t border-slate-100 rounded-xl bg-slate-50 space-y-1.5 overflow-y-auto overscroll-contain',
-          fullSize ? 'p-3' : 'p-2.5',
+          'mt-2 pt-2 border-t border-slate-100 rounded-xl bg-slate-50 space-y-1.5',
+          fullSize
+            ? 'p-3'
+            : 'p-2.5 flex-1 min-h-0 overflow-y-auto overscroll-contain',
         )}
       >
         <p
@@ -822,7 +1072,7 @@ function MonthCalendarBody({
           )}
         >
           {t('dashboard.assessmentScheduleCalendar.dayDetail', {
-            date: new Date(selectedDateKey + 'T12:00:00').toLocaleDateString(undefined, {
+            date: formatCircleDate(new Date(selectedDateKey + 'T12:00:00'), language, {
               weekday: 'short',
               month: 'short',
               day: 'numeric',
@@ -830,27 +1080,63 @@ function MonthCalendarBody({
           })}
         </p>
         {selectedCareEvents.length > 0 && (
-          <ul className="space-y-1">
-            {selectedCareEvents.map((event) => (
-              <CareAppointmentListItem
-                key={`${event.entryId}-${selectedDateKey}`}
-                event={event}
-                t={t}
-                onOpen={
-                  onSelectAppointment
-                    ? () => onSelectAppointment({ dateKey: selectedDateKey, event })
-                    : undefined
-                }
-                onEdit={() => onEditAppointment?.(event.entryId)}
-                fullSize={fullSize}
-              />
-            ))}
-          </ul>
+          <div className="space-y-2">
+            <p
+              className={cn(
+                'font-bold text-violet-700 uppercase tracking-wider',
+                fullSize ? 'text-xs' : 'text-[10px]',
+              )}
+            >
+              {ct('dayAppointments')}
+            </p>
+            <ul className="space-y-2">
+              {selectedCareEvents.map((event) => (
+                <CircleScheduleDayAppointmentCard
+                  key={`${event.entryId}-${selectedDateKey}`}
+                  event={event}
+                  dateKey={selectedDateKey}
+                  ct={ct}
+                  t={t}
+                  compact={appointmentCompact}
+                  showTimingHighlight={selectedDateKey === todayKey}
+                  assessmentSchedule={assessmentSchedule}
+                  onOpen={
+                    onSelectAppointment
+                      ? () => onSelectAppointment({ dateKey: selectedDateKey, event })
+                      : () => {}
+                  }
+                  onEdit={onEditAppointment ? () => onEditAppointment(event.entryId) : undefined}
+                  db={db}
+                  patientId={patientId}
+                  memberContactId={memberContactId}
+                  memberDocContactId={memberDocContactId}
+                  inviteContactId={inviteContactId}
+                  memberDisplayName={memberDisplayName}
+                  memberRole={memberRole}
+                  currentUserUid={currentUserUid}
+                  onRecordVisit={onRecordVisit}
+                  viewerTimezoneId={viewerTimezoneId}
+                />
+              ))}
+            </ul>
+          </div>
         )}
         {selectedEvents.length > 0 && (
-          <ul className="space-y-1">
+          <div className="space-y-2">
+            {selectedCareEvents.length > 0 ? (
+              <p
+                className={cn(
+                  'font-bold text-slate-500 uppercase tracking-wider',
+                  fullSize ? 'text-xs' : 'text-[10px]',
+                )}
+              >
+                {ct('dayAssessments')}
+              </p>
+            ) : null}
+            <ul className="space-y-2">
             {selectedEvents.map((event) => {
               const metricId = assessmentScheduleIdToAnalyticsMetric(event.id);
+              const status = assessmentScheduleStatusI18n(event, selectedDateKey);
               return (
                 <li
                   key={event.id}
@@ -869,7 +1155,10 @@ function MonthCalendarBody({
                         event.status === 'completed' && 'text-emerald-600',
                       )}
                     >
-                      {t(`dashboard.assessmentScheduleCalendar.status.${event.status}`)}
+                      {t(
+                        `dashboard.assessmentScheduleCalendar.status.${status.key}`,
+                        status.date ? { date: status.date } : undefined,
+                      )}
                     </p>
                   </div>
                   {metricId && onOpenAssessment && event.status !== 'completed' ? (
@@ -887,7 +1176,8 @@ function MonthCalendarBody({
                 </li>
               );
             })}
-          </ul>
+            </ul>
+          </div>
         )}
         {selectedEvents.length === 0 && selectedCareEvents.length === 0 && (
           <p className={cn('text-slate-400', fullSize ? 'text-sm' : 'text-xs')}>
@@ -896,77 +1186,5 @@ function MonthCalendarBody({
         )}
       </div>
     </>
-  );
-}
-
-function CareAppointmentListItem({
-  event,
-  t,
-  onOpen,
-  onEdit,
-  fullSize = false,
-}: {
-  event: CareCalendarDayEvent;
-  t: CircleAssessmentScheduleCalendarProps['t'];
-  onOpen?: () => void;
-  onEdit?: () => void;
-  fullSize?: boolean;
-}) {
-  const ct = (key: string, params?: Record<string, unknown>) =>
-    t(`dashboard.careCalendar.${key}`, params);
-  const timeLabel = formatCareCalendarTimeRange(event.startTimeMinutes, event.endTimeMinutes);
-
-  return (
-    <li className="rounded-lg bg-violet-50/80 border border-violet-100 px-2 py-1.5 space-y-1">
-      <div className="flex items-start justify-between gap-2">
-        <button
-          type="button"
-          onClick={onOpen}
-          disabled={!onOpen}
-          className={cn(
-            'flex-1 min-w-0 text-left rounded-md -m-0.5 p-0.5',
-            onOpen ? 'hover:bg-violet-100/60 transition-colors' : '',
-          )}
-        >
-          <p className={cn('font-semibold text-slate-800 truncate', fullSize ? 'text-sm' : 'text-xs')}>
-            {event.title}
-          </p>
-          <p
-            className={cn(
-              'font-bold uppercase tracking-wider text-violet-700',
-              fullSize ? 'text-[10px]' : 'text-[9px]',
-            )}
-          >
-            {ct(`kinds.${event.kind}`)}
-            {event.visitSubtype ? ` · ${ct(`visitSubtype.${event.visitSubtype}`)}` : ''}
-            {event.source === 'circle' ? ` · ${ct('fromCircle')}` : ''}
-          </p>
-          {timeLabel && (
-            <p className={cn('text-slate-500', fullSize ? 'text-xs' : 'text-[10px]')}>{timeLabel}</p>
-          )}
-        </button>
-        {onEdit && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-            className={cn(
-              'shrink-0 font-bold text-violet-700 hover:text-violet-800',
-              fullSize ? 'text-xs' : 'text-[10px]',
-            )}
-          >
-            {t('common.edit')}
-          </button>
-        )}
-      </div>
-      {event.details && (
-        <p className={cn('text-slate-600 line-clamp-2', fullSize ? 'text-xs' : 'text-[10px]')}>
-          {event.details}
-        </p>
-      )}
-      {event.address && <CircleCareCalendarMapsLinks address={event.address} ct={ct} />}
-    </li>
   );
 }

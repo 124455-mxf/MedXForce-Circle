@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   query,
   where,
@@ -26,6 +27,14 @@ export interface CircleInviteRecord {
   leftByUid?: string;
   createdAt: number;
   updatedAt: number;
+  /** When the introduction / invite email was sent (patient API). */
+  introductionEmailSentAt?: number;
+  introductionReminderSentAt?: number;
+  /** Accept demoted from proxy because primary/backup slot was already filled. */
+  proxySlotDemotedAt?: number;
+  proxySlotDemotedTo?: CircleMemberRole;
+  requestedProxyTier?: 'primary' | 'backup';
+  proxySlotHeldByEmail?: string;
 }
 
 export function buildCircleInviteRecord(params: {
@@ -94,8 +103,10 @@ export type CircleInviteLookup =
   | { exists: true; ref: DocumentReference; id: string; data: CircleInviteRecord };
 
 /**
- * Look up an invite by patient + email via list query.
- * Avoids get-by-id on circle_invites — proxies cannot get non-existent invite docs by id.
+ * Look up an invite by patient + email.
+ * Avoids listing all invites for a patient (caregiver/family/friend cannot read others'
+ * invites — that query returns permission-denied). Prefer deterministic doc id, then
+ * an invitee-scoped email query.
  */
 export async function lookupCircleInviteByPatientEmail(
   db: Firestore,
@@ -106,19 +117,38 @@ export async function lookupCircleInviteByPatientEmail(
   const scopedPatientId = patientId.trim();
   if (!email || !scopedPatientId) return { exists: false };
 
-  const snap = await getDocs(
-    query(collection(db, 'circle_invites'), where('patientId', '==', scopedPatientId)),
-  );
-  const match = snap.docs.find(
-    (inviteDoc) => normalizeInviteEmail(String(inviteDoc.data().invitedEmail ?? '')) === email,
-  );
-  if (!match) return { exists: false };
-  return {
-    exists: true,
-    ref: match.ref,
-    id: match.id,
-    data: match.data() as CircleInviteRecord,
-  };
+  const directRef = doc(db, 'circle_invites', circleInviteDocId(scopedPatientId, email));
+  try {
+    const direct = await getDoc(directRef);
+    if (direct.exists()) {
+      return {
+        exists: true,
+        ref: direct.ref,
+        id: direct.id,
+        data: direct.data() as CircleInviteRecord,
+      };
+    }
+  } catch {
+    /* fall through to email query / not found */
+  }
+
+  try {
+    const snap = await getDocs(
+      query(collection(db, 'circle_invites'), where('invitedEmail', '==', email)),
+    );
+    const match = snap.docs.find(
+      (inviteDoc) => String(inviteDoc.data().patientId ?? '').trim() === scopedPatientId,
+    );
+    if (!match) return { exists: false };
+    return {
+      exists: true,
+      ref: match.ref,
+      id: match.id,
+      data: match.data() as CircleInviteRecord,
+    };
+  } catch {
+    return { exists: false };
+  }
 }
 
 /** Invite ref — uses existing doc id when already stored under a legacy id. */

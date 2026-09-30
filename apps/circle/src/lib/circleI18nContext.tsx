@@ -12,6 +12,12 @@ type CircleI18nContextValue = {
 
 const CircleI18nContext = createContext<CircleI18nContextValue | null>(null);
 
+const FALLBACK_I18N: CircleI18nContextValue = {
+  language: 'English',
+  t: createCircleTranslator('English'),
+  setLanguage: () => {},
+};
+
 export function CircleI18nProvider({
   language,
   t,
@@ -30,17 +36,14 @@ export function CircleI18nProvider({
   );
 }
 
-/** Use inside signed-in Circle UI (requires `CircleI18nProvider`). Falls back to English when absent. */
+/** Inside signed-in Circle UI. Falls back to English when provider is absent (e.g. React Fast Refresh). */
 export function useCircleT(): CircleTranslator {
   const ctx = useContext(CircleI18nContext);
-  if (!ctx) return createCircleTranslator('English');
-  return ctx.t;
+  return ctx?.t ?? FALLBACK_I18N.t;
 }
 
+/** Inside signed-in Circle UI. Falls back to English when provider is absent (e.g. React Fast Refresh). */
 export function useCircleI18nContext(): CircleI18nContextValue {
   const ctx = useContext(CircleI18nContext);
-  if (!ctx) {
-    throw new Error('useCircleI18nContext must be used within CircleI18nProvider');
-  }
-  return ctx;
+  return ctx ?? FALLBACK_I18N;
 }

@@ -12,14 +12,14 @@ export const remotePromptsModalEnglish = {
   notNow: 'Not now',
   countdownSecond: 'Closing in 1 second if there is no response',
   countdownSeconds: 'Closing in {{seconds}} seconds if there is no response',
-  dropInInviteTitle: 'Drop in on patient tablet?',
+  dropInInviteTitle: 'Start Drop-in on the patient tablet?',
   dropInInviteBody:
     'The patient will see a prompt to accept or decline. If they accept, you can chat live in a modal until either of you ends the conversation.',
   dropInAwaitingTitle: 'Waiting for patient…',
   dropInAwaitingBody:
     'The patient will see a prompt to accept or decline. This request closes automatically if there is no response.',
-  dropInConfirmButton: 'Drop in',
-  dropInPatientRequestTitle: 'Patient wants to drop in',
+  dropInConfirmButton: 'Drop-in',
+  dropInPatientRequestTitle: 'Patient wants a Drop-in',
   dropInPatientRequestBody:
     '{{name}} is inviting you to a live conversation on their tablet. Accept to open the chat here.',
   dropInPatientRequestAccept: 'Join now',
@@ -27,21 +27,21 @@ export const remotePromptsModalEnglish = {
     '{{name}} accepted your drop-in request. You can chat live until either of you ends the conversation.',
   dropInDeclinedBody: '{{name}} declined your drop-in request.',
   dropInShareTitle: 'Share drop-in transcript?',
-  dropInShareTitleOpen: 'Share to Circle conversation?',
-  dropInShareTitleRestricted: 'Share to Care coordination?',
+  dropInShareTitleOpen: 'Share to Everybody?',
+  dropInShareTitleRestricted: 'Share to Care team?',
   dropInShareBody:
-    'Nothing is shared automatically. You can post a transcript of this drop-in conversation to Care coordination for proxies and caregivers only.',
+    'Nothing is shared automatically. You can post a transcript of this drop-in conversation to Care team for proxies and caregivers only.',
   dropInShareBodyOpen:
-    'Nothing is shared automatically. Post a transcript to Circle conversation so friends, family, and other circle members can read it.',
+    'Nothing is shared automatically. Post a transcript to Everybody so friends, family, and other circle members can read it.',
   dropInShareBodyRestricted:
-    'Nothing is shared automatically. Post a transcript to Care coordination for proxies and caregivers only.',
+    'Nothing is shared automatically. Post a transcript to Care team for proxies and caregivers only.',
   dropInShareBodyOpenPatientInitiated:
-    'Post a transcript to Circle conversation for friends, family, and other circle members. A copy will also be saved in {{name}}\'s Messages (In/Out) on their tablet.',
+    'Post a transcript to Everybody for friends, family, and other circle members. A copy will also be saved in {{name}}\'s Messages (In/Out) on their tablet.',
   dropInShareBodyRestrictedPatientInitiated:
-    'Post a transcript to Care coordination for your care team. A copy will also be saved in {{name}}\'s Messages (In/Out) on their tablet.',
+    'Post a transcript to Care team for your care team. A copy will also be saved in {{name}}\'s Messages (In/Out) on their tablet.',
   dropInShareAlsoCareTeam: 'Also notify care team',
   dropInShareAlsoCareTeamHint:
-    'Also post a copy to Care coordination so proxies and caregivers on the care team can read it.',
+    'Also post a copy to Care team so proxies and caregivers on the care team can read it.',
   dropInShareDontShare: "Don't share",
   dropInShareButton: 'Share',
   dropInChatTitle: 'Drop-in with {{name}}',
@@ -71,22 +71,22 @@ export const remotePromptsModalEnglish = {
     'The patient will see a prompt on their tablet to open the daily check-in. They can accept or dismiss it.',
   remoteCheckInAwaitingBody:
     'The patient will see a prompt to open daily check-in. This request closes automatically if there is no response.',
-  remoteDoctorVisitConfirmTitle: 'Open doctor visit capture on patient tablet?',
+  remoteDoctorVisitConfirmTitle: 'Start meeting recording on the patient tablet?',
   remoteDoctorVisitConfirmBody:
-    'The patient will see a prompt to start doctor visit recording on their tablet. They can accept or dismiss it.',
+    'The patient will see a prompt to start recording a meeting on their tablet. They can accept or dismiss it.',
   remoteDoctorVisitAwaitingBody:
-    'The patient will see a prompt to start doctor visit capture. This request closes automatically if there is no response.',
+    'The patient will see a prompt to start recording a meeting. This request closes automatically if there is no response.',
   remoteSendToTablet: 'Send to tablet',
   remoteLabelDailyCheckIn: 'Daily check-in',
-  remoteLabelDoctorVisit: 'Doctor visit capture',
+  remoteLabelDoctorVisit: 'Record a meeting',
   remoteAcceptedCheckIn:
     '{{name}} accepted your request to open daily check-in on their tablet.',
   remoteDeclinedCheckIn:
     '{{name}} declined your request to open daily check-in on their tablet.',
   remoteAcceptedDoctorVisit:
-    '{{name}} accepted your request to open doctor visit capture on their tablet.',
+    '{{name}} accepted your request to start meeting recording on their tablet.',
   remoteDeclinedDoctorVisit:
-    '{{name}} declined your request to open doctor visit capture on their tablet.',
+    '{{name}} declined your request to start meeting recording on their tablet.',
   remoteQuickAnswersConfirmTitle: 'Open Quick Answers on patient tablet?',
   remoteQuickAnswersConfirmBody:
     'The patient will see a prompt to open Quick Answers on their tablet. They can accept or dismiss it.',
@@ -111,39 +111,39 @@ export const remotePromptsModalGerman = {
   notNow: 'Nicht jetzt',
   countdownSecond: 'Schließt in 1 Sekunde, wenn keine Antwort erfolgt',
   countdownSeconds: 'Schließt in {{seconds}} Sekunden, wenn keine Antwort erfolgt',
-  dropInInviteTitle: 'Spontan beim Patienten-Tablet melden?',
+  dropInInviteTitle: 'Drop-in auf dem Patienten-Tablet starten?',
   dropInInviteBody:
     'Der Patient sieht eine Aufforderung zum Annehmen oder Ablehnen. Bei Annahme können Sie live in einem Fenster chatten, bis einer von Ihnen das Gespräch beendet.',
   dropInAwaitingTitle: 'Warte auf Patient…',
   dropInAwaitingBody:
     'Der Patient sieht eine Aufforderung zum Annehmen oder Ablehnen. Diese Anfrage schließt sich automatisch, wenn keine Antwort erfolgt.',
-  dropInConfirmButton: 'Spontan melden',
-  dropInPatientRequestTitle: 'Patient möchte spontan sprechen',
+  dropInConfirmButton: 'Drop-in',
+  dropInPatientRequestTitle: 'Patient möchte ein Drop-in',
   dropInPatientRequestBody:
     '{{name}} lädt Sie zu einem Live-Gespräch auf dem Tablet ein. Akzeptieren Sie, um den Chat hier zu öffnen.',
   dropInPatientRequestAccept: 'Jetzt beitreten',
   dropInAcceptedBody:
-    '{{name}} hat Ihre Spontan-Anfrage angenommen. Sie können live chatten, bis einer von Ihnen das Gespräch beendet.',
-  dropInDeclinedBody: '{{name}} hat Ihre Spontan-Anfrage abgelehnt.',
-  dropInShareTitle: 'Spontan-Protokoll teilen?',
-  dropInShareTitleOpen: 'In Circle-Gespräch teilen?',
-  dropInShareTitleRestricted: 'In Pflegekoordination teilen?',
+    '{{name}} hat Ihre Drop-in-Anfrage angenommen. Sie können live chatten, bis einer von Ihnen das Gespräch beendet.',
+  dropInDeclinedBody: '{{name}} hat Ihre Drop-in-Anfrage abgelehnt.',
+  dropInShareTitle: 'Drop-in-Protokoll teilen?',
+  dropInShareTitleOpen: 'Unter Alle teilen?',
+  dropInShareTitleRestricted: 'Im Pflegeteam teilen?',
   dropInShareBody:
-    'Es wird nichts automatisch geteilt. Sie können ein Protokoll dieses Spontangesprächs in der Pflegekoordination veröffentlichen – nur für Stellvertreter und Betreuende.',
+    'Es wird nichts automatisch geteilt. Sie können ein Protokoll dieses Drop-in-Gesprächs unter Pflegeteam veröffentlichen – nur für Stellvertreter und Betreuende.',
   dropInShareBodyOpen:
-    'Es wird nichts automatisch geteilt. Veröffentlichen Sie ein Protokoll im Circle-Gespräch, damit Freunde, Familie und andere Circle-Mitglieder es lesen können.',
+    'Es wird nichts automatisch geteilt. Veröffentlichen Sie ein Protokoll unter Alle, damit Freunde, Familie und andere Circle-Mitglieder es lesen können.',
   dropInShareBodyRestricted:
-    'Es wird nichts automatisch geteilt. Veröffentlichen Sie ein Protokoll in der Pflegekoordination – nur für Stellvertreter und Betreuende.',
+    'Es wird nichts automatisch geteilt. Veröffentlichen Sie ein Protokoll unter Pflegeteam – nur für Stellvertreter und Betreuende.',
   dropInShareBodyOpenPatientInitiated:
-    'Veröffentlichen Sie ein Protokoll im Circle-Gespräch für Freunde, Familie und andere Circle-Mitglieder. Eine Kopie wird auch in {{name}}s Nachrichten (Ein/Aus) auf dem Tablet gespeichert.',
+    'Veröffentlichen Sie ein Protokoll unter Alle für Freunde, Familie und andere Circle-Mitglieder. Eine Kopie wird auch in {{name}}s Nachrichten (Ein/Aus) auf dem Tablet gespeichert.',
   dropInShareBodyRestrictedPatientInitiated:
-    'Veröffentlichen Sie ein Protokoll in der Pflegekoordination für Ihr Betreuungsteam. Eine Kopie wird auch in {{name}}s Nachrichten (Ein/Aus) auf dem Tablet gespeichert.',
+    'Veröffentlichen Sie ein Protokoll unter Pflegeteam für Ihr Betreuungsteam. Eine Kopie wird auch in {{name}}s Nachrichten (Ein/Aus) auf dem Tablet gespeichert.',
   dropInShareAlsoCareTeam: 'Auch Betreuungsteam informieren',
   dropInShareAlsoCareTeamHint:
-    'Zusätzlich in der Pflegekoordination veröffentlichen, damit Stellvertreter und Betreuende es lesen können.',
+    'Zusätzlich unter Pflegeteam veröffentlichen, damit Stellvertreter und Betreuende es lesen können.',
   dropInShareDontShare: 'Nicht teilen',
   dropInShareButton: 'Teilen',
-  dropInChatTitle: 'Spontangespräch mit {{name}}',
+  dropInChatTitle: 'Drop-in mit {{name}}',
   dropInChatSubtitle: 'Live, bis einer von Ihnen beendet',
   dropInChatMinimizeAria: 'Minimieren',
   dropInChatWaitingReply: 'Warte auf Antwort von {{name}}…',
@@ -154,11 +154,11 @@ export const remotePromptsModalGerman = {
   dropInChatSend: 'Senden',
   dropInChatSendError: 'Nachricht konnte nicht gesendet werden.',
   dropInChatEndError: 'Gespräch konnte nicht beendet werden.',
-  dropInTranscriptConversationTitle: 'Spontangespräch',
+  dropInTranscriptConversationTitle: 'Drop-in-Gespräch',
   dropInTranscriptStartedBy: 'Gestartet von:',
   dropInTranscriptEnded: 'Beendet:',
   dropInTranscriptEndedBy: 'Beendet von:',
-  dropInTranscriptFooter: '— Aus einer Live-Spontansitzung geteilt',
+  dropInTranscriptFooter: '— Aus einer Live-Drop-in-Sitzung geteilt',
   dropInTranscriptCareTeam: 'Pflegeteam',
   dropInTranscriptUnknown: 'Unbekannt',
   dropInTranscriptUnknownTime: 'Unbekannte Zeit',
@@ -170,22 +170,22 @@ export const remotePromptsModalGerman = {
     'Der Patient sieht auf seinem Tablet eine Aufforderung, den täglichen Check-in zu öffnen. Er kann annehmen oder ablehnen.',
   remoteCheckInAwaitingBody:
     'Der Patient sieht eine Aufforderung zum Öffnen des täglichen Check-ins. Diese Anfrage schließt sich automatisch, wenn keine Antwort erfolgt.',
-  remoteDoctorVisitConfirmTitle: 'Arztbesuch-Aufzeichnung auf dem Patienten-Tablet öffnen?',
+  remoteDoctorVisitConfirmTitle: 'Meeting-Aufnahme auf dem Patienten-Tablet starten?',
   remoteDoctorVisitConfirmBody:
-    'Der Patient sieht eine Aufforderung, die Aufzeichnung des Arztbesuchs auf seinem Tablet zu starten. Er kann annehmen oder ablehnen.',
+    'Der Patient sieht eine Aufforderung, eine Meeting-Aufnahme auf seinem Tablet zu starten. Er kann annehmen oder ablehnen.',
   remoteDoctorVisitAwaitingBody:
-    'Der Patient sieht eine Aufforderung zum Starten der Arztbesuch-Aufzeichnung. Diese Anfrage schließt sich automatisch, wenn keine Antwort erfolgt.',
+    'Der Patient sieht eine Aufforderung zum Starten einer Meeting-Aufnahme. Diese Anfrage schließt sich automatisch, wenn keine Antwort erfolgt.',
   remoteSendToTablet: 'An Tablet senden',
   remoteLabelDailyCheckIn: 'Täglicher Check-in',
-  remoteLabelDoctorVisit: 'Arztbesuch aufzeichnen',
+  remoteLabelDoctorVisit: 'Meeting aufnehmen',
   remoteAcceptedCheckIn:
     '{{name}} hat Ihre Anfrage angenommen, den täglichen Check-in auf dem Tablet zu öffnen.',
   remoteDeclinedCheckIn:
     '{{name}} hat Ihre Anfrage abgelehnt, den täglichen Check-in auf dem Tablet zu öffnen.',
   remoteAcceptedDoctorVisit:
-    '{{name}} hat Ihre Anfrage angenommen, die Arztbesuch-Aufzeichnung auf dem Tablet zu öffnen.',
+    '{{name}} hat Ihre Anfrage angenommen, eine Meeting-Aufnahme auf dem Tablet zu starten.',
   remoteDeclinedDoctorVisit:
-    '{{name}} hat Ihre Anfrage abgelehnt, die Arztbesuch-Aufzeichnung auf dem Tablet zu öffnen.',
+    '{{name}} hat Ihre Anfrage abgelehnt, eine Meeting-Aufnahme auf dem Tablet zu starten.',
   remoteQuickAnswersConfirmTitle: 'Schnellantworten auf dem Patienten-Tablet öffnen?',
   remoteQuickAnswersConfirmBody:
     'Der Patient sieht eine Aufforderung, Schnellantworten auf seinem Tablet zu öffnen. Er kann annehmen oder ablehnen.',
@@ -210,39 +210,39 @@ export const remotePromptsModalSpanish = {
   notNow: 'Ahora no',
   countdownSecond: 'Se cerrará en 1 segundo si no hay respuesta',
   countdownSeconds: 'Se cerrará en {{seconds}} segundos si no hay respuesta',
-  dropInInviteTitle: '¿Entrar en la tableta del paciente?',
+  dropInInviteTitle: '¿Iniciar Drop-in en la tableta del paciente?',
   dropInInviteBody:
     'El paciente verá un aviso para aceptar o rechazar. Si acepta, pueden chatear en vivo en una ventana hasta que uno de ustedes termine la conversación.',
   dropInAwaitingTitle: 'Esperando al paciente…',
   dropInAwaitingBody:
     'El paciente verá un aviso para aceptar o rechazar. Esta solicitud se cierra automáticamente si no hay respuesta.',
-  dropInConfirmButton: 'Entrar',
-  dropInPatientRequestTitle: 'El paciente quiere un drop-in',
+  dropInConfirmButton: 'Drop-in',
+  dropInPatientRequestTitle: 'El paciente quiere un Drop-in',
   dropInPatientRequestBody:
     '{{name}} le invita a una conversación en vivo en su tableta. Acepte para abrir el chat aquí.',
   dropInPatientRequestAccept: 'Unirse ahora',
   dropInAcceptedBody:
-    '{{name}} aceptó su solicitud de entrada. Pueden chatear en vivo hasta que uno de ustedes termine la conversación.',
-  dropInDeclinedBody: '{{name}} rechazó su solicitud de entrada.',
+    '{{name}} aceptó su solicitud de Drop-in. Pueden chatear en vivo hasta que uno de ustedes termine la conversación.',
+  dropInDeclinedBody: '{{name}} rechazó su solicitud de Drop-in.',
   dropInShareTitle: '¿Compartir transcripción del drop-in?',
-  dropInShareTitleOpen: '¿Compartir en conversación del Circle?',
-  dropInShareTitleRestricted: '¿Compartir en coordinación de cuidados?',
+  dropInShareTitleOpen: '¿Compartir en Todos?',
+  dropInShareTitleRestricted: '¿Compartir en Equipo de cuidado?',
   dropInShareBody:
-    'No se comparte nada automáticamente. Puede publicar una transcripción de esta conversación en coordinación de cuidados solo para apoderados y cuidadores.',
+    'No se comparte nada automáticamente. Puede publicar una transcripción de esta conversación en Equipo de cuidado solo para apoderados y cuidadores.',
   dropInShareBodyOpen:
-    'No se comparte nada automáticamente. Publique una transcripción en la conversación del Circle para que amigos, familiares y otros miembros puedan leerla.',
+    'No se comparte nada automáticamente. Publique una transcripción en Todos para que amigos, familiares y otros miembros puedan leerla.',
   dropInShareBodyRestricted:
-    'No se comparte nada automáticamente. Publique una transcripción en coordinación de cuidados solo para apoderados y cuidadores.',
+    'No se comparte nada automáticamente. Publique una transcripción en Equipo de cuidado solo para apoderados y cuidadores.',
   dropInShareBodyOpenPatientInitiated:
-    'Publique una transcripción en la conversación del Circle para amigos, familiares y otros miembros. También se guardará una copia en Mensajes (Entrada/Salida) de {{name}} en su tableta.',
+    'Publique una transcripción en Todos para amigos, familiares y otros miembros. También se guardará una copia en Mensajes (Entrada/Salida) de {{name}} en su tableta.',
   dropInShareBodyRestrictedPatientInitiated:
-    'Publique una transcripción en coordinación de cuidados para su equipo de cuidados. También se guardará una copia en Mensajes (Entrada/Salida) de {{name}} en su tableta.',
+    'Publique una transcripción en Equipo de cuidado para su equipo de cuidados. También se guardará una copia en Mensajes (Entrada/Salida) de {{name}} en su tableta.',
   dropInShareAlsoCareTeam: 'También avisar al equipo de cuidados',
   dropInShareAlsoCareTeamHint:
-    'Publique también una copia en coordinación de cuidados para que apoderados y cuidadores puedan leerla.',
+    'Publique también una copia en Equipo de cuidado para que apoderados y cuidadores puedan leerla.',
   dropInShareDontShare: 'No compartir',
   dropInShareButton: 'Compartir',
-  dropInChatTitle: 'Conversación con {{name}}',
+  dropInChatTitle: 'Drop-in con {{name}}',
   dropInChatSubtitle: 'En vivo hasta que uno de ustedes la termine',
   dropInChatMinimizeAria: 'Minimizar',
   dropInChatWaitingReply: 'Esperando respuesta de {{name}}…',
@@ -269,22 +269,22 @@ export const remotePromptsModalSpanish = {
     'El paciente verá un aviso en su tableta para abrir el check-in diario. Puede aceptar o descartarlo.',
   remoteCheckInAwaitingBody:
     'El paciente verá un aviso para abrir el check-in diario. Esta solicitud se cierra automáticamente si no hay respuesta.',
-  remoteDoctorVisitConfirmTitle: '¿Abrir captura de visita médica en la tableta del paciente?',
+  remoteDoctorVisitConfirmTitle: '¿Iniciar la grabación de una reunión en la tableta del paciente?',
   remoteDoctorVisitConfirmBody:
-    'El paciente verá un aviso para iniciar la grabación de la visita médica en su tableta. Puede aceptar o descartarlo.',
+    'El paciente verá un aviso para empezar a grabar una reunión en su tableta. Puede aceptar o descartarlo.',
   remoteDoctorVisitAwaitingBody:
-    'El paciente verá un aviso para iniciar la captura de la visita médica. Esta solicitud se cierra automáticamente si no hay respuesta.',
+    'El paciente verá un aviso para empezar a grabar una reunión. Esta solicitud se cierra automáticamente si no hay respuesta.',
   remoteSendToTablet: 'Enviar a la tableta',
   remoteLabelDailyCheckIn: 'Check-in diario',
-  remoteLabelDoctorVisit: 'Captura de visita médica',
+  remoteLabelDoctorVisit: 'Grabar una reunión',
   remoteAcceptedCheckIn:
     '{{name}} aceptó su solicitud para abrir el check-in diario en su tableta.',
   remoteDeclinedCheckIn:
     '{{name}} rechazó su solicitud para abrir el check-in diario en su tableta.',
   remoteAcceptedDoctorVisit:
-    '{{name}} aceptó su solicitud para abrir la captura de visita médica en su tableta.',
+    '{{name}} aceptó su solicitud para iniciar la grabación de una reunión en su tableta.',
   remoteDeclinedDoctorVisit:
-    '{{name}} rechazó su solicitud para abrir la captura de visita médica en su tableta.',
+    '{{name}} rechazó su solicitud para iniciar la grabación de una reunión en su tableta.',
   remoteQuickAnswersConfirmTitle: '¿Abrir Respuestas rápidas en la tableta del paciente?',
   remoteQuickAnswersConfirmBody:
     'El paciente verá un aviso para abrir Respuestas rápidas en su tableta. Puede aceptar o descartarlo.',
@@ -309,39 +309,39 @@ export const remotePromptsModalPolish = {
   notNow: 'Nie teraz',
   countdownSecond: 'Zamknie się za 1 sekundę, jeśli nie będzie odpowiedzi',
   countdownSeconds: 'Zamknie się za {{seconds}} sekund, jeśli nie będzie odpowiedzi',
-  dropInInviteTitle: 'Dołączyć do tabletu pacjenta?',
+  dropInInviteTitle: 'Rozpocząć Drop-in na tablecie pacjenta?',
   dropInInviteBody:
     'Pacjent zobaczy prośbę o zaakceptowanie lub odrzucenie. Po akceptacji możecie rozmawiać na żywo w oknie, dopóki jedna ze stron nie zakończy rozmowy.',
   dropInAwaitingTitle: 'Oczekiwanie na pacjenta…',
   dropInAwaitingBody:
     'Pacjent zobaczy prośbę o zaakceptowanie lub odrzucenie. Prośba zamknie się automatycznie, jeśli nie będzie odpowiedzi.',
-  dropInConfirmButton: 'Dołącz',
-  dropInPatientRequestTitle: 'Pacjent chce drop-in',
+  dropInConfirmButton: 'Drop-in',
+  dropInPatientRequestTitle: 'Pacjent chce Drop-in',
   dropInPatientRequestBody:
     '{{name}} zaprasza Cię na rozmowę na żywo na tablecie. Zaakceptuj, aby otworzyć czat tutaj.',
   dropInPatientRequestAccept: 'Dołącz teraz',
   dropInAcceptedBody:
-    '{{name}} zaakceptował(a) Twoją prośbę o dołączenie. Możecie rozmawiać na żywo, dopóki jedna ze stron nie zakończy rozmowy.',
-  dropInDeclinedBody: '{{name}} odrzucił(a) Twoją prośbę o dołączenie.',
+    '{{name}} zaakceptował(a) Twoją prośbę o Drop-in. Możecie rozmawiać na żywo, dopóki jedna ze stron nie zakończy rozmowy.',
+  dropInDeclinedBody: '{{name}} odrzucił(a) Twoją prośbę o Drop-in.',
   dropInShareTitle: 'Udostępnić transkrypcję drop-in?',
-  dropInShareTitleOpen: 'Udostępnić w rozmowie Circle?',
-  dropInShareTitleRestricted: 'Udostępnić w koordynacji opieki?',
+  dropInShareTitleOpen: 'Udostępnić w Wszyscy?',
+  dropInShareTitleRestricted: 'Udostępnić w Zespół opieki?',
   dropInShareBody:
-    'Nic nie jest udostępniane automatycznie. Możesz opublikować transkrypcję tej rozmowy w koordynacji opieki wyłącznie dla pełnomocników i opiekunów.',
+    'Nic nie jest udostępniane automatycznie. Możesz opublikować transkrypcję tej rozmowy w Zespół opieki wyłącznie dla pełnomocników i opiekunów.',
   dropInShareBodyOpen:
-    'Nic nie jest udostępniane automatycznie. Opublikuj transkrypcję w rozmowie Circle, aby znajomi, rodzina i inni członkowie mogli ją przeczytać.',
+    'Nic nie jest udostępniane automatycznie. Opublikuj transkrypcję w Wszyscy, aby znajomi, rodzina i inni członkowie mogli ją przeczytać.',
   dropInShareBodyRestricted:
-    'Nic nie jest udostępniane automatycznie. Opublikuj transkrypcję w koordynacji opieki wyłącznie dla pełnomocników i opiekunów.',
+    'Nic nie jest udostępniane automatycznie. Opublikuj transkrypcję w Zespół opieki wyłącznie dla pełnomocników i opiekunów.',
   dropInShareBodyOpenPatientInitiated:
-    'Opublikuj transkrypcję w rozmowie Circle dla znajomych, rodziny i innych członków. Kopia zostanie też zapisana w Wiadomościach (Wej./Wyj.) {{name}} na tablecie.',
+    'Opublikuj transkrypcję w Wszyscy dla znajomych, rodziny i innych członków. Kopia zostanie też zapisana w Wiadomościach (Wej./Wyj.) {{name}} na tablecie.',
   dropInShareBodyRestrictedPatientInitiated:
-    'Opublikuj transkrypcję w koordynacji opieki dla zespołu opieki. Kopia zostanie też zapisana w Wiadomościach (Wej./Wyj.) {{name}} na tablecie.',
+    'Opublikuj transkrypcję w Zespół opieki dla zespołu opieki. Kopia zostanie też zapisana w Wiadomościach (Wej./Wyj.) {{name}} na tablecie.',
   dropInShareAlsoCareTeam: 'Powiadom też zespół opieki',
   dropInShareAlsoCareTeamHint:
-    'Opublikuj też kopię w koordynacji opieki, aby pełnomocnicy i opiekunowie mogli ją przeczytać.',
+    'Opublikuj też kopię w Zespół opieki, aby pełnomocnicy i opiekunowie mogli ją przeczytać.',
   dropInShareDontShare: 'Nie udostępniaj',
   dropInShareButton: 'Udostępnij',
-  dropInChatTitle: 'Rozmowa z {{name}}',
+  dropInChatTitle: 'Drop-in z {{name}}',
   dropInChatSubtitle: 'Na żywo, dopóki jedna ze stron nie zakończy',
   dropInChatMinimizeAria: 'Minimalizuj',
   dropInChatWaitingReply: 'Oczekiwanie na odpowiedź od {{name}}…',
@@ -368,22 +368,22 @@ export const remotePromptsModalPolish = {
     'Pacjent zobaczy na tablecie prośbę o otwarcie codziennego check-inu. Może zaakceptować lub odrzucić.',
   remoteCheckInAwaitingBody:
     'Pacjent zobaczy prośbę o otwarcie codziennego check-inu. Prośba zamknie się automatycznie, jeśli nie będzie odpowiedzi.',
-  remoteDoctorVisitConfirmTitle: 'Otworzyć nagranie wizyty u lekarza na tablecie pacjenta?',
+  remoteDoctorVisitConfirmTitle: 'Rozpocząć nagrywanie spotkania na tablecie pacjenta?',
   remoteDoctorVisitConfirmBody:
-    'Pacjent zobaczy prośbę o rozpoczęcie nagrywania wizyty u lekarza na tablecie. Może zaakceptować lub odrzucić.',
+    'Pacjent zobaczy prośbę o rozpoczęcie nagrywania spotkania na tablecie. Może zaakceptować lub odrzucić.',
   remoteDoctorVisitAwaitingBody:
-    'Pacjent zobaczy prośbę o rozpoczęcie nagrania wizyty u lekarza. Prośba zamknie się automatycznie, jeśli nie będzie odpowiedzi.',
+    'Pacjent zobaczy prośbę o rozpoczęcie nagrywania spotkania. Prośba zamknie się automatycznie, jeśli nie będzie odpowiedzi.',
   remoteSendToTablet: 'Wyślij na tablet',
   remoteLabelDailyCheckIn: 'Codzienny check-in',
-  remoteLabelDoctorVisit: 'Nagranie wizyty u lekarza',
+  remoteLabelDoctorVisit: 'Nagraj spotkanie',
   remoteAcceptedCheckIn:
     '{{name}} zaakceptował(a) Twoją prośbę o otwarcie codziennego check-inu na tablecie.',
   remoteDeclinedCheckIn:
     '{{name}} odrzucił(a) Twoją prośbę o otwarcie codziennego check-inu na tablecie.',
   remoteAcceptedDoctorVisit:
-    '{{name}} zaakceptował(a) Twoją prośbę o otwarcie nagrania wizyty u lekarza na tablecie.',
+    '{{name}} zaakceptował(a) Twoją prośbę o rozpoczęcie nagrywania spotkania na tablecie.',
   remoteDeclinedDoctorVisit:
-    '{{name}} odrzucił(a) Twoją prośbę o otwarcie nagrania wizyty u lekarza na tablecie.',
+    '{{name}} odrzucił(a) Twoją prośbę o rozpoczęcie nagrywania spotkania na tablecie.',
   remoteQuickAnswersConfirmTitle: 'Otworzyć Szybkie odpowiedzi na tablecie pacjenta?',
   remoteQuickAnswersConfirmBody:
     'Pacjent zobaczy prośbę o otwarcie Szybkich odpowiedzi na tablecie. Może zaakceptować lub odrzucić.',

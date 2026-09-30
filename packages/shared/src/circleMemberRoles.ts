@@ -234,11 +234,13 @@ export function listManagedProxyContacts(
 ): ManagedProxyContact[] {
   return contacts
     .filter((contact) => circleMemberRoleFromManagedContact(contact) === 'proxy')
-    .map((contact) => ({
-      name: contact.name.trim() || contact.email.trim(),
-      email: contact.email.trim(),
-      tier: contact.proxyTier === 'backup' ? 'backup' : 'primary',
-    }))
+    .map(
+      (contact): ManagedProxyContact => ({
+        name: contact.name.trim() || contact.email.trim(),
+        email: contact.email.trim(),
+        tier: contact.proxyTier === 'backup' ? 'backup' : 'primary',
+      }),
+    )
     .filter((contact) => contact.email || contact.name)
     .sort((left, right) => {
       if (left.tier === right.tier) {

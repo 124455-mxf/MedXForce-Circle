@@ -9,10 +9,13 @@ type CircleAnalyticsChartXAxisProps = Partial<XAxisProps> & {
    * sparse — assessments/check-ins: plot each point at its real days-ago position.
    */
   variant?: 'daily' | 'sparse';
+  /** Right edge of the sparse days-ago axis. 30-day charts stay at 28. */
+  domainMax?: number;
 };
 
 export function CircleAnalyticsChartXAxis({
   variant = 'daily',
+  domainMax = X_AXIS_MAX_DAY,
   ...props
 }: CircleAnalyticsChartXAxisProps) {
   if (variant === 'sparse') {
@@ -20,7 +23,7 @@ export function CircleAnalyticsChartXAxis({
       <XAxis
         type="number"
         dataKey="daysAgo"
-        domain={[0, X_AXIS_MAX_DAY]}
+        domain={[0, Math.max(X_AXIS_MAX_DAY, domainMax)]}
         scale="linear"
         allowDecimals={false}
         hide

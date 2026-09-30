@@ -35,6 +35,29 @@ const FITNESS_LEVEL_KEYS: Record<string, string> = {
   extra_active: 'admin.profile.fitnessExtraActive',
 };
 
+const ALCOHOL_FREQ_KEYS: Record<string, string> = {
+  none: 'admin.profile.alcoholNone',
+  occasionally: 'admin.profile.alcoholOccasionally',
+  once_a_week: 'admin.profile.alcoholOnceAWeek',
+  every_day: 'admin.profile.alcoholEveryDay',
+};
+
+export const ASSISTIVE_DEVICE_PRESETS = [
+  'Cane',
+  'Walker',
+  'Wheelchair',
+  'Orthotics',
+  'Prosthetics',
+] as const;
+
+const ASSISTIVE_DEVICE_KEYS: Record<string, string> = {
+  Cane: 'admin.profile.assistiveCane',
+  Walker: 'admin.profile.assistiveWalker',
+  Wheelchair: 'admin.profile.assistiveWheelchair',
+  Orthotics: 'admin.profile.assistiveOrthotics',
+  Prosthetics: 'admin.profile.assistiveProsthetics',
+};
+
 export function translateCircleMemberAccessLabel(
   t: CircleTranslator,
   role: string,
@@ -75,6 +98,15 @@ export function inviteStatusLabelI18n(
   return t('admin.users.statusPending');
 }
 
+export function contactInvitePeopleStatusLabelI18n(
+  t: CircleTranslator,
+  status: 'pending' | 'missing' | 'revoked',
+): string {
+  if (status === 'pending') return t('admin.users.peopleInvitePending');
+  if (status === 'revoked') return t('admin.users.peopleInviteRevoked');
+  return t('admin.users.peopleInviteMissing');
+}
+
 export function relationshipLabelI18n(t: CircleTranslator, relationship: string): string {
   const key = RELATIONSHIP_KEYS[relationship.trim()];
   return key ? t(key) : relationship;
@@ -83,6 +115,55 @@ export function relationshipLabelI18n(t: CircleTranslator, relationship: string)
 export function fitnessLevelLabelI18n(t: CircleTranslator, value: string): string {
   const key = FITNESS_LEVEL_KEYS[value.trim()];
   return key ? t(key) : value.trim() || t('admin.profile.emptyValue');
+}
+
+const SEX_KEYS: Record<string, string> = {
+  male: 'admin.profile.sexMale',
+  female: 'admin.profile.sexFemale',
+  other: 'admin.profile.sexOther',
+};
+
+const HANDEDNESS_KEYS: Record<string, string> = {
+  left: 'admin.profile.handednessLeft',
+  right: 'admin.profile.handednessRight',
+  ambidextrous: 'admin.profile.handednessAmbidextrous',
+};
+
+const RACE_KEYS: Record<string, string> = {
+  white: 'admin.profile.raceWhite',
+  hispanic: 'admin.profile.raceHispanic',
+  black: 'admin.profile.raceBlack',
+  mena: 'admin.profile.raceMena',
+  asian: 'admin.profile.raceAsian',
+  native_american: 'admin.profile.raceNativeAmerican',
+  native_hawaiian: 'admin.profile.raceNativeHawaiian',
+};
+
+export function sexLabelI18n(t: CircleTranslator, value: string): string {
+  const key = SEX_KEYS[value.trim()];
+  return key ? t(key) : value.trim();
+}
+
+export function handednessLabelI18n(t: CircleTranslator, value: string): string {
+  const key = HANDEDNESS_KEYS[value.trim()];
+  return key ? t(key) : value.trim();
+}
+
+export function raceLabelI18n(t: CircleTranslator, value: string): string {
+  const key = RACE_KEYS[value.trim()];
+  return key ? t(key) : value.trim() || t('admin.profile.notProvided');
+}
+
+export function alcoholFreqLabelI18n(t: CircleTranslator, value: string): string {
+  const raw = value.trim();
+  if (!raw) return t('admin.profile.emptyValue');
+  const key = ALCOHOL_FREQ_KEYS[raw];
+  return key ? t(key) : raw;
+}
+
+export function assistiveDeviceLabelI18n(t: CircleTranslator, value: string): string {
+  const key = ASSISTIVE_DEVICE_KEYS[value.trim()];
+  return key ? t(key) : value.trim();
 }
 
 export function yesNoLabelI18n(t: CircleTranslator, value: string): string {

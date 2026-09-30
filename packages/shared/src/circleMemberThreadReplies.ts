@@ -4,7 +4,7 @@ import {
   onSnapshot,
   orderBy,
   query,
-  writeBatch,
+  runTransaction,
   type Firestore,
   type Unsubscribe,
 } from 'firebase/firestore';
@@ -32,25 +32,32 @@ export interface CircleMemberThreadPostReply {
   translations?: CircleMemberThreadPostTranslation[];
 }
 
+const REPLY_PREVIEW_MAX = 120;
+
+/** Keep preview within Firestore rules max (≤120), including ellipsis. */
+export function clipCircleReplyPreview(text: string, max = REPLY_PREVIEW_MAX): string {
+  const body = text.trim();
+  if (body.length <= max) return body;
+  const ellipsis = '…';
+  return `${body.slice(0, Math.max(0, max - ellipsis.length)).trimEnd()}${ellipsis}`;
+}
+
 function parseCircleMemberThreadPostReplyTranslations(
   data: Record<string, unknown>,
 ): CircleMemberThreadPostTranslation[] | undefined {
   const raw = data.translations;
   if (!Array.isArray(raw)) return undefined;
-  const parsed = raw
-    .map((entry) => {
-      if (!entry || typeof entry !== 'object') return null;
-      const row = entry as Record<string, unknown>;
-      const language = typeof row.language === 'string' ? row.language.trim() : '';
-      const text = typeof row.text === 'string' ? row.text.trim() : '';
-      if (!language || !text) return null;
-      return {
-        language,
-        text,
-        ...(row.isAuto === true ? { isAuto: true as const } : {}),
-      };
-    })
-    .filter((entry): entry is CircleMemberThreadPostTranslation => entry !== null);
+  const parsed: CircleMemberThreadPostTranslation[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const row = entry as Record<string, unknown>;
+    const language = typeof row.language === 'string' ? row.language.trim() : '';
+    const text = typeof row.text === 'string' ? row.text.trim() : '';
+    if (!language || !text) continue;
+    const item: CircleMemberThreadPostTranslation = { language, text };
+    if (row.isAuto === true) item.isAuto = true;
+    parsed.push(item);
+  }
   return parsed.length > 0 ? parsed : undefined;
 }
 
@@ -131,7 +138,7 @@ export async function createCircleMemberThreadPostReply(
     patientId: string;
     threadKind: CircleMemberThreadKind;
     postId: string;
-    post: Pick<CircleMemberThreadPost, 'text' | 'postKind' | 'replyCount'>;
+    post: Pick<CircleMemberThreadPost, 'text' | 'postKind'>;
     authorUid: string;
     authorName: string;
     authorRole: CircleMemberRole;
@@ -157,31 +164,42 @@ export async function createCircleMemberThreadPostReply(
     params.postId,
   );
   const replyRef = doc(repliesCol);
-  const priorCount = params.post.replyCount ?? 0;
-  const previewText =
-    body.length <= 120 ? body : `${body.slice(0, 120).trimEnd()}…`;
+  const previewText = clipCircleReplyPreview(body);
+  const authorName = params.authorName.trim() || 'Circle member';
 
-  const batch = writeBatch(db);
-  batch.set(replyRef, {
-    patientId: params.patientId,
-    threadKind: params.threadKind,
-    postId: params.postId,
-    authorUid: params.authorUid,
-    authorName: params.authorName.trim() || 'Circle member',
-    authorRole: params.authorRole,
-    text: body,
-    createdAt: now,
-    ...(params.translations?.length ? { translations: params.translations } : {}),
-  });
-  batch.update(postRef, {
-    respondLocked: true,
-    replyCount: priorCount + 1,
-    lastReplyAt: now,
-    lastReplyAuthorUid: params.authorUid,
-    lastReplyAuthorName: params.authorName.trim() || 'Circle member',
-    lastReplyPreviewText: previewText,
+  // Read server replyCount inside the transaction so a stale UI count cannot
+  // fail rules (incoming.replyCount must equal existing + 1).
+  await runTransaction(db, async (transaction) => {
+    const postSnap = await transaction.get(postRef);
+    if (!postSnap.exists()) {
+      throw new Error('This discussion is no longer available.');
+    }
+    const priorCountRaw = postSnap.data()?.replyCount;
+    const priorCount =
+      typeof priorCountRaw === 'number' && Number.isFinite(priorCountRaw)
+        ? Math.max(0, Math.floor(priorCountRaw))
+        : 0;
+
+    transaction.set(replyRef, {
+      patientId: params.patientId,
+      threadKind: params.threadKind,
+      postId: params.postId,
+      authorUid: params.authorUid,
+      authorName,
+      authorRole: params.authorRole,
+      text: body,
+      createdAt: now,
+      ...(params.translations?.length ? { translations: params.translations } : {}),
+    });
+    transaction.update(postRef, {
+      respondLocked: true,
+      replyCount: priorCount + 1,
+      lastReplyAt: now,
+      lastReplyAuthorUid: params.authorUid,
+      lastReplyAuthorName: authorName,
+      lastReplyPreviewText: previewText,
+    });
   });
 
-  await batch.commit();
   return replyRef.id;
 }

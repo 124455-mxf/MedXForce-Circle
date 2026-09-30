@@ -16,18 +16,27 @@ export type RehabVisitSubtype = 'pt' | 'ot' | 'speech' | 'rehab_other';
 
 export type CareCalendarVisitSubtype = DoctorVisitSubtype | RehabVisitSubtype;
 
-export type CareCalendarAppointmentTaskAssignee =
-  | 'patient'
-  | 'caregiver'
-  | 'family'
-  | 'proxy'
-  | 'creator';
+export type CareCalendarAppointmentTaskAssignee = 'patient' | 'family' | 'care_team';
+
+/** Roles shown when assigning a task in the UI. */
+export const APPOINTMENT_TASK_ASSIGNEE_OPTIONS: CareCalendarAppointmentTaskAssignee[] = [
+  'patient',
+  'family',
+  'care_team',
+];
+
+/** Map stored / legacy assignee values to the current three-option model. */
+export function normalizeAppointmentTaskAssignee(raw: unknown): CareCalendarAppointmentTaskAssignee {
+  if (raw === 'patient') return 'patient';
+  if (raw === 'family') return 'family';
+  return 'care_team';
+}
 
 export type CareCalendarAppointmentTaskPhase = 'pre' | 'post';
 
 export type CareCalendarAppointmentTaskStatus = 'open' | 'done' | 'dismissed';
 
-export type CareCalendarAppointmentTaskSource = 'manual' | 'template';
+export type CareCalendarAppointmentTaskSource = 'manual' | 'template' | 'ai';
 
 export type CareCalendarAppointmentTask = {
   id: string;
@@ -99,12 +108,12 @@ const DEFAULT_TASK_TEMPLATES: Partial<Record<CareCalendarVisitSubtype, TaskTempl
   ophthalmology: [
     { phase: 'pre', assignee: 'patient', title: 'Complete vision assessment' },
     { phase: 'pre', assignee: 'patient', title: 'Bring current glasses' },
-    { phase: 'post', assignee: 'caregiver', title: 'Update glasses prescription in profile' },
+    { phase: 'post', assignee: 'care_team', title: 'Update glasses prescription in profile' },
   ],
   neurology: [
     { phase: 'pre', assignee: 'patient', title: 'Complete neurological assessment' },
-    { phase: 'pre', assignee: 'caregiver', title: 'Note any new symptoms this week' },
-    { phase: 'post', assignee: 'caregiver', title: 'Record follow-up plan' },
+    { phase: 'pre', assignee: 'care_team', title: 'Note any new symptoms this week' },
+    { phase: 'post', assignee: 'care_team', title: 'Record follow-up plan' },
   ],
   psychology: [
     { phase: 'pre', assignee: 'patient', title: 'Complete psychological assessment' },
@@ -112,12 +121,12 @@ const DEFAULT_TASK_TEMPLATES: Partial<Record<CareCalendarVisitSubtype, TaskTempl
   ],
   pain_physical: [
     { phase: 'pre', assignee: 'patient', title: 'Log pain levels this week' },
-    { phase: 'post', assignee: 'caregiver', title: 'Update medication list if changed' },
+    { phase: 'post', assignee: 'care_team', title: 'Update medication list if changed' },
   ],
   primary_care: [
     { phase: 'pre', assignee: 'patient', title: 'Bring medication list' },
-    { phase: 'pre', assignee: 'caregiver', title: 'Prepare questions for the doctor' },
-    { phase: 'post', assignee: 'caregiver', title: 'Schedule any ordered follow-up' },
+    { phase: 'pre', assignee: 'care_team', title: 'Prepare questions for the doctor' },
+    { phase: 'post', assignee: 'care_team', title: 'Schedule any ordered follow-up' },
   ],
   pt: [
     { phase: 'pre', assignee: 'patient', title: 'Complete mobility assessment' },
@@ -126,7 +135,7 @@ const DEFAULT_TASK_TEMPLATES: Partial<Record<CareCalendarVisitSubtype, TaskTempl
   ],
   ot: [
     { phase: 'pre', assignee: 'patient', title: 'Note daily living tasks that are difficult' },
-    { phase: 'post', assignee: 'caregiver', title: 'Update home setup recommendations' },
+    { phase: 'post', assignee: 'care_team', title: 'Update home setup recommendations' },
   ],
 };
 
@@ -145,13 +154,6 @@ export function defaultAppointmentTasksForSubtype(
   }));
 }
 
-const TASK_ASSIGNEES = new Set<CareCalendarAppointmentTaskAssignee>([
-  'patient',
-  'caregiver',
-  'family',
-  'proxy',
-  'creator',
-]);
 
 export function parseCareCalendarAppointmentTasks(raw: unknown): CareCalendarAppointmentTask[] | undefined {
   if (!Array.isArray(raw) || raw.length === 0) return undefined;
@@ -162,12 +164,11 @@ export function parseCareCalendarAppointmentTasks(raw: unknown): CareCalendarApp
       const id = String(t.id || '').trim();
       const title = String(t.title || '').trim();
       const phase = t.phase === 'post' ? 'post' : t.phase === 'pre' ? 'pre' : null;
-      const assignee = TASK_ASSIGNEES.has(t.assignee as CareCalendarAppointmentTaskAssignee)
-        ? (t.assignee as CareCalendarAppointmentTaskAssignee)
-        : 'patient';
+      const assignee = normalizeAppointmentTaskAssignee(t.assignee);
       const status =
         t.status === 'done' || t.status === 'dismissed' ? t.status : ('open' as const);
-      const source = t.source === 'template' ? 'template' : 'manual';
+      const source =
+        t.source === 'template' ? 'template' : t.source === 'ai' ? 'ai' : 'manual';
       if (!id || !title || !phase) return null;
       return {
         id,
@@ -222,15 +223,16 @@ export function sanitizeCareCalendarAppointmentTasks(
   tasks: CareCalendarAppointmentTask[],
 ): CareCalendarAppointmentTask[] {
   return tasks
-    .filter((t) => t.title.trim())
+    .filter((t) => t.title.trim() && t.status !== 'dismissed')
     .slice(0, 40)
     .map((t) => {
       const title = t.title.trim().slice(0, 300);
+      const assignee = normalizeAppointmentTaskAssignee(t.assignee);
       if (t.status === 'open') {
         const { doneAt: _doneAt, doneByUid: _doneByUid, ...rest } = t;
-        return { ...rest, title, status: 'open' as const };
+        return { ...rest, title, assignee, status: 'open' as const };
       }
-      return { ...t, title };
+      return { ...t, title, assignee };
     });
 }
 
@@ -238,7 +240,7 @@ export function appointmentTasksForPhase(
   tasks: CareCalendarAppointmentTask[] | undefined,
   phase: CareCalendarAppointmentTaskPhase,
 ): CareCalendarAppointmentTask[] {
-  return (tasks ?? []).filter((t) => t.phase === phase);
+  return (tasks ?? []).filter((t) => t.phase === phase && t.status !== 'dismissed');
 }
 
 export function openAppointmentTaskCount(tasks: CareCalendarAppointmentTask[] | undefined): number {

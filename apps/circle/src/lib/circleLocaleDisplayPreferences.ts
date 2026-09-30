@@ -56,17 +56,39 @@ export function setCircleLocaleTemperatureUnit(unit: CircleLocaleTemperatureUnit
   }
 }
 
+/** Shared 12/24-hour options so English UI does not keep AM/PM in 24-hour mode. */
+export function circleClockTimeFormatOptions(
+  timeFormat: CircleLocaleTimeFormat = getCircleLocaleTimeFormat(),
+): Pick<Intl.DateTimeFormatOptions, 'hour' | 'minute' | 'hour12' | 'hourCycle'> {
+  const use12h = timeFormat === '12h';
+  return {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: use12h,
+    hourCycle: use12h ? 'h12' : 'h23',
+  };
+}
+
+export function formatCircleClockTime(
+  date: Date,
+  options?: {
+    locale?: string;
+    timeZone?: string;
+    timeFormat?: CircleLocaleTimeFormat;
+  },
+): string {
+  return new Intl.DateTimeFormat(options?.locale, {
+    ...circleClockTimeFormatOptions(options?.timeFormat ?? getCircleLocaleTimeFormat()),
+    timeZone: options?.timeZone,
+  }).format(date);
+}
+
 export function formatPatientLocaleTime(
   timezoneId: string,
   timeFormat: CircleLocaleTimeFormat,
   date = new Date(),
 ): string {
-  return new Intl.DateTimeFormat(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: timeFormat === '12h',
-    timeZone: timezoneId,
-  }).format(date);
+  return formatCircleClockTime(date, { timeZone: timezoneId, timeFormat });
 }
 
 export function formatPatientLocaleTemperature(

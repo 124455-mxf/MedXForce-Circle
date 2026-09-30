@@ -1,5 +1,9 @@
 import { ExternalLink, Megaphone, X } from 'lucide-react';
-import { CIRCLE_ONBOARDING_LEARN_MORE_URL, type CirclePatientSummary } from '@medxforce/shared';
+import {
+  CIRCLE_ONBOARDING_LEARN_MORE_URL,
+  circleDisplayFirstName,
+  type CirclePatientSummary,
+} from '@medxforce/shared';
 import { useCircleT } from '../lib/circleI18nContext';
 import { translateCircleMemberAccessLabel } from '../lib/adminScreenI18n';
 import { cn } from '../lib/utils';
@@ -20,6 +24,7 @@ export function CircleOnboardingWelcomeCard({
   className,
 }: CircleOnboardingWelcomeCardProps) {
   const t = useCircleT();
+  const patientName = circleDisplayFirstName(patient.displayName, patient.firstName);
   const roleLabel = translateCircleMemberAccessLabel(t, patient.role, patient.proxyTier);
   const bodyKey =
     variant === 'dashboard' ? 'onboarding.welcomeBodyDashboard' : 'onboarding.welcomeBodyCircle';
@@ -52,12 +57,12 @@ export function CircleOnboardingWelcomeCard({
               {t('onboarding.welcomeEyebrow')}
             </p>
             <h3 className="font-bold text-slate-800 text-sm sm:text-base leading-snug mt-0.5">
-              {t('onboarding.welcomeHeadline', { patient: patient.displayName })}
+              {t('onboarding.welcomeHeadline', { patient: patientName })}
             </h3>
           </div>
 
           <p className="text-sm text-slate-600 leading-relaxed">
-            {t(bodyKey, { patient: patient.displayName, role: roleLabel })}
+            {t(bodyKey, { patient: patientName, role: roleLabel })}
           </p>
 
           <ul className="text-xs text-slate-600 leading-relaxed space-y-1.5 list-none p-0 m-0">

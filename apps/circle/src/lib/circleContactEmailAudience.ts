@@ -1,5 +1,5 @@
 import type { CircleInviteListItem, CircleManagedContact } from '@medxforce/shared';
-import { normalizeInviteEmail } from '@medxforce/shared';
+import { composeContactDisplayName, normalizeInviteEmail } from '@medxforce/shared';
 import type { CircleTranslator } from './circleI18nContext';
 import { translateCircleMemberAccessLabel } from './adminScreenI18n';
 
@@ -25,12 +25,14 @@ export function buildCircleEmailInviterScope(
 
   let invitedByName = user.displayName?.trim() || undefined;
   if (!invitedByName && emailNorm) {
+    const linkedContact = options.contacts.find(
+      (contact) => normalizeInviteEmail(contact.email) === emailNorm,
+    );
     invitedByName =
       options.members
         .find((member) => normalizeInviteEmail(member.invitedEmail) === emailNorm)
         ?.displayName?.trim() ||
-      options.contacts.find((contact) => normalizeInviteEmail(contact.email) === emailNorm)?.name
-        ?.trim() ||
+      (linkedContact ? composeContactDisplayName(linkedContact) : undefined) ||
       options.memberContactProfileByEmail.get(emailNorm)?.name?.trim() ||
       undefined;
   }
@@ -41,7 +43,14 @@ export function buildCircleEmailInviterScope(
 export function buildCircleContactEmailAudience(
   contact: Pick<
     CircleManagedContact,
-    'name' | 'email' | 'relationship' | 'circleRole' | 'proxyTier' | 'kind'
+    | 'name'
+    | 'firstName'
+    | 'lastName'
+    | 'email'
+    | 'relationship'
+    | 'circleRole'
+    | 'proxyTier'
+    | 'kind'
   >,
   scope: {
     patientName?: string;
@@ -64,8 +73,10 @@ export function buildCircleContactEmailAudience(
     contact.relationship.trim() ||
     (contact.kind === 'friend' ? 'Friend' : contact.kind === 'family' ? 'Family' : undefined);
 
+  const contactName = composeContactDisplayName(contact);
+
   return {
-    contactName: contact.name.trim() || undefined,
+    contactName: contactName || undefined,
     patientName: scope.patientName?.trim() || undefined,
     invitedByName: scope.invitedByName?.trim() || undefined,
     invitedByEmail: scope.invitedByEmail?.trim() || undefined,
