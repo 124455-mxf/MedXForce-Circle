@@ -52,7 +52,8 @@ export function CircleDropInChatModal({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { isRecording, micError, setMicError, toggleRecording, stopRecording } = useDictation();
+  const { isRecording, micError, setMicError, toggleRecording, stopRecording } =
+    useDictation(viewerLanguage);
 
   useEffect(() => {
     if (!open) {
