@@ -566,6 +566,7 @@ export function CircleSettingsUserManagementPanel({
   >(() => new Map());
   const draftRef = useRef(draft);
   draftRef.current = draft;
+  const memberOverlaySnapGenRef = useRef(0);
 
   const isPendingProvision = patient?.isPendingProvision === true;
 
@@ -626,30 +627,40 @@ export function CircleSettingsUserManagementPanel({
     }
 
     return onSnapshot(collection(db, 'patients', patient.patientId, 'members'), (snap) => {
+      const gen = ++memberOverlaySnapGenRef.current;
       void (async () => {
-        const notifyNext = new Map<string, CircleMemberNotifyPreferences>();
-        const profileNext = new Map<string, CircleMemberContactProfile>();
-        await Promise.all(
-          snap.docs.map(async (memberDoc) => {
-            const data = memberDoc.data() as Record<string, unknown>;
-            const email = normalizeInviteEmail(String(data.invitedEmail ?? ''));
-            if (!email) return;
-            const prefs = parseMemberNotifyPreferences(data);
-            if (prefs) notifyNext.set(email, prefs);
+        try {
+          const notifyNext = new Map<string, CircleMemberNotifyPreferences>();
+          const profileNext = new Map<string, CircleMemberContactProfile>();
+          await Promise.all(
+            snap.docs.map(async (memberDoc) => {
+              const data = memberDoc.data() as Record<string, unknown>;
+              const email = normalizeInviteEmail(String(data.invitedEmail ?? ''));
+              if (!email) return;
+              const prefs = parseMemberNotifyPreferences(data);
+              if (prefs) notifyNext.set(email, prefs);
 
-            const prefsContactSnap = await getDoc(
-              doc(db, 'patients', patient.patientId, 'members', memberDoc.id, 'prefs', 'contact'),
-            );
-            const profile = parseMemberContactProfile(
-              prefsContactSnap.exists()
-                ? (prefsContactSnap.data() as Record<string, unknown>)
-                : data,
-            );
-            if (profile) profileNext.set(email, profile);
-          }),
-        );
-        setMemberNotifyByEmail(notifyNext);
-        setMemberContactProfileByEmail(profileNext);
+              let profileSource: Record<string, unknown> = data;
+              try {
+                const prefsContactSnap = await getDoc(
+                  doc(db, 'patients', patient.patientId, 'members', memberDoc.id, 'prefs', 'contact'),
+                );
+                if (prefsContactSnap.exists()) {
+                  profileSource = prefsContactSnap.data() as Record<string, unknown>;
+                }
+              } catch {
+                // Proxy may be denied prefs/contact; member-root profile is enough.
+              }
+              const profile = parseMemberContactProfile(profileSource);
+              if (profile) profileNext.set(email, profile);
+            }),
+          );
+          if (gen !== memberOverlaySnapGenRef.current) return;
+          setMemberNotifyByEmail(notifyNext);
+          setMemberContactProfileByEmail(profileNext);
+        } catch (err) {
+          console.warn('[CircleSettingsUserManagementPanel] member overlay sync', err);
+        }
       })();
     });
   }, [db, isPendingProvision, patient?.patientId]);
@@ -995,6 +1006,19 @@ export function CircleSettingsUserManagementPanel({
       { expectedContactFingerprint: editorBaselineContactFingerprint || undefined },
     );
 
+    const notifyEmail = normalizeInviteEmail(normalizedEmail);
+    if (notifyEmail && currentDraft.kind !== 'contact') {
+      setMemberNotifyByEmail((prev) => {
+        const nextMap = new Map(prev);
+        nextMap.set(notifyEmail, {
+          alert: nextAlert,
+          attention: nextAttention,
+          message: nextMessage,
+        });
+        return nextMap;
+      });
+    }
+
     if (!isPendingProvision && invite?.status === 'accepted' && invite.acceptedByUid) {
       const displayed = existing
         ? contactForEditorDisplay(
@@ -1004,26 +1028,19 @@ export function CircleSettingsUserManagementPanel({
             memberContactProfileByEmail,
           )
         : undefined;
-      if (
-        displayed &&
-        (displayed.alert !== nextAlert ||
-          displayed.attention !== nextAttention ||
-          displayed.message !== nextMessage)
-      ) {
-        try {
-          await pushMemberNotifyPreferencesFromManagedContact(
-            db,
-            patient.patientId,
-            invite.acceptedByUid,
-            {
-              alert: nextAlert,
-              attention: nextAttention,
-              message: nextMessage,
-            },
-          );
-        } catch (err) {
-          console.warn('[CircleSettingsUserManagementPanel] member notify sync', err);
-        }
+      try {
+        await pushMemberNotifyPreferencesFromManagedContact(
+          db,
+          patient.patientId,
+          invite.acceptedByUid,
+          {
+            alert: nextAlert,
+            attention: nextAttention,
+            message: nextMessage,
+          },
+        );
+      } catch (err) {
+        console.warn('[CircleSettingsUserManagementPanel] member notify sync', err);
       }
       if (displayed && nextLanguage !== (displayed.language || 'English')) {
         await saveCircleUserProfile(db, invite.acceptedByUid, {
