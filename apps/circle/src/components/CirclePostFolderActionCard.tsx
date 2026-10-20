@@ -105,9 +105,9 @@ export function CirclePostFolderActionCard({
     return (
       <button
         type="button"
-        onClick={onAction}
+        onClick={() => onAction?.()}
         className={cn(
-          'w-full flex items-center gap-3 p-3 rounded-2xl border text-left transition-colors',
+          'w-full flex items-center gap-3 p-3 rounded-2xl border text-left cursor-pointer transition-colors',
           isResume
             ? 'border-indigo-200 bg-indigo-50/80 hover:bg-indigo-100/80'
             : isSchedule

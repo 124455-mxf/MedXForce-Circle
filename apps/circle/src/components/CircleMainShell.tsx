@@ -430,7 +430,8 @@ export function CircleMainShell({
     restoreSheet?: CircleScheduleAppointmentFocus | null,
   ) => {
     visitCaptureSheetRestoreRef.current = restoreSheet ?? null;
-    setVisitCaptureEntryId(careCalendarEntryId?.trim() || null);
+    const entryId = typeof careCalendarEntryId === 'string' ? careCalendarEntryId.trim() : '';
+    setVisitCaptureEntryId(entryId || null);
     setVisitCaptureOpen(true);
   }, []);
 

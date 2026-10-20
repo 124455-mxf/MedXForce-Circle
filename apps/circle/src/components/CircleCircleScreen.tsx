@@ -658,7 +658,12 @@ export function CircleCircleScreen({
       className="mb-3"
     />
   ) : showRecordVisitAction ? (
-    <CirclePostFolderActionCard variant="record_visit" onAction={onRecordVisit} t={t} className="mb-3" />
+    <CirclePostFolderActionCard
+      variant="record_visit"
+      onAction={() => onRecordVisit?.()}
+      t={t}
+      className="mb-3"
+    />
   ) : showOpenScheduleAction ? (
     <CirclePostFolderActionCard variant="open_schedule" onAction={onOpenSchedule} t={t} className="mb-3" />
   ) : null;

@@ -1843,6 +1843,16 @@ export function PatientMessagesScreen({
                 ? messagesCommunicationLogThreadSubtitle(t, selectedMessage)
                 : formatMessagesThreadTime(t, selectedMessage.updatedAt || selectedMessage.createdAt)}
             </p>
+            {selectedAlertKind ? (
+              <p
+                className={cn(
+                  'text-[11px] font-semibold mt-1',
+                  selectedAlertKind === 'alert' ? 'text-red-800' : 'text-sky-800',
+                )}
+              >
+                {messagesAlertAttentionReadOnlyHint(t)}
+              </p>
+            ) : null}
           </div>
           <button
             type="button"
@@ -2007,18 +2017,7 @@ export function PatientMessagesScreen({
           expandTitle={t('messages.expandReplyTitle')}
         />
       </div>
-      ) : selectedAlertKind ? (
-        <div
-          className={cn(
-            'shrink-0 p-4 border-t text-center text-sm leading-relaxed',
-            selectedAlertKind === 'alert'
-              ? 'border-red-100 bg-red-50/60 text-red-900'
-              : 'border-blue-100 bg-blue-50/60 text-blue-900',
-          )}
-        >
-          {messagesAlertAttentionReadOnlyHint(t)}
-        </div>
-      ) : (
+      ) : selectedAlertKind ? null : (
         <div className="shrink-0 p-4 border-t border-slate-200 bg-slate-50 text-center text-sm text-slate-500">
           {t('messages.repliesClosed')}
         </div>
@@ -2027,10 +2026,17 @@ export function PatientMessagesScreen({
     <CircleMessageExpandOverlay
       open={threadExpandedOpen}
       title={messagesThreadHeaderTitle(t, selectedMessage, language, 'thread', patientFirstName)}
-      subtitle={formatMessagesThreadTime(
-        t,
-        selectedMessage.updatedAt || selectedMessage.createdAt,
-      )}
+      subtitle={
+        selectedAlertKind
+          ? `${formatMessagesThreadTime(
+              t,
+              selectedMessage.updatedAt || selectedMessage.createdAt,
+            )} · ${messagesAlertAttentionReadOnlyHint(t)}`
+          : formatMessagesThreadTime(
+              t,
+              selectedMessage.updatedAt || selectedMessage.createdAt,
+            )
+      }
       onClose={() => setThreadExpandedOpen(false)}
       footer={replyActionButton}
       t={t}

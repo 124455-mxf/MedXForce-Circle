@@ -789,7 +789,7 @@ export function CircleCareTransitionReadinessPanel({
             </button>
           ) : null}
         </div>
-        {profileSummary || openHelpTasks.length > 0 || completedHelpTasks.length > 0 ? null : (
+        {profileSummary || openHelpTasks.length > 0 ? null : (
           <p className="text-sm text-slate-500">{t('careTransition.circleHelpEmpty')}</p>
         )}
         {!profileSummary && openHelpTasks.length > 0 ? (

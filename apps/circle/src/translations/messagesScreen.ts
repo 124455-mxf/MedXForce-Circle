@@ -73,7 +73,7 @@ export const messagesScreenEnglish = {
   removeConfirm: 'Remove',
   hiddenFromInbox: 'Earlier messages in this conversation are hidden from your inbox.',
   repliesClosed: 'Replies are closed — the patient deleted this conversation on their tablet.',
-  readOnlyAlertHint: 'This is a one-way alarm — use Messages to reply to your loved one.',
+  readOnlyAlertHint: 'This is a one-way alarm.',
   alertAttentionHistory: 'Recent alarm & attention',
   showEarlierReplies: 'Show {{count}} earlier replies',
   showOlderReplies: 'Show {{count}} older replies',
@@ -215,8 +215,7 @@ export const messagesScreenGerman = {
     'Frühere Nachrichten in dieser Unterhaltung sind in Ihrem Posteingang ausgeblendet.',
   repliesClosed:
     'Antworten geschlossen — der Patient hat diese Unterhaltung auf dem Tablet gelöscht.',
-  readOnlyAlertHint:
-    'Dies ist ein Einweg-Alarm — antworten Sie über Nachrichten an Ihren Angehörigen.',
+  readOnlyAlertHint: 'Dies ist ein Einweg-Alarm.',
   alertAttentionHistory: 'Aktuelle Alarm & Achtung',
   showEarlierReplies: '{{count}} frühere Antworten anzeigen',
   showOlderReplies: '{{count}} ältere Antworten anzeigen',
@@ -358,8 +357,7 @@ export const messagesScreenSpanish = {
     'Los mensajes anteriores en esta conversación están ocultos en su bandeja.',
   repliesClosed:
     'Respuestas cerradas — el paciente eliminó esta conversación en su tableta.',
-  readOnlyAlertHint:
-    'Esta es una alarma unidireccional — use Mensajes para responder a su ser querido.',
+  readOnlyAlertHint: 'Esta es una alarma unidireccional.',
   alertAttentionHistory: 'Alarma y atención recientes',
   showEarlierReplies: 'Mostrar {{count}} respuestas anteriores',
   showOlderReplies: 'Mostrar {{count}} respuestas más antiguas',
@@ -500,8 +498,7 @@ export const messagesScreenPolish = {
   hiddenFromInbox: 'Wcześniejsze wiadomości w tej rozmowie są ukryte w Twojej skrzynce.',
   repliesClosed:
     'Odpowiedzi zamknięte — pacient usunął tę rozmowę na tablecie.',
-  readOnlyAlertHint:
-    'To jednokierunkowy alarm — odpowiedz przez Wiadomości do bliskiej osoby.',
+  readOnlyAlertHint: 'To jednokierunkowy alarm.',
   alertAttentionHistory: 'Ostatnie Alarm i Uwaga',
   showEarlierReplies: 'Pokaż {{count}} wcześniejszych odpowiedzi',
   showOlderReplies: 'Pokaż {{count}} starszych odpowiedzi',
