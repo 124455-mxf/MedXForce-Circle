@@ -101,7 +101,12 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       subtitle: 'Family & Friends — share moments with your loved one',
       emailPlaceholder: 'Email (must match patient invite)',
       passwordPlaceholder: 'Password',
+      continueApple: 'Sign in with Apple',
       continueGoogle: 'Continue with Google',
+      appleRedirectHint:
+        'On iPhone, Sign in with Apple leaves this page and brings you back when you finish.',
+      embeddedBrowser:
+        'Sign-in does not work inside Microsoft Teams or other in-app browsers. Open this page in Safari, then try again.',
       signingIn: 'Signing in…',
       orEmailPassword: 'or email & password',
       signIn: 'Sign in',
@@ -114,9 +119,9 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       googleHint:
         'Security: Never share your password with anyone. MedXForce will never ask you for your password by email, text, or phone.',
       wrongPassword:
-        'Wrong password — or this account uses Google sign-in. Try Continue with Google, or Forgot password.',
+        'Wrong password — or this account uses Google or Apple sign-in. Try those buttons, or Forgot password.',
       emailInUse:
-        'This email already has an account (often via Google). Use Continue with Google, or Forgot password.',
+        'This email already has an account (often via Google or Apple). Use that sign-in, or Forgot password.',
       weakPassword: 'Password must be at least 6 characters.',
       invalidEmail: 'Enter a valid email address.',
       userNotFound: 'No account for this email yet. Use Create account instead.',
@@ -174,7 +179,12 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       subtitle: 'Familie & Freunde — Momente mit Ihrem Angehörigen teilen',
       emailPlaceholder: 'E-Mail (muss mit der Patienteneinladung übereinstimmen)',
       passwordPlaceholder: 'Passwort',
+      continueApple: 'Mit Apple anmelden',
       continueGoogle: 'Mit Google fortfahren',
+      appleRedirectHint:
+        'Auf dem iPhone verlässt „Mit Apple anmelden“ diese Seite und bringt Sie zurück, wenn Sie fertig sind.',
+      embeddedBrowser:
+        'Die Anmeldung funktioniert nicht in Microsoft Teams oder anderen In-App-Browsern. Öffnen Sie diese Seite in Safari und versuchen Sie es erneut.',
       signingIn: 'Anmeldung…',
       orEmailPassword: 'oder E-Mail & Passwort',
       signIn: 'Anmelden',
@@ -187,9 +197,9 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       googleHint:
         'Sicherheit: Geben Sie Ihr Passwort niemals an Dritte weiter. MedXForce wird Sie niemals per E-Mail, SMS oder Telefon nach Ihrem Passwort fragen.',
       wrongPassword:
-        'Falsches Passwort — oder dieses Konto nutzt Google-Anmeldung. Versuchen Sie „Mit Google fortfahren“.',
+        'Falsches Passwort — oder dieses Konto nutzt Google- oder Apple-Anmeldung. Versuchen Sie die Schaltflächen oben oder „Passwort vergessen“.',
       emailInUse:
-        'Diese E-Mail hat bereits ein Konto (oft über Google). Nutzen Sie Google oder „Passwort vergessen“.',
+        'Diese E-Mail hat bereits ein Konto (oft über Google oder Apple). Nutzen Sie diese Anmeldung oder „Passwort vergessen“.',
       weakPassword: 'Das Passwort muss mindestens 6 Zeichen haben.',
       invalidEmail: 'Geben Sie eine gültige E-Mail-Adresse ein.',
       userNotFound: 'Kein Konto für diese E-Mail. Nutzen Sie „Konto erstellen“.',
@@ -248,7 +258,12 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       subtitle: 'Familia y amigos — comparta momentos con su ser querido',
       emailPlaceholder: 'Correo (debe coincidir con la invitación del paciente)',
       passwordPlaceholder: 'Contraseña',
+      continueApple: 'Iniciar sesión con Apple',
       continueGoogle: 'Continuar con Google',
+      appleRedirectHint:
+        'En el iPhone, Iniciar sesión con Apple sale de esta página y vuelve cuando termina.',
+      embeddedBrowser:
+        'El inicio de sesión no funciona dentro de Microsoft Teams u otros navegadores integrados. Abra esta página en Safari e inténtelo de nuevo.',
       signingIn: 'Iniciando sesión…',
       orEmailPassword: 'o correo y contraseña',
       signIn: 'Iniciar sesión',
@@ -261,9 +276,9 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       googleHint:
         'Seguridad: Nunca comparta su contraseña con nadie. MedXForce nunca le pedirá la contraseña por correo, mensaje de texto o teléfono.',
       wrongPassword:
-        'Contraseña incorrecta — o esta cuenta usa Google. Pruebe Continuar con Google.',
+        'Contraseña incorrecta — o esta cuenta usa Google o Apple. Pruebe esos botones o ¿Olvidó la contraseña?',
       emailInUse:
-        'Este correo ya tiene una cuenta (a menudo con Google). Use Google o ¿Olvidó la contraseña?',
+        'Este correo ya tiene una cuenta (a menudo con Google o Apple). Use ese inicio de sesión o ¿Olvidó la contraseña?',
       weakPassword: 'La contraseña debe tener al menos 6 caracteres.',
       invalidEmail: 'Introduzca un correo válido.',
       userNotFound: 'No hay cuenta para este correo. Use Crear cuenta.',
@@ -322,7 +337,12 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       subtitle: 'Rodzina i przyjaciele — dziel się chwilami z bliską osobą',
       emailPlaceholder: 'E-mail (musi zgadzać się z zaproszeniem pacjenta)',
       passwordPlaceholder: 'Hasło',
+      continueApple: 'Zaloguj się przez Apple',
       continueGoogle: 'Kontynuuj z Google',
+      appleRedirectHint:
+        'Na iPhonie logowanie przez Apple opuszcza tę stronę i wraca po zakończeniu.',
+      embeddedBrowser:
+        'Logowanie nie działa w Microsoft Teams ani w innych przeglądarkach w aplikacji. Otwórz tę stronę w Safari i spróbuj ponownie.',
       signingIn: 'Logowanie…',
       orEmailPassword: 'lub e-mail i hasło',
       signIn: 'Zaloguj się',
@@ -335,9 +355,9 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       googleHint:
         'Bezpieczeństwo: Nigdy nie udostępniaj hasła nikomu. MedXForce nigdy nie poprosi Cię o hasło e-mailem, SMS-em ani telefonem.',
       wrongPassword:
-        'Błędne hasło — lub to konto używa logowania Google. Spróbuj Kontynuuj z Google.',
+        'Błędne hasło — lub to konto używa logowania Google albo Apple. Spróbuj tych przycisków albo Nie pamiętasz hasła?',
       emailInUse:
-        'Ten e-mail ma już konto (często przez Google). Użyj Google lub Nie pamiętasz hasła?',
+        'Ten e-mail ma już konto (często przez Google lub Apple). Użyj tego logowania albo Nie pamiętasz hasła?',
       weakPassword: 'Hasło musi mieć co najmniej 6 znaków.',
       invalidEmail: 'Wprowadź prawidłowy adres e-mail.',
       userNotFound: 'Brak konta dla tego e-maila. Użyj Utwórz konto.',

@@ -8,10 +8,19 @@ import {
   signInWithPopup,
   signInWithRedirect,
   signOut,
+  type AuthProvider,
   type User,
 } from 'firebase/auth';
 import { Loader2, LogOut, Users } from 'lucide-react';
+import { AppleSignInButton } from './components/AppleSignInButton';
 import { MedXForceBrandLogo } from './components/MedXForceBrandLogo';
+import {
+  createAppleOAuthProvider,
+  isAppleSignInEnabled,
+  isAppleTouchDevice,
+  isEmbeddedInAppBrowser,
+  preferApplePopupSignIn,
+} from './lib/appleSignIn';
 import {
   acceptPendingCircleInvites,
   ensureMemberCapabilitiesForUser,
@@ -71,7 +80,7 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
   const [resetNotice, setResetNotice] = useState<string | null>(null);
-  const [googleSigningIn, setGoogleSigningIn] = useState(false);
+  const [oauthSigningIn, setOauthSigningIn] = useState<'apple' | 'google' | null>(null);
   const [patients, setPatients] = useState<CirclePatientSummary[]>([]);
   const [patientsHydrating, setPatientsHydrating] = useState(false);
   const [refreshingPatients, setRefreshingPatients] = useState(false);
@@ -294,7 +303,7 @@ export default function App() {
       if (!active) return;
       setUser(nextUser);
       setAuthLoading(false);
-      setGoogleSigningIn(false);
+      setOauthSigningIn(null);
       if (nextUser) {
         setPatientsHydrating(true);
         try {
@@ -398,34 +407,55 @@ export default function App() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const runOAuthSignIn = async (
+    provider: AuthProvider,
+    preferPopup: boolean,
+    target: 'apple' | 'google',
+  ) => {
     setAuthError(null);
     setResetNotice(null);
-    setGoogleSigningIn(true);
-    const provider = new GoogleAuthProvider();
-    provider.addScope('email');
-    provider.setCustomParameters({ prompt: 'select_account' });
+    if (isEmbeddedInAppBrowser()) {
+      setAuthError(t('auth.embeddedBrowser'));
+      return;
+    }
+    setOauthSigningIn(target);
     try {
-      await signInWithPopup(firebase.auth, provider);
+      if (preferPopup) {
+        await signInWithPopup(firebase.auth, provider);
+        return;
+      }
+      await signInWithRedirect(firebase.auth, provider);
     } catch (err: unknown) {
       const code = err && typeof err === 'object' && 'code' in err ? String(err.code) : '';
-      if (
-        code === 'auth/popup-blocked' ||
-        code === 'auth/cancelled-popup-request' ||
-        code === 'auth/popup-closed-by-user'
-      ) {
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        setOauthSigningIn(null);
+        return;
+      }
+      if (preferPopup && code === 'auth/popup-blocked') {
         try {
           await signInWithRedirect(firebase.auth, provider);
           return;
         } catch (redirectErr) {
-          setGoogleSigningIn(false);
+          setOauthSigningIn(null);
           setAuthError(friendlyAuthError(redirectErr, t));
+          return;
         }
-        return;
       }
-      setGoogleSigningIn(false);
+      setOauthSigningIn(null);
       setAuthError(friendlyAuthError(err, t));
     }
+  };
+
+  const handleGoogleSignIn = () => {
+    const provider = new GoogleAuthProvider();
+    provider.addScope('email');
+    provider.setCustomParameters({ prompt: 'select_account' });
+    void runOAuthSignIn(provider, true, 'google');
+  };
+
+  const handleAppleSignIn = () => {
+    const host = window.location.hostname;
+    void runOAuthSignIn(createAppleOAuthProvider(), preferApplePopupSignIn(host), 'apple');
   };
 
   const appReady = !authLoading && (!user || !patientsHydrating);
@@ -508,21 +538,36 @@ export default function App() {
           >
             {t('auth.forgotPassword')}
           </button>
+          {typeof window !== 'undefined' && isEmbeddedInAppBrowser() && (
+            <p className="text-sm text-amber-700" role="status">
+              {t('auth.embeddedBrowser')}
+            </p>
+          )}
           {authError && <p className="text-sm text-red-600">{authError}</p>}
           {resetNotice && (
             <p className="text-sm text-emerald-700 leading-relaxed" role="status">
               {resetNotice}
             </p>
           )}
+          {isAppleSignInEnabled() && (
+            <AppleSignInButton
+              disabled={oauthSigningIn != null}
+              label={oauthSigningIn === 'apple' ? t('auth.signingIn') : t('auth.continueApple')}
+              onClick={handleAppleSignIn}
+            />
+          )}
           <button
             type="button"
             onClick={handleGoogleSignIn}
-            disabled={googleSigningIn}
+            disabled={oauthSigningIn != null}
             className="w-full py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-semibold hover:bg-slate-50 flex items-center justify-center gap-2 disabled:opacity-60"
           >
             <span className="text-lg leading-none">G</span>
-            {googleSigningIn ? t('auth.signingIn') : t('auth.continueGoogle')}
+            {oauthSigningIn === 'google' ? t('auth.signingIn') : t('auth.continueGoogle')}
           </button>
+          {typeof window !== 'undefined' && isAppleTouchDevice() && !isEmbeddedInAppBrowser() && (
+            <p className="text-xs text-slate-500 leading-relaxed">{t('auth.appleRedirectHint')}</p>
+          )}
           <div className="flex items-center gap-3 text-xs text-slate-400">
             <div className="h-px flex-1 bg-slate-200" />
             {t('auth.orEmailPassword')}
@@ -797,6 +842,7 @@ function friendlyAuthError(
     case 'auth/invalid-credential':
       return t('auth.wrongPassword');
     case 'auth/email-already-in-use':
+    case 'auth/account-exists-with-different-credential':
       return t('auth.emailInUse');
     case 'auth/weak-password':
       return t('auth.weakPassword');
