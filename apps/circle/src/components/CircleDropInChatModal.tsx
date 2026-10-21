@@ -193,6 +193,11 @@ export function CircleDropInChatModal({
             disabled={busy || sending}
             className={DROP_IN_CHAT_TEXTAREA_CLASS}
           />
+          {isRecording ? (
+            <p className="text-[11px] text-red-600 font-medium leading-snug">
+              {t('remotePromptsModal.dropInChatListening')}
+            </p>
+          ) : null}
           <div className="flex items-center gap-2">
             <button
               type="button"

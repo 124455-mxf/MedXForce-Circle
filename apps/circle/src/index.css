@@ -260,3 +260,15 @@ input[type='date'] {
   flex-shrink: 0;
 }
 
+/*
+ * iPhone Safari enlarges the whole page when a focused field computes below 16px,
+ * then leaves it zoomed. Absolute pixels stay at 16px even when text size is Small.
+ */
+@supports (-webkit-touch-callout: none) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='button']):not([type='submit']):not([type='reset']):not([type='file']):not([type='image']):not([type='hidden']),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
