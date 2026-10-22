@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { collection, doc, getDoc, onSnapshot, type Firestore } from 'firebase/firestore';
-import { CalendarClock, History, Loader2, Mail, Pencil, Plus, RefreshCw, ShieldOff, Trash2, Users } from 'lucide-react';
+import { CalendarClock, Clock, History, Loader2, Mail, Pencil, Plus, RefreshCw, ShieldOff, Trash2, Users } from 'lucide-react';
 import {
   clampRelationship,
   CircleContactEditorModal,
@@ -10,6 +10,8 @@ import {
   type ContactEditorMode,
 } from './CircleContactEditorModal';
 import { CircleInviteConfirmModal } from './CircleInviteConfirmModal';
+import { CirclePatientLanguagePill } from './CirclePatientLanguagePill';
+import { CircleContactNotifyIconStrip } from './CircleContactNotifyIconStrip';
 import {
   ContactConflictError,
   deletePatientManagedContact,
@@ -38,24 +40,23 @@ import {
   type CircleInviteListItem,
   type CircleInvitePreviewItem,
   mergeContactWithMemberContactProfile,
-  mergeContactWithMemberNotifyPreferences,
   composeContactDisplayName,
+  listInactiveCircleMembers,
   parseMemberContactProfile,
-  parseMemberNotifyPreferences,
   type CircleManagedContact,
   type CircleMemberContactProfile,
-  type CircleMemberNotifyPreferences,
   type CirclePatientSummary,
 } from '@medxforce/shared';
 import { circleTabButtonClass, circleTabListClass } from '../lib/circleSectionStyles';
 import { isFirestoreQuotaError, pauseFirestoreBackgroundWrites } from '../lib/firestoreQuota';
 import { cn } from '../lib/utils';
-import { useCircleT, type CircleTranslator } from '../lib/circleI18nContext';
+import { useCircleI18nContext, useCircleT, type CircleTranslator } from '../lib/circleI18nContext';
+import { formatDashboardTimestamp } from '../lib/dashboardI18n';
+import { useCircleMemberActivityByUid } from '../hooks/useCircleMemberActivityByUid';
 import {
   contactKindLabelI18n,
   formatContactSaveErrorI18n,
   inviteStatusLabelI18n,
-  relationshipLabelI18n,
   translateCircleMemberAccessLabel,
 } from '../lib/adminScreenI18n';
 import { inviteForContactEmail, resolvedContactAccess } from '../lib/circleContactDisplay';
@@ -71,8 +72,6 @@ import { sendCircleContactAddedEmail, sendCircleContactIntroductionEmail } from 
 import { removeCircleMemberFromPatient } from '../services/removeCircleMemberFromPatient';
 import { useCircleToast, type CircleToastTone } from '../hooks/useCircleToast';
 import { CircleAppToast } from './CircleAppToast';
-import { CircleContactMemberOverviewStrip } from './CircleContactMemberOverviewStrip';
-
 type PanelTab = 'people' | 'access';
 
 type InviteConfirmAction =
@@ -174,20 +173,17 @@ function contactToDraft(contact: CircleManagedContact): ContactEditorDraft {
 function contactForEditorDisplay(
   contact: CircleManagedContact,
   members: CircleInviteListItem[],
-  memberNotifyByEmail: Map<string, CircleMemberNotifyPreferences>,
   memberContactProfileByEmail: Map<string, CircleMemberContactProfile>,
 ): CircleManagedContact {
   const email = normalizeInviteEmail(contact.email);
   if (!email) return contact;
   const invite = inviteForContactEmail(contact, members);
   if (invite?.status !== 'accepted') return contact;
-  const withProfile = mergeContactWithMemberContactProfile(
+  // Notify flags live on the contact row. Member prefs must not cover them,
+  // or Alarm / Attention / Message snap back after Save.
+  return mergeContactWithMemberContactProfile(
     contact,
     memberContactProfileByEmail.get(email) ?? null,
-  );
-  return mergeContactWithMemberNotifyPreferences(
-    withProfile,
-    memberNotifyByEmail.get(email) ?? null,
   );
 }
 
@@ -400,6 +396,19 @@ function contactForInviteResend(
   };
 }
 
+function memberLastOpenedAt(
+  uid: string | undefined,
+  lastOpenByUid: Record<string, number>,
+  presenceByUid: Record<string, number>,
+): number {
+  if (!uid) return 0;
+  const openAt = Number(lastOpenByUid[uid]);
+  const seenAt = Number(presenceByUid[uid]);
+  if (Number.isFinite(openAt) && openAt > 0) return openAt;
+  if (Number.isFinite(seenAt) && seenAt > 0) return seenAt;
+  return 0;
+}
+
 function DeletionScheduledNote({ until, className }: { until: number; className?: string }) {
   const t = useCircleT();
   const date = new Date(until).toLocaleDateString(undefined, {
@@ -410,14 +419,41 @@ function DeletionScheduledNote({ until, className }: { until: number; className?
   return (
     <p
       className={cn(
-        'flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900',
+        'flex items-center gap-2 rounded-xl bg-rose-100 px-3 py-2 text-xs font-semibold text-rose-950',
         className,
       )}
     >
-      <CalendarClock size={14} className="shrink-0 text-amber-700" aria-hidden />
+      <CalendarClock size={14} className="shrink-0 text-rose-700" aria-hidden />
       <span className="min-w-0 leading-snug">{t('admin.users.deletionScheduled', { date })}</span>
     </p>
   );
+}
+
+/** Proxy, then caregiver, family, friends, contacts. Primary proxy before backup. */
+function peopleListGroupRank(contact: CircleManagedContact): number {
+  if (contact.circleRole === 'proxy') return contact.proxyTier === 'backup' ? 1 : 0;
+  if (contact.kind === 'caregiver') return 2;
+  if (contact.kind === 'family') return 3;
+  if (contact.kind === 'friend') return 4;
+  return 5;
+}
+
+function contactLastNameKey(contact: CircleManagedContact): string {
+  const last = (contact.lastName || '').trim();
+  if (last) return last;
+  const display = composeContactDisplayName(contact);
+  const parts = display.split(/\s+/).filter(Boolean);
+  if (parts.length > 1) return parts[parts.length - 1] ?? display;
+  return display || contact.email;
+}
+
+function contactFirstNameKey(contact: CircleManagedContact): string {
+  const first = (contact.firstName || '').trim();
+  if (first) return first;
+  const display = composeContactDisplayName(contact);
+  const parts = display.split(/\s+/).filter(Boolean);
+  if (parts.length > 1) return parts.slice(0, -1).join(' ');
+  return '';
 }
 
 function PersonRow({
@@ -425,7 +461,6 @@ function PersonRow({
   members,
   onView,
   onEdit,
-  onDelete,
   onRequestResendInviteEmail,
   onRequestResendContactAddedEmail,
   resendingInviteEmail,
@@ -434,7 +469,6 @@ function PersonRow({
   members: CircleInviteListItem[];
   onView: () => void;
   onEdit: () => void;
-  onDelete: () => void;
   onRequestResendInviteEmail?: () => void;
   onRequestResendContactAddedEmail?: () => void;
   resendingInviteEmail?: string | null;
@@ -459,7 +493,12 @@ function PersonRow({
           onView();
         }
       }}
-      className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm cursor-pointer hover:border-slate-200 hover:bg-slate-50/50 transition-colors"
+      className={cn(
+        'p-4 rounded-2xl border shadow-sm cursor-pointer transition-colors',
+        contact.deletionScheduledUntil
+          ? 'border-rose-300 bg-rose-50 hover:border-rose-400 hover:bg-rose-50'
+          : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50/50',
+      )}
     >
       <div className="flex items-center gap-3">
       <div className="min-w-0 flex-1">
@@ -477,21 +516,24 @@ function PersonRow({
           </span>
         </div>
         <p className="text-sm text-slate-500 truncate mt-0.5">
-          {(contact.kind === 'caregiver' || contact.kind === 'family') &&
-          contact.relationship.trim()
-            ? contact.email || t('admin.users.noEmail')
-            : `${
-                contact.relationship
-                  ? relationshipLabelI18n(t, contact.relationship)
-                  : t('admin.profile.emptyValue')
-              }${contact.email ? ` · ${contact.email}` : ` · ${t('admin.users.noEmail')}`}`}
+          {contact.email || t('admin.users.noEmail')}
         </p>
-        <CircleContactMemberOverviewStrip
-          contact={contact}
-          members={members}
-          showRoleBadge={false}
-          className="mt-2"
-        />
+        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+          {contact.language?.trim() ? (
+            <CirclePatientLanguagePill language={contact.language} title={contact.language} />
+          ) : null}
+          <CircleContactNotifyIconStrip
+            values={{
+              alert: contact.alert,
+              attention: contact.attention,
+              message: contact.message,
+              sms: contact.sms,
+            }}
+            kind={contact.kind}
+            hasEmail={!!contact.email.trim()}
+            hasMobile={!!contact.mobile.trim()}
+          />
+        </div>
       </div>
       {canResendInvite && (
         <button
@@ -534,17 +576,6 @@ function PersonRow({
       >
         <Pencil size={16} />
       </button>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        className="p-2.5 rounded-xl text-red-500 hover:bg-red-50"
-        aria-label={t('admin.users.deleteAria')}
-      >
-        <Trash2 size={16} />
-      </button>
       </div>
       {contact.deletionScheduledUntil ? (
         <DeletionScheduledNote until={contact.deletionScheduledUntil} className="mt-3" />
@@ -562,6 +593,7 @@ export function CircleSettingsUserManagementPanel({
   onInitialTabConsumed,
 }: CircleSettingsUserManagementPanelProps) {
   const t = useCircleT();
+  const { language } = useCircleI18nContext();
   const { toast, showToast } = useCircleToast();
   const [tab, setTab] = useState<PanelTab>(initialTab === 'access' ? 'access' : 'people');
   const [members, setMembers] = useState<CircleInviteListItem[]>([]);
@@ -591,9 +623,6 @@ export function CircleSettingsUserManagementPanel({
   const [editorAccess, setEditorAccess] = useState<{ label: string; badgeClass: string } | null>(
     null,
   );
-  const [memberNotifyByEmail, setMemberNotifyByEmail] = useState<
-    Map<string, CircleMemberNotifyPreferences>
-  >(() => new Map());
   const [memberContactProfileByEmail, setMemberContactProfileByEmail] = useState<
     Map<string, CircleMemberContactProfile>
   >(() => new Map());
@@ -654,7 +683,6 @@ export function CircleSettingsUserManagementPanel({
 
   useEffect(() => {
     if (!patient?.patientId || isPendingProvision) {
-      setMemberNotifyByEmail(new Map());
       setMemberContactProfileByEmail(new Map());
       return;
     }
@@ -663,15 +691,12 @@ export function CircleSettingsUserManagementPanel({
       const gen = ++memberOverlaySnapGenRef.current;
       void (async () => {
         try {
-          const notifyNext = new Map<string, CircleMemberNotifyPreferences>();
           const profileNext = new Map<string, CircleMemberContactProfile>();
           await Promise.all(
             snap.docs.map(async (memberDoc) => {
               const data = memberDoc.data() as Record<string, unknown>;
               const email = normalizeInviteEmail(String(data.invitedEmail ?? ''));
               if (!email) return;
-              const prefs = parseMemberNotifyPreferences(data);
-              if (prefs) notifyNext.set(email, prefs);
 
               let profileSource: Record<string, unknown> = data;
               try {
@@ -689,7 +714,6 @@ export function CircleSettingsUserManagementPanel({
             }),
           );
           if (gen !== memberOverlaySnapGenRef.current) return;
-          setMemberNotifyByEmail(notifyNext);
           setMemberContactProfileByEmail(profileNext);
         } catch (err) {
           console.warn('[CircleSettingsUserManagementPanel] member overlay sync', err);
@@ -794,7 +818,7 @@ export function CircleSettingsUserManagementPanel({
     const dirty = draftFingerprint(currentDraft) !== initialDraftFingerprint;
     if (!dirty) {
       const refreshed = contactToDraft(
-        contactForEditorDisplay(remoteContact, members, memberNotifyByEmail, memberContactProfileByEmail),
+        contactForEditorDisplay(remoteContact, members, memberContactProfileByEmail),
       );
       setDraft(refreshed);
       setInitialDraftFingerprint(draftFingerprint(refreshed));
@@ -810,7 +834,6 @@ export function CircleSettingsUserManagementPanel({
     editorMode,
     editorOpen,
     initialDraftFingerprint,
-    memberNotifyByEmail,
     memberContactProfileByEmail,
     members,
   ]);
@@ -822,9 +845,9 @@ export function CircleSettingsUserManagementPanel({
     const remoteContact = contacts.find((contact) => contact.id === currentDraft.id);
     if (!remoteContact) return;
     setDraft(
-      contactToDraft(contactForEditorDisplay(remoteContact, members, memberNotifyByEmail, memberContactProfileByEmail)),
+      contactToDraft(contactForEditorDisplay(remoteContact, members, memberContactProfileByEmail)),
     );
-  }, [contacts, editorMode, editorOpen, memberContactProfileByEmail, memberNotifyByEmail, members]);
+  }, [contacts, editorMode, editorOpen, memberContactProfileByEmail, members]);
 
   const { activeMembers, pastMembers } = useMemo(() => {
     const active: CircleInviteListItem[] = [];
@@ -836,14 +859,61 @@ export function CircleSettingsUserManagementPanel({
     return { activeMembers: active, pastMembers: past };
   }, [members]);
 
+  const accessActivityUids = useMemo(() => {
+    const seen = new Set<string>();
+    const uids: string[] = [];
+    for (const item of members) {
+      const uid = item.acceptedByUid?.trim();
+      if (!uid || seen.has(uid)) continue;
+      seen.add(uid);
+      uids.push(uid);
+    }
+    return uids;
+  }, [members]);
+  const {
+    lastOpenByUid,
+    presenceByUid,
+    loading: memberActivityLoading,
+  } = useCircleMemberActivityByUid(db, patient?.patientId, accessActivityUids);
+  const inactiveAccessMembers = useMemo(() => {
+    if (memberActivityLoading) return [];
+    return listInactiveCircleMembers({
+      invites: members,
+      lastOpenByUid,
+      presenceByUid,
+      excludeUid: user.uid,
+    });
+  }, [lastOpenByUid, memberActivityLoading, members, presenceByUid, user.uid]);
+  const inactiveAccessUids = useMemo(
+    () => new Set(inactiveAccessMembers.map((member) => member.uid)),
+    [inactiveAccessMembers],
+  );
+  const accessMembers = useMemo(() => {
+    if (inactiveAccessMembers.length === 0) return activeMembers;
+    const rank = new Map(inactiveAccessMembers.map((member, index) => [member.uid, index]));
+    return [...activeMembers].sort((a, b) => {
+      const aUid = a.acceptedByUid?.trim();
+      const bUid = b.acceptedByUid?.trim();
+      const aRank = aUid ? rank.get(aUid) : undefined;
+      const bRank = bUid ? rank.get(bUid) : undefined;
+      if (aRank != null && bRank != null) return aRank - bRank;
+      if (aRank != null) return -1;
+      if (bRank != null) return 1;
+      return 0;
+    });
+  }, [activeMembers, inactiveAccessMembers]);
+
   const sortedContacts = useMemo(() => {
-    const order: CircleContactKind[] = ['caregiver', 'family', 'friend', 'contact'];
     return [...contacts].sort((a, b) => {
-      const kindDiff = order.indexOf(a.kind) - order.indexOf(b.kind);
-      if (kindDiff !== 0) return kindDiff;
-      const aName = composeContactDisplayName(a) || a.email;
-      const bName = composeContactDisplayName(b) || b.email;
-      return aName.localeCompare(bName);
+      const groupDiff = peopleListGroupRank(a) - peopleListGroupRank(b);
+      if (groupDiff !== 0) return groupDiff;
+      const lastDiff = contactLastNameKey(a).localeCompare(contactLastNameKey(b), undefined, {
+        sensitivity: 'base',
+      });
+      if (lastDiff !== 0) return lastDiff;
+      return contactFirstNameKey(a).localeCompare(contactFirstNameKey(b), undefined, {
+        sensitivity: 'base',
+      });
     });
   }, [contacts]);
 
@@ -934,7 +1004,7 @@ export function CircleSettingsUserManagementPanel({
 
   const openView = (contact: CircleManagedContact) => {
     openEditorWithDraft(
-      contactToDraft(contactForEditorDisplay(contact, members, memberNotifyByEmail, memberContactProfileByEmail)),
+      contactToDraft(contactForEditorDisplay(contact, members, memberContactProfileByEmail)),
       'view',
       contact,
     );
@@ -942,7 +1012,7 @@ export function CircleSettingsUserManagementPanel({
 
   const openEdit = (contact: CircleManagedContact) => {
     openEditorWithDraft(
-      contactToDraft(contactForEditorDisplay(contact, members, memberNotifyByEmail, memberContactProfileByEmail)),
+      contactToDraft(contactForEditorDisplay(contact, members, memberContactProfileByEmail)),
       'edit',
       contact,
     );
@@ -971,7 +1041,7 @@ export function CircleSettingsUserManagementPanel({
       : undefined;
     if (!remoteContact) return;
     const refreshed = contactToDraft(
-      contactForEditorDisplay(remoteContact, members, memberNotifyByEmail, memberContactProfileByEmail),
+      contactForEditorDisplay(remoteContact, members, memberContactProfileByEmail),
     );
     setDraft(refreshed);
     setEditorAccess(resolvedContactAccess(t, remoteContact, members));
@@ -1043,27 +1113,9 @@ export function CircleSettingsUserManagementPanel({
       { expectedContactFingerprint: editorBaselineContactFingerprint || undefined },
     );
 
-    const notifyEmail = normalizeInviteEmail(normalizedEmail);
-    if (notifyEmail && currentDraft.kind !== 'contact') {
-      setMemberNotifyByEmail((prev) => {
-        const nextMap = new Map(prev);
-        nextMap.set(notifyEmail, {
-          alert: nextAlert,
-          attention: nextAttention,
-          message: nextMessage,
-        });
-        return nextMap;
-      });
-    }
-
     if (!isPendingProvision && invite?.status === 'accepted' && invite.acceptedByUid) {
       const displayed = existing
-        ? contactForEditorDisplay(
-            existing,
-            members,
-            memberNotifyByEmail,
-            memberContactProfileByEmail,
-          )
+        ? contactForEditorDisplay(existing, members, memberContactProfileByEmail)
         : undefined;
       try {
         await pushMemberNotifyPreferencesFromManagedContact(
@@ -1491,17 +1543,10 @@ export function CircleSettingsUserManagementPanel({
                 {sortedContacts.map((contact) => (
                   <PersonRow
                     key={contact.id}
-                    contact={contactForEditorDisplay(contact, members, memberNotifyByEmail, memberContactProfileByEmail)}
+                    contact={contactForEditorDisplay(contact, members, memberContactProfileByEmail)}
                     members={members}
                     onView={() => openView(contact)}
                     onEdit={() => openEdit(contact)}
-                    onDelete={() => {
-                      setDeleteContributions(false);
-                      setConfirmEraseContributions(false);
-                      setRemoveError('');
-                      setError(null);
-                      setConfirmDelete(contact);
-                    }}
                     onRequestResendInviteEmail={() =>
                       setConfirmResendEmail({ kind: 'introduction', source: 'contact', contact })
                     }
@@ -1530,8 +1575,19 @@ export function CircleSettingsUserManagementPanel({
               <>
                 {activeMembers.length > 0 && (
                   <div className="space-y-2">
-                    {activeMembers.map((item) => {
+                    {accessMembers.map((item) => {
                       const isSelf = isCurrentUserInvite(item, user);
+                      const memberUid = item.acceptedByUid?.trim();
+                      const inactive = Boolean(memberUid && inactiveAccessUids.has(memberUid));
+                      const lastOpenedAt = memberLastOpenedAt(memberUid, lastOpenByUid, presenceByUid);
+                      const openedLine =
+                        item.status === 'accepted' && lastOpenedAt > 0
+                          ? t('admin.users.lastOpened', {
+                              when: formatDashboardTimestamp(t, language, lastOpenedAt),
+                            })
+                          : item.status === 'accepted' && !memberActivityLoading
+                            ? t('admin.users.neverOpened')
+                            : '';
                       const scheduledUntil = contacts.find(
                         (contact) =>
                           contact.deletionScheduledUntil &&
@@ -1541,7 +1597,14 @@ export function CircleSettingsUserManagementPanel({
                       return (
                         <div
                           key={item.id}
-                          className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3"
+                          className={cn(
+                            'p-4 rounded-2xl border shadow-sm space-y-3',
+                            scheduledUntil
+                              ? 'border-rose-300 bg-rose-50'
+                              : inactive
+                                ? 'border-amber-300 bg-amber-50/60'
+                                : 'border-slate-100 bg-white',
+                          )}
                         >
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 min-w-0">
@@ -1562,6 +1625,17 @@ export function CircleSettingsUserManagementPanel({
                             <p className="text-xs text-slate-400 mt-1">
                               {resolvedInviteAccessLabel(t, item, contacts)}
                             </p>
+                            {openedLine ? (
+                              <p
+                                className={cn(
+                                  'mt-1.5 flex items-center gap-1.5 text-xs',
+                                  inactive ? 'font-semibold text-amber-800' : 'text-slate-500',
+                                )}
+                              >
+                                <Clock size={13} className="shrink-0" aria-hidden />
+                                <span>{openedLine}</span>
+                              </p>
+                            ) : null}
                           </div>
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <span
@@ -1665,10 +1739,30 @@ export function CircleSettingsUserManagementPanel({
         circleAccessBadgeClass={editorAccess?.badgeClass}
         rosterContacts={contacts}
         onRefreshFromRemote={refreshDraftFromRemote}
-        onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
+        onChange={(patch) =>
+          setDraft((d) => {
+            const next = { ...d, ...patch };
+            draftRef.current = next;
+            return next;
+          })
+        }
         onClose={closeEditor}
         onSave={() => void handleSaveContact()}
         onSwitchToEdit={editorMode === 'view' ? switchViewToEdit : undefined}
+        onRemove={
+          editorMode === 'view'
+            ? () => {
+                const contact = contacts.find((row) => row.id === draft.id);
+                if (!contact) return;
+                closeEditor();
+                setDeleteContributions(false);
+                setConfirmEraseContributions(false);
+                setRemoveError('');
+                setError(null);
+                setConfirmDelete(contact);
+              }
+            : undefined
+        }
       />
 
       {confirmRevoke && (

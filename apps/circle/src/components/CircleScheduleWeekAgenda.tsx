@@ -108,12 +108,19 @@ export function CircleScheduleWeekAgenda({
   const weekStartKey = careCalendarDateKey(weekDays[0] ?? weekAnchor);
 
   useLayoutEffect(() => {
+    const spacer = todayScrollSpacerRef.current;
+    const scroller = spacer?.closest(SCHEDULE_WEEK_SCROLLER) as HTMLElement | null;
+    const todayEl = todaySectionRef.current;
+    if (!todayEl?.isConnected) {
+      if (spacer) spacer.style.height = '0px';
+      if (scroller) scroller.scrollTop = 0;
+      return;
+    }
+
     let cancelled = false;
     const align = () => {
-      if (cancelled) return;
-      const el = todaySectionRef.current;
-      if (!el) return;
-      scrollScheduleWeekToToday(el, todayScrollSpacerRef.current);
+      if (cancelled || !todayEl.isConnected) return;
+      scrollScheduleWeekToToday(todayEl, spacer);
     };
     const frame = requestAnimationFrame(() => {
       align();

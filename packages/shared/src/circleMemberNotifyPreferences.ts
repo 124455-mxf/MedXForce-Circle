@@ -1,6 +1,10 @@
 import { doc, getDoc, setDoc, type Firestore } from 'firebase/firestore';
 import type { CircleManagedContact } from './circleContactManagement';
-import { findManagedContactByEmail, listPatientManagedContacts } from './circleContactManagement';
+import {
+  findManagedContactByEmail,
+  listPatientManagedContacts,
+  upsertPatientManagedContact,
+} from './circleContactManagement';
 
 export type CircleMemberNotifyPreferences = {
   alert: boolean;
@@ -164,6 +168,35 @@ export async function updateOwnCircleNotifyPreferences(
     },
     base,
   );
+
+  // The proxy People screen and attention emails read the contact row.
+  try {
+    await upsertPatientManagedContact(
+      db,
+      patientId,
+      {
+        id: existing.id,
+        name: existing.name,
+        firstName: existing.firstName,
+        lastName: existing.lastName,
+        dateOfBirth: existing.dateOfBirth,
+        email: existing.email,
+        mobile: existing.mobile,
+        relationship: existing.relationship,
+        kind: existing.kind,
+        language: existing.language || 'English',
+        message: nextPrefs.message,
+        sms: existing.sms,
+        alert: nextPrefs.alert,
+        attention: nextPrefs.attention,
+        ...(existing.circleRole ? { circleRole: existing.circleRole } : {}),
+        ...(existing.proxyTier ? { proxyTier: existing.proxyTier } : {}),
+      },
+      { syncInvite: false, updateAccessIndex: false },
+    );
+  } catch (err) {
+    console.warn('[Circle] Could not copy notify flags onto the contact', err);
+  }
 
   return mergeContactWithMemberNotifyPreferences(existing, nextPrefs);
 }
