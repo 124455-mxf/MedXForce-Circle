@@ -17,7 +17,6 @@ import { MedXForceBrandLogo } from './components/MedXForceBrandLogo';
 import {
   createAppleOAuthProvider,
   isAppleSignInEnabled,
-  isAppleTouchDevice,
   isEmbeddedInAppBrowser,
   preferApplePopupSignIn,
 } from './lib/appleSignIn';
@@ -550,6 +549,13 @@ export default function App() {
               {resetNotice}
             </p>
           )}
+          <button
+            type="button"
+            onClick={handleSignIn}
+            className="w-full py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700"
+          >
+            {t('auth.signIn')}
+          </button>
           {isAppleSignInEnabled() && (
             <AppleSignInButton
               disabled={oauthSigningIn != null}
@@ -565,21 +571,6 @@ export default function App() {
           >
             <span className="text-lg leading-none">G</span>
             {oauthSigningIn === 'google' ? t('auth.signingIn') : t('auth.continueGoogle')}
-          </button>
-          {typeof window !== 'undefined' && isAppleTouchDevice() && !isEmbeddedInAppBrowser() && (
-            <p className="text-xs text-slate-500 leading-relaxed">{t('auth.appleRedirectHint')}</p>
-          )}
-          <div className="flex items-center gap-3 text-xs text-slate-400">
-            <div className="h-px flex-1 bg-slate-200" />
-            {t('auth.orEmailPassword')}
-            <div className="h-px flex-1 bg-slate-200" />
-          </div>
-          <button
-            type="button"
-            onClick={handleSignIn}
-            className="w-full py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700"
-          >
-            {t('auth.signIn')}
           </button>
           <button
             type="button"

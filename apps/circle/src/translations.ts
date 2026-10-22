@@ -103,7 +103,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       emailPlaceholder: 'Email (must match patient invite)',
       passwordPlaceholder: 'Password',
       continueApple: 'Sign in with Apple',
-      continueGoogle: 'Continue with Google',
+      continueGoogle: 'Sign in with Google',
       appleRedirectHint:
         'On iPhone, Sign in with Apple leaves this page and brings you back when you finish.',
       embeddedBrowser:
@@ -182,7 +182,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       emailPlaceholder: 'E-Mail (muss mit der Patienteneinladung übereinstimmen)',
       passwordPlaceholder: 'Passwort',
       continueApple: 'Mit Apple anmelden',
-      continueGoogle: 'Mit Google fortfahren',
+      continueGoogle: 'Mit Google anmelden',
       appleRedirectHint:
         'Auf dem iPhone verlässt „Mit Apple anmelden“ diese Seite und bringt Sie zurück, wenn Sie fertig sind.',
       embeddedBrowser:
@@ -262,7 +262,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       emailPlaceholder: 'Correo (debe coincidir con la invitación del paciente)',
       passwordPlaceholder: 'Contraseña',
       continueApple: 'Iniciar sesión con Apple',
-      continueGoogle: 'Continuar con Google',
+      continueGoogle: 'Iniciar sesión con Google',
       appleRedirectHint:
         'En el iPhone, Iniciar sesión con Apple sale de esta página y vuelve cuando termina.',
       embeddedBrowser:
@@ -342,7 +342,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
       emailPlaceholder: 'E-mail (musi zgadzać się z zaproszeniem pacjenta)',
       passwordPlaceholder: 'Hasło',
       continueApple: 'Zaloguj się przez Apple',
-      continueGoogle: 'Kontynuuj z Google',
+      continueGoogle: 'Zaloguj się przez Google',
       appleRedirectHint:
         'Na iPhonie logowanie przez Apple opuszcza tę stronę i wraca po zakończeniu.',
       embeddedBrowser:
