@@ -11,7 +11,7 @@ import {
   type AuthProvider,
   type User,
 } from 'firebase/auth';
-import { Loader2, LogOut, Users } from 'lucide-react';
+import { ExternalLink, Loader2, LogOut, Users } from 'lucide-react';
 import { AppleSignInButton } from './components/AppleSignInButton';
 import { MedXForceBrandLogo } from './components/MedXForceBrandLogo';
 import {
@@ -22,6 +22,7 @@ import {
   preferApplePopupSignIn,
 } from './lib/appleSignIn';
 import {
+  CIRCLE_ONBOARDING_LEARN_MORE_URL,
   acceptPendingCircleInvites,
   ensureMemberCapabilitiesForUser,
   ensureManagedContactsForAcceptedMembersForUser,
@@ -588,6 +589,15 @@ export default function App() {
             {t('auth.createAccount')}
           </button>
           <p className="text-xs text-slate-500 text-center">{t('auth.googleHint')}</p>
+          <a
+            href={CIRCLE_ONBOARDING_LEARN_MORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full items-center justify-center gap-1.5 text-xs font-semibold text-indigo-700 hover:text-indigo-900"
+          >
+            {t('auth.signInHelp')}
+            <ExternalLink size={13} aria-hidden />
+          </a>
           <p className="text-[10px] text-slate-400 text-center font-mono" title="Hosted app version">
             build {CIRCLE_BUILD_ID}
           </p>

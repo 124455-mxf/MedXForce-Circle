@@ -98,7 +98,8 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
   English: {
     auth: {
       title: 'MedXForce Circle',
-      subtitle: 'Family & Friends — share moments with your loved one',
+      subtitle: 'Sign in with the same email address on your invite.',
+      signInHelp: 'How to join a Circle',
       emailPlaceholder: 'Email (must match patient invite)',
       passwordPlaceholder: 'Password',
       continueApple: 'Sign in with Apple',
@@ -176,7 +177,8 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
   German: {
     auth: {
       title: 'MedXForce Circle',
-      subtitle: 'Familie & Freunde — Momente mit Ihrem Angehörigen teilen',
+      subtitle: 'Melden Sie sich mit derselben E-Mail-Adresse wie in Ihrer Einladung an.',
+      signInHelp: 'So treten Sie einem Circle bei',
       emailPlaceholder: 'E-Mail (muss mit der Patienteneinladung übereinstimmen)',
       passwordPlaceholder: 'Passwort',
       continueApple: 'Mit Apple anmelden',
@@ -255,7 +257,8 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
   Spanish: {
     auth: {
       title: 'MedXForce Circle',
-      subtitle: 'Familia y amigos — comparta momentos con su ser querido',
+      subtitle: 'Inicie sesión con la misma dirección de correo de su invitación.',
+      signInHelp: 'Cómo unirse a un Circle',
       emailPlaceholder: 'Correo (debe coincidir con la invitación del paciente)',
       passwordPlaceholder: 'Contraseña',
       continueApple: 'Iniciar sesión con Apple',
@@ -334,7 +337,8 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
   Polish: {
     auth: {
       title: 'MedXForce Circle',
-      subtitle: 'Rodzina i przyjaciele — dziel się chwilami z bliską osobą',
+      subtitle: 'Zaloguj się tym samym adresem e-mail, który jest w zaproszeniu.',
+      signInHelp: 'Jak dołączyć do Circle',
       emailPlaceholder: 'E-mail (musi zgadzać się z zaproszeniem pacjenta)',
       passwordPlaceholder: 'Hasło',
       continueApple: 'Zaloguj się przez Apple',
