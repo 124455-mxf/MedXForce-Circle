@@ -33,6 +33,10 @@ export async function loadCircleMapPhotoMaps(
           contactId?: string;
         };
         if (data.status && data.status !== 'active') return;
+        const hiddenUntil = Number(
+          (data as { deletionScheduledUntil?: unknown }).deletionScheduledUntil ?? 0,
+        );
+        if (hiddenUntil > Date.now()) return;
 
         const uid = memberDoc.id;
         const email = normalizeInviteEmail(String(data.invitedEmail || ''));

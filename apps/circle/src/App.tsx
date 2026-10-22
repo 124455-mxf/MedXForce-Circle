@@ -42,6 +42,10 @@ import { CirclePendingProvisionPanel } from './components/CirclePendingProvision
 import { CircleSettingsUserManagementPanel } from './components/CircleSettingsUserManagementPanel';
 import { CircleAppHeader } from './components/CircleAppHeader';
 import { CircleProfileDrawer } from './components/CircleProfileDrawer';
+import {
+  CircleAccountDeletionHold,
+  useAccountDeletionHold,
+} from './components/CircleAccountDeletionHold';
 import { CirclePatientsAttentionProvider } from './context/CirclePatientsAttentionContext';
 import { CircleStartupSequence } from './components/CircleStartupSequence';
 import { useCircleStartupSequence } from './hooks/useCircleStartupSequence';
@@ -50,6 +54,7 @@ import { consumeAuthRedirectOnce, firebase } from './lib/firebaseClient';
 import { CIRCLE_BUILD_ID } from './lib/circleBuildId';
 import { sendWelcomeEmailsForAcceptedInvites, proxySlotDemotionToastMessage } from './services/circleWelcomeEmailApi';
 import { useCircleToast } from './hooks/useCircleToast';
+import { useCircleRemovalNotice } from './hooks/useCircleRemovalNotice';
 import { CircleAppToast } from './components/CircleAppToast';
 import { useCircleI18n } from './hooks/useCircleI18n';
 import { CircleI18nProvider } from './lib/circleI18nContext';
@@ -95,6 +100,8 @@ export default function App() {
   const { language, t, setLanguage } = useCircleI18n(firebase.db, user);
   const { textSize, setTextSize } = useCircleTextSize(firebase.db, user);
   const { toast, showToast } = useCircleToast(7000);
+  useCircleRemovalNotice(firebase.db, user, t, showToast);
+  const accountHold = useAccountDeletionHold(firebase.db, user?.uid);
 
   const selectedPatientForSettings = useMemo(() => {
     if (patients.length === 0) return null;
@@ -604,7 +611,13 @@ export default function App() {
         accessPlaceholderLayout ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden',
       )}
     >
-      {patientsHydrating && patients.length === 0 ? (
+      {accountHold ? (
+        <CircleAccountDeletionHold
+          eraseAt={accountHold.eraseAt}
+          deleteContributions={accountHold.deleteContributions}
+          onSignOut={() => void handleSignOut()}
+        />
+      ) : accountHold === undefined || (patientsHydrating && patients.length === 0) ? (
         <>
           <CircleAccessBrandHeader title={t('auth.title')} subtitle={t('common.friendsFamily')} />
           <div className="min-w-0 w-full overflow-hidden bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-5">

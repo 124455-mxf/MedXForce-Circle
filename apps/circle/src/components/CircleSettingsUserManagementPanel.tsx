@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { collection, doc, getDoc, onSnapshot, type Firestore } from 'firebase/firestore';
-import { History, Loader2, Mail, Pencil, Plus, RefreshCw, ShieldOff, Trash2, Users } from 'lucide-react';
+import { CalendarClock, History, Loader2, Mail, Pencil, Plus, RefreshCw, ShieldOff, Trash2, Users } from 'lucide-react';
 import {
   clampRelationship,
   CircleContactEditorModal,
@@ -68,6 +68,7 @@ import {
 } from '../lib/circleContactAccessOptions';
 import { buildCircleContactEmailAudience, buildCircleEmailInviterScope } from '../lib/circleContactEmailAudience';
 import { sendCircleContactAddedEmail, sendCircleContactIntroductionEmail } from '../services/circleContactIntroductionEmailApi';
+import { removeCircleMemberFromPatient } from '../services/removeCircleMemberFromPatient';
 import { useCircleToast, type CircleToastTone } from '../hooks/useCircleToast';
 import { CircleAppToast } from './CircleAppToast';
 import { CircleContactMemberOverviewStrip } from './CircleContactMemberOverviewStrip';
@@ -399,6 +400,26 @@ function contactForInviteResend(
   };
 }
 
+function DeletionScheduledNote({ until, className }: { until: number; className?: string }) {
+  const t = useCircleT();
+  const date = new Date(until).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  return (
+    <p
+      className={cn(
+        'flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900',
+        className,
+      )}
+    >
+      <CalendarClock size={14} className="shrink-0 text-amber-700" aria-hidden />
+      <span className="min-w-0 leading-snug">{t('admin.users.deletionScheduled', { date })}</span>
+    </p>
+  );
+}
+
 function PersonRow({
   contact,
   members,
@@ -438,8 +459,9 @@ function PersonRow({
           onView();
         }
       }}
-      className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3 cursor-pointer hover:border-slate-200 hover:bg-slate-50/50 transition-colors"
+      className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm cursor-pointer hover:border-slate-200 hover:bg-slate-50/50 transition-colors"
     >
+      <div className="flex items-center gap-3">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
           <p className="font-bold text-slate-800 truncate">
@@ -455,10 +477,14 @@ function PersonRow({
           </span>
         </div>
         <p className="text-sm text-slate-500 truncate mt-0.5">
-          {contact.relationship
-            ? relationshipLabelI18n(t, contact.relationship)
-            : t('admin.profile.emptyValue')}
-          {contact.email ? ` · ${contact.email}` : ` · ${t('admin.users.noEmail')}`}
+          {(contact.kind === 'caregiver' || contact.kind === 'family') &&
+          contact.relationship.trim()
+            ? contact.email || t('admin.users.noEmail')
+            : `${
+                contact.relationship
+                  ? relationshipLabelI18n(t, contact.relationship)
+                  : t('admin.profile.emptyValue')
+              }${contact.email ? ` · ${contact.email}` : ` · ${t('admin.users.noEmail')}`}`}
         </p>
         <CircleContactMemberOverviewStrip
           contact={contact}
@@ -519,6 +545,10 @@ function PersonRow({
       >
         <Trash2 size={16} />
       </button>
+      </div>
+      {contact.deletionScheduledUntil ? (
+        <DeletionScheduledNote until={contact.deletionScheduledUntil} className="mt-3" />
+      ) : null}
     </div>
   );
 }
@@ -544,6 +574,9 @@ export function CircleSettingsUserManagementPanel({
   const [resendingInviteEmail, setResendingInviteEmail] = useState<string | null>(null);
   const [confirmRevoke, setConfirmRevoke] = useState<CircleInviteListItem | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<CircleManagedContact | null>(null);
+  const [deleteContributions, setDeleteContributions] = useState(false);
+  const [confirmEraseContributions, setConfirmEraseContributions] = useState(false);
+  const [removeError, setRemoveError] = useState('');
   const [confirmResendEmail, setConfirmResendEmail] = useState<ResendEmailTarget | null>(null);
   const [invitePreviewItems, setInvitePreviewItems] = useState<CircleInvitePreviewItem[] | null>(
     null,
@@ -589,7 +622,7 @@ export function CircleSettingsUserManagementPanel({
       } else {
         const [rows, listedContacts] = await Promise.all([
           listCircleInvitesForPatient(db, patient.patientId),
-          listPatientManagedContacts(db, patient.patientId),
+          listPatientManagedContacts(db, patient.patientId, { includeDeletionScheduled: true }),
         ]);
         setMembers(rows);
         setContacts(listedContacts);
@@ -676,7 +709,9 @@ export function CircleSettingsUserManagementPanel({
         doc(db, 'patient_provisions', patient.patientId),
         (snap) => {
           if (!snap.exists()) return;
-          const listed = parsePatientManagedContacts(snap.data());
+          const listed = parsePatientManagedContacts(snap.data(), {
+            includeDeletionScheduled: true,
+          });
           setContacts(listed);
         },
         (err) => {
@@ -689,7 +724,9 @@ export function CircleSettingsUserManagementPanel({
       doc(db, 'patients', patient.patientId),
       (snap) => {
         if (!snap.exists()) return;
-        const listed = parsePatientManagedContacts(snap.data());
+        const listed = parsePatientManagedContacts(snap.data(), {
+          includeDeletionScheduled: true,
+        });
         setContacts(listed);
       },
       (err) => {
@@ -1297,7 +1334,25 @@ export function CircleSettingsUserManagementPanel({
     if (!patient?.patientId) return;
     setSaving(true);
     setError(null);
+    setRemoveError('');
     try {
+      if (!isPendingProvision && isValidInviteEmail(contact.email)) {
+        if (deleteContributions) {
+          await removeCircleMemberFromPatient({
+            patientId: patient.patientId,
+            email: contact.email,
+            deleteContributions: true,
+          });
+        } else {
+          await deletePatientManagedContact(db, patient.patientId, contact);
+        }
+        setConfirmDelete(null);
+        setDeleteContributions(false);
+        setConfirmEraseContributions(false);
+        setError(null);
+        await loadMembers();
+        return;
+      }
       const preview = isPendingProvision
         ? await previewProvisionManagedContactDeleteInviteChange(db, patient.patientId, contact)
         : await previewManagedContactDeleteInviteChange(db, patient.patientId, contact);
@@ -1313,6 +1368,9 @@ export function CircleSettingsUserManagementPanel({
       if (isFirestoreQuotaError(err)) {
         pauseFirestoreBackgroundWrites(String(err));
         setError(t('admin.profile.quotaError'));
+      } else if (confirmDelete) {
+        const detail = err instanceof Error ? err.message.trim() : '';
+        setRemoveError(detail || t('admin.users.deleteFailed'));
       } else {
         setError(t('admin.users.deleteFailed'));
       }
@@ -1437,7 +1495,13 @@ export function CircleSettingsUserManagementPanel({
                     members={members}
                     onView={() => openView(contact)}
                     onEdit={() => openEdit(contact)}
-                    onDelete={() => setConfirmDelete(contact)}
+                    onDelete={() => {
+                      setDeleteContributions(false);
+                      setConfirmEraseContributions(false);
+                      setRemoveError('');
+                      setError(null);
+                      setConfirmDelete(contact);
+                    }}
                     onRequestResendInviteEmail={() =>
                       setConfirmResendEmail({ kind: 'introduction', source: 'contact', contact })
                     }
@@ -1468,6 +1532,12 @@ export function CircleSettingsUserManagementPanel({
                   <div className="space-y-2">
                     {activeMembers.map((item) => {
                       const isSelf = isCurrentUserInvite(item, user);
+                      const scheduledUntil = contacts.find(
+                        (contact) =>
+                          contact.deletionScheduledUntil &&
+                          normalizeInviteEmail(contact.email) ===
+                            normalizeInviteEmail(item.invitedEmail),
+                      )?.deletionScheduledUntil;
                       return (
                         <div
                           key={item.id}
@@ -1539,6 +1609,7 @@ export function CircleSettingsUserManagementPanel({
                                 </div>
                               )}
                           </div>
+                          {scheduledUntil ? <DeletionScheduledNote until={scheduledUntil} /> : null}
                         </div>
                       );
                     })}
@@ -1706,7 +1777,7 @@ export function CircleSettingsUserManagementPanel({
         </div>
       )}
 
-      {confirmDelete && (
+      {confirmDelete && !confirmEraseContributions && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
           <div className="bg-white p-6 rounded-[28px] shadow-2xl max-w-sm w-full space-y-5 border border-slate-100">
             <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center text-red-500 mx-auto">
@@ -1726,22 +1797,125 @@ export function CircleSettingsUserManagementPanel({
               {confirmDelete.email && isValidInviteEmail(confirmDelete.email) && (
                 <p className="text-base font-bold text-red-600 break-all px-1">{confirmDelete.email}</p>
               )}
+              {!isPendingProvision && isValidInviteEmail(confirmDelete.email) && (
+                <fieldset className="text-left space-y-2 pt-1">
+                  <label className="flex items-start gap-2 text-sm text-slate-700">
+                    <input
+                      type="radio"
+                      name="remove-contributions"
+                      className="mt-1"
+                      checked={!deleteContributions}
+                      onChange={() => setDeleteContributions(false)}
+                    />
+                    <span>{t('admin.users.keepContributions')}</span>
+                  </label>
+                  <label className="flex items-start gap-2 text-sm text-slate-700">
+                    <input
+                      type="radio"
+                      name="remove-contributions"
+                      className="mt-1"
+                      checked={deleteContributions}
+                      onChange={() => setDeleteContributions(true)}
+                    />
+                    <span>{t('admin.users.removeContributions')}</span>
+                  </label>
+                </fieldset>
+              )}
+              {removeError ? <p className="text-sm text-red-600">{removeError}</p> : null}
             </div>
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setConfirmDelete(null)}
+                onClick={() => {
+                  setConfirmDelete(null);
+                  setDeleteContributions(false);
+                  setConfirmEraseContributions(false);
+                  setRemoveError('');
+                  setError(null);
+                }}
                 className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-bold"
               >
                 {t('common.cancel')}
               </button>
               <button
                 type="button"
+                onClick={() => {
+                  if (
+                    !isPendingProvision &&
+                    isValidInviteEmail(confirmDelete.email) &&
+                    deleteContributions
+                  ) {
+                    setRemoveError('');
+                    setConfirmEraseContributions(true);
+                    return;
+                  }
+                  void proceedDelete(confirmDelete);
+                }}
+                disabled={saving}
+                className="flex-1 py-3 bg-red-600 text-white rounded-2xl font-bold inline-flex items-center justify-center gap-2 disabled:cursor-wait"
+              >
+                {saving ? <Loader2 size={16} className="animate-spin shrink-0" /> : null}
+                {saving ? t('admin.users.removingProgress') : t('admin.users.removeFromPatientConfirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDelete && confirmEraseContributions && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white p-6 rounded-[28px] shadow-2xl max-w-sm w-full space-y-5 border border-slate-100">
+            <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center text-red-500 mx-auto">
+              {saving ? <Loader2 size={24} className="animate-spin" /> : <Trash2 size={24} />}
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-bold text-slate-900">
+                {t('admin.users.eraseContributionsTitle', {
+                  name:
+                    confirmDelete.name ||
+                    confirmDelete.email ||
+                    t('admin.users.thisPerson'),
+                })}
+              </h3>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                {saving
+                  ? t('admin.users.removingProgressDetail', {
+                      name:
+                        confirmDelete.name ||
+                        confirmDelete.email ||
+                        t('admin.users.thisPerson'),
+                      patient: patient.displayName,
+                    })
+                  : t('admin.users.eraseContributionsDescription', {
+                      name:
+                        confirmDelete.name ||
+                        confirmDelete.email ||
+                        t('admin.users.thisPerson'),
+                      patient: patient.displayName,
+                    })}
+              </p>
+              {removeError ? <p className="text-sm text-red-600">{removeError}</p> : null}
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmEraseContributions(false);
+                  setRemoveError('');
+                }}
+                disabled={saving}
+                className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-bold disabled:opacity-50"
+              >
+                {t('common.back')}
+              </button>
+              <button
+                type="button"
                 onClick={() => void proceedDelete(confirmDelete)}
                 disabled={saving}
-                className="flex-1 py-3 bg-red-600 text-white rounded-2xl font-bold disabled:opacity-50"
+                className="flex-1 py-3 bg-red-600 text-white rounded-2xl font-bold inline-flex items-center justify-center gap-2 disabled:cursor-wait"
               >
-                {t('admin.users.deleteAria')}
+                {saving ? <Loader2 size={16} className="animate-spin shrink-0" /> : null}
+                {saving ? t('admin.users.removingProgress') : t('admin.users.eraseContributionsConfirm')}
               </button>
             </div>
           </div>

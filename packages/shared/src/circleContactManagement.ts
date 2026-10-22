@@ -50,6 +50,8 @@ export interface CircleManagedContact {
   isEmailVerified?: boolean;
   /** Set when a messaging-only contact notification email was sent. */
   contactAddedEmailSentAt?: number;
+  /** Epoch ms. While this is in the future, the member scheduled account deletion. */
+  deletionScheduledUntil?: number;
 }
 
 interface PatientContactsDocShape {
@@ -246,6 +248,18 @@ function readOptionalBool(contact: Record<string, unknown>, key: string): boolea
   return undefined;
 }
 
+function readDeletionScheduledUntil(contact: Record<string, unknown>): number | undefined {
+  const until = Number(contact.deletionScheduledUntil ?? 0);
+  return until > Date.now() ? until : undefined;
+}
+
+function deletionScheduleFields(
+  contact: Record<string, unknown>,
+): { deletionScheduledUntil?: number } {
+  const until = readDeletionScheduledUntil(contact);
+  return until ? { deletionScheduledUntil: until } : {};
+}
+
 function notifyDefaultsForKind(kind: CircleContactKind): Pick<
   CircleManagedContact,
   'language' | 'message' | 'sms' | 'alert' | 'attention'
@@ -302,6 +316,7 @@ function mapCaregiver(contact: Record<string, unknown>): CircleManagedContact {
     alert: readOptionalBool(contact, 'alert') ?? defaults.alert,
     attention: readOptionalBool(contact, 'attention') ?? defaults.attention,
     isEmailVerified: readEmailVerified(contact),
+    ...deletionScheduleFields(contact),
   };
 }
 
@@ -332,6 +347,7 @@ function mapFriendsFamily(contact: Record<string, unknown>): CircleManagedContac
     alert: readOptionalBool(contact, 'alert') ?? defaults.alert,
     attention: readOptionalBool(contact, 'attention') ?? defaults.attention,
     isEmailVerified: readEmailVerified(contact),
+    ...deletionScheduleFields(contact),
   };
 }
 
@@ -357,6 +373,7 @@ function mapSimpleContact(contact: Record<string, unknown>): CircleManagedContac
     attention: readOptionalBool(contact, 'attention') ?? defaults.attention,
     isEmailVerified: readEmailVerified(contact),
     contactAddedEmailSentAt: readContactAddedEmailSentAt(contact),
+    ...deletionScheduleFields(contact),
   };
 }
 
@@ -612,6 +629,7 @@ async function syncInviteForCircleRoleContact(
 
 export function parsePatientManagedContacts(
   data: PatientContactsDocShape | Record<string, unknown> | undefined,
+  options?: { includeDeletionScheduled?: boolean },
 ): CircleManagedContact[] {
   if (!data) return [];
   const shape = data as PatientContactsDocShape;
@@ -621,16 +639,22 @@ export function parsePatientManagedContacts(
 
   return [...caregivers, ...friendsFamily, ...contacts]
     .filter(hasVisibleContactIdentity)
+    .filter(
+      (contact) =>
+        options?.includeDeletionScheduled ||
+        !(contact.deletionScheduledUntil && contact.deletionScheduledUntil > Date.now()),
+    )
     .sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
 }
 
 export async function listPatientManagedContacts(
   db: Firestore,
   patientId: string,
+  options?: { includeDeletionScheduled?: boolean },
 ): Promise<CircleManagedContact[]> {
   const snap = await getDoc(doc(db, 'patients', patientId));
   if (!snap.exists()) return [];
-  return parsePatientManagedContacts(snap.data() as PatientContactsDocShape);
+  return parsePatientManagedContacts(snap.data() as PatientContactsDocShape, options);
 }
 
 export async function upsertPatientManagedContact(

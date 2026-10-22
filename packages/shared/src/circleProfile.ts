@@ -22,6 +22,8 @@ export interface CircleUserProfile {
   textSize?: string;
   /** Fingerprint of a dismissed cross-patient identity mismatch notice. */
   identityMismatchNoticeFingerprint?: string;
+  /** Set while this member's account deletion can still be canceled. */
+  accountDeletion?: { eraseAt: number; deleteContributions?: boolean };
   updatedAt: number;
 }
 
@@ -56,6 +58,16 @@ export async function getCircleUserProfile(
       typeof data.identityMismatchNoticeFingerprint === 'string' &&
       data.identityMismatchNoticeFingerprint.trim()
         ? data.identityMismatchNoticeFingerprint.trim()
+        : undefined,
+    accountDeletion:
+      data.accountDeletion &&
+      typeof data.accountDeletion === 'object' &&
+      typeof (data.accountDeletion as { eraseAt?: unknown }).eraseAt === 'number'
+        ? {
+            eraseAt: (data.accountDeletion as { eraseAt: number }).eraseAt,
+            deleteContributions:
+              (data.accountDeletion as { deleteContributions?: boolean }).deleteContributions === true,
+          }
         : undefined,
     updatedAt: data.updatedAt ?? 0,
   };

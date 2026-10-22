@@ -547,6 +547,8 @@ export function buildCircleMapModel(params: {
   const rawPeople: Omit<CircleMapNode, 'angle' | 'radius'>[] = [];
 
   const pushContact = (contact: Record<string, unknown>, isMessagingOnly: boolean) => {
+    const hiddenUntil = Number(contact.deletionScheduledUntil ?? 0);
+    if (hiddenUntil > Date.now()) return;
     const name = String(contact.name || '').trim();
     const email = String(contact.email || '').trim();
     if (!name && !email) return;
