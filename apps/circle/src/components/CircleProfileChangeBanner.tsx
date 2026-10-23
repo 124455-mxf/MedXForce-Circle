@@ -37,9 +37,11 @@ export function CircleProfileChangeBanner({ user, db, patient }: CircleProfileCh
   const [profileMeta, setProfileMeta] = useState<CirclePatientProfileMeta | null>(null);
 
   const isProxy = patient.role === 'proxy' && !!patient.capabilities.inviteMembers;
+  const canLoad =
+    isProxy && patient.isPendingProvision !== true && patient.provisionStatus !== 'pending';
 
   useEffect(() => {
-    if (!isProxy) {
+    if (!canLoad) {
       setNotifications([]);
       return;
     }
@@ -70,9 +72,9 @@ export function CircleProfileChangeBanner({ user, db, patient }: CircleProfileCh
       active = false;
       window.clearInterval(interval);
     };
-  }, [db, isProxy, patient.patientId, user.uid]);
+  }, [canLoad, db, patient.patientId, user.uid]);
 
-  if (!isProxy || notifications.length === 0) return null;
+  if (!canLoad || notifications.length === 0) return null;
 
   const dismiss = async (row: CircleProfileNotificationRow) => {
     setNotifications((prev) => prev.filter((item) => item.id !== row.id));

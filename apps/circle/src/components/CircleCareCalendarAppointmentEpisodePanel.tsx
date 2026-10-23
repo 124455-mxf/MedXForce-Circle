@@ -1,21 +1,30 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Check, Mic, X } from 'lucide-react';
+import type { Firestore } from 'firebase/firestore';
+import { Mic, NotebookPen } from 'lucide-react';
 import type { AnalyticsMetricId, AssessmentHistoryMap, CareCalendarDayEvent } from '@medxforce/shared';
 import {
   appointmentTasksForPhase,
   appointmentTasksStatusMatch,
-  applyAppointmentTaskStatusChange,
   canOfferRecordVisitForAppointment,
+  canOfferVisitNotesForAppointment,
   careCalendarDateKey,
-  countRecommendedCareCalendarAssessmentNudges,
   getCareCalendarAssessmentNudges,
+  isCareCalendarAppointmentPast,
+  isManualVisitNotesDebrief,
+  isRecordedVisitDebrief,
   openAppointmentTaskCount,
   resolveCareCalendarAppointmentTiming,
   supportsCareCalendarAppointmentEpisode,
   type CareCalendarAppointmentTask,
+  type CareCalendarVisitBrief,
+  type CareCalendarVisitDebrief,
 } from '@medxforce/shared';
 import { CircleCareCalendarAssessmentNudgesList } from './CircleCareCalendarAssessmentNudgesList';
+import { CircleCareCalendarClinicalReferencesPicker } from './CircleCareCalendarClinicalReferencesPicker';
+import { CircleCareCalendarEpisodeTaskList } from './CircleCareCalendarEpisodeTaskList';
+import { CircleCareCalendarVisitBriefPanel } from './CircleCareCalendarVisitBriefPanel';
+import { CircleCareCalendarVisitDebriefPanel } from './CircleCareCalendarVisitDebriefPanel';
 import { CircleExpandableTextPreview } from './CircleExpandableTextPreview';
 import { cn } from '../lib/utils';
 
@@ -35,9 +44,17 @@ type CircleCareCalendarAppointmentEpisodePanelProps = {
   histories?: AssessmentHistoryMap;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
   currentUserUid?: string;
+  currentUserName?: string;
   onTasksChange?: (tasks: CareCalendarAppointmentTask[]) => void | Promise<void>;
   detailsContent?: ReactNode;
   onRecordVisit?: (entryId: string) => void;
+  initialTab?: EpisodeTab;
+  patientId?: string;
+  db?: Firestore;
+  onClinicalReferenceIdsChange?: (ids: string[]) => void | Promise<void>;
+  onManageClinicalReferences?: () => void;
+  onVisitDebriefChange?: (debrief: CareCalendarVisitDebrief) => void | Promise<void>;
+  memberRole?: string;
 };
 
 export function CircleCareCalendarAppointmentEpisodePanel({
@@ -49,133 +66,203 @@ export function CircleCareCalendarAppointmentEpisodePanel({
   histories = {},
   onOpenAssessment,
   currentUserUid,
+  currentUserName,
   onTasksChange,
   detailsContent,
   onRecordVisit,
+  initialTab,
+  patientId,
+  db,
+  onClinicalReferenceIdsChange,
+  onManageClinicalReferences,
+  onVisitDebriefChange,
+  memberRole,
 }: CircleCareCalendarAppointmentEpisodePanelProps) {
   const hasEpisode = supportsCareCalendarAppointmentEpisode(event.kind);
-  const [tab, setTab] = useState<EpisodeTab>('details');
+  const [tab, setTab] = useState<EpisodeTab>(initialTab ?? 'details');
   const [tasksOverride, setTasksOverride] = useState<CareCalendarAppointmentTask[] | null>(null);
+  const [refsOverride, setRefsOverride] = useState<string[] | null>(null);
+  const [briefOverride, setBriefOverride] = useState<CareCalendarVisitBrief | null>(null);
+  const [debriefOverride, setDebriefOverride] = useState<CareCalendarVisitDebrief | null>(null);
 
-  const activeTasks = tasksOverride ?? event.appointmentTasks;
+  const activeTasks = useMemo(() => {
+    const live = event.appointmentTasks ?? [];
+    if (!tasksOverride) return event.appointmentTasks;
+    const liveIds = new Set(live.map((task) => task.id));
+    const extraDrafts = tasksOverride.filter(
+      (task) => task.source === 'manual' && !task.title.trim() && !liveIds.has(task.id),
+    );
+    if (tasksOverride.some((task) => task.title.trim())) return tasksOverride;
+    return extraDrafts.length ? [...live, ...extraDrafts] : event.appointmentTasks;
+  }, [event.appointmentTasks, tasksOverride]);
+  const activeReferenceIds = refsOverride ?? event.clinicalReferenceIds ?? [];
+  const activeBrief = briefOverride ?? event.visitBrief;
+  const activeDebrief = debriefOverride ?? event.visitDebrief;
+  const hasVisitNotes = Boolean(activeDebrief?.summary?.trim());
 
   useEffect(() => {
     setTasksOverride(null);
+    setRefsOverride(null);
+    setBriefOverride(null);
+    setDebriefOverride(null);
   }, [event.entryId]);
+
+  useEffect(() => {
+    setTab(initialTab ?? 'details');
+  }, [event.entryId, initialTab]);
+
+  useEffect(() => {
+    setRefsOverride((current) => {
+      if (!current) return null;
+      const stored = event.clinicalReferenceIds ?? [];
+      return current.length === stored.length && current.every((id, i) => id === stored[i])
+        ? null
+        : current;
+    });
+  }, [event.clinicalReferenceIds]);
 
   useEffect(() => {
     setTasksOverride((current) => {
       if (!current) return null;
-      return appointmentTasksStatusMatch(event.appointmentTasks, current) ? null : current;
+      if (appointmentTasksStatusMatch(event.appointmentTasks, current)) return null;
+      const liveIds = new Set((event.appointmentTasks ?? []).map((task) => task.id));
+      const unsavedDrafts = current.filter(
+        (task) => task.source === 'manual' && !task.title.trim() && !liveIds.has(task.id),
+      );
+      return unsavedDrafts.length ? unsavedDrafts : null;
     });
   }, [event.appointmentTasks]);
+
+  useEffect(() => {
+    setBriefOverride((current) => {
+      if (!current) return null;
+      const stored = event.visitBrief;
+      return stored?.generatedAt === current.generatedAt ? null : current;
+    });
+  }, [event.visitBrief]);
+
+  useEffect(() => {
+    setDebriefOverride((current) => {
+      if (!current) return null;
+      const stored = event.visitDebrief;
+      if (!stored) return current;
+      if (isRecordedVisitDebrief(stored) && isManualVisitNotesDebrief(current)) return null;
+      return stored.publishedAt === current.publishedAt &&
+        stored.summary === current.summary &&
+        stored.transcript === current.transcript
+        ? null
+        : current;
+    });
+  }, [event.visitDebrief]);
 
   const openPre = openAppointmentTaskCount(appointmentTasksForPhase(activeTasks, 'pre'));
   const openPost = openAppointmentTaskCount(appointmentTasksForPhase(activeTasks, 'post'));
 
-  const preNudgeCount = useMemo(() => {
-    if (!preferences) return 0;
-    return countRecommendedCareCalendarAssessmentNudges(
-      getCareCalendarAssessmentNudges(event, appointmentDateKey, 'pre', preferences, histories),
-    );
-  }, [appointmentDateKey, event, histories, preferences]);
+  const assessmentHighlights = useMemo(() => {
+    if (!preferences) return [] as string[];
+    return getCareCalendarAssessmentNudges(
+      event,
+      appointmentDateKey,
+      'pre',
+      preferences,
+      histories,
+    )
+      .filter((nudge) => nudge.recommended)
+      .map((nudge) => t(nudge.titleKey))
+      .slice(0, 12);
+  }, [appointmentDateKey, event, histories, preferences, t]);
 
-  const postNudgeCount = useMemo(() => {
-    if (!preferences) return 0;
-    return countRecommendedCareCalendarAssessmentNudges(
-      getCareCalendarAssessmentNudges(event, appointmentDateKey, 'post', preferences, histories),
+  const appointmentTiming = useMemo(
+    () => resolveCareCalendarAppointmentTiming(event, appointmentDateKey),
+    [appointmentDateKey, event],
+  );
+  const isAppointmentToday = appointmentDateKey === careCalendarDateKey(new Date());
+  const isPastAppointment =
+    event.status === 'past' ||
+    isCareCalendarAppointmentPast(
+      appointmentDateKey,
+      event.startTimeMinutes,
+      event.endTimeMinutes,
+      undefined,
+      event.timezoneId,
     );
-  }, [appointmentDateKey, event, histories, preferences]);
 
   const showRecordVisit = useMemo(() => {
     if (!onRecordVisit) return false;
-    const timing = resolveCareCalendarAppointmentTiming(event, appointmentDateKey);
-    return canOfferRecordVisitForAppointment(event.kind, timing, {
-      isAppointmentToday: appointmentDateKey === careCalendarDateKey(new Date()),
+    return canOfferRecordVisitForAppointment(event.kind, appointmentTiming, {
+      isAppointmentToday,
     });
-  }, [appointmentDateKey, event, onRecordVisit]);
+  }, [appointmentTiming, event.kind, isAppointmentToday, onRecordVisit]);
+
+  const showTakeNotes = useMemo(() => {
+    if (!onVisitDebriefChange) return false;
+    return canOfferVisitNotesForAppointment(event.kind, appointmentTiming, {
+      isAppointmentToday,
+    });
+  }, [appointmentTiming, event.kind, isAppointmentToday, onVisitDebriefChange]);
 
   if (!hasEpisode) {
     return <>{detailsContent}</>;
   }
 
-  const toggleTask = async (taskId: string, nextStatus: 'open' | 'done' | 'dismissed') => {
-    if (!onTasksChange) return;
-    const base = activeTasks ?? [];
-    const next = applyAppointmentTaskStatusChange(base, taskId, nextStatus, currentUserUid);
-    setTasksOverride(next);
-    try {
-      await onTasksChange(next);
-    } catch {
-      setTasksOverride(null);
-    }
+  const taskListProps = {
+    allTasks: activeTasks,
+    ct,
+    currentUserUid,
+    onTasksChange,
+    onDraftTasksChange: setTasksOverride,
   };
 
-  const renderTaskList = (phase: 'pre' | 'post') => {
-    const tasks = appointmentTasksForPhase(activeTasks, phase);
-    if (!tasks.length) {
-      return <p className="text-sm text-slate-400">{ct('episode.noTasks')}</p>;
-    }
-    return (
-      <ul className="space-y-2">
-        {tasks.map((task) => {
-          const done = task.status === 'done';
-          const dismissed = task.status === 'dismissed';
-          return (
-            <li
-              key={task.id}
-              className={cn(
-                'flex items-start gap-3 p-3 rounded-xl border',
-                done || dismissed ? 'border-slate-100 bg-slate-50/60' : 'border-violet-100 bg-violet-50/40',
-              )}
-            >
-              {onTasksChange && !dismissed && (
-                <button
-                  type="button"
-                  onClick={() => toggleTask(task.id, done ? 'open' : 'done')}
-                  className={cn(
-                    'mt-0.5 shrink-0 w-7 h-7 rounded-lg border flex items-center justify-center',
-                    done
-                      ? 'bg-emerald-500 border-emerald-500 text-white'
-                      : 'border-slate-300 text-slate-400 hover:border-violet-400',
-                  )}
-                  aria-label={done ? ct('episode.markOpen') : ct('episode.markDone')}
-                >
-                  {done ? <Check size={14} /> : null}
-                </button>
-              )}
-              <div className="min-w-0 flex-1">
-                <p
-                  className={cn(
-                    'text-sm font-medium text-slate-800',
-                    (done || dismissed) && 'line-through text-slate-400',
-                  )}
-                >
-                  {task.title}
-                </p>
-                <p className="text-[10px] text-slate-500 mt-0.5 uppercase tracking-wider font-bold">
-                  {ct(`taskAssignees.${task.assignee}`)}
-                </p>
-              </div>
-              {onTasksChange && phase === 'post' && !done && !dismissed && (
-                <button
-                  type="button"
-                  onClick={() => toggleTask(task.id, 'dismissed')}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 shrink-0"
-                  aria-label={ct('episode.dismissTask')}
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    );
+  const debriefPanelProps = {
+    debrief: activeDebrief,
+    canEdit: !!onVisitDebriefChange,
+    capturedByName: currentUserName,
+    editedByUid: currentUserUid,
+    t,
+    onSave: onVisitDebriefChange
+      ? async (debrief: CareCalendarVisitDebrief) => {
+          setDebriefOverride(debrief);
+          try {
+            await onVisitDebriefChange(debrief);
+          } catch {
+            setDebriefOverride(null);
+          }
+        }
+      : undefined,
   };
 
   return (
     <div className="space-y-3">
+      <div className="space-y-5">
+      {showRecordVisit || (showTakeNotes && !hasVisitNotes) ? (
+        <div className={cn('grid gap-2', showRecordVisit && showTakeNotes && !hasVisitNotes && 'grid-cols-2')}>
+          {showRecordVisit ? (
+            <button
+              type="button"
+              onClick={() => onRecordVisit?.(event.entryId)}
+              className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-emerald-200 bg-white text-emerald-800 text-sm font-bold hover:bg-emerald-50 transition-colors py-3 px-4"
+            >
+              <Mic size={16} className="shrink-0" aria-hidden />
+              {ct('episode.recordVisit')}
+            </button>
+          ) : null}
+          {showTakeNotes && !hasVisitNotes ? (
+            <button
+              type="button"
+              onClick={() => setTab('followup')}
+              className={cn(
+                'w-full flex items-center justify-center gap-2 rounded-2xl text-sm font-bold transition-colors py-3 px-4',
+                showRecordVisit
+                  ? 'border-2 border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50'
+                  : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-200/80',
+              )}
+            >
+              <NotebookPen size={16} className="shrink-0" aria-hidden />
+              {ct('episode.takeNotes')}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <div className="flex gap-1 p-1 rounded-xl bg-slate-100">
         {(
           [
@@ -185,10 +272,10 @@ export function CircleCareCalendarAppointmentEpisodePanel({
           ] as const
         ).map(([key, label]) => {
           const badge =
-            key === 'prepare' && openPre + preNudgeCount > 0
-              ? openPre + preNudgeCount
-              : key === 'followup' && openPost + postNudgeCount > 0
-                ? openPost + postNudgeCount
+            key === 'prepare' && openPre > 0
+              ? openPre
+              : key === 'followup' && openPost > 0
+                ? openPost
                 : 0;
           return (
             <button
@@ -196,19 +283,20 @@ export function CircleCareCalendarAppointmentEpisodePanel({
               type="button"
               onClick={() => setTab(key)}
               className={cn(
-                'flex-1 px-2 py-2 rounded-lg text-xs font-bold transition-colors relative',
+                'flex-1 px-2 py-2 rounded-lg text-sm font-bold transition-colors relative',
                 tab === key ? 'bg-white text-violet-700 shadow-sm' : 'text-slate-500',
               )}
             >
               {label}
               {badge > 0 && (
-                <span className="ml-1 inline-flex min-w-[1.1rem] h-[1.1rem] items-center justify-center rounded-full bg-violet-600 text-white text-[10px] px-1">
+                <span className="ml-1 inline-flex min-w-[1.1rem] h-[1.1rem] items-center justify-center rounded-full bg-red-500 text-white text-[10px] px-1">
                   {badge}
                 </span>
               )}
             </button>
           );
         })}
+      </div>
       </div>
 
       {tab === 'details' && (
@@ -230,15 +318,8 @@ export function CircleCareCalendarAppointmentEpisodePanel({
               )}
             />
           ) : null}
-          {showRecordVisit ? (
-            <button
-              type="button"
-              onClick={() => onRecordVisit?.(event.entryId)}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200/80 py-3 px-4"
-            >
-              <Mic size={16} className="shrink-0" aria-hidden />
-              {ct('episode.recordVisit')}
-            </button>
+          {hasVisitNotes ? (
+            <CircleCareCalendarVisitDebriefPanel {...debriefPanelProps} />
           ) : null}
         </div>
       )}
@@ -257,7 +338,42 @@ export function CircleCareCalendarAppointmentEpisodePanel({
               onOpenAssessment={onOpenAssessment}
             />
           ) : null}
-          {renderTaskList('pre')}
+          <CircleCareCalendarEpisodeTaskList
+            phase="pre"
+            tasks={appointmentTasksForPhase(activeTasks, 'pre')}
+            {...taskListProps}
+          />
+          {patientId && db && onClinicalReferenceIdsChange ? (
+            <CircleCareCalendarClinicalReferencesPicker
+              db={db}
+              patientId={patientId}
+              selectedIds={activeReferenceIds}
+              onManageLibrary={onManageClinicalReferences}
+              onChange={async (ids) => {
+                setRefsOverride(ids);
+                try {
+                  await onClinicalReferenceIdsChange(ids);
+                } catch {
+                  setRefsOverride(null);
+                }
+              }}
+            />
+          ) : null}
+          {patientId && !isPastAppointment ? (
+            <CircleCareCalendarVisitBriefPanel
+              patientId={patientId}
+              entryId={event.entryId}
+              appointmentTitle={event.title}
+              brief={activeBrief}
+              assessmentHighlights={assessmentHighlights}
+              generatedByUid={currentUserUid}
+              generatedByName={currentUserName}
+              db={db}
+              memberRole={memberRole}
+              t={t}
+              onBriefGenerated={(brief) => setBriefOverride(brief)}
+            />
+          ) : null}
         </div>
       )}
       {tab === 'followup' && (
@@ -274,7 +390,15 @@ export function CircleCareCalendarAppointmentEpisodePanel({
               onOpenAssessment={onOpenAssessment}
             />
           ) : null}
-          {renderTaskList('post')}
+          <CircleCareCalendarVisitDebriefPanel
+            {...debriefPanelProps}
+            allowCreate={showTakeNotes}
+          />
+          <CircleCareCalendarEpisodeTaskList
+            phase="post"
+            tasks={appointmentTasksForPhase(activeTasks, 'post')}
+            {...taskListProps}
+          />
         </div>
       )}
     </div>

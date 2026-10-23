@@ -52,7 +52,8 @@ export function CircleDropInChatModal({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { isRecording, micError, setMicError, toggleRecording, stopRecording } = useDictation();
+  const { isRecording, micError, setMicError, toggleRecording, stopRecording } =
+    useDictation(viewerLanguage);
 
   useEffect(() => {
     if (!open) {
@@ -192,6 +193,11 @@ export function CircleDropInChatModal({
             disabled={busy || sending}
             className={DROP_IN_CHAT_TEXTAREA_CLASS}
           />
+          {isRecording ? (
+            <p className="text-[11px] text-red-600 font-medium leading-snug">
+              {t('remotePromptsModal.dropInChatListening')}
+            </p>
+          ) : null}
           <div className="flex items-center gap-2">
             <button
               type="button"

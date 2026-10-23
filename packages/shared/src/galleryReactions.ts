@@ -26,3 +26,16 @@ export function reactionCountForEmoji(
 ): number {
   return summary.find((entry) => entry.emoji === emoji)?.count ?? 0;
 }
+
+export function splitGalleryReactionsByPatient(
+  reactions: GalleryReactionRecord[],
+  patientUid: string,
+): { patient: GalleryReactionRecord[]; circle: GalleryReactionRecord[] } {
+  const patient: GalleryReactionRecord[] = [];
+  const circle: GalleryReactionRecord[] = [];
+  for (const reaction of reactions) {
+    if (reaction.userId && reaction.userId === patientUid) patient.push(reaction);
+    else circle.push(reaction);
+  }
+  return { patient, circle };
+}

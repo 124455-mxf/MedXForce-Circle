@@ -1,19 +1,6 @@
 import type { DropInTranscriptLabels } from '@medxforce/shared';
 import type { CircleTranslator } from './circleI18nContext';
-import type { CircleUiLanguage } from './circleLanguages';
-
-export function circleUiLanguageToLocale(language: CircleUiLanguage): string {
-  switch (language) {
-    case 'German':
-      return 'de';
-    case 'Spanish':
-      return 'es';
-    case 'Polish':
-      return 'pl';
-    default:
-      return 'en';
-  }
-}
+export { circleUiLanguageToLocale } from './circleLanguages';
 
 export function buildDropInTranscriptLabels(t: CircleTranslator): DropInTranscriptLabels {
   return {

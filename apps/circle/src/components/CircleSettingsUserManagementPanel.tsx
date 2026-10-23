@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
-import { collection, doc, onSnapshot, type Firestore } from 'firebase/firestore';
-import { History, Loader2, Mail, Pencil, Plus, RefreshCw, ShieldOff, Trash2, Users } from 'lucide-react';
+import { collection, doc, getDoc, onSnapshot, type Firestore } from 'firebase/firestore';
+import { CalendarClock, Clock, History, Loader2, Mail, Pencil, PenLine, Plus, RefreshCw, ShieldOff, Trash2, Users } from 'lucide-react';
 import {
   clampRelationship,
   CircleContactEditorModal,
@@ -10,6 +10,8 @@ import {
   type ContactEditorMode,
 } from './CircleContactEditorModal';
 import { CircleInviteConfirmModal } from './CircleInviteConfirmModal';
+import { CirclePatientLanguagePill } from './CirclePatientLanguagePill';
+import { CircleContactNotifyIconStrip } from './CircleContactNotifyIconStrip';
 import {
   ContactConflictError,
   deletePatientManagedContact,
@@ -28,6 +30,7 @@ import {
   revokeCircleInviteByEmail,
   revokeProvisionDraftInviteByEmail,
   saveCircleUserProfile,
+  pushMemberNotifyPreferencesFromManagedContact,
   upsertPatientManagedContact,
   upsertProvisionManagedContact,
   deleteProvisionManagedContact,
@@ -37,26 +40,30 @@ import {
   type CircleInviteListItem,
   type CircleInvitePreviewItem,
   mergeContactWithMemberContactProfile,
-  mergeContactWithMemberNotifyPreferences,
+  composeContactDisplayName,
+  listInactiveCircleMembers,
   parseMemberContactProfile,
-  parseMemberNotifyPreferences,
   type CircleManagedContact,
   type CircleMemberContactProfile,
-  type CircleMemberNotifyPreferences,
   type CirclePatientSummary,
 } from '@medxforce/shared';
 import { circleTabButtonClass, circleTabListClass } from '../lib/circleSectionStyles';
 import { isFirestoreQuotaError, pauseFirestoreBackgroundWrites } from '../lib/firestoreQuota';
 import { cn } from '../lib/utils';
-import { useCircleT, type CircleTranslator } from '../lib/circleI18nContext';
+import { useCircleI18nContext, useCircleT, type CircleTranslator } from '../lib/circleI18nContext';
+import { formatDashboardTimestamp } from '../lib/dashboardI18n';
+import { useCircleMemberActivityByUid } from '../hooks/useCircleMemberActivityByUid';
 import {
   contactKindLabelI18n,
   formatContactSaveErrorI18n,
   inviteStatusLabelI18n,
-  relationshipLabelI18n,
   translateCircleMemberAccessLabel,
 } from '../lib/adminScreenI18n';
-import { inviteForContactEmail, resolvedContactAccess } from '../lib/circleContactDisplay';
+import {
+  inviteForContactEmail,
+  memberRoleBadgeClass,
+  resolvedContactAccess,
+} from '../lib/circleContactDisplay';
 import {
   circleAccessOptionFromManagedContact,
   circleRoleFieldsFromAccessOption,
@@ -65,11 +72,16 @@ import {
   findPrimaryProxyContact,
 } from '../lib/circleContactAccessOptions';
 import { buildCircleContactEmailAudience, buildCircleEmailInviterScope } from '../lib/circleContactEmailAudience';
-import { sendCircleContactAddedEmail, sendCircleContactIntroductionEmail } from '../services/circleContactIntroductionEmailApi';
+import { circleAppPublicUrl, sendCircleContactAddedEmail, sendCircleContactIntroductionEmail } from '../services/circleContactIntroductionEmailApi';
+import {
+  buildProxyPersonalMailto,
+  openProxyPersonalMailDraft,
+  personalNotePersonName,
+  proxyPersonalNoteKind,
+} from '../lib/proxyPersonalMailto';
+import { removeCircleMemberFromPatient } from '../services/removeCircleMemberFromPatient';
 import { useCircleToast, type CircleToastTone } from '../hooks/useCircleToast';
 import { CircleAppToast } from './CircleAppToast';
-import { CircleContactMemberOverviewStrip } from './CircleContactMemberOverviewStrip';
-
 type PanelTab = 'people' | 'access';
 
 type InviteConfirmAction =
@@ -143,9 +155,18 @@ function statusClass(status: CircleInviteListItem['status']) {
 }
 
 function contactToDraft(contact: CircleManagedContact): ContactEditorDraft {
+  const firstName = contact.firstName || '';
+  const lastName = contact.lastName || '';
   return {
     id: contact.id,
-    name: contact.name,
+    name: composeContactDisplayName({
+      firstName,
+      lastName,
+      name: contact.name,
+    }),
+    firstName,
+    lastName,
+    dateOfBirth: contact.dateOfBirth || '',
     email: contact.email,
     mobile: contact.mobile,
     relationship: contact.relationship,
@@ -162,20 +183,17 @@ function contactToDraft(contact: CircleManagedContact): ContactEditorDraft {
 function contactForEditorDisplay(
   contact: CircleManagedContact,
   members: CircleInviteListItem[],
-  memberNotifyByEmail: Map<string, CircleMemberNotifyPreferences>,
   memberContactProfileByEmail: Map<string, CircleMemberContactProfile>,
 ): CircleManagedContact {
   const email = normalizeInviteEmail(contact.email);
   if (!email) return contact;
   const invite = inviteForContactEmail(contact, members);
   if (invite?.status !== 'accepted') return contact;
-  const withProfile = mergeContactWithMemberContactProfile(
+  // Notify flags live on the contact row. Member prefs must not cover them,
+  // or Alarm / Attention / Message snap back after Save.
+  return mergeContactWithMemberContactProfile(
     contact,
     memberContactProfileByEmail.get(email) ?? null,
-  );
-  return mergeContactWithMemberNotifyPreferences(
-    withProfile,
-    memberNotifyByEmail.get(email) ?? null,
   );
 }
 
@@ -183,6 +201,9 @@ function draftFingerprint(draft: ContactEditorDraft): string {
   return JSON.stringify({
     id: draft.id ?? '',
     name: draft.name.trim(),
+    firstName: draft.firstName.trim(),
+    lastName: draft.lastName.trim(),
+    dateOfBirth: draft.dateOfBirth.trim(),
     email: draft.email.trim(),
     mobile: draft.mobile.trim(),
     relationship: draft.relationship.trim(),
@@ -198,6 +219,9 @@ function draftFingerprint(draft: ContactEditorDraft): string {
 
 const EMPTY_DRAFT: ContactEditorDraft = {
   name: '',
+  firstName: '',
+  lastName: '',
+  dateOfBirth: '',
   email: '',
   mobile: '',
   relationship: 'Spouse',
@@ -274,6 +298,9 @@ interface CircleSettingsUserManagementPanelProps {
   patient: CirclePatientSummary | null;
   /** Admin embed: hide section icon/title and patient name in subtitle. */
   compact?: boolean;
+  /** Open on Circle access (e.g. from Home pending-invite reminder). */
+  initialTab?: PanelTab;
+  onInitialTabConsumed?: () => void;
 }
 
 function isCurrentUserInvite(item: CircleInviteListItem, user: User): boolean {
@@ -308,17 +335,36 @@ function findContactForInviteItem(
   };
 }
 
-function resolvedInviteAccessLabel(
+function resolvedInviteAccessBadge(
   t: CircleTranslator,
   item: CircleInviteListItem,
   contacts: CircleManagedContact[],
+): { label: string; badgeClass: string } {
+  const email = normalizeInviteEmail(item.invitedEmail);
+  const linked = contacts.find((contact) => normalizeInviteEmail(contact.email) === email);
+  if (linked) return resolvedContactAccess(t, linked, [item]);
+  return {
+    label: translateCircleMemberAccessLabel(t, item.role, item.proxyTier),
+    badgeClass: memberRoleBadgeClass(item.role, item.proxyTier),
+  };
+}
+
+function resolvedInviteDisplayName(
+  item: CircleInviteListItem,
+  contacts: CircleManagedContact[],
+  memberContactProfileByEmail: Map<string, CircleMemberContactProfile>,
 ): string {
   const email = normalizeInviteEmail(item.invitedEmail);
   const linked = contacts.find((contact) => normalizeInviteEmail(contact.email) === email);
-  if (linked?.circleRole) {
-    return translateCircleMemberAccessLabel(t, linked.circleRole, linked.proxyTier);
+  if (linked) {
+    const merged = mergeContactWithMemberContactProfile(
+      linked,
+      memberContactProfileByEmail.get(email) ?? null,
+    );
+    const composed = composeContactDisplayName(merged);
+    if (composed) return composed;
   }
-  return translateCircleMemberAccessLabel(t, item.role, item.proxyTier);
+  return item.displayName?.trim() || item.invitedEmail;
 }
 
 type ResendEmailTarget =
@@ -361,12 +407,79 @@ function contactForInviteResend(
   };
 }
 
+function recipientCircleUrl(): string {
+  const url = circleAppPublicUrl();
+  if (/localhost|127\.0\.0\.1/i.test(url)) {
+    return 'https://gen-lang-client-0333368246.web.app';
+  }
+  return url;
+}
+
+function memberLastOpenedAt(
+  uid: string | undefined,
+  lastOpenByUid: Record<string, number>,
+  presenceByUid: Record<string, number>,
+): number {
+  if (!uid) return 0;
+  const openAt = Number(lastOpenByUid[uid]);
+  const seenAt = Number(presenceByUid[uid]);
+  if (Number.isFinite(openAt) && openAt > 0) return openAt;
+  if (Number.isFinite(seenAt) && seenAt > 0) return seenAt;
+  return 0;
+}
+
+function DeletionScheduledNote({ until, className }: { until: number; className?: string }) {
+  const t = useCircleT();
+  const date = new Date(until).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  return (
+    <p
+      className={cn(
+        'flex items-center gap-2 rounded-xl bg-rose-100 px-3 py-2 text-xs font-semibold text-rose-950',
+        className,
+      )}
+    >
+      <CalendarClock size={14} className="shrink-0 text-rose-700" aria-hidden />
+      <span className="min-w-0 leading-snug">{t('admin.users.deletionScheduled', { date })}</span>
+    </p>
+  );
+}
+
+/** Proxy, then caregiver, family, friends, contacts. Primary proxy before backup. */
+function peopleListGroupRank(contact: CircleManagedContact): number {
+  if (contact.circleRole === 'proxy') return contact.proxyTier === 'backup' ? 1 : 0;
+  if (contact.kind === 'caregiver') return 2;
+  if (contact.kind === 'family') return 3;
+  if (contact.kind === 'friend') return 4;
+  return 5;
+}
+
+function contactLastNameKey(contact: CircleManagedContact): string {
+  const last = (contact.lastName || '').trim();
+  if (last) return last;
+  const display = composeContactDisplayName(contact);
+  const parts = display.split(/\s+/).filter(Boolean);
+  if (parts.length > 1) return parts[parts.length - 1] ?? display;
+  return display || contact.email;
+}
+
+function contactFirstNameKey(contact: CircleManagedContact): string {
+  const first = (contact.firstName || '').trim();
+  if (first) return first;
+  const display = composeContactDisplayName(contact);
+  const parts = display.split(/\s+/).filter(Boolean);
+  if (parts.length > 1) return parts.slice(0, -1).join(' ');
+  return '';
+}
+
 function PersonRow({
   contact,
   members,
   onView,
   onEdit,
-  onDelete,
   onRequestResendInviteEmail,
   onRequestResendContactAddedEmail,
   resendingInviteEmail,
@@ -375,7 +488,6 @@ function PersonRow({
   members: CircleInviteListItem[];
   onView: () => void;
   onEdit: () => void;
-  onDelete: () => void;
   onRequestResendInviteEmail?: () => void;
   onRequestResendContactAddedEmail?: () => void;
   resendingInviteEmail?: string | null;
@@ -400,11 +512,19 @@ function PersonRow({
           onView();
         }
       }}
-      className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3 cursor-pointer hover:border-slate-200 hover:bg-slate-50/50 transition-colors"
+      className={cn(
+        'p-4 rounded-2xl border shadow-sm cursor-pointer transition-colors',
+        contact.deletionScheduledUntil
+          ? 'border-rose-300 bg-rose-50 hover:border-rose-400 hover:bg-rose-50'
+          : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50/50',
+      )}
     >
+      <div className="flex items-center gap-3">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
-          <p className="font-bold text-slate-800 truncate">{contact.name || t('admin.users.unnamed')}</p>
+          <p className="font-bold text-slate-800 truncate">
+            {composeContactDisplayName(contact) || t('admin.users.unnamed')}
+          </p>
           <span
             className={cn(
               'shrink-0 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border',
@@ -415,17 +535,24 @@ function PersonRow({
           </span>
         </div>
         <p className="text-sm text-slate-500 truncate mt-0.5">
-          {contact.relationship
-            ? relationshipLabelI18n(t, contact.relationship)
-            : t('admin.profile.emptyValue')}
-          {contact.email ? ` · ${contact.email}` : ` · ${t('admin.users.noEmail')}`}
+          {contact.email || t('admin.users.noEmail')}
         </p>
-        <CircleContactMemberOverviewStrip
-          contact={contact}
-          members={members}
-          showRoleBadge={false}
-          className="mt-2"
-        />
+        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+          {contact.language?.trim() ? (
+            <CirclePatientLanguagePill language={contact.language} title={contact.language} />
+          ) : null}
+          <CircleContactNotifyIconStrip
+            values={{
+              alert: contact.alert,
+              attention: contact.attention,
+              message: contact.message,
+              sms: contact.sms,
+            }}
+            kind={contact.kind}
+            hasEmail={!!contact.email.trim()}
+            hasMobile={!!contact.mobile.trim()}
+          />
+        </div>
       </div>
       {canResendInvite && (
         <button
@@ -468,17 +595,10 @@ function PersonRow({
       >
         <Pencil size={16} />
       </button>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        className="p-2.5 rounded-xl text-red-500 hover:bg-red-50"
-        aria-label={t('admin.users.deleteAria')}
-      >
-        <Trash2 size={16} />
-      </button>
+      </div>
+      {contact.deletionScheduledUntil ? (
+        <DeletionScheduledNote until={contact.deletionScheduledUntil} className="mt-3" />
+      ) : null}
     </div>
   );
 }
@@ -488,10 +608,13 @@ export function CircleSettingsUserManagementPanel({
   db,
   patient,
   compact = false,
+  initialTab,
+  onInitialTabConsumed,
 }: CircleSettingsUserManagementPanelProps) {
   const t = useCircleT();
+  const { language } = useCircleI18nContext();
   const { toast, showToast } = useCircleToast();
-  const [tab, setTab] = useState<PanelTab>('people');
+  const [tab, setTab] = useState<PanelTab>(initialTab === 'access' ? 'access' : 'people');
   const [members, setMembers] = useState<CircleInviteListItem[]>([]);
   const [contacts, setContacts] = useState<CircleManagedContact[]>([]);
   const [loading, setLoading] = useState(false);
@@ -502,6 +625,9 @@ export function CircleSettingsUserManagementPanel({
   const [resendingInviteEmail, setResendingInviteEmail] = useState<string | null>(null);
   const [confirmRevoke, setConfirmRevoke] = useState<CircleInviteListItem | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<CircleManagedContact | null>(null);
+  const [deleteContributions, setDeleteContributions] = useState(false);
+  const [confirmEraseContributions, setConfirmEraseContributions] = useState(false);
+  const [removeError, setRemoveError] = useState('');
   const [confirmResendEmail, setConfirmResendEmail] = useState<ResendEmailTarget | null>(null);
   const [invitePreviewItems, setInvitePreviewItems] = useState<CircleInvitePreviewItem[] | null>(
     null,
@@ -516,14 +642,12 @@ export function CircleSettingsUserManagementPanel({
   const [editorAccess, setEditorAccess] = useState<{ label: string; badgeClass: string } | null>(
     null,
   );
-  const [memberNotifyByEmail, setMemberNotifyByEmail] = useState<
-    Map<string, CircleMemberNotifyPreferences>
-  >(() => new Map());
   const [memberContactProfileByEmail, setMemberContactProfileByEmail] = useState<
     Map<string, CircleMemberContactProfile>
   >(() => new Map());
   const draftRef = useRef(draft);
   draftRef.current = draft;
+  const memberOverlaySnapGenRef = useRef(0);
 
   const isPendingProvision = patient?.isPendingProvision === true;
 
@@ -546,7 +670,7 @@ export function CircleSettingsUserManagementPanel({
       } else {
         const [rows, listedContacts] = await Promise.all([
           listCircleInvitesForPatient(db, patient.patientId),
-          listPatientManagedContacts(db, patient.patientId),
+          listPatientManagedContacts(db, patient.patientId, { includeDeletionScheduled: true }),
         ]);
         setMembers(rows);
         setContacts(listedContacts);
@@ -571,26 +695,49 @@ export function CircleSettingsUserManagementPanel({
   }, [loadMembers]);
 
   useEffect(() => {
+    if (initialTab !== 'access' && initialTab !== 'people') return;
+    setTab(initialTab);
+    onInitialTabConsumed?.();
+  }, [initialTab, onInitialTabConsumed]);
+
+  useEffect(() => {
     if (!patient?.patientId || isPendingProvision) {
-      setMemberNotifyByEmail(new Map());
       setMemberContactProfileByEmail(new Map());
       return;
     }
 
     return onSnapshot(collection(db, 'patients', patient.patientId, 'members'), (snap) => {
-      const notifyNext = new Map<string, CircleMemberNotifyPreferences>();
-      const profileNext = new Map<string, CircleMemberContactProfile>();
-      snap.forEach((memberDoc) => {
-        const data = memberDoc.data() as Record<string, unknown>;
-        const email = normalizeInviteEmail(String(data.invitedEmail ?? ''));
-        if (!email) return;
-        const prefs = parseMemberNotifyPreferences(data);
-        if (prefs) notifyNext.set(email, prefs);
-        const profile = parseMemberContactProfile(data);
-        if (profile) profileNext.set(email, profile);
-      });
-      setMemberNotifyByEmail(notifyNext);
-      setMemberContactProfileByEmail(profileNext);
+      const gen = ++memberOverlaySnapGenRef.current;
+      void (async () => {
+        try {
+          const profileNext = new Map<string, CircleMemberContactProfile>();
+          await Promise.all(
+            snap.docs.map(async (memberDoc) => {
+              const data = memberDoc.data() as Record<string, unknown>;
+              const email = normalizeInviteEmail(String(data.invitedEmail ?? ''));
+              if (!email) return;
+
+              let profileSource: Record<string, unknown> = data;
+              try {
+                const prefsContactSnap = await getDoc(
+                  doc(db, 'patients', patient.patientId, 'members', memberDoc.id, 'prefs', 'contact'),
+                );
+                if (prefsContactSnap.exists()) {
+                  profileSource = prefsContactSnap.data() as Record<string, unknown>;
+                }
+              } catch {
+                // Proxy may be denied prefs/contact; member-root profile is enough.
+              }
+              const profile = parseMemberContactProfile(profileSource);
+              if (profile) profileNext.set(email, profile);
+            }),
+          );
+          if (gen !== memberOverlaySnapGenRef.current) return;
+          setMemberContactProfileByEmail(profileNext);
+        } catch (err) {
+          console.warn('[CircleSettingsUserManagementPanel] member overlay sync', err);
+        }
+      })();
     });
   }, [db, isPendingProvision, patient?.patientId]);
 
@@ -605,7 +752,9 @@ export function CircleSettingsUserManagementPanel({
         doc(db, 'patient_provisions', patient.patientId),
         (snap) => {
           if (!snap.exists()) return;
-          const listed = parsePatientManagedContacts(snap.data());
+          const listed = parsePatientManagedContacts(snap.data(), {
+            includeDeletionScheduled: true,
+          });
           setContacts(listed);
         },
         (err) => {
@@ -618,7 +767,9 @@ export function CircleSettingsUserManagementPanel({
       doc(db, 'patients', patient.patientId),
       (snap) => {
         if (!snap.exists()) return;
-        const listed = parsePatientManagedContacts(snap.data());
+        const listed = parsePatientManagedContacts(snap.data(), {
+          includeDeletionScheduled: true,
+        });
         setContacts(listed);
       },
       (err) => {
@@ -686,7 +837,7 @@ export function CircleSettingsUserManagementPanel({
     const dirty = draftFingerprint(currentDraft) !== initialDraftFingerprint;
     if (!dirty) {
       const refreshed = contactToDraft(
-        contactForEditorDisplay(remoteContact, members, memberNotifyByEmail, memberContactProfileByEmail),
+        contactForEditorDisplay(remoteContact, members, memberContactProfileByEmail),
       );
       setDraft(refreshed);
       setInitialDraftFingerprint(draftFingerprint(refreshed));
@@ -702,7 +853,6 @@ export function CircleSettingsUserManagementPanel({
     editorMode,
     editorOpen,
     initialDraftFingerprint,
-    memberNotifyByEmail,
     memberContactProfileByEmail,
     members,
   ]);
@@ -714,9 +864,9 @@ export function CircleSettingsUserManagementPanel({
     const remoteContact = contacts.find((contact) => contact.id === currentDraft.id);
     if (!remoteContact) return;
     setDraft(
-      contactToDraft(contactForEditorDisplay(remoteContact, members, memberNotifyByEmail, memberContactProfileByEmail)),
+      contactToDraft(contactForEditorDisplay(remoteContact, members, memberContactProfileByEmail)),
     );
-  }, [contacts, editorMode, editorOpen, memberContactProfileByEmail, memberNotifyByEmail, members]);
+  }, [contacts, editorMode, editorOpen, memberContactProfileByEmail, members]);
 
   const { activeMembers, pastMembers } = useMemo(() => {
     const active: CircleInviteListItem[] = [];
@@ -728,12 +878,61 @@ export function CircleSettingsUserManagementPanel({
     return { activeMembers: active, pastMembers: past };
   }, [members]);
 
+  const accessActivityUids = useMemo(() => {
+    const seen = new Set<string>();
+    const uids: string[] = [];
+    for (const item of members) {
+      const uid = item.acceptedByUid?.trim();
+      if (!uid || seen.has(uid)) continue;
+      seen.add(uid);
+      uids.push(uid);
+    }
+    return uids;
+  }, [members]);
+  const {
+    lastOpenByUid,
+    presenceByUid,
+    loading: memberActivityLoading,
+  } = useCircleMemberActivityByUid(db, patient?.patientId, accessActivityUids);
+  const inactiveAccessMembers = useMemo(() => {
+    if (memberActivityLoading) return [];
+    return listInactiveCircleMembers({
+      invites: members,
+      lastOpenByUid,
+      presenceByUid,
+      excludeUid: user.uid,
+    });
+  }, [lastOpenByUid, memberActivityLoading, members, presenceByUid, user.uid]);
+  const inactiveAccessUids = useMemo(
+    () => new Set(inactiveAccessMembers.map((member) => member.uid)),
+    [inactiveAccessMembers],
+  );
+  const accessMembers = useMemo(() => {
+    if (inactiveAccessMembers.length === 0) return activeMembers;
+    const rank = new Map(inactiveAccessMembers.map((member, index) => [member.uid, index]));
+    return [...activeMembers].sort((a, b) => {
+      const aUid = a.acceptedByUid?.trim();
+      const bUid = b.acceptedByUid?.trim();
+      const aRank = aUid ? rank.get(aUid) : undefined;
+      const bRank = bUid ? rank.get(bUid) : undefined;
+      if (aRank != null && bRank != null) return aRank - bRank;
+      if (aRank != null) return -1;
+      if (bRank != null) return 1;
+      return 0;
+    });
+  }, [activeMembers, inactiveAccessMembers]);
+
   const sortedContacts = useMemo(() => {
-    const order: CircleContactKind[] = ['caregiver', 'family', 'friend', 'contact'];
     return [...contacts].sort((a, b) => {
-      const kindDiff = order.indexOf(a.kind) - order.indexOf(b.kind);
-      if (kindDiff !== 0) return kindDiff;
-      return (a.name || a.email).localeCompare(b.name || b.email);
+      const groupDiff = peopleListGroupRank(a) - peopleListGroupRank(b);
+      if (groupDiff !== 0) return groupDiff;
+      const lastDiff = contactLastNameKey(a).localeCompare(contactLastNameKey(b), undefined, {
+        sensitivity: 'base',
+      });
+      if (lastDiff !== 0) return lastDiff;
+      return contactFirstNameKey(a).localeCompare(contactFirstNameKey(b), undefined, {
+        sensitivity: 'base',
+      });
     });
   }, [contacts]);
 
@@ -824,7 +1023,7 @@ export function CircleSettingsUserManagementPanel({
 
   const openView = (contact: CircleManagedContact) => {
     openEditorWithDraft(
-      contactToDraft(contactForEditorDisplay(contact, members, memberNotifyByEmail, memberContactProfileByEmail)),
+      contactToDraft(contactForEditorDisplay(contact, members, memberContactProfileByEmail)),
       'view',
       contact,
     );
@@ -832,7 +1031,7 @@ export function CircleSettingsUserManagementPanel({
 
   const openEdit = (contact: CircleManagedContact) => {
     openEditorWithDraft(
-      contactToDraft(contactForEditorDisplay(contact, members, memberNotifyByEmail, memberContactProfileByEmail)),
+      contactToDraft(contactForEditorDisplay(contact, members, memberContactProfileByEmail)),
       'edit',
       contact,
     );
@@ -861,7 +1060,7 @@ export function CircleSettingsUserManagementPanel({
       : undefined;
     if (!remoteContact) return;
     const refreshed = contactToDraft(
-      contactForEditorDisplay(remoteContact, members, memberNotifyByEmail, memberContactProfileByEmail),
+      contactForEditorDisplay(remoteContact, members, memberContactProfileByEmail),
     );
     setDraft(refreshed);
     setEditorAccess(resolvedContactAccess(t, remoteContact, members));
@@ -885,6 +1084,11 @@ export function CircleSettingsUserManagementPanel({
   const persistContact = async (): Promise<CircleManagedContact | undefined> => {
     if (!patient?.patientId) return;
     const currentDraft = draftRef.current;
+    const composedName = composeContactDisplayName({
+      firstName: currentDraft.firstName,
+      lastName: currentDraft.lastName,
+      name: currentDraft.name,
+    });
     const normalizedEmail = currentDraft.email.trim();
     const normalizedMobile = currentDraft.mobile.trim();
     const nextMessage = currentDraft.message && !!normalizedEmail;
@@ -898,21 +1102,27 @@ export function CircleSettingsUserManagementPanel({
 
     await demoteConflictingProxyBeforeSave(upsert, db, patient.patientId, contacts, currentDraft);
 
+    const nextAlert = currentDraft.alert && !!normalizedEmail;
+    const nextAttention = currentDraft.attention && !!normalizedEmail;
+    const nextLanguage = currentDraft.language || 'English';
     const saved = await upsert(
       db,
       patient.patientId,
       {
         id: currentDraft.id,
-        name: currentDraft.name,
+        name: composedName,
+        firstName: currentDraft.firstName,
+        lastName: currentDraft.lastName,
+        dateOfBirth: currentDraft.dateOfBirth,
         email: normalizedEmail,
         mobile: normalizedMobile,
         relationship: clampRelationship(currentDraft.kind, currentDraft.relationship),
         kind: currentDraft.kind,
-        language: currentDraft.language || 'English',
+        language: nextLanguage,
         message: nextMessage,
         sms: nextSms,
-        alert: currentDraft.alert && !!normalizedEmail,
-        attention: currentDraft.attention && !!normalizedEmail,
+        alert: nextAlert,
+        attention: nextAttention,
         ...(roleFields.circleRole ? { circleRole: roleFields.circleRole } : {}),
         ...(roleFields.proxyTier ? { proxyTier: roleFields.proxyTier } : {}),
         ...(existing?.contactAddedEmailSentAt
@@ -923,11 +1133,30 @@ export function CircleSettingsUserManagementPanel({
     );
 
     if (!isPendingProvision && invite?.status === 'accepted' && invite.acceptedByUid) {
-      await saveCircleUserProfile(db, invite.acceptedByUid, {
-        language: currentDraft.language || 'English',
-        languageSource: 'circle',
-        managedPatientId: patient.patientId,
-      });
+      const displayed = existing
+        ? contactForEditorDisplay(existing, members, memberContactProfileByEmail)
+        : undefined;
+      try {
+        await pushMemberNotifyPreferencesFromManagedContact(
+          db,
+          patient.patientId,
+          invite.acceptedByUid,
+          {
+            alert: nextAlert,
+            attention: nextAttention,
+            message: nextMessage,
+          },
+        );
+      } catch (err) {
+        console.warn('[CircleSettingsUserManagementPanel] member notify sync', err);
+      }
+      if (displayed && nextLanguage !== (displayed.language || 'English')) {
+        await saveCircleUserProfile(db, invite.acceptedByUid, {
+          language: nextLanguage,
+          languageSource: 'patient',
+          managedPatientId: patient.patientId,
+        });
+      }
     }
 
     closeEditor();
@@ -943,9 +1172,19 @@ export function CircleSettingsUserManagementPanel({
 
   const handleSaveContact = async () => {
     if (!patient?.patientId) return;
-    if (!draft.name.trim()) {
+    const composedName = composeContactDisplayName({
+      firstName: draft.firstName,
+      lastName: draft.lastName,
+      name: draft.name,
+    });
+    if (!composedName) {
       setEditorError(t('admin.users.nameRequired'));
       return;
+    }
+    if (composedName !== draft.name.trim()) {
+      const nextDraft = { ...draft, name: composedName };
+      draftRef.current = nextDraft;
+      setDraft(nextDraft);
     }
     if (draft.kind !== 'contact' && !draft.email.trim()) {
       setEditorError(t('admin.users.emailRequired'));
@@ -1166,7 +1405,25 @@ export function CircleSettingsUserManagementPanel({
     if (!patient?.patientId) return;
     setSaving(true);
     setError(null);
+    setRemoveError('');
     try {
+      if (!isPendingProvision && isValidInviteEmail(contact.email)) {
+        if (deleteContributions) {
+          await removeCircleMemberFromPatient({
+            patientId: patient.patientId,
+            email: contact.email,
+            deleteContributions: true,
+          });
+        } else {
+          await deletePatientManagedContact(db, patient.patientId, contact);
+        }
+        setConfirmDelete(null);
+        setDeleteContributions(false);
+        setConfirmEraseContributions(false);
+        setError(null);
+        await loadMembers();
+        return;
+      }
       const preview = isPendingProvision
         ? await previewProvisionManagedContactDeleteInviteChange(db, patient.patientId, contact)
         : await previewManagedContactDeleteInviteChange(db, patient.patientId, contact);
@@ -1182,6 +1439,9 @@ export function CircleSettingsUserManagementPanel({
       if (isFirestoreQuotaError(err)) {
         pauseFirestoreBackgroundWrites(String(err));
         setError(t('admin.profile.quotaError'));
+      } else if (confirmDelete) {
+        const detail = err instanceof Error ? err.message.trim() : '';
+        setRemoveError(detail || t('admin.users.deleteFailed'));
       } else {
         setError(t('admin.users.deleteFailed'));
       }
@@ -1206,9 +1466,55 @@ export function CircleSettingsUserManagementPanel({
     );
   }
 
+  const openPersonalNote = (item: CircleInviteListItem, lastOpenedAt: number) => {
+    const email = item.invitedEmail.trim();
+    const display = resolvedInviteDisplayName(item, contacts, memberContactProfileByEmail);
+    const recipient = personalNotePersonName(display, email);
+    const patientName = patient.displayName.trim() || 'Circle';
+    const when =
+      lastOpenedAt > 0 ? formatDashboardTimestamp(t, language, lastOpenedAt) : '';
+    const kind = proxyPersonalNoteKind({ status: item.status, lastOpenedAt });
+    const situationKey =
+      kind === 'inactive'
+        ? 'admin.users.personalNoteInactive'
+        : kind === 'pending'
+          ? 'admin.users.personalNotePending'
+          : kind === 'never'
+            ? 'admin.users.personalNoteNever'
+            : 'admin.users.personalNoteRecent';
+    const scope = buildCircleEmailInviterScope(user, {
+      members,
+      contacts,
+      memberContactProfileByEmail,
+    });
+    const proxyName = personalNotePersonName(
+      scope.invitedByName || '',
+      scope.invitedByEmail || '',
+    );
+    const greeting = recipient
+      ? t('admin.users.personalNoteGreeting', { name: recipient })
+      : t('admin.users.personalNoteGreetingPlain');
+    const lines = [
+      greeting,
+      '',
+      t(situationKey, { patient: patientName, when }),
+      '',
+      t('admin.users.personalNoteClose'),
+      recipientCircleUrl(),
+    ];
+    if (proxyName) lines.push('', proxyName);
+    openProxyPersonalMailDraft(
+      buildProxyPersonalMailto(
+        email,
+        t('admin.users.personalNoteSubject', { patient: patientName }),
+        lines.join('\n'),
+      ),
+    );
+  };
+
   return (
     <>
-      <div className={cn('space-y-5', compact ? 'p-4' : 'p-5')}>
+      <div className={cn(compact ? 'flex flex-col flex-1 min-h-0' : 'space-y-5 p-5')}>
         {!compact && (
           <div className="flex items-start gap-3">
             <div className="w-11 h-11 rounded-2xl bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
@@ -1232,46 +1538,54 @@ export function CircleSettingsUserManagementPanel({
           </div>
         )}
 
-        <div className="flex items-center gap-2">
-          <div className={cn(circleTabListClass, 'flex-1 min-w-0')} role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'people'}
-              onClick={() => setTab('people')}
-              className={circleTabButtonClass(tab === 'people')}
-            >
-              {t('admin.users.tabPeople')}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'access'}
-              onClick={() => setTab('access')}
-              className={circleTabButtonClass(tab === 'access')}
-            >
-              {t('admin.users.tabAccess')}
-            </button>
+        <div className={cn(compact && 'shrink-0 space-y-3 px-4 pt-4 pb-2 bg-white')}>
+          <div className="flex items-center gap-2">
+            <div className={cn(circleTabListClass, 'flex-1 min-w-0')} role="tablist">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'people'}
+                onClick={() => setTab('people')}
+                className={circleTabButtonClass(tab === 'people')}
+              >
+                {t('admin.users.tabPeople')}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'access'}
+                onClick={() => setTab('access')}
+                className={circleTabButtonClass(tab === 'access')}
+              >
+                {t('admin.users.tabAccess')}
+              </button>
+            </div>
+            {compact && (
+              <button
+                type="button"
+                onClick={() => void loadMembers()}
+                disabled={loading}
+                className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 shrink-0 disabled:opacity-50"
+                aria-label={t('admin.users.refreshAria')}
+              >
+                {loading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
+              </button>
+            )}
           </div>
-          {compact && (
-            <button
-              type="button"
-              onClick={() => void loadMembers()}
-              disabled={loading}
-              className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 shrink-0 disabled:opacity-50"
-              aria-label={t('admin.users.refreshAria')}
-            >
-              {loading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
-            </button>
+
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+              {error}
+            </p>
           )}
         </div>
 
-        {error && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
-            {error}
-          </p>
-        )}
-
+        <div
+          className={cn(
+            compact &&
+              'min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y space-y-4 px-4 pb-4',
+          )}
+        >
         {tab === 'people' && (
           <div className="space-y-4">
             <button
@@ -1294,11 +1608,10 @@ export function CircleSettingsUserManagementPanel({
                 {sortedContacts.map((contact) => (
                   <PersonRow
                     key={contact.id}
-                    contact={contactForEditorDisplay(contact, members, memberNotifyByEmail, memberContactProfileByEmail)}
+                    contact={contactForEditorDisplay(contact, members, memberContactProfileByEmail)}
                     members={members}
                     onView={() => openView(contact)}
                     onEdit={() => openEdit(contact)}
-                    onDelete={() => setConfirmDelete(contact)}
                     onRequestResendInviteEmail={() =>
                       setConfirmResendEmail({ kind: 'introduction', source: 'contact', contact })
                     }
@@ -1327,18 +1640,63 @@ export function CircleSettingsUserManagementPanel({
               <>
                 {activeMembers.length > 0 && (
                   <div className="space-y-2">
-                    {activeMembers.map((item) => {
+                    {accessMembers.map((item) => {
                       const isSelf = isCurrentUserInvite(item, user);
+                      const memberUid = item.acceptedByUid?.trim();
+                      const inactive = Boolean(memberUid && inactiveAccessUids.has(memberUid));
+                      const lastOpenedAt = memberLastOpenedAt(memberUid, lastOpenByUid, presenceByUid);
+                      const openedLine =
+                        item.status === 'accepted' && lastOpenedAt > 0
+                          ? t('admin.users.lastOpened', {
+                              when: formatDashboardTimestamp(t, language, lastOpenedAt),
+                            })
+                          : item.status === 'accepted' && !memberActivityLoading
+                            ? t('admin.users.neverOpened')
+                            : '';
+                      const accessBadge = resolvedInviteAccessBadge(t, item, contacts);
+                      const scheduledUntil = contacts.find(
+                        (contact) =>
+                          contact.deletionScheduledUntil &&
+                          normalizeInviteEmail(contact.email) ===
+                            normalizeInviteEmail(item.invitedEmail),
+                      )?.deletionScheduledUntil;
                       return (
                         <div
                           key={item.id}
-                          className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-3"
+                          className={cn(
+                            'p-4 rounded-2xl border shadow-sm space-y-3',
+                            scheduledUntil
+                              ? 'border-rose-300 bg-rose-50'
+                              : inactive
+                                ? 'border-amber-300 bg-amber-50/60'
+                                : 'border-slate-100 bg-white',
+                          )}
                         >
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <p className="font-bold text-slate-800 truncate">
-                                {item.displayName || item.invitedEmail}
+                            <div className="flex flex-wrap items-center gap-2 min-w-0">
+                              <p className="font-bold text-slate-800 truncate min-w-0">
+                                {resolvedInviteDisplayName(
+                                  item,
+                                  contacts,
+                                  memberContactProfileByEmail,
+                                )}
                               </p>
+                              <span
+                                className={cn(
+                                  'shrink-0 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border',
+                                  accessBadge.badgeClass,
+                                )}
+                              >
+                                {accessBadge.label}
+                              </span>
+                              <span
+                                className={cn(
+                                  'shrink-0 px-3 py-1 rounded-full text-xs font-bold border',
+                                  statusClass(item.status),
+                                )}
+                              >
+                                {inviteStatusLabelI18n(t, item.status)}
+                              </span>
                               {isSelf && (
                                 <span className="shrink-0 px-2 py-0.5 rounded-md bg-violet-100 text-violet-700 text-[10px] font-bold uppercase">
                                   {t('admin.users.you')}
@@ -1346,23 +1704,37 @@ export function CircleSettingsUserManagementPanel({
                               )}
                             </div>
                             <p className="text-sm text-slate-500 truncate">{item.invitedEmail}</p>
-                            <p className="text-xs text-slate-400 mt-1">
-                              {resolvedInviteAccessLabel(t, item, contacts)}
-                            </p>
+                            {openedLine ? (
+                              <p
+                                className={cn(
+                                  'mt-1.5 flex items-center gap-1.5 text-xs',
+                                  inactive ? 'font-semibold text-amber-800' : 'text-slate-500',
+                                )}
+                              >
+                                <Clock size={13} className="shrink-0" aria-hidden />
+                                <span>{openedLine}</span>
+                              </p>
+                            ) : null}
                           </div>
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span
-                              className={cn(
-                                'px-3 py-1 rounded-full text-xs font-bold border',
-                                statusClass(item.status),
-                              )}
-                            >
-                              {inviteStatusLabelI18n(t, item.status)}
-                            </span>
-                            {(item.status === 'pending' || item.status === 'accepted') &&
+                          {(item.status === 'pending' || item.status === 'accepted') &&
                               !isSelf &&
                               isValidInviteEmail(item.invitedEmail) && (
-                                <div className="flex items-center gap-2 ml-auto">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => openPersonalNote(item, lastOpenedAt)}
+                                    className="flex items-center gap-1.5 px-3 py-2 text-violet-700 rounded-xl text-sm font-bold hover:bg-violet-50"
+                                    aria-label={t('admin.users.accessWriteFromMeAria', {
+                                      name: resolvedInviteDisplayName(
+                                        item,
+                                        contacts,
+                                        memberContactProfileByEmail,
+                                      ),
+                                    })}
+                                  >
+                                    <PenLine size={14} />
+                                    {t('admin.users.accessWriteFromMe')}
+                                  </button>
                                   <button
                                     type="button"
                                     onClick={() =>
@@ -1395,7 +1767,7 @@ export function CircleSettingsUserManagementPanel({
                                   </button>
                                 </div>
                               )}
-                          </div>
+                          {scheduledUntil ? <DeletionScheduledNote until={scheduledUntil} /> : null}
                         </div>
                       );
                     })}
@@ -1412,13 +1784,20 @@ export function CircleSettingsUserManagementPanel({
                       </span>
                     </summary>
                     <div className="px-4 pb-4 space-y-2">
+                      <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                        {t('admin.users.pastAccessHint')}
+                      </p>
                       {pastMembers.map((item) => (
                         <div
                           key={item.id}
                           className="p-3 rounded-xl border border-slate-100 bg-white/80 opacity-90"
                         >
                           <p className="text-sm font-semibold text-slate-600 truncate">
-                            {item.displayName || item.invitedEmail}
+                            {resolvedInviteDisplayName(
+                              item,
+                              contacts,
+                              memberContactProfileByEmail,
+                            )}
                           </p>
                           <p className="text-xs text-slate-400 truncate">{item.invitedEmail}</p>
                         </div>
@@ -1430,6 +1809,7 @@ export function CircleSettingsUserManagementPanel({
             )}
           </div>
         )}
+        </div>
       </div>
 
       <CircleContactEditorModal
@@ -1443,10 +1823,41 @@ export function CircleSettingsUserManagementPanel({
         circleAccessBadgeClass={editorAccess?.badgeClass}
         rosterContacts={contacts}
         onRefreshFromRemote={refreshDraftFromRemote}
-        onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))}
+        onChange={(patch) =>
+          setDraft((d) => {
+            const next = { ...d, ...patch };
+            draftRef.current = next;
+            return next;
+          })
+        }
         onClose={closeEditor}
         onSave={() => void handleSaveContact()}
         onSwitchToEdit={editorMode === 'view' ? switchViewToEdit : undefined}
+        onRemove={
+          editorMode === 'view'
+            ? () => {
+                const contact = contacts.find((row) => row.id === draft.id);
+                if (!contact) return;
+                closeEditor();
+                setDeleteContributions(false);
+                setConfirmEraseContributions(false);
+                setRemoveError('');
+                setError(null);
+                setConfirmDelete(contact);
+              }
+            : undefined
+        }
+        onRevoke={(() => {
+          if (editorMode !== 'view') return undefined;
+          const contact = contacts.find((row) => row.id === draft.id);
+          if (!contact) return undefined;
+          const invite = inviteForContactEmail(contact, members);
+          if (!invite || isCurrentUserInvite(invite, user)) return undefined;
+          return () => {
+            closeEditor();
+            void requestRevoke(invite);
+          };
+        })()}
       />
 
       {confirmRevoke && (
@@ -1555,7 +1966,7 @@ export function CircleSettingsUserManagementPanel({
         </div>
       )}
 
-      {confirmDelete && (
+      {confirmDelete && !confirmEraseContributions && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
           <div className="bg-white p-6 rounded-[28px] shadow-2xl max-w-sm w-full space-y-5 border border-slate-100">
             <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center text-red-500 mx-auto">
@@ -1575,22 +1986,125 @@ export function CircleSettingsUserManagementPanel({
               {confirmDelete.email && isValidInviteEmail(confirmDelete.email) && (
                 <p className="text-base font-bold text-red-600 break-all px-1">{confirmDelete.email}</p>
               )}
+              {!isPendingProvision && isValidInviteEmail(confirmDelete.email) && (
+                <fieldset className="text-left space-y-2 pt-1">
+                  <label className="flex items-start gap-2 text-sm text-slate-700">
+                    <input
+                      type="radio"
+                      name="remove-contributions"
+                      className="mt-1"
+                      checked={!deleteContributions}
+                      onChange={() => setDeleteContributions(false)}
+                    />
+                    <span>{t('admin.users.keepContributions')}</span>
+                  </label>
+                  <label className="flex items-start gap-2 text-sm text-slate-700">
+                    <input
+                      type="radio"
+                      name="remove-contributions"
+                      className="mt-1"
+                      checked={deleteContributions}
+                      onChange={() => setDeleteContributions(true)}
+                    />
+                    <span>{t('admin.users.removeContributions')}</span>
+                  </label>
+                </fieldset>
+              )}
+              {removeError ? <p className="text-sm text-red-600">{removeError}</p> : null}
             </div>
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setConfirmDelete(null)}
+                onClick={() => {
+                  setConfirmDelete(null);
+                  setDeleteContributions(false);
+                  setConfirmEraseContributions(false);
+                  setRemoveError('');
+                  setError(null);
+                }}
                 className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-bold"
               >
                 {t('common.cancel')}
               </button>
               <button
                 type="button"
+                onClick={() => {
+                  if (
+                    !isPendingProvision &&
+                    isValidInviteEmail(confirmDelete.email) &&
+                    deleteContributions
+                  ) {
+                    setRemoveError('');
+                    setConfirmEraseContributions(true);
+                    return;
+                  }
+                  void proceedDelete(confirmDelete);
+                }}
+                disabled={saving}
+                className="flex-1 py-3 bg-red-600 text-white rounded-2xl font-bold inline-flex items-center justify-center gap-2 disabled:cursor-wait"
+              >
+                {saving ? <Loader2 size={16} className="animate-spin shrink-0" /> : null}
+                {saving ? t('admin.users.removingProgress') : t('admin.users.removeFromPatientConfirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDelete && confirmEraseContributions && (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white p-6 rounded-[28px] shadow-2xl max-w-sm w-full space-y-5 border border-slate-100">
+            <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center text-red-500 mx-auto">
+              {saving ? <Loader2 size={24} className="animate-spin" /> : <Trash2 size={24} />}
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-bold text-slate-900">
+                {t('admin.users.eraseContributionsTitle', {
+                  name:
+                    confirmDelete.name ||
+                    confirmDelete.email ||
+                    t('admin.users.thisPerson'),
+                })}
+              </h3>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                {saving
+                  ? t('admin.users.removingProgressDetail', {
+                      name:
+                        confirmDelete.name ||
+                        confirmDelete.email ||
+                        t('admin.users.thisPerson'),
+                      patient: patient.displayName,
+                    })
+                  : t('admin.users.eraseContributionsDescription', {
+                      name:
+                        confirmDelete.name ||
+                        confirmDelete.email ||
+                        t('admin.users.thisPerson'),
+                      patient: patient.displayName,
+                    })}
+              </p>
+              {removeError ? <p className="text-sm text-red-600">{removeError}</p> : null}
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmEraseContributions(false);
+                  setRemoveError('');
+                }}
+                disabled={saving}
+                className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-bold disabled:opacity-50"
+              >
+                {t('common.back')}
+              </button>
+              <button
+                type="button"
                 onClick={() => void proceedDelete(confirmDelete)}
                 disabled={saving}
-                className="flex-1 py-3 bg-red-600 text-white rounded-2xl font-bold disabled:opacity-50"
+                className="flex-1 py-3 bg-red-600 text-white rounded-2xl font-bold inline-flex items-center justify-center gap-2 disabled:cursor-wait"
               >
-                {t('admin.users.deleteAria')}
+                {saving ? <Loader2 size={16} className="animate-spin shrink-0" /> : null}
+                {saving ? t('admin.users.removingProgress') : t('admin.users.eraseContributionsConfirm')}
               </button>
             </div>
           </div>

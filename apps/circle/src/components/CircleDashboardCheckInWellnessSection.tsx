@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import type { DailyCheckInAnswerTrendPoint } from '@medxforce/shared';
-import { normalizeMemberRole, type CircleMemberRole } from '@medxforce/shared';
+import type { CircleMemberRole } from '@medxforce/shared';
 import { useCircleT } from '../lib/circleI18nContext';
 import {
   buildCheckInWellnessAnimationFramesFromTrend,
   buildCheckInWellnessPreviewFrames,
   getCheckInWellnessAveragesFromTrend,
 } from '../lib/circleCheckInWellnessMetrics';
+import type { AlertAttentionRecencyUrgency } from '../lib/circleDashboardStats';
 import {
   CircleDashboardCheckInWellnessModal,
 } from './CircleDashboardCheckInWellness';
@@ -17,20 +18,23 @@ type CircleDashboardCheckInWellnessSectionProps = {
   answerTrend?: DailyCheckInAnswerTrendPoint[];
   enabled: boolean;
   preview?: boolean;
+  recencyTint?: AlertAttentionRecencyUrgency;
+  /** Full-row Stay Connected tile. */
+  wide?: boolean;
   onOpenDetails?: () => void;
 };
 
 export function CircleDashboardCheckInWellnessSection({
-  memberRole,
   answerTrend,
   enabled,
   preview = false,
+  recencyTint = 'neutral',
+  wide = false,
   onOpenDetails,
 }: CircleDashboardCheckInWellnessSectionProps) {
   const t = useCircleT();
   const [open, setOpen] = useState(false);
-  const role = normalizeMemberRole(memberRole);
-  const active = enabled && role !== 'friend';
+  const active = enabled;
   const windowDays = 30;
 
   const averages = useMemo(() => {
@@ -50,17 +54,19 @@ export function CircleDashboardCheckInWellnessSection({
 
   const frames = useMemo(() => {
     if (preview) return buildCheckInWellnessPreviewFrames();
-    return buildCheckInWellnessAnimationFramesFromTrend(answerTrend, windowDays);
+    return buildCheckInWellnessAnimationFramesFromTrend(answerTrend);
   }, [answerTrend, preview]);
 
   if (!active) return null;
 
   return (
     <>
-      <div className="h-[13rem] sm:h-[14rem]">
+      <div className={wide ? 'h-[15rem] sm:h-[16.5rem]' : 'h-[13rem] sm:h-[14rem]'}>
         <CircleDashboardCheckInWellnessTile
           averages={averages}
           frames={frames}
+          wide={wide}
+          recencyTint={preview ? 'green' : recencyTint}
           onOpenModal={() => setOpen(true)}
           onOpenDetails={onOpenDetails}
           t={t}

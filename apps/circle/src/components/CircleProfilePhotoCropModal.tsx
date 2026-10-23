@@ -35,17 +35,17 @@ export function CircleProfilePhotoCropModal({
 
   const handleApply = async () => {
     if (!croppedAreaPixels || !imageSrc) {
-      setError('Move or zoom the image so the crop area is ready, then try again.');
+      setError(t('common.cropErrorReady'));
       return;
     }
     setProcessing(true);
     setError(null);
     try {
       const cropped = await getCroppedImg(imageSrc, croppedAreaPixels);
-      if (!cropped) throw new Error('Could not crop image.');
+      if (!cropped) throw new Error(t('common.cropErrorCrop'));
       await onApply(cropped);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not apply crop.';
+      const message = err instanceof Error ? err.message : t('common.cropErrorFailed');
       setError(message);
       console.warn('[CircleProfilePhotoCropModal]', err);
     } finally {
@@ -57,7 +57,7 @@ export function CircleProfilePhotoCropModal({
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4">
       <div className="bg-white w-full max-w-2xl rounded-[40px] overflow-hidden flex flex-col shadow-2xl">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-xl font-bold text-slate-800">Crop Profile Picture</h3>
+          <h3 className="text-xl font-bold text-slate-800">{t('common.cropTitle')}</h3>
           <button
             type="button"
             onClick={onCancel}
@@ -93,7 +93,7 @@ export function CircleProfilePhotoCropModal({
         <div className="p-8 space-y-6">
           <div className="space-y-4">
             <div className="flex items-center justify-between text-sm font-bold text-slate-500 uppercase tracking-wider">
-              <span>Zoom</span>
+              <span>{t('common.zoom')}</span>
               <span>{Math.round(zoom * 100)}%</span>
             </div>
             <input
@@ -121,7 +121,7 @@ export function CircleProfilePhotoCropModal({
               disabled={processing}
               className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="button"
@@ -132,10 +132,10 @@ export function CircleProfilePhotoCropModal({
               {processing ? (
                 <>
                   <Loader2 size={20} className="animate-spin" />
-                  Processing…
+                  {t('common.processing')}
                 </>
               ) : (
-                'Apply Crop'
+                t('common.applyCrop')
               )}
             </button>
           </div>

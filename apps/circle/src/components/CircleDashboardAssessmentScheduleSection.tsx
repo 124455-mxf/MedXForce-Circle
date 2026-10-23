@@ -1,5 +1,5 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { AnalyticsMetricId, CircleMemberRole, CirclePatientSummary, PatientAnalyticsSummary, PatientCapabilities, RemoteAssessmentSchedule } from '@medxforce/shared';
@@ -9,8 +9,11 @@ import { CircleAssessmentScheduleCalendar } from './CircleAssessmentScheduleCale
 import { CircleCareCalendarEntryModal } from './CircleCareCalendarEntryModal';
 import { useCareCalendarEntries, buildCareCalendarEntriesSubscription } from '../hooks/useCareCalendarEntries';
 import { useCircleMemberInviteContext } from '../hooks/useCircleMemberInviteContext';
+import { useCircleMemberTimeZone } from '../hooks/useCircleMemberTimeZone';
+import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfileSnapshot';
 import { updateCareCalendarEntry } from '../services/careCalendarService';
-import type { CareCalendarAppointmentTask, CareCalendarEntry } from '@medxforce/shared';
+import type { CareCalendarAppointmentTask, CareCalendarEntry, CareCalendarVisitDebrief } from '@medxforce/shared';
+import type { CircleScheduleAppointmentFocus, CircleScheduleViewIntent } from '../lib/circleSchedulePreferences';
 
 export type CircleDashboardAssessmentScheduleSectionProps = {
   db: Firestore;
@@ -23,13 +26,20 @@ export type CircleDashboardAssessmentScheduleSectionProps = {
   byMetricId: Map<string, PatientAnalyticsSummary>;
   treatmentPhase?: string | null;
   appMode?: string | null;
-  healthAssessmentsEnabled?: boolean;
+  scheduleEnabled?: boolean;
+  featuresVisibility?: Record<string, unknown>;
   remoteAssessmentSchedule?: RemoteAssessmentSchedule;
   enabled: boolean;
   fullPage?: boolean;
   t: (path: string, params?: Record<string, unknown>) => string;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
   onRecordVisit?: (entryId: string) => void;
+  onManageClinicalReferences?: () => void;
+  onRegisterAddAppointment?: (add: ((dateKey?: string) => void) | null) => void;
+  onOpenCountChange?: (count: number) => void;
+  viewIntent?: CircleScheduleViewIntent | null;
+  appointmentFocus?: CircleScheduleAppointmentFocus | null;
+  onAppointmentFocusConsumed?: () => void;
 };
 
 export function CircleDashboardAssessmentScheduleSection({
@@ -43,16 +53,25 @@ export function CircleDashboardAssessmentScheduleSection({
   byMetricId,
   treatmentPhase,
   appMode,
-  healthAssessmentsEnabled,
+  scheduleEnabled,
+  featuresVisibility,
   remoteAssessmentSchedule,
   enabled,
   fullPage = false,
   t,
   onOpenAssessment,
   onRecordVisit,
+  onManageClinicalReferences,
+  onRegisterAddAppointment,
+  onOpenCountChange,
+  viewIntent = null,
+  appointmentFocus = null,
+  onAppointmentFocusConsumed,
 }: CircleDashboardAssessmentScheduleSectionProps) {
   const { inviteContext, memberContactId, contact: ownContact, loading: ownContactLoading, inviteContextReady } =
     useCircleMemberInviteContext(db, user, patient);
+  const { timezoneId: organizerTimezoneId } = useCircleMemberTimeZone(db, user);
+  const { snapshot: profileSnapshot } = useCirclePatientProfileSnapshot(db, patientId);
   const inviteMembershipRepairAttempted = useRef(false);
   const calendarSubscription = useMemo(
     () =>
@@ -98,8 +117,8 @@ export function CircleDashboardAssessmentScheduleSection({
   const [initialDateKey, setInitialDateKey] = useState<string | undefined>();
 
   const canReadRemoteSettings = canViewRemoteSettingsTab(capabilities);
-  const effectiveHealthAssessmentsEnabled =
-    canReadRemoteSettings && healthAssessmentsEnabled !== false;
+  const effectiveScheduleEnabled =
+    canReadRemoteSettings && scheduleEnabled !== false;
 
   const schedule = useMemo(
     () =>
@@ -107,7 +126,8 @@ export function CircleDashboardAssessmentScheduleSection({
         byMetricId,
         treatmentPhase,
         appMode: canReadRemoteSettings ? appMode : undefined,
-        healthAssessmentsEnabled: effectiveHealthAssessmentsEnabled,
+        scheduleEnabled: effectiveScheduleEnabled,
+        featuresVisibility: canReadRemoteSettings ? featuresVisibility : undefined,
         remoteAssessmentSchedule: canReadRemoteSettings ? remoteAssessmentSchedule : undefined,
       }),
     [
@@ -115,7 +135,8 @@ export function CircleDashboardAssessmentScheduleSection({
       treatmentPhase,
       appMode,
       canReadRemoteSettings,
-      effectiveHealthAssessmentsEnabled,
+      effectiveScheduleEnabled,
+      featuresVisibility,
       remoteAssessmentSchedule,
     ],
   );
@@ -126,14 +147,21 @@ export function CircleDashboardAssessmentScheduleSection({
   );
 
   const canManageAppointments = canViewRemoteSettingsTab(capabilities);
+  const sectionVisible = enabled && normalizeMemberRole(memberRole) !== 'friend';
 
-  if (!enabled || normalizeMemberRole(memberRole) === 'friend') return null;
-
-  const openCreate = (dateKey?: string) => {
+  const openCreate = useCallback((dateKey?: string) => {
     setEditEntryId(null);
     setInitialDateKey(dateKey);
     setModalOpen(true);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!fullPage || !sectionVisible) return;
+    onRegisterAddAppointment?.(canManageAppointments ? openCreate : null);
+    return () => onRegisterAddAppointment?.(null);
+  }, [canManageAppointments, fullPage, onRegisterAddAppointment, openCreate, sectionVisible]);
+
+  if (!sectionVisible) return null;
 
   const openEdit = (entryId: string) => {
     setEditEntryId(entryId);
@@ -147,6 +175,22 @@ export function CircleDashboardAssessmentScheduleSection({
     tasks: CareCalendarAppointmentTask[],
   ) => {
     await updateCareCalendarEntry(db, patientId, entryId, { kind, appointmentTasks: tasks });
+  };
+
+  const handleClinicalReferenceIdsChange = async (
+    entryId: string,
+    kind: CareCalendarEntry['kind'],
+    ids: string[],
+  ) => {
+    await updateCareCalendarEntry(db, patientId, entryId, { kind, clinicalReferenceIds: ids });
+  };
+
+  const handleVisitDebriefChange = async (
+    entryId: string,
+    kind: CareCalendarEntry['kind'],
+    debrief: CareCalendarVisitDebrief,
+  ) => {
+    await updateCareCalendarEntry(db, patientId, entryId, { kind, visitDebrief: debrief });
   };
 
   return (
@@ -166,7 +210,13 @@ export function CircleDashboardAssessmentScheduleSection({
           onAddAppointment={canManageAppointments ? openCreate : undefined}
           onEditAppointment={canManageAppointments ? openEdit : undefined}
           onAppointmentTasksChange={handleAppointmentTasksChange}
+          onClinicalReferenceIdsChange={
+            canManageAppointments ? handleClinicalReferenceIdsChange : undefined
+          }
+          onVisitDebriefChange={handleVisitDebriefChange}
+          onManageClinicalReferences={onManageClinicalReferences}
           currentUserUid={user.uid}
+          currentUserName={authorName}
           patientId={patientId}
           db={db}
           memberContactId={memberContactId}
@@ -174,10 +224,16 @@ export function CircleDashboardAssessmentScheduleSection({
           inviteContactId={inviteContext.inviteContactId}
           memberDisplayName={inviteContext.displayName}
           memberRole={memberRole}
+          viewerTimezoneId={organizerTimezoneId}
           compact={!fullPage}
           hideHeader={fullPage}
           enableViewModes={fullPage}
+          hideInlineAddButton={fullPage}
           onRecordVisit={onRecordVisit}
+          onOpenCountChange={onOpenCountChange}
+          viewIntent={viewIntent}
+          appointmentFocus={appointmentFocus}
+          onAppointmentFocusConsumed={onAppointmentFocusConsumed}
         />
       </div>
       {canManageAppointments && (
@@ -190,6 +246,8 @@ export function CircleDashboardAssessmentScheduleSection({
           authorRole={memberRole}
           organizerContactId={ownContact?.id}
           organizerContactReady={!ownContactLoading}
+          patientTimezoneId={profileSnapshot?.identity.timezoneId}
+          organizerTimezoneId={organizerTimezoneId}
           initialDateKey={initialDateKey}
           editingEntry={editingEntry}
           t={t}

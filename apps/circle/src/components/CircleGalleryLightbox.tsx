@@ -3,13 +3,13 @@ import type { User } from 'firebase/auth';
 import { ChevronLeft, ChevronRight, ImageIcon, Pause, Play, X } from 'lucide-react';
 import type { Firestore } from 'firebase/firestore';
 import type { GalleryAlbumMedia, GalleryTagPerson } from '@medxforce/shared';
-import { markCircleGalleryMediaViewed } from '../lib/circleGalleryViews';
+import { markCircleGalleryMediaViewed, markCircleGalleryMediaViewedMany } from '../lib/circleGalleryViews';
 import { useGalleryMediaReactions } from '../hooks/useGalleryMediaReactions';
 import { useGalleryPersonTagging } from '../hooks/useGalleryPersonTagging';
 import { CircleGalleryReactionBar } from './CircleGalleryReactionBar';
 import { CircleGalleryIdentifyPanel } from './CircleGalleryIdentifyPanel';
 import { cn } from '../lib/utils';
-import { useGalleryImageSrc } from '../lib/galleryHeicDisplay';
+import { useGalleryFullImageSrc, useGalleryImageSrc } from '../lib/galleryHeicDisplay';
 import {
   buildLightboxMediaFit,
   type LightboxStageBounds,
@@ -73,10 +73,88 @@ function CircleAdaptiveLightboxPhoto({
   );
 }
 
+function CircleLightboxPhotoLayer({
+  url,
+  visible,
+  stageBounds,
+  onReady,
+}: {
+  url: string;
+  visible: boolean;
+  stageBounds: LightboxStageBounds;
+  onReady?: () => void;
+}) {
+  const src = useGalleryFullImageSrc(url);
+
+  useEffect(() => {
+    if (!src || !onReady) return undefined;
+    const probe = new Image();
+    probe.onload = onReady;
+    probe.onerror = onReady;
+    probe.src = src;
+    if (probe.complete) onReady();
+    return undefined;
+  }, [onReady, src]);
+
+  if (!src) return null;
+
+  return (
+    <div
+      className={cn(visible ? 'relative' : 'pointer-events-none absolute opacity-0')}
+      aria-hidden={!visible}
+    >
+      <CircleAdaptiveLightboxPhoto src={src} stageBounds={stageBounds} />
+    </div>
+  );
+}
+
+function CircleLightboxPhotoSwap({
+  item,
+  neighborItems,
+  stageBounds,
+}: {
+  item: GalleryAlbumMedia;
+  neighborItems: GalleryAlbumMedia[];
+  stageBounds: LightboxStageBounds;
+}) {
+  const [displayed, setDisplayed] = useState(item);
+  const requestedRef = useRef(item);
+  requestedRef.current = item;
+  const markRequestedReady = useCallback(() => {
+    const next = requestedRef.current;
+    setDisplayed((current) => (current.id === next.id ? current : next));
+  }, [item.id]);
+
+  const mountedItems = useMemo(() => {
+    const byId = new Map<string, GalleryAlbumMedia>();
+    byId.set(displayed.id, displayed);
+    byId.set(item.id, item);
+    for (const neighbor of neighborItems) {
+      if (!neighbor.isVideo && !byId.has(neighbor.id)) byId.set(neighbor.id, neighbor);
+    }
+    return [...byId.values()];
+  }, [displayed, item, neighborItems]);
+
+  return (
+    <div className="relative flex items-center justify-center">
+      {mountedItems.map((photo) => (
+        <CircleLightboxPhotoLayer
+          key={photo.id}
+          url={photo.url}
+          visible={photo.id === displayed.id}
+          stageBounds={stageBounds}
+          onReady={photo.id === item.id ? markRequestedReady : undefined}
+        />
+      ))}
+    </div>
+  );
+}
+
 type CircleGalleryLightboxProps = {
   db: Firestore;
   user: User;
   patientId: string;
+  memberUid?: string;
   patientDisplayName: string;
   items: GalleryAlbumMedia[];
   index: number;
@@ -90,6 +168,7 @@ export function CircleGalleryLightbox({
   db,
   user,
   patientId,
+  memberUid,
   patientDisplayName,
   items,
   index,
@@ -106,10 +185,12 @@ export function CircleGalleryLightbox({
   const indexRef = useRef(index);
   const slideshowActiveRef = useRef(isSlideshowActive);
   const onIndexChangeRef = useRef(onIndexChange);
+  const itemsRef = useRef(items);
   const itemsLengthRef = useRef(items.length);
   indexRef.current = index;
   slideshowActiveRef.current = isSlideshowActive;
   onIndexChangeRef.current = onIndexChange;
+  itemsRef.current = items;
   itemsLengthRef.current = items.length;
   const [recentReactionId, setRecentReactionId] = useState<string | null>(null);
   const [showIdentify, setShowIdentify] = useState(false);
@@ -131,16 +212,32 @@ export function CircleGalleryLightbox({
     !!item && !item.isVideo && item.uploadedByUid === user.uid;
   const taggedPeople = item ? getTaggedOnMedia(item.id) : [];
 
+  const markPlaylistViewed = useCallback(() => {
+    markCircleGalleryMediaViewedMany(
+      patientId,
+      itemsRef.current.map((media) => media.id),
+      memberUid,
+    );
+  }, [memberUid, patientId]);
+
+  const closeLightbox = useCallback(() => {
+    if (autoPlaySlideshow || slideshowActiveRef.current) {
+      markPlaylistViewed();
+    }
+    onClose();
+  }, [autoPlaySlideshow, markPlaylistViewed, onClose]);
+
   useEffect(() => {
     if (autoPlaySlideshow) {
       setIsSlideshowActive(true);
+      markPlaylistViewed();
     }
-  }, [autoPlaySlideshow]);
+  }, [autoPlaySlideshow, markPlaylistViewed]);
 
   useEffect(() => {
     if (!item) return;
-    markCircleGalleryMediaViewed(patientId, item.id);
-  }, [item, patientId]);
+    markCircleGalleryMediaViewed(patientId, item.id, memberUid);
+  }, [item, memberUid, patientId]);
 
   useEffect(() => {
     setShowIdentify(false);
@@ -264,16 +361,21 @@ export function CircleGalleryLightbox({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') closeLightbox();
       if (e.key === 'ArrowLeft' && hasPrev) goPrev();
       if (e.key === 'ArrowRight' && hasNext) goNext();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [goNext, goPrev, hasNext, hasPrev, onClose]);
+  }, [closeLightbox, goNext, goPrev, hasNext, hasPrev]);
 
-  const imageSrc = useGalleryImageSrc(item?.isVideo ? undefined : item?.url, item?.thumbnailUrl);
   const { ref: lightboxStageRef, bounds: lightboxStageBounds } = useLightboxStageBounds<HTMLDivElement>();
+  const neighborItems = useMemo(() => {
+    if (items.length <= 1) return [] as GalleryAlbumMedia[];
+    const next = items[(index + 1) % items.length];
+    const prev = items[(index - 1 + items.length) % items.length];
+    return [next, prev].filter((media): media is GalleryAlbumMedia => !!media && !media.isVideo);
+  }, [index, items]);
 
   const uploaderLabel = resolveGalleryUploaderDisplayName(
     item?.senderName,
@@ -318,17 +420,12 @@ export function CircleGalleryLightbox({
             muted={isSlideshowActive}
             className="max-h-full max-w-full rounded-lg"
           />
-        ) : imageSrc ? (
-          <CircleAdaptiveLightboxPhoto
-            key={item.id}
-            src={imageSrc}
+        ) : (
+          <CircleLightboxPhotoSwap
+            item={item}
+            neighborItems={neighborItems}
             stageBounds={lightboxStageBounds}
           />
-        ) : (
-          <div className="max-w-md rounded-2xl bg-white px-8 py-10 text-center text-slate-500 shadow-lg">
-            <ImageIcon size={40} className="mx-auto mb-3 text-slate-300" />
-            <p className="text-sm">This photo could not be previewed.</p>
-          </div>
         )}
         {hasNext && (
           <button
@@ -351,11 +448,13 @@ export function CircleGalleryLightbox({
                 window.alert(t('gallery.tagFailed'));
               });
             }}
-            onCreateAndTag={(name, relationship) =>
-              createPersonOnMedia(name, relationship, item.id).catch(() => {
+            onCreateAndTag={async (name, relationship) => {
+              try {
+                await createPersonOnMedia(name, relationship, item.id);
+              } catch {
                 window.alert(t('gallery.tagFailed'));
-              })
-            }
+              }
+            }}
             onClose={() => setShowIdentify(false)}
           />
         ) : null}
@@ -365,7 +464,7 @@ export function CircleGalleryLightbox({
       <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 pointer-events-none">
         <button
           type="button"
-          onClick={onClose}
+          onClick={closeLightbox}
           className="pointer-events-auto w-9 h-9 rounded-full bg-white/95 text-slate-500 border border-slate-200 shadow-md flex items-center justify-center hover:text-slate-700"
           aria-label={t('common.close')}
         >

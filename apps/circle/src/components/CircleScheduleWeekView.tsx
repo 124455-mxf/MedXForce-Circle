@@ -1,58 +1,57 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { Firestore } from 'firebase/firestore';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { ChevronLeft, ChevronRight, Maximize2, Users, X } from 'lucide-react';
+import { CalendarClock, MapPin, Stethoscope, Users, X, type LucideIcon } from 'lucide-react';
 import {
-  assessmentScheduleDateKey,
+  applyCareCalendarAttendeeDisplayNames,
   careCalendarAttendeeRoleLabelKey,
-  careCalendarDateKey,
-  formatCareCalendarTime,
   formatCareCalendarTimeRange,
-  getCalendarWeekDays,
-  buildScheduleWeekTimeSlots,
-  SCHEDULE_WEEK_VIEW_START_HOUR,
-  SCHEDULE_WEEK_VIEW_END_HOUR,
-  SCHEDULE_WEEK_SLOT_MINUTES,
   mergeAttendeeResponses,
   parseAttendeeResponseSummary,
+  parseCareCalendarAppointmentTasks,
   shouldShowAttendeeInviteResponseBadge,
-  careCalendarWeekEventBlockClasses,
-  careCalendarPrepBorderClasses,
-  countAppointmentPrepRemaining,
-  appointmentPrepHighlightIsNeeded,
-  appointmentPrepHighlightIsReady,
-  resolveAppointmentPrepHighlight,
-  resolveCareCalendarAppointmentTiming,
+  type AnalyticsMetricId,
   type AssessmentHistoryMap,
   type AssessmentScheduleDayEvent,
   type CareCalendarAttendee,
+  type CareCalendarAppointmentTask,
   type CareCalendarDayEvent,
+  type CareCalendarVisitDebrief,
 } from '@medxforce/shared';
+import { CircleCareCalendarKindMeta } from './CircleCareCalendarKindMeta';
+import { CircleCareCalendarForYouLine } from './CircleCareCalendarForYouLine';
 import { CircleCareCalendarMapsLinks } from './CircleCareCalendarMapsLinks';
 import { CircleCareCalendarAppointmentEpisodePanel } from './CircleCareCalendarAppointmentEpisodePanel';
 import { CircleExpandableTextPreview } from './CircleExpandableTextPreview';
 import { CircleCareCalendarInviteRsvpBar } from './CircleCareCalendarInviteRsvpBar';
-import { CircleMessageExpandOverlay } from './CircleMessageExpandOverlay';
-import type { CareCalendarAppointmentTask } from '@medxforce/shared';
-import type { CircleAssessmentScheduleContext } from '../lib/circleAssessmentScheduleMetrics';
-import type { AnalyticsMetricId } from '@medxforce/shared';
 import {
-  CIRCLE_SCHEDULE_WEEK_SCROLL_CLASS,
-  CIRCLE_SCHEDULE_WEEK_VIEW_SHELL_CLASS,
-} from '../lib/circleScheduleLayout';
+  CircleLiveTranslatingLabel,
+  CircleLiveTranslationToggle,
+  CircleTranslatedUserText,
+} from './CircleTranslatedUserText';
+import { useCircleLiveTranslatedText } from '../hooks/useCircleLiveTranslatedText';
+import { useCareCalendarAttendeeOptions } from '../hooks/useCareCalendarAttendeeOptions';
+import type { CircleAssessmentScheduleContext } from '../lib/circleAssessmentScheduleMetrics';
 import { cn } from '../lib/utils';
-
-const DAY_START_MINUTES = SCHEDULE_WEEK_VIEW_START_HOUR * 60;
-const DAY_END_MINUTES = SCHEDULE_WEEK_VIEW_END_HOUR * 60;
-const SLOT_HEIGHT_PX = 48;
-const MOBILE_VISIBLE_DAYS = 3;
+import { useCircleI18nContext } from '../lib/circleI18nContext';
+import { formatCircleDate } from '../lib/circleLanguages';
+import { CircleScheduleWeekAgenda } from './CircleScheduleWeekAgenda';
 
 export type CircleScheduleAppointmentSelection = {
   dateKey: string;
   event: CareCalendarDayEvent;
+  episodeTab?: 'details' | 'prepare' | 'followup';
 };
+
+export function resolveCircleScheduleAppointmentSelection(
+  selection: CircleScheduleAppointmentSelection,
+  dayEvents: CareCalendarDayEvent[],
+): CircleScheduleAppointmentSelection {
+  const fresh = dayEvents.find((event) => event.entryId === selection.event.entryId);
+  return fresh ? { ...selection, dateKey: selection.dateKey, event: fresh } : selection;
+}
 
 type CircleScheduleWeekViewProps = {
   weekAnchor: Date;
@@ -70,7 +69,19 @@ type CircleScheduleWeekViewProps = {
     kind: CareCalendarDayEvent['kind'],
     tasks: CareCalendarAppointmentTask[],
   ) => void | Promise<void>;
+  onClinicalReferenceIdsChange?: (
+    entryId: string,
+    kind: CareCalendarDayEvent['kind'],
+    ids: string[],
+  ) => void | Promise<void>;
+  onManageClinicalReferences?: () => void;
+  onVisitDebriefChange?: (
+    entryId: string,
+    kind: CareCalendarDayEvent['kind'],
+    debrief: CareCalendarVisitDebrief,
+  ) => void | Promise<void>;
   currentUserUid?: string;
+  currentUserName?: string;
   patientId?: string;
   db?: Firestore;
   memberContactId?: string;
@@ -79,42 +90,73 @@ type CircleScheduleWeekViewProps = {
   memberDisplayName?: string;
   memberRole?: string;
   assessmentSchedule?: CircleAssessmentScheduleContext;
+  assessmentLabel: (event: AssessmentScheduleDayEvent) => string;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
-  onRecordVisit?: (entryId: string) => void;
+  onRecordVisit?: (
+    entryId: string,
+    restoreSheet?: import('../lib/circleSchedulePreferences').CircleScheduleAppointmentFocus,
+  ) => void;
+  viewerTimezoneId?: string;
 };
 
-function buildWeekTimeSlots(): number[] {
-  return buildScheduleWeekTimeSlots();
+function attendeesSignature(attendees: CareCalendarAttendee[] | undefined): string {
+  if (!attendees?.length) return '';
+  return attendees
+    .map(
+      (attendee) =>
+        `${attendee.contactId}:${attendee.response ?? 'pending'}:${attendee.respondedAt ?? ''}:${attendee.respondedByUid ?? ''}`,
+    )
+    .join('|');
 }
 
-function minutesToTop(minutes: number): number {
-  return ((minutes - DAY_START_MINUTES) / SCHEDULE_WEEK_SLOT_MINUTES) * SLOT_HEIGHT_PX;
+function inviteeUidMapSignature(map: Record<string, string> | undefined): string {
+  if (!map) return '';
+  return Object.entries(map)
+    .map(([contactId, uid]) => `${contactId}:${uid}`)
+    .sort()
+    .join('|');
 }
 
-function eventBlockHeight(startMinutes: number, endMinutes: number | undefined): number {
-  const end = endMinutes ?? startMinutes + SCHEDULE_WEEK_SLOT_MINUTES;
-  const duration = Math.max(end - startMinutes, SCHEDULE_WEEK_SLOT_MINUTES);
-  return (duration / SCHEDULE_WEEK_SLOT_MINUTES) * SLOT_HEIGHT_PX;
+function appointmentTasksSignature(tasks: CareCalendarAppointmentTask[] | undefined): string {
+  if (!tasks?.length) return '';
+  return tasks.map((task) => `${task.id}:${task.status}:${task.title}`).join('|');
 }
 
-function defaultMobileDayOffset(weekDays: Date[], todayKey: string): number {
-  const todayIdx = weekDays.findIndex((day) => assessmentScheduleDateKey(day) === todayKey);
-  if (todayIdx < 0) return 0;
-  return Math.max(0, Math.min(todayIdx - 1, weekDays.length - MOBILE_VISIBLE_DAYS));
-}
-
-function useLiveMergedAttendees(
+/**
+ * Live-merge attendee RSVP badges and visit tasks from the care_calendar doc.
+ * Keep fallback/uid-map out of effect deps — callers often pass freshly merged
+ * arrays each render, and resetting to a stale selection.event caused PENDING↔GOING flicker.
+ */
+function useLiveCareCalendarSheetFields(
   db: Firestore | undefined,
   patientId: string | undefined,
   entryId: string,
-  fallback?: CareCalendarAttendee[],
+  fallbackAttendees?: CareCalendarAttendee[],
   inviteeMemberUidByContactId?: Record<string, string>,
-): CareCalendarAttendee[] | undefined {
-  const [attendees, setAttendees] = useState(fallback);
+  fallbackTasks?: CareCalendarAppointmentTask[],
+): {
+  attendees: CareCalendarAttendee[] | undefined;
+  appointmentTasks: CareCalendarAppointmentTask[] | undefined;
+} {
+  const [attendees, setAttendees] = useState(fallbackAttendees);
+  const [appointmentTasks, setAppointmentTasks] = useState(fallbackTasks);
+  const fallbackRef = useRef(fallbackAttendees);
+  fallbackRef.current = fallbackAttendees;
+  const inviteeUidMapRef = useRef(inviteeMemberUidByContactId);
+  inviteeUidMapRef.current = inviteeMemberUidByContactId;
+  const fallbackTasksRef = useRef(fallbackTasks);
+  fallbackTasksRef.current = fallbackTasks;
+  const attendeesSigRef = useRef(attendeesSignature(fallbackAttendees));
+  const inviteeUidMapSigRef = useRef(inviteeUidMapSignature(inviteeMemberUidByContactId));
+  const tasksSigRef = useRef(appointmentTasksSignature(fallbackTasks));
 
   useEffect(() => {
-    setAttendees(fallback);
-  }, [entryId, fallback]);
+    setAttendees(fallbackRef.current);
+    setAppointmentTasks(fallbackTasksRef.current);
+    attendeesSigRef.current = attendeesSignature(fallbackRef.current);
+    inviteeUidMapSigRef.current = inviteeUidMapSignature(inviteeUidMapRef.current);
+    tasksSigRef.current = appointmentTasksSignature(fallbackTasksRef.current);
+  }, [entryId]);
 
   useEffect(() => {
     if (!db || !patientId || !entryId) return;
@@ -126,7 +168,7 @@ function useLiveMergedAttendees(
         const data = snap.data();
         const rawAttendees = Array.isArray(data.attendees)
           ? (data.attendees as CareCalendarAttendee[])
-          : fallback;
+          : fallbackRef.current;
         const summary = parseAttendeeResponseSummary(data.attendeeResponseSummary);
         const uidMap =
           data.inviteeMemberUidByContactId &&
@@ -137,16 +179,37 @@ function useLiveMergedAttendees(
                   .map(([contactId, uid]) => [String(contactId), String(uid)])
                   .filter(([contactId, uid]) => Boolean(contactId) && Boolean(uid)),
               )
-            : inviteeMemberUidByContactId;
-        setAttendees(mergeAttendeeResponses(rawAttendees, summary, uidMap) ?? fallback);
+            : inviteeUidMapRef.current;
+        const merged = mergeAttendeeResponses(rawAttendees, summary, uidMap) ?? fallbackRef.current;
+        const mergedSig = attendeesSignature(merged);
+        const uidMapSig = inviteeUidMapSignature(uidMap);
+        if (
+          mergedSig !== attendeesSigRef.current ||
+          uidMapSig !== inviteeUidMapSigRef.current
+        ) {
+          attendeesSigRef.current = mergedSig;
+          inviteeUidMapSigRef.current = uidMapSig;
+          setAttendees(merged);
+        }
+
+        const liveTasks =
+          parseCareCalendarAppointmentTasks(data.appointmentTasks) ?? fallbackTasksRef.current;
+        const tasksSig = appointmentTasksSignature(liveTasks);
+        if (tasksSig !== tasksSigRef.current) {
+          tasksSigRef.current = tasksSig;
+          setAppointmentTasks(liveTasks);
+        }
       },
       () => {
         /* read may be denied for legacy entries */
       },
     );
-  }, [db, entryId, fallback, inviteeMemberUidByContactId, patientId]);
+  }, [db, entryId, patientId]);
 
-  return attendees ?? fallback;
+  return {
+    attendees: attendees ?? fallbackAttendees,
+    appointmentTasks: appointmentTasks ?? fallbackTasks,
+  };
 }
 
 export function CircleScheduleWeekView({
@@ -154,14 +217,15 @@ export function CircleScheduleWeekView({
   calendarByDay,
   careByDay,
   todayKey,
-  selectedDayDateKey,
-  onSelectedDayChange,
-  preferences,
-  histories = {},
   t,
+  assessmentLabel,
   onEditAppointment,
   onAppointmentTasksChange,
+  onClinicalReferenceIdsChange,
+  onManageClinicalReferences,
+  onVisitDebriefChange,
   currentUserUid,
+  currentUserName,
   patientId,
   db,
   memberContactId,
@@ -172,132 +236,63 @@ export function CircleScheduleWeekView({
   assessmentSchedule,
   onOpenAssessment,
   onRecordVisit,
+  viewerTimezoneId,
 }: CircleScheduleWeekViewProps) {
   const [selection, setSelection] = useState<CircleScheduleAppointmentSelection | null>(null);
   const ct = (key: string, params?: Record<string, unknown>) =>
     t(`dashboard.careCalendar.${key}`, params);
-
-  const weekDays = useMemo(() => getCalendarWeekDays(weekAnchor), [weekAnchor]);
-  const timeSlots = buildWeekTimeSlots();
-  const gridHeight = timeSlots.length * SLOT_HEIGHT_PX;
-  const maxMobileDayOffset = Math.max(0, weekDays.length - MOBILE_VISIBLE_DAYS);
-
-  const [mobileDayOffset, setMobileDayOffset] = useState(() =>
-    defaultMobileDayOffset(weekDays, todayKey),
-  );
-
-  useEffect(() => {
-    setMobileDayOffset(defaultMobileDayOffset(weekDays, todayKey));
-  }, [weekDays, todayKey]);
-
-  const mobileVisibleDays = weekDays.slice(
-    mobileDayOffset,
-    mobileDayOffset + MOBILE_VISIBLE_DAYS,
-  );
-  const mobileRangeLabel = `${mobileVisibleDays[0].toLocaleDateString(undefined, {
-    weekday: 'short',
-  })} – ${mobileVisibleDays[mobileVisibleDays.length - 1].toLocaleDateString(undefined, {
-    weekday: 'short',
-  })}`;
+  const resolvedSelection = useMemo(() => {
+    if (!selection) return null;
+    return resolveCircleScheduleAppointmentSelection(
+      selection,
+      careByDay.get(selection.dateKey) ?? [],
+    );
+  }, [careByDay, selection]);
 
   return (
-    <div className={CIRCLE_SCHEDULE_WEEK_VIEW_SHELL_CLASS}>
-      <p className="text-xs text-slate-400 text-center shrink-0 mb-2">
-        {t('schedulePage.views.weekScrollHint')}
-      </p>
-
-      <div className="md:hidden shrink-0 flex items-center justify-center gap-1 mb-2">
-        <button
-          type="button"
-          onClick={() => setMobileDayOffset((offset) => Math.max(0, offset - 1))}
-          disabled={mobileDayOffset === 0}
-          className={cn(
-            'shrink-0 p-2 rounded-xl border border-slate-100 text-slate-500 hover:bg-slate-50',
-            mobileDayOffset === 0 && 'opacity-40 pointer-events-none',
-          )}
-          aria-label={t('schedulePage.views.weekPrevDays')}
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <span className="flex-1 min-w-0 text-xs font-bold text-slate-600 text-center truncate px-1">
-          {mobileRangeLabel}
-        </span>
-        <button
-          type="button"
-          onClick={() =>
-            setMobileDayOffset((offset) => Math.min(maxMobileDayOffset, offset + 1))
-          }
-          disabled={mobileDayOffset >= maxMobileDayOffset}
-          className={cn(
-            'shrink-0 p-2 rounded-xl border border-slate-100 text-slate-500 hover:bg-slate-50',
-            mobileDayOffset >= maxMobileDayOffset && 'opacity-40 pointer-events-none',
-          )}
-          aria-label={t('schedulePage.views.weekNextDays')}
-        >
-          <ChevronRight size={18} />
-        </button>
-      </div>
-
-      <div className={CIRCLE_SCHEDULE_WEEK_SCROLL_CLASS}>
-        <div className="md:hidden">
-          <WeekDaysGrid
-            days={mobileVisibleDays}
-            dayColumnCount={MOBILE_VISIBLE_DAYS}
-            timeColumnWidth="3rem"
-            compactHeaders
-            gridHeight={gridHeight}
-            timeSlots={timeSlots}
-            calendarByDay={calendarByDay}
-            careByDay={careByDay}
-            todayKey={todayKey}
-            selectedDayDateKey={selectedDayDateKey}
-            selection={selection}
-            preferences={preferences}
-            histories={histories}
-            t={t}
-            onSelectedDayChange={onSelectedDayChange}
-            onSelectAppointment={setSelection}
-          />
-        </div>
-
-        <div className="hidden md:block">
-          <WeekDaysGrid
-            days={weekDays}
-            dayColumnCount={7}
-            timeColumnWidth="3.5rem"
-            gridHeight={gridHeight}
-            timeSlots={timeSlots}
-            calendarByDay={calendarByDay}
-            careByDay={careByDay}
-            todayKey={todayKey}
-            selectedDayDateKey={selectedDayDateKey}
-            selection={selection}
-            preferences={preferences}
-            histories={histories}
-            t={t}
-            onSelectedDayChange={onSelectedDayChange}
-            onSelectAppointment={setSelection}
-          />
-        </div>
-      </div>
-
-      {selection && (
+    <>
+      <CircleScheduleWeekAgenda
+        weekAnchor={weekAnchor}
+        calendarByDay={calendarByDay}
+        careByDay={careByDay}
+        todayKey={todayKey}
+        t={t}
+        assessmentLabel={assessmentLabel}
+        onOpenAppointment={setSelection}
+        onEditAppointment={onEditAppointment}
+        onOpenAssessment={onOpenAssessment}
+        assessmentSchedule={assessmentSchedule}
+        db={db}
+        patientId={patientId}
+        currentUserUid={currentUserUid}
+        memberContactId={memberContactId}
+        memberDocContactId={memberDocContactId}
+        inviteContactId={inviteContactId}
+        memberDisplayName={memberDisplayName}
+        memberRole={memberRole}
+        viewerTimezoneId={viewerTimezoneId}
+      />
+      {resolvedSelection ? (
         <CircleScheduleAppointmentDetailSheet
-          selection={selection}
+          selection={resolvedSelection}
           ct={ct}
           t={t}
           onClose={() => setSelection(null)}
           onEdit={
             onEditAppointment
               ? () => {
-                  const entryId = selection.event.entryId;
+                  const entryId = resolvedSelection.event.entryId;
                   setSelection(null);
                   onEditAppointment(entryId);
                 }
               : undefined
           }
           onAppointmentTasksChange={onAppointmentTasksChange}
+          onClinicalReferenceIdsChange={onClinicalReferenceIdsChange}
+          onManageClinicalReferences={onManageClinicalReferences}
+          onVisitDebriefChange={onVisitDebriefChange}
           currentUserUid={currentUserUid}
+          currentUserName={currentUserName}
           patientId={patientId}
           db={db}
           memberContactId={memberContactId}
@@ -308,204 +303,10 @@ export function CircleScheduleWeekView({
           assessmentSchedule={assessmentSchedule}
           onOpenAssessment={onOpenAssessment}
           onRecordVisit={onRecordVisit}
+          viewerTimezoneId={viewerTimezoneId}
         />
-      )}
-    </div>
-  );
-}
-
-function WeekDaysGrid({
-  days,
-  dayColumnCount,
-  timeColumnWidth,
-  compactHeaders = false,
-  gridHeight,
-  timeSlots,
-  calendarByDay,
-  careByDay,
-  todayKey,
-  selectedDayDateKey,
-  selection,
-  preferences,
-  histories = {},
-  t,
-  onSelectedDayChange,
-  onSelectAppointment,
-}: {
-  days: Date[];
-  dayColumnCount: number;
-  timeColumnWidth: string;
-  compactHeaders?: boolean;
-  gridHeight: number;
-  timeSlots: number[];
-  calendarByDay: Map<string, AssessmentScheduleDayEvent[]>;
-  careByDay: Map<string, CareCalendarDayEvent[]>;
-  todayKey: string;
-  selectedDayDateKey?: string;
-  selection: CircleScheduleAppointmentSelection | null;
-  preferences?: Record<string, unknown>;
-  histories?: AssessmentHistoryMap;
-  t: CircleScheduleWeekViewProps['t'];
-  onSelectedDayChange?: (dateKey: string) => void;
-  onSelectAppointment: (selection: CircleScheduleAppointmentSelection) => void;
-}) {
-  return (
-    <div
-      className="grid gap-px bg-slate-100 w-full"
-      style={{
-        gridTemplateColumns: `${timeColumnWidth} repeat(${dayColumnCount}, minmax(0, 1fr))`,
-      }}
-    >
-      <div className="sticky top-0 left-0 z-30 bg-white border-b border-slate-100 min-h-[3rem]" />
-
-      {days.map((date) => {
-        const dateKey = careCalendarDateKey(date);
-        const isToday = dateKey === todayKey;
-        const isSelected = dateKey === selectedDayDateKey;
-        const assessmentCount = (calendarByDay.get(dateKey) ?? []).length;
-
-        return (
-          <button
-            key={`header-${dateKey}`}
-            type="button"
-            onClick={() => onSelectedDayChange?.(dateKey)}
-            className={cn(
-              'sticky top-0 z-20 bg-white py-1.5 text-center border-b border-slate-100 transition-colors',
-              isToday && 'bg-blue-50',
-              isSelected && !isToday && 'bg-violet-50',
-              isSelected && 'ring-2 ring-inset ring-violet-300/80',
-            )}
-          >
-            <p
-              className={cn(
-                'font-bold text-slate-400 uppercase',
-                compactHeaders ? 'text-[9px]' : 'text-[10px]',
-              )}
-            >
-              {t(`remoteSettings.assessmentSchedule.weekdayShort.${date.getDay()}`)}
-            </p>
-            <p
-              className={cn(
-                'font-bold mt-0.5 mx-auto flex items-center justify-center rounded-full',
-                compactHeaders ? 'text-xs w-6 h-6' : 'text-sm w-7 h-7',
-                isToday && 'bg-blue-600 text-white',
-                !isToday && isSelected && 'bg-violet-600 text-white',
-                !isToday && !isSelected && 'text-slate-700',
-              )}
-            >
-              {date.getDate()}
-            </p>
-            {assessmentCount > 0 && (
-              <span
-                className="inline-block mt-0.5 min-w-[1.1rem] px-1 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[8px] font-bold"
-                title={t('schedulePage.views.weekAssessmentsCount', { count: assessmentCount })}
-              >
-                {assessmentCount}
-              </span>
-            )}
-          </button>
-        );
-      })}
-
-      <div
-        className="sticky left-0 z-20 bg-white relative shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)]"
-        style={{ height: gridHeight }}
-      >
-        {timeSlots.map((minutes, i) => (
-          <div
-            key={minutes}
-            className="absolute left-0 right-0 border-t border-slate-100 text-slate-400 text-[10px] font-medium pr-1 text-right"
-            style={{ top: i * SLOT_HEIGHT_PX, height: SLOT_HEIGHT_PX }}
-          >
-            <span className="relative -top-2 bg-white px-0.5">
-              {formatCareCalendarTime(minutes)}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {days.map((date) => {
-        const dateKey = assessmentScheduleDateKey(date);
-        const careEvents = careByDay.get(dateKey) ?? [];
-        const isToday = dateKey === todayKey;
-        const isDaySelected = dateKey === selectedDayDateKey;
-
-        return (
-          <div
-            key={`col-${dateKey}`}
-            className={cn(
-              'bg-white relative border-l border-slate-50',
-              isToday && 'bg-blue-50/30',
-              isDaySelected && !isToday && 'bg-violet-50/25',
-              isDaySelected && 'ring-2 ring-inset ring-violet-200/90',
-            )}
-            style={{ height: gridHeight }}
-          >
-            {timeSlots.map((minutes, i) => (
-              <div
-                key={minutes}
-                className="absolute left-0 right-0 border-t border-slate-100/80"
-                style={{ top: i * SLOT_HEIGHT_PX, height: SLOT_HEIGHT_PX }}
-              />
-            ))}
-
-            {careEvents.map((event) => {
-              const start = event.startTimeMinutes ?? 9 * 60;
-              if (start < DAY_START_MINUTES || start >= DAY_END_MINUTES) return null;
-              const end = event.endTimeMinutes;
-              const top = minutesToTop(start);
-              const height = eventBlockHeight(start, end);
-              const isSelected =
-                selection?.event.entryId === event.entryId && selection.dateKey === dateKey;
-              const timing = resolveCareCalendarAppointmentTiming(event, dateKey, {
-                highlightTodayTiming: isToday,
-              });
-              const prepHighlight = resolveAppointmentPrepHighlight(event, dateKey, timing, {
-                preferences,
-                histories,
-              });
-              const prepRemaining = countAppointmentPrepRemaining(event, dateKey, {
-                preferences,
-                histories,
-              }).total;
-
-              return (
-                <button
-                  key={`${event.entryId}-${dateKey}`}
-                  type="button"
-                  onClick={() => {
-                    onSelectedDayChange?.(dateKey);
-                    onSelectAppointment({ dateKey, event });
-                  }}
-                  className={cn(
-                    'absolute left-0.5 right-0.5 z-10 rounded-lg text-left px-1.5 py-1 overflow-hidden border shadow-sm transition-all',
-                    careCalendarWeekEventBlockClasses(timing, isSelected),
-                    prepHighlight !== 'none' &&
-                      careCalendarPrepBorderClasses(prepHighlight, 'week'),
-                  )}
-                  style={{ top, height: Math.max(height, SLOT_HEIGHT_PX - 4) }}
-                  title={
-                    appointmentPrepHighlightIsNeeded(prepHighlight)
-                      ? t('schedulePage.views.prepNeededHint', { count: prepRemaining })
-                      : appointmentPrepHighlightIsReady(prepHighlight)
-                        ? t('schedulePage.views.prepReady')
-                        : undefined
-                  }
-                >
-                  <p className="text-[10px] font-bold truncate leading-tight">{event.title}</p>
-                  {height >= SLOT_HEIGHT_PX * 1.2 && (
-                    <p className="text-[9px] opacity-90 truncate">
-                      {formatCareCalendarTimeRange(event.startTimeMinutes, event.endTimeMinutes) ||
-                        formatCareCalendarTime(start)}
-                    </p>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        );
-      })}
-    </div>
+      ) : null}
+    </>
   );
 }
 
@@ -516,7 +317,11 @@ export function CircleScheduleAppointmentDetailSheet({
   onClose,
   onEdit,
   onAppointmentTasksChange,
+  onClinicalReferenceIdsChange,
+  onManageClinicalReferences,
+  onVisitDebriefChange,
   currentUserUid,
+  currentUserName,
   patientId,
   db,
   memberContactId,
@@ -527,6 +332,7 @@ export function CircleScheduleAppointmentDetailSheet({
   assessmentSchedule,
   onOpenAssessment,
   onRecordVisit,
+  viewerTimezoneId,
 }: {
   selection: CircleScheduleAppointmentSelection;
   ct: (key: string, params?: Record<string, unknown>) => string;
@@ -534,7 +340,11 @@ export function CircleScheduleAppointmentDetailSheet({
   onClose: () => void;
   onEdit?: () => void;
   onAppointmentTasksChange?: CircleScheduleWeekViewProps['onAppointmentTasksChange'];
+  onClinicalReferenceIdsChange?: CircleScheduleWeekViewProps['onClinicalReferenceIdsChange'];
+  onManageClinicalReferences?: CircleScheduleWeekViewProps['onManageClinicalReferences'];
+  onVisitDebriefChange?: CircleScheduleWeekViewProps['onVisitDebriefChange'];
   currentUserUid?: string;
+  currentUserName?: string;
   patientId?: string;
   db?: Firestore;
   memberContactId?: string;
@@ -544,7 +354,8 @@ export function CircleScheduleAppointmentDetailSheet({
   memberRole?: string;
   assessmentSchedule?: CircleAssessmentScheduleContext;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
-  onRecordVisit?: (entryId: string) => void;
+  onRecordVisit?: CircleScheduleWeekViewProps['onRecordVisit'];
+  viewerTimezoneId?: string;
 }) {
   useEffect(() => {
     const previous = document.body.style.overflow;
@@ -565,30 +376,49 @@ export function CircleScheduleAppointmentDetailSheet({
         aria-label={t('common.close')}
       />
       <div
-        className="relative w-full max-h-[min(80dvh,100%)] overflow-y-auto overscroll-contain rounded-t-[24px] border-t border-slate-200 bg-white shadow-2xl px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]"
+        className="relative flex h-[min(80dvh,100%)] w-full flex-col overflow-hidden rounded-t-[24px] border-t border-slate-200 bg-white shadow-2xl pt-5 pb-[max(1rem,env(safe-area-inset-bottom))]"
         role="dialog"
         aria-modal="true"
       >
-        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200" aria-hidden />
-        <WeekAppointmentDetail
-          selection={selection}
-          ct={ct}
-          t={t}
-          onClose={onClose}
-          onEdit={onEdit}
-          onAppointmentTasksChange={onAppointmentTasksChange}
-          currentUserUid={currentUserUid}
-          patientId={patientId}
-          db={db}
-          memberContactId={memberContactId}
-          memberDocContactId={memberDocContactId}
-          inviteContactId={inviteContactId}
-          memberDisplayName={memberDisplayName}
-          memberRole={memberRole}
-          assessmentSchedule={assessmentSchedule}
-          onOpenAssessment={onOpenAssessment}
-          onRecordVisit={onRecordVisit}
-        />
+        <div className="mx-auto mb-5 h-1 w-10 shrink-0 rounded-full bg-slate-200" aria-hidden />
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-2">
+          <WeekAppointmentDetail
+            selection={selection}
+            ct={ct}
+            t={t}
+            onClose={onClose}
+            onEdit={onEdit}
+            onAppointmentTasksChange={onAppointmentTasksChange}
+            onClinicalReferenceIdsChange={onClinicalReferenceIdsChange}
+            onManageClinicalReferences={onManageClinicalReferences}
+            onVisitDebriefChange={onVisitDebriefChange}
+            currentUserUid={currentUserUid}
+            currentUserName={currentUserName}
+            patientId={patientId}
+            db={db}
+            memberContactId={memberContactId}
+            memberDocContactId={memberDocContactId}
+            inviteContactId={inviteContactId}
+            memberDisplayName={memberDisplayName}
+            memberRole={memberRole}
+            assessmentSchedule={assessmentSchedule}
+            onOpenAssessment={onOpenAssessment}
+            onRecordVisit={
+              onRecordVisit
+                ? (entryId: string) => {
+                    onClose();
+                    onRecordVisit(entryId, {
+                      entryId,
+                      dateKey: selection.dateKey,
+                      episodeTab: selection.episodeTab,
+                      preserveView: true,
+                    });
+                  }
+                : undefined
+            }
+            viewerTimezoneId={viewerTimezoneId}
+          />
+        </div>
       </div>
     </div>,
     document.body,
@@ -597,15 +427,20 @@ export function CircleScheduleAppointmentDetailSheet({
 
 function AppointmentDetailSection({
   label,
+  icon: Icon,
   children,
 }: {
   label: string;
+  icon?: LucideIcon;
   children: ReactNode;
 }) {
   return (
     <section>
-      <p className="text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-2">{label}</p>
-      {children}
+      <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-700">
+        {Icon ? <Icon size={14} className="shrink-0 text-violet-600" aria-hidden /> : null}
+        {label}
+      </p>
+      <div className="pl-5">{children}</div>
     </section>
   );
 }
@@ -617,7 +452,11 @@ function WeekAppointmentDetail({
   onClose,
   onEdit,
   onAppointmentTasksChange,
+  onClinicalReferenceIdsChange,
+  onManageClinicalReferences,
+  onVisitDebriefChange,
   currentUserUid,
+  currentUserName,
   patientId,
   db,
   memberContactId,
@@ -628,6 +467,7 @@ function WeekAppointmentDetail({
   assessmentSchedule,
   onOpenAssessment,
   onRecordVisit,
+  viewerTimezoneId,
 }: {
   selection: CircleScheduleAppointmentSelection;
   ct: (key: string, params?: Record<string, unknown>) => string;
@@ -635,7 +475,11 @@ function WeekAppointmentDetail({
   onClose: () => void;
   onEdit?: () => void;
   onAppointmentTasksChange?: CircleScheduleWeekViewProps['onAppointmentTasksChange'];
+  onClinicalReferenceIdsChange?: CircleScheduleWeekViewProps['onClinicalReferenceIdsChange'];
+  onManageClinicalReferences?: CircleScheduleWeekViewProps['onManageClinicalReferences'];
+  onVisitDebriefChange?: CircleScheduleWeekViewProps['onVisitDebriefChange'];
   currentUserUid?: string;
+  currentUserName?: string;
   patientId?: string;
   db?: Firestore;
   memberContactId?: string;
@@ -646,22 +490,67 @@ function WeekAppointmentDetail({
   assessmentSchedule?: CircleAssessmentScheduleContext;
   onOpenAssessment?: (metricId: AnalyticsMetricId) => void;
   onRecordVisit?: (entryId: string) => void;
+  viewerTimezoneId?: string;
 }) {
-  const [expandedOpen, setExpandedOpen] = useState(false);
+  const { language } = useCircleI18nContext();
   const { event, dateKey } = selection;
-  const displayAttendees = useLiveMergedAttendees(
-    db,
-    patientId,
-    event.entryId,
-    mergeAttendeeResponses(
-      event.attendees,
+  const attendeeOptions = useCareCalendarAttendeeOptions(db, patientId);
+  const nameByContactId = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const option of attendeeOptions) {
+      if (option.contactId && option.name) map[option.contactId] = option.name;
+    }
+    return map;
+  }, [attendeeOptions]);
+  const fallbackAttendees = useMemo(
+    () =>
+      mergeAttendeeResponses(
+        event.attendees,
+        event.attendeeResponseSummary,
+        event.inviteeMemberUidByContactId,
+      ) ?? event.attendees,
+    [
       event.attendeeResponseSummary,
+      event.attendees,
       event.inviteeMemberUidByContactId,
-    ) ?? event.attendees,
-    event.inviteeMemberUidByContactId,
+    ],
   );
-  const timeLabel = formatCareCalendarTimeRange(event.startTimeMinutes, event.endTimeMinutes);
-  const dayLabel = new Date(dateKey + 'T12:00:00').toLocaleDateString(undefined, {
+  const { attendees: liveAttendees, appointmentTasks: liveAppointmentTasks } =
+    useLiveCareCalendarSheetFields(
+      db,
+      patientId,
+      event.entryId,
+      fallbackAttendees,
+      event.inviteeMemberUidByContactId,
+      event.appointmentTasks,
+    );
+  const liveEvent = useMemo<CareCalendarDayEvent>(
+    () => ({
+      ...event,
+      appointmentTasks: liveAppointmentTasks ?? event.appointmentTasks,
+    }),
+    [event, liveAppointmentTasks],
+  );
+  const displayAttendees = useMemo(
+    () =>
+      applyCareCalendarAttendeeDisplayNames(liveAttendees, {
+        nameByContactId,
+        selfContactIds: [memberContactId, memberDocContactId, inviteContactId].filter(
+          (id): id is string => Boolean(id),
+        ),
+        selfDisplayName: memberDisplayName,
+      }),
+    [
+      inviteContactId,
+      liveAttendees,
+      memberContactId,
+      memberDisplayName,
+      memberDocContactId,
+      nameByContactId,
+    ],
+  );
+  const timeLabel = formatCareCalendarTimeRange(event.startTimeMinutes, event.endTimeMinutes, event.timezoneId);
+  const dayLabel = formatCircleDate(new Date(dateKey + 'T12:00:00'), language, {
     weekday: 'long',
     month: 'short',
     day: 'numeric',
@@ -672,16 +561,9 @@ function WeekAppointmentDetail({
     startDateKey: dateKey,
     startTimeMinutes: event.startTimeMinutes,
     endTimeMinutes: event.endTimeMinutes,
+    timezoneId: event.timezoneId,
   };
-  const subtitle = [
-    ct('legendAppointment'),
-    ct(`kinds.${event.kind}`),
-    event.visitSubtype ? ct(`visitSubtype.${event.visitSubtype}`) : null,
-    event.source === 'circle' ? ct('fromCircle') : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-
+  const titleTranslation = useCircleLiveTranslatedText(event.title);
   const detailsContent = event.details ? (
     <CircleExpandableTextPreview
       label={ct('fields.details')}
@@ -692,7 +574,7 @@ function WeekAppointmentDetail({
   ) : null;
 
   const goingWithBlock = displayAttendees?.length ? (
-    <AppointmentDetailSection label={ct('fields.attendeesWith')}>
+    <AppointmentDetailSection label={ct('fields.attendeesWith')} icon={Users}>
       <ul className="space-y-1.5">
         {displayAttendees.map((attendee) => {
           const roleKey = careCalendarAttendeeRoleLabelKey(attendee.role);
@@ -712,32 +594,29 @@ function WeekAppointmentDetail({
           return (
             <li
               key={attendee.contactId}
-              className={cn('flex items-center gap-2 text-sm text-slate-700', declined && 'opacity-60')}
+              className={cn('text-sm text-slate-700', declined && 'opacity-60')}
             >
-              <Users size={14} className="shrink-0 text-violet-600" />
-              <span className="min-w-0 flex-1">
-                <span className="font-semibold text-slate-800">{attendee.name}</span>
-                <span className="text-slate-500">
-                  {' '}
-                  · {tier ? `${t(`dashboard.circleMap.roles.${role}`)} (${tier})` : t(`dashboard.circleMap.roles.${role}`)}
-                </span>
-                {showResponseBadge ? (
-                  <span
-                    className={cn(
-                      'ml-2 text-[10px] font-bold uppercase tracking-wide',
-                      response === 'accepted'
-                        ? 'text-emerald-600'
-                        : response === 'declined'
-                          ? 'text-slate-400'
-                          : 'text-amber-600',
-                    )}
-                  >
-                    {ct(
-                      `fields.rsvp${response === 'accepted' ? 'Accepted' : response === 'declined' ? 'Declined' : 'Pending'}`,
-                    )}
-                  </span>
-                ) : null}
+              <span className="font-semibold text-slate-800">{attendee.name}</span>
+              <span className="text-slate-500">
+                {' '}
+                · {tier ? `${t(`dashboard.circleMap.roles.${role}`)} (${tier})` : t(`dashboard.circleMap.roles.${role}`)}
               </span>
+              {showResponseBadge ? (
+                <span
+                  className={cn(
+                    'ml-2 text-[10px] font-bold uppercase tracking-wide',
+                    response === 'accepted'
+                      ? 'text-emerald-600'
+                      : response === 'declined'
+                        ? 'text-slate-400'
+                        : 'text-amber-600',
+                  )}
+                >
+                  {ct(
+                    `fields.rsvp${response === 'accepted' ? 'Accepted' : response === 'declined' ? 'Declined' : 'Pending'}`,
+                  )}
+                </span>
+              ) : null}
             </li>
           );
         })}
@@ -749,12 +628,21 @@ function WeekAppointmentDetail({
     <>
       <div className="space-y-5">
         {event.doctorName ? (
-          <AppointmentDetailSection label={ct('fields.doctorName')}>
+          <AppointmentDetailSection label={ct('fields.doctorName')} icon={Stethoscope}>
             <p className="text-sm text-slate-700">{event.doctorName}</p>
           </AppointmentDetailSection>
         ) : null}
-        <AppointmentDetailSection label={ct('fields.dateTime')}>
+        <AppointmentDetailSection label={ct('fields.dateTime')} icon={CalendarClock}>
           <p className="text-sm text-slate-600">{dateTimeLabel}</p>
+          <CircleCareCalendarForYouLine
+            dateKey={dateKey}
+            startMinutes={event.startTimeMinutes}
+            endMinutes={event.endTimeMinutes}
+            eventTimeZoneId={event.timezoneId}
+            viewerTimeZoneId={viewerTimezoneId}
+            t={t}
+            className="mt-1"
+          />
         </AppointmentDetailSection>
         {event.address ? (
           <CircleCareCalendarMapsLinks
@@ -762,6 +650,7 @@ function WeekAppointmentDetail({
             ct={ct}
             showFullAddress
             sectionHeader={ct('fields.location')}
+            sectionHeaderIcon={MapPin}
           />
         ) : null}
         {goingWithBlock}
@@ -782,6 +671,7 @@ function WeekAppointmentDetail({
             startDateKey={dateKey}
             startTimeMinutes={event.startTimeMinutes}
             endTimeMinutes={event.endTimeMinutes}
+            timezoneId={event.timezoneId}
             eventStatus={event.status}
             t={t}
           />
@@ -789,7 +679,7 @@ function WeekAppointmentDetail({
       </div>
       <div className="mt-6">
         <CircleCareCalendarAppointmentEpisodePanel
-          event={event}
+          event={liveEvent}
           appointmentDateKey={dateKey}
           ct={ct}
           t={t}
@@ -797,67 +687,77 @@ function WeekAppointmentDetail({
           histories={assessmentSchedule?.histories}
           onOpenAssessment={onOpenAssessment}
           currentUserUid={currentUserUid}
+          currentUserName={currentUserName}
           onTasksChange={
             onAppointmentTasksChange
               ? (tasks) => onAppointmentTasksChange(event.entryId, event.kind, tasks)
               : undefined
           }
+          initialTab={selection.episodeTab}
+          patientId={patientId}
+          db={db}
+          onClinicalReferenceIdsChange={
+            onClinicalReferenceIdsChange
+              ? (ids) => onClinicalReferenceIdsChange(event.entryId, event.kind, ids)
+              : undefined
+          }
+          onVisitDebriefChange={
+            onVisitDebriefChange
+              ? (debrief) => onVisitDebriefChange(event.entryId, event.kind, debrief)
+              : undefined
+          }
+          onManageClinicalReferences={onManageClinicalReferences}
           detailsContent={detailsContent}
           onRecordVisit={onRecordVisit}
+          memberRole={memberRole}
         />
       </div>
     </>
   );
 
   return (
-    <>
-      <div className="space-y-6">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 space-y-1">
-            <p className="text-lg font-bold text-slate-900">{event.title}</p>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-violet-700">{subtitle}</p>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              type="button"
-              onClick={() => setExpandedOpen(true)}
-              className="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
-              aria-label={t('circle.expandMessage')}
-              title={t('circle.expandMessage')}
-            >
-              <Maximize2 size={18} />
-            </button>
-            {onEdit ? (
-              <button
-                type="button"
-                onClick={onEdit}
-                className="px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-bold hover:bg-violet-700"
-              >
-                {t('common.edit')}
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:bg-slate-50"
-              aria-label={t('common.close')}
-            >
-              <X size={18} />
-            </button>
-          </div>
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 space-y-1">
+          {titleTranslation.isTranslating && !titleTranslation.showOriginal ? (
+            <CircleLiveTranslatingLabel />
+          ) : null}
+          <p className="text-lg font-bold text-slate-900">{titleTranslation.displayText}</p>
+          {titleTranslation.hasTranslation ? (
+            <CircleLiveTranslationToggle
+              showOriginal={titleTranslation.showOriginal}
+              onToggle={titleTranslation.toggleOriginal}
+            />
+          ) : null}
+          <CircleCareCalendarKindMeta
+            kind={event.kind}
+            visitSubtype={event.visitSubtype}
+            source={event.source}
+            ct={ct}
+            className="mt-0"
+          />
         </div>
-        {appointmentBody}
+        <div className="flex items-center gap-1 shrink-0">
+          {onEdit ? (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700"
+            >
+              {t('common.edit')}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-xl text-slate-400 hover:bg-slate-50"
+            aria-label={t('common.close')}
+          >
+            <X size={18} />
+          </button>
+        </div>
       </div>
-      <CircleMessageExpandOverlay
-        open={expandedOpen}
-        title={event.title}
-        subtitle={subtitle}
-        onClose={() => setExpandedOpen(false)}
-        t={t}
-        zClassName="z-[220]"
-      >
-        {appointmentBody}
-      </CircleMessageExpandOverlay>
-    </>
+      {appointmentBody}
+    </div>
   );
 }

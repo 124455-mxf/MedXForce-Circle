@@ -3,6 +3,9 @@ import { doc, getDoc, setDoc, type Firestore } from 'firebase/firestore';
 /** Placeholder until marketing site / onboarding video is live. */
 export const CIRCLE_ONBOARDING_LEARN_MORE_URL = 'https://medxforce.com/circle/getting-started';
 
+/** Placeholder until the public privacy page is published. */
+export const PRIVACY_POLICY_URL = 'https://medxforce.com/privacy';
+
 export type CircleProfileOnboardingDismissalsByPatient = Record<string, boolean>;
 
 export function parseMemberOnboardingWelcomeDismissed(

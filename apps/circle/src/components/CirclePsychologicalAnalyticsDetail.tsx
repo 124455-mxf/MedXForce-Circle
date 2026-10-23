@@ -1,384 +1,184 @@
-import {
-
-  CartesianGrid,
-
-  Line,
-
-  LineChart,
-
-  ResponsiveContainer,
-
-  Tooltip,
-
-  YAxis,
-
-} from 'recharts';
-
-import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
-
-import type {
-
-  AnalyticsTrendDirection,
-
-  PsychologicalScoreTrend,
-
-  PsychologicalTimelinePoint,
-
-} from '@medxforce/shared';
-
-import {
-
-  CIRCLE_ANALYTICS_CHART_HEIGHT,
-
-  circleAnalyticsChartMargin,
-
-  circleAnalyticsPlotInsetLeft,
-
-  circleAnalyticsPlotInsetRight,
-
-  circleAnalyticsSparseLineProps,
-
-  circleAnalyticsTooltipLabelFormatter,
-
-  prepareSparseTimelineChartData,
-
-} from '../lib/circleAnalyticsChart';
-
+import { useState } from 'react';
+import { Battery, Flame, Moon, Smile, Zap, Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import type { AnalyticsTrendDirection, PsychologicalScoreTrend, PsychologicalTimelinePoint } from '@medxforce/shared';
 import { useCircleT } from '../lib/circleI18nContext';
-
-import {
-
-  analyticsTrendImprovingDeclining,
-
-  analyticsWindowDaysLabel,
-
-} from '../lib/circleAnalyticsI18n';
-
+import { analyticsTrendImprovingDeclining, analyticsWindowDaysLabel } from '../lib/circleAnalyticsI18n';
 import { cn } from '../lib/utils';
-
-import { CircleAnalyticsChartFooter } from './CircleAnalyticsChartFooter';
-
-import { CircleAnalyticsChartXAxis } from './CircleAnalyticsChartXAxis';
-
-
+import {
+  CircleAnalyticsChartTypeToggle,
+  CircleAnalyticsSeriesCard,
+  seriesFromKeyedTimeline,
+  type CircleAnalyticsChartType,
+} from './CircleAnalyticsSeriesCard';
 
 type CirclePsychologicalAnalyticsDetailProps = {
-
   count?: number;
-
   trend?: AnalyticsTrendDirection;
-
   mood?: PsychologicalScoreTrend;
-
   anxiety?: PsychologicalScoreTrend;
-
   sleep?: PsychologicalScoreTrend;
-
   stress?: PsychologicalScoreTrend;
-
   energy?: PsychologicalScoreTrend;
-
   timeline?: PsychologicalTimelinePoint[];
-
+  windowLabel?: string;
 };
 
+const SCORE_DOMAIN: [number, number] = [0, 10];
+const SCORE_TICKS = [0, 5, 10];
 
-
-function TrendBadge({
-
+function TrendSummary({
   trend,
-
   t,
-
-  higherIsBetter = true,
-
 }: {
-
   trend: AnalyticsTrendDirection;
-
   t: ReturnType<typeof useCircleT>;
-
-  higherIsBetter?: boolean;
-
 }) {
-
   const Icon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
-
   const colorClass =
-
-    trend === 'stable'
-
-      ? 'text-slate-300'
-
-      : (trend === 'up') === higherIsBetter
-
-        ? 'text-emerald-500'
-
-        : 'text-red-500';
-
+    trend === 'up'
+      ? 'text-emerald-600 bg-emerald-50'
+      : trend === 'down'
+        ? 'text-amber-600 bg-amber-50'
+        : 'text-slate-400 bg-slate-100';
   return (
-
-    <span className={cn('inline-flex items-center gap-1', colorClass)}>
-
-      <Icon size={14} />
-
-      <span className="text-[11px] font-bold text-slate-600">
-
-        {analyticsTrendImprovingDeclining(t, trend, higherIsBetter)}
-
-      </span>
-
+    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[12px] font-bold uppercase', colorClass)}>
+      <Icon size={12} />
+      {analyticsTrendImprovingDeclining(t, trend)}
     </span>
-
   );
-
 }
 
-
-
-function MetricCard({
-
-  label,
-
-  data,
-
-  t,
-
-  higherIsBetter = true,
-
-}: {
-
-  label: string;
-
-  data: PsychologicalScoreTrend;
-
-  t: ReturnType<typeof useCircleT>;
-
-  higherIsBetter?: boolean;
-
-}) {
-
-  return (
-
-    <div className="rounded-2xl border border-slate-100 bg-white p-3 space-y-2">
-
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">{label}</p>
-
-      <div className="flex items-end justify-between gap-2">
-
-        <p className="text-xl font-black text-slate-800 tabular-nums">{data.current}/10</p>
-
-        <TrendBadge trend={data.trend} t={t} higherIsBetter={higherIsBetter} />
-
-      </div>
-
-      <p className="text-[10px] text-slate-400 font-semibold tabular-nums">
-
-        {data.change > 0 ? `+${data.change}` : data.change}
-
-      </p>
-
-    </div>
-
-  );
-
+function scoreValue(data: PsychologicalScoreTrend | undefined): string {
+  if (!data) return '—';
+  return `${data.current}/10`;
 }
-
-
 
 export function CirclePsychologicalAnalyticsDetail({
-
-  count = 0,
-
   trend = 'stable',
-
   mood,
-
   anxiety,
-
   sleep,
-
   stress,
-
   energy,
-
   timeline,
-
+  windowLabel,
 }: CirclePsychologicalAnalyticsDetailProps) {
-
   const t = useCircleT();
-
+  const [chartType, setChartType] = useState<CircleAnalyticsChartType>('bar');
   const moodLabel = t('analytics.psychological.mood');
-
   const anxietyLabel = t('analytics.psychological.anxiety');
-
   const sleepLabel = t('analytics.psychological.sleep');
-
   const stressLabel = t('analytics.psychological.stress');
-
   const energyLabel = t('analytics.psychological.energy');
 
-  const legend = [
-
-    { color: '#db2777', label: moodLabel },
-
-    { color: '#dc2626', label: anxietyLabel },
-
-    { color: '#2563eb', label: sleepLabel },
-
-    { color: '#d97706', label: stressLabel },
-
-    { color: '#059669', label: energyLabel },
-
-  ] as const;
-
-  const chartData = prepareSparseTimelineChartData(
-
-    Array.isArray(timeline) ? timeline : undefined,
-
-  );
-
-  const hasChart = chartData.length > 0;
-
-  const chartMargin = circleAnalyticsChartMargin({ right: 8, left: -18 });
-
-
-
   return (
-
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-
       <div className="px-3 py-2 border-b border-slate-100 bg-pink-50/50">
-
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
-
-          {analyticsWindowDaysLabel(t, 30)}
-
+        <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider text-center">
+          {windowLabel ?? analyticsWindowDaysLabel(t, 30)}
         </p>
-
       </div>
-
       <div className="p-4 space-y-4">
-
-        <div className="grid grid-cols-2 gap-3">
-
-          <div className="space-y-0.5">
-
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
-
-              {t('analytics.entries30Days')}
-
-            </p>
-
-            <p className="text-2xl font-black text-pink-600 tabular-nums leading-none">{count}</p>
-
-          </div>
-
-          <div className="space-y-0.5">
-
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
-
-              {t('analytics.trend')} · {moodLabel}
-
-            </p>
-
-            <div className="pt-1">
-
-              <TrendBadge trend={trend} t={t} />
-
-            </div>
-
-          </div>
-
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[12px] font-bold text-slate-400 uppercase">{t('analytics.trend')}</span>
+          <TrendSummary trend={trend} t={t} />
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[12px] font-bold text-slate-400 uppercase">{t('analytics.chart')}</span>
+          <CircleAnalyticsChartTypeToggle
+            chartType={chartType}
+            onChange={setChartType}
+            lineAriaLabel={t('analytics.lineChart')}
+            barAriaLabel={t('analytics.barChart')}
+          />
         </div>
 
-
-
-        {mood && anxiety && sleep && stress && energy && (
-
-          <div className="grid grid-cols-2 gap-2">
-
-            <MetricCard label={moodLabel} data={mood} t={t} />
-
-            <MetricCard label={anxietyLabel} data={anxiety} t={t} higherIsBetter={false} />
-
-            <MetricCard label={sleepLabel} data={sleep} t={t} />
-
-            <MetricCard label={stressLabel} data={stress} t={t} higherIsBetter={false} />
-
-            <MetricCard label={energyLabel} data={energy} t={t} />
-
-          </div>
-
-        )}
-
-
-
-        {hasChart ? (
-
-          <div className="w-full overflow-visible">
-
-            <ResponsiveContainer width="100%" height={CIRCLE_ANALYTICS_CHART_HEIGHT}>
-
-              <LineChart data={chartData} margin={chartMargin}>
-
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-
-                <CircleAnalyticsChartXAxis variant="sparse" />
-
-                <YAxis domain={[0, 10]} tick={{ fontSize: 9, fill: '#94a3b8' }} width={28} />
-
-                <Tooltip
-
-                  labelFormatter={circleAnalyticsTooltipLabelFormatter}
-
-                  contentStyle={{ fontSize: 11, borderRadius: 12, border: '1px solid #e2e8f0' }}
-
-                />
-
-                <Line dataKey="mood" name={moodLabel} stroke="#db2777" strokeWidth={2} {...circleAnalyticsSparseLineProps} />
-
-                <Line dataKey="anxiety" name={anxietyLabel} stroke="#dc2626" strokeWidth={1.5} {...circleAnalyticsSparseLineProps} />
-
-                <Line dataKey="sleep" name={sleepLabel} stroke="#2563eb" strokeWidth={1.5} {...circleAnalyticsSparseLineProps} />
-
-                <Line dataKey="stress" name={stressLabel} stroke="#d97706" strokeWidth={1.5} {...circleAnalyticsSparseLineProps} />
-
-                <Line dataKey="energy" name={energyLabel} stroke="#059669" strokeWidth={1.5} {...circleAnalyticsSparseLineProps} />
-
-              </LineChart>
-
-            </ResponsiveContainer>
-
-            <CircleAnalyticsChartFooter
-
-              legend={[...legend]}
-
-              plotInsetLeft={circleAnalyticsPlotInsetLeft(chartMargin, 28)}
-
-              plotInsetRight={circleAnalyticsPlotInsetRight(chartMargin)}
-
-              sparsePointCount={chartData.length}
-
-            />
-
-          </div>
-
-        ) : (
-
-          <p className="text-[11px] text-slate-400 italic text-center py-2">
-
-            {t('analytics.chartNotSynced')}
-
-          </p>
-
-        )}
-
+        <CircleAnalyticsSeriesCard
+          icon={Smile}
+          title={moodLabel}
+          value={scoreValue(mood)}
+          hint={t('analytics.psychological.moodHint')}
+          color="#db2777"
+          iconWrapClass="text-pink-600"
+          cardClass="border-pink-200 bg-pink-50/50"
+          titleClass="text-pink-700"
+          valueClass="text-pink-700"
+          chartType={chartType}
+          chartData={seriesFromKeyedTimeline(timeline, 'mood')}
+          variant="sparse"
+          yDomain={SCORE_DOMAIN}
+          yTicks={SCORE_TICKS}
+          allowDecimals
+        />
+        <CircleAnalyticsSeriesCard
+          icon={Zap}
+          title={anxietyLabel}
+          value={scoreValue(anxiety)}
+          hint={t('analytics.psychological.anxietyHint')}
+          color="#dc2626"
+          iconWrapClass="text-red-600"
+          cardClass="border-red-200 bg-red-50/50"
+          titleClass="text-red-700"
+          valueClass="text-red-700"
+          chartType={chartType}
+          chartData={seriesFromKeyedTimeline(timeline, 'anxiety')}
+          variant="sparse"
+          yDomain={SCORE_DOMAIN}
+          yTicks={SCORE_TICKS}
+          allowDecimals
+        />
+        <CircleAnalyticsSeriesCard
+          icon={Moon}
+          title={sleepLabel}
+          value={scoreValue(sleep)}
+          hint={t('analytics.psychological.sleepHint')}
+          color="#2563eb"
+          iconWrapClass="text-blue-600"
+          cardClass="border-blue-200 bg-blue-50/50"
+          titleClass="text-blue-700"
+          valueClass="text-blue-700"
+          chartType={chartType}
+          chartData={seriesFromKeyedTimeline(timeline, 'sleep')}
+          variant="sparse"
+          yDomain={SCORE_DOMAIN}
+          yTicks={SCORE_TICKS}
+          allowDecimals
+        />
+        <CircleAnalyticsSeriesCard
+          icon={Flame}
+          title={stressLabel}
+          value={scoreValue(stress)}
+          hint={t('analytics.psychological.stressHint')}
+          color="#d97706"
+          iconWrapClass="text-amber-600"
+          cardClass="border-amber-200 bg-amber-50/50"
+          titleClass="text-amber-700"
+          valueClass="text-amber-700"
+          chartType={chartType}
+          chartData={seriesFromKeyedTimeline(timeline, 'stress')}
+          variant="sparse"
+          yDomain={SCORE_DOMAIN}
+          yTicks={SCORE_TICKS}
+          allowDecimals
+        />
+        <CircleAnalyticsSeriesCard
+          icon={Battery}
+          title={energyLabel}
+          value={scoreValue(energy)}
+          hint={t('analytics.psychological.energyHint')}
+          color="#059669"
+          iconWrapClass="text-emerald-600"
+          cardClass="border-emerald-200 bg-emerald-50/50"
+          titleClass="text-emerald-700"
+          valueClass="text-emerald-700"
+          chartType={chartType}
+          chartData={seriesFromKeyedTimeline(timeline, 'energy')}
+          variant="sparse"
+          yDomain={SCORE_DOMAIN}
+          yTicks={SCORE_TICKS}
+          allowDecimals
+        />
       </div>
-
     </div>
-
   );
-
 }
-
