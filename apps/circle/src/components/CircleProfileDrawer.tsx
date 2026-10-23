@@ -350,7 +350,7 @@ export function CircleProfileDrawer({
               <button
                 type="button"
                 onClick={() => setDrawerView('addPatient')}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 mb-1"
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100 mb-1"
               >
                 <UserPlus size={20} className="text-blue-600" />
                 <div className="flex-1 min-w-0">
@@ -364,7 +364,7 @@ export function CircleProfileDrawer({
               <button
                 type="button"
                 onClick={() => setDrawerView('switchPatient')}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
               >
                 <HeartHandshake size={20} className="text-blue-600" />
                 <div className="flex-1 min-w-0">
@@ -380,7 +380,7 @@ export function CircleProfileDrawer({
             <button
               type="button"
               onClick={() => setDrawerView('careRelationship')}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
             >
               <HeartHandshake size={20} className="text-blue-600" />
               <div className="flex-1 min-w-0">
@@ -397,7 +397,7 @@ export function CircleProfileDrawer({
               <button
                 type="button"
                 onClick={() => setDrawerView('userManagement')}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
               >
                 <Users size={20} className="text-violet-600" />
                 <div className="flex-1 min-w-0">
@@ -414,7 +414,7 @@ export function CircleProfileDrawer({
             <button
               type="button"
               onClick={() => setDrawerView('messaging')}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
             >
               <MessageSquare size={20} className="text-blue-600" />
               <div className="flex-1 min-w-0">
@@ -426,7 +426,7 @@ export function CircleProfileDrawer({
             <button
               type="button"
               onClick={() => setDrawerView('media')}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
             >
               <ImageIcon size={20} className="text-blue-600" />
               <div className="flex-1 min-w-0">
@@ -438,7 +438,7 @@ export function CircleProfileDrawer({
             <button
               type="button"
               onClick={() => setDrawerView('localeDisplay')}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
             >
               <Globe size={20} className="text-sky-600" />
               <div className="flex-1 min-w-0">
@@ -450,7 +450,7 @@ export function CircleProfileDrawer({
             <button
               type="button"
               onClick={() => setDrawerView('onlineStatus')}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
             >
               <Radio size={20} className="text-emerald-600" />
               <div className="flex-1 min-w-0">
@@ -462,7 +462,7 @@ export function CircleProfileDrawer({
             <button
               type="button"
               onClick={() => setDrawerView('schedule')}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
             >
               <Calendar size={20} className="text-violet-600" />
               <div className="flex-1 min-w-0">
@@ -695,7 +695,7 @@ export function CircleProfileDrawer({
           <button
             type="button"
             onClick={() => setDrawerView('myContact')}
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
           >
             <UserIcon size={20} className="text-violet-600" />
             <div className="flex-1 min-w-0">
@@ -707,7 +707,7 @@ export function CircleProfileDrawer({
           <button
             type="button"
             onClick={() => setDrawerView('notifications')}
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
           >
             <Bell size={20} className="text-slate-500" />
             <div className="flex-1">
@@ -719,7 +719,7 @@ export function CircleProfileDrawer({
           <button
             type="button"
             onClick={() => setDrawerView('customizeDashboard')}
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
           >
             <LayoutGrid size={20} className="text-blue-600" />
             <div className="flex-1 min-w-0">
@@ -731,7 +731,7 @@ export function CircleProfileDrawer({
           <button
             type="button"
             onClick={() => setDrawerView('settings')}
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
           >
             <Settings size={20} className="text-slate-500" />
             <div className="flex-1">
@@ -748,7 +748,7 @@ export function CircleProfileDrawer({
             href={PRIVACY_POLICY_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
           >
             <Shield size={20} className="text-slate-500" />
             <div className="flex-1">

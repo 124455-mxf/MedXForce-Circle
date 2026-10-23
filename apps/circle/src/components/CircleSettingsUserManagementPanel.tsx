@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { collection, doc, getDoc, onSnapshot, type Firestore } from 'firebase/firestore';
-import { CalendarClock, Clock, History, Loader2, Mail, Pencil, Plus, RefreshCw, ShieldOff, Trash2, Users } from 'lucide-react';
+import { CalendarClock, Clock, History, Loader2, Mail, Pencil, PenLine, Plus, RefreshCw, ShieldOff, Trash2, Users } from 'lucide-react';
 import {
   clampRelationship,
   CircleContactEditorModal,
@@ -68,7 +68,13 @@ import {
   findPrimaryProxyContact,
 } from '../lib/circleContactAccessOptions';
 import { buildCircleContactEmailAudience, buildCircleEmailInviterScope } from '../lib/circleContactEmailAudience';
-import { sendCircleContactAddedEmail, sendCircleContactIntroductionEmail } from '../services/circleContactIntroductionEmailApi';
+import { circleAppPublicUrl, sendCircleContactAddedEmail, sendCircleContactIntroductionEmail } from '../services/circleContactIntroductionEmailApi';
+import {
+  buildProxyPersonalMailto,
+  openProxyPersonalMailDraft,
+  personalNotePersonName,
+  proxyPersonalNoteKind,
+} from '../lib/proxyPersonalMailto';
 import { removeCircleMemberFromPatient } from '../services/removeCircleMemberFromPatient';
 import { useCircleToast, type CircleToastTone } from '../hooks/useCircleToast';
 import { CircleAppToast } from './CircleAppToast';
@@ -394,6 +400,14 @@ function contactForInviteResend(
       ? { proxyTier: item.proxyTier === 'backup' ? 'backup' : 'primary' as const }
       : {}),
   };
+}
+
+function recipientCircleUrl(): string {
+  const url = circleAppPublicUrl();
+  if (/localhost|127\.0\.0\.1/i.test(url)) {
+    return 'https://gen-lang-client-0333368246.web.app';
+  }
+  return url;
 }
 
 function memberLastOpenedAt(
@@ -1447,6 +1461,52 @@ export function CircleSettingsUserManagementPanel({
     );
   }
 
+  const openPersonalNote = (item: CircleInviteListItem, lastOpenedAt: number) => {
+    const email = item.invitedEmail.trim();
+    const display = resolvedInviteDisplayName(item, contacts, memberContactProfileByEmail);
+    const recipient = personalNotePersonName(display, email);
+    const patientName = patient.displayName.trim() || 'Circle';
+    const when =
+      lastOpenedAt > 0 ? formatDashboardTimestamp(t, language, lastOpenedAt) : '';
+    const kind = proxyPersonalNoteKind({ status: item.status, lastOpenedAt });
+    const situationKey =
+      kind === 'inactive'
+        ? 'admin.users.personalNoteInactive'
+        : kind === 'pending'
+          ? 'admin.users.personalNotePending'
+          : kind === 'never'
+            ? 'admin.users.personalNoteNever'
+            : 'admin.users.personalNoteRecent';
+    const scope = buildCircleEmailInviterScope(user, {
+      members,
+      contacts,
+      memberContactProfileByEmail,
+    });
+    const proxyName = personalNotePersonName(
+      scope.invitedByName || '',
+      scope.invitedByEmail || '',
+    );
+    const greeting = recipient
+      ? t('admin.users.personalNoteGreeting', { name: recipient })
+      : t('admin.users.personalNoteGreetingPlain');
+    const lines = [
+      greeting,
+      '',
+      t(situationKey, { patient: patientName, when }),
+      '',
+      t('admin.users.personalNoteClose'),
+      recipientCircleUrl(),
+    ];
+    if (proxyName) lines.push('', proxyName);
+    openProxyPersonalMailDraft(
+      buildProxyPersonalMailto(
+        email,
+        t('admin.users.personalNoteSubject', { patient: patientName }),
+        lines.join('\n'),
+      ),
+    );
+  };
+
   return (
     <>
       <div className={cn(compact ? 'flex flex-col flex-1 min-h-0' : 'space-y-5 p-5')}>
@@ -1652,6 +1712,21 @@ export function CircleSettingsUserManagementPanel({
                                 <div className="flex items-center gap-2 ml-auto">
                                   <button
                                     type="button"
+                                    onClick={() => openPersonalNote(item, lastOpenedAt)}
+                                    className="flex items-center gap-1.5 px-3 py-2 text-violet-700 rounded-xl text-sm font-bold hover:bg-violet-50"
+                                    aria-label={t('admin.users.accessWriteFromMeAria', {
+                                      name: resolvedInviteDisplayName(
+                                        item,
+                                        contacts,
+                                        memberContactProfileByEmail,
+                                      ),
+                                    })}
+                                  >
+                                    <PenLine size={14} />
+                                    {t('admin.users.accessWriteFromMe')}
+                                  </button>
+                                  <button
+                                    type="button"
                                     onClick={() =>
                                       setConfirmResendEmail({ kind: 'introduction', source: 'invite', item })
                                     }
@@ -1763,6 +1838,17 @@ export function CircleSettingsUserManagementPanel({
               }
             : undefined
         }
+        onRevoke={(() => {
+          if (editorMode !== 'view') return undefined;
+          const contact = contacts.find((row) => row.id === draft.id);
+          if (!contact) return undefined;
+          const invite = inviteForContactEmail(contact, members);
+          if (!invite || isCurrentUserInvite(invite, user)) return undefined;
+          return () => {
+            closeEditor();
+            void requestRevoke(invite);
+          };
+        })()}
       />
 
       {confirmRevoke && (

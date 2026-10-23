@@ -1,4 +1,4 @@
-import { Loader2, Pencil, Trash2, X } from 'lucide-react';
+import { Loader2, Pencil, ShieldOff, Trash2, X } from 'lucide-react';
 import type { CircleContactKind, CircleManagedContact } from '@medxforce/shared';
 import { composeContactDisplayName } from '@medxforce/shared';
 import { CIRCLE_UI_LANGUAGES, circleUiLanguageLabel, formatCircleDate, type CircleUiLanguage } from '../lib/circleLanguages';
@@ -19,6 +19,7 @@ import {
   notifyKeysForContactKind,
   type CircleNotifyKey,
 } from './CircleContactNotifyGrid';
+import { CircleContactNotifyIconStrip } from './CircleContactNotifyIconStrip';
 
 export type ContactEditorDraft = {
   id?: string;
@@ -128,6 +129,8 @@ type CircleContactEditorModalProps = {
   onSwitchToEdit?: () => void;
   /** View person: open the remove-from-patient confirmation. */
   onRemove?: () => void;
+  /** View person: open the revoke-Circle-access confirmation. */
+  onRevoke?: () => void;
   /** Non-proxy self-service: email and mobile are read-only. */
   lockEmailAndMobile?: boolean;
   /** Non-proxy self-service: SMS toggle disabled. */
@@ -152,6 +155,7 @@ export function CircleContactEditorModal({
   onSave,
   onSwitchToEdit,
   onRemove,
+  onRevoke,
   lockEmailAndMobile = false,
   lockSmsNotify = false,
   circleAccessLabel,
@@ -211,20 +215,6 @@ export function CircleContactEditorModal({
       value: circleUiLanguageLabel(t, draft.language || 'English'),
     },
   ].filter((row) => row.value);
-  const viewNotify = [
-    notifyKeys.includes('alert')
-      ? { label: t('admin.contact.notifyAlert'), on: draft.alert && hasEmail }
-      : null,
-    notifyKeys.includes('attention')
-      ? { label: t('admin.contact.notifyAttention'), on: draft.attention && hasEmail }
-      : null,
-    notifyKeys.includes('message')
-      ? { label: t('admin.contact.notifyMessage'), on: draft.message && hasEmail }
-      : null,
-    notifyKeys.includes('sms')
-      ? { label: t('admin.contact.notifySms'), on: draft.sms && hasMobile }
-      : null,
-  ].filter((item): item is { label: string; on: boolean } => item !== null);
 
   const title = isView
     ? personName || t('admin.contact.viewTitle')
@@ -293,24 +283,20 @@ export function CircleContactEditorModal({
                   ))}
                 </dl>
               ) : null}
-              {viewNotify.length > 0 ? (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-slate-800">{t('admin.contact.notifyMe')}</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {viewNotify.map((item) => (
-                      <span
-                        key={item.label}
-                        className={cn(
-                          'rounded-full px-2.5 py-1 text-xs font-semibold',
-                          item.on ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400',
-                        )}
-                      >
-                        {item.label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-slate-800">{t('admin.contact.notifyMe')}</h4>
+                <CircleContactNotifyIconStrip
+                  values={{
+                    alert: draft.alert,
+                    attention: draft.attention,
+                    message: draft.message,
+                    sms: draft.sms,
+                  }}
+                  kind={draft.kind}
+                  hasEmail={hasEmail}
+                  hasMobile={hasMobile}
+                />
+              </div>
             </div>
           ) : null}
 
@@ -612,15 +598,35 @@ export function CircleContactEditorModal({
         <div className="shrink-0 border-t border-slate-100 bg-white p-5 space-y-3">
           {isView ? (
             <>
+              {onRevoke ? (
+                <div className="space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={onRevoke}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 py-3.5 font-bold text-red-600 hover:bg-red-50"
+                  >
+                    <ShieldOff size={16} />
+                    {t('admin.contact.revokeAccess')}
+                  </button>
+                  <p className="px-1 text-xs leading-relaxed text-slate-500">
+                    {t('admin.contact.revokeAccessHint')}
+                  </p>
+                </div>
+              ) : null}
               {onRemove ? (
-                <button
-                  type="button"
-                  onClick={onRemove}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 py-3.5 font-bold text-red-600 hover:bg-red-50"
-                >
-                  <Trash2 size={16} />
-                  {t('admin.users.removeFromPatientConfirm')}
-                </button>
+                <div className="space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={onRemove}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 py-3.5 font-bold text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 size={16} />
+                    {t('admin.users.removeFromPatientConfirm')}
+                  </button>
+                  <p className="px-1 text-xs leading-relaxed text-slate-500">
+                    {t('admin.contact.removeFromPatientHint')}
+                  </p>
+                </div>
               ) : null}
               <div className="flex gap-3">
               <button
@@ -634,7 +640,7 @@ export function CircleContactEditorModal({
                 <button
                   type="button"
                   onClick={onSwitchToEdit}
-                  className="flex-1 py-3.5 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+                  className="flex-1 py-3.5 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
                 >
                   <Pencil size={16} />
                   {t('common.edit')}

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import { Globe, Languages, Type } from 'lucide-react';
+import { formatTimeZoneOptionLabel } from '@medxforce/shared';
 import {
   setCircleLocaleTemperatureUnit,
   setCircleLocaleTimeFormat,
@@ -60,6 +61,11 @@ export function CircleSettingsLocalePanel({
   const { timezoneId, setTimezoneId } = useCircleMemberTimeZone(db, user);
   const { textSize, setTextSize } = useCircleTextSizeFromContext();
   const [savingLanguage, setSavingLanguage] = useState(false);
+  const [timeZonesReady, setTimeZonesReady] = useState(false);
+
+  useEffect(() => {
+    setTimeZonesReady(true);
+  }, []);
 
   const handleLanguageChange = async (next: CircleUiLanguage) => {
     if (next === language || savingLanguage) return;
@@ -164,14 +170,25 @@ export function CircleSettingsLocalePanel({
           <p className="font-bold text-slate-800">{t('settings.localeTimeZoneTitle')}</p>
           <p className="text-sm text-slate-400">{t('settings.localeTimeZoneDesc')}</p>
         </div>
-        <CircleTimeZoneSelect
-          value={timezoneId}
-          onChange={(next) => {
-            void setTimezoneId(next);
-          }}
-          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-          aria-label={t('settings.localeTimeZoneTitle')}
-        />
+        {timeZonesReady ? (
+          <CircleTimeZoneSelect
+            value={timezoneId}
+            onChange={(next) => {
+              void setTimezoneId(next);
+            }}
+            className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            aria-label={t('settings.localeTimeZoneTitle')}
+          />
+        ) : (
+          <select
+            disabled
+            value={timezoneId}
+            aria-label={t('settings.localeTimeZoneTitle')}
+            className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 opacity-70"
+          >
+            <option value={timezoneId}>{formatTimeZoneOptionLabel(timezoneId)}</option>
+          </select>
+        )}
       </div>
 
       <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
