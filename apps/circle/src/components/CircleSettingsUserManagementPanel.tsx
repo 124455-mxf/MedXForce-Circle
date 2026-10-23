@@ -1719,11 +1719,11 @@ export function CircleSettingsUserManagementPanel({
                           {(item.status === 'pending' || item.status === 'accepted') &&
                               !isSelf &&
                               isValidInviteEmail(item.invitedEmail) && (
-                                <div className="flex flex-wrap items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-x-1 gap-y-0">
                                   <button
                                     type="button"
                                     onClick={() => openPersonalNote(item, lastOpenedAt)}
-                                    className="flex items-center gap-1.5 px-3 py-2 text-violet-700 rounded-xl text-sm font-bold hover:bg-violet-50"
+                                    className="flex items-center gap-1.5 px-2.5 py-1 text-violet-700 rounded-xl text-sm font-bold hover:bg-violet-50"
                                     aria-label={t('admin.users.accessWriteFromMeAria', {
                                       name: resolvedInviteDisplayName(
                                         item,
@@ -1743,7 +1743,7 @@ export function CircleSettingsUserManagementPanel({
                                     disabled={
                                       resendingInviteEmail === normalizeInviteEmail(item.invitedEmail)
                                     }
-                                    className="flex items-center gap-1.5 px-3 py-2 text-blue-600 rounded-xl text-sm font-bold hover:bg-blue-50 disabled:opacity-50"
+                                    className="flex items-center gap-1.5 px-2.5 py-1 text-blue-600 rounded-xl text-sm font-bold hover:bg-blue-50 disabled:opacity-50"
                                   >
                                     {resendingInviteEmail === normalizeInviteEmail(item.invitedEmail) ? (
                                       <Loader2 size={14} className="animate-spin" />
@@ -1756,7 +1756,7 @@ export function CircleSettingsUserManagementPanel({
                                     type="button"
                                     onClick={() => void requestRevoke(item)}
                                     disabled={revokingEmail === item.invitedEmail}
-                                    className="flex items-center gap-1.5 px-3 py-2 text-red-600 rounded-xl text-sm font-bold hover:bg-red-50 disabled:opacity-50"
+                                    className="flex items-center gap-1.5 px-2.5 py-1 text-red-600 rounded-xl text-sm font-bold hover:bg-red-50 disabled:opacity-50"
                                   >
                                     {revokingEmail === item.invitedEmail ? (
                                       <Loader2 size={14} className="animate-spin" />
