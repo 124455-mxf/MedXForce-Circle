@@ -59,7 +59,11 @@ import {
   inviteStatusLabelI18n,
   translateCircleMemberAccessLabel,
 } from '../lib/adminScreenI18n';
-import { inviteForContactEmail, resolvedContactAccess } from '../lib/circleContactDisplay';
+import {
+  inviteForContactEmail,
+  memberRoleBadgeClass,
+  resolvedContactAccess,
+} from '../lib/circleContactDisplay';
 import {
   circleAccessOptionFromManagedContact,
   circleRoleFieldsFromAccessOption,
@@ -331,17 +335,18 @@ function findContactForInviteItem(
   };
 }
 
-function resolvedInviteAccessLabel(
+function resolvedInviteAccessBadge(
   t: CircleTranslator,
   item: CircleInviteListItem,
   contacts: CircleManagedContact[],
-): string {
+): { label: string; badgeClass: string } {
   const email = normalizeInviteEmail(item.invitedEmail);
   const linked = contacts.find((contact) => normalizeInviteEmail(contact.email) === email);
-  if (linked?.circleRole) {
-    return translateCircleMemberAccessLabel(t, linked.circleRole, linked.proxyTier);
-  }
-  return translateCircleMemberAccessLabel(t, item.role, item.proxyTier);
+  if (linked) return resolvedContactAccess(t, linked, [item]);
+  return {
+    label: translateCircleMemberAccessLabel(t, item.role, item.proxyTier),
+    badgeClass: memberRoleBadgeClass(item.role, item.proxyTier),
+  };
 }
 
 function resolvedInviteDisplayName(
@@ -1648,6 +1653,7 @@ export function CircleSettingsUserManagementPanel({
                           : item.status === 'accepted' && !memberActivityLoading
                             ? t('admin.users.neverOpened')
                             : '';
+                      const accessBadge = resolvedInviteAccessBadge(t, item, contacts);
                       const scheduledUntil = contacts.find(
                         (contact) =>
                           contact.deletionScheduledUntil &&
@@ -1667,14 +1673,30 @@ export function CircleSettingsUserManagementPanel({
                           )}
                         >
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <p className="font-bold text-slate-800 truncate">
+                            <div className="flex flex-wrap items-center gap-2 min-w-0">
+                              <p className="font-bold text-slate-800 truncate min-w-0">
                                 {resolvedInviteDisplayName(
                                   item,
                                   contacts,
                                   memberContactProfileByEmail,
                                 )}
                               </p>
+                              <span
+                                className={cn(
+                                  'shrink-0 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border',
+                                  accessBadge.badgeClass,
+                                )}
+                              >
+                                {accessBadge.label}
+                              </span>
+                              <span
+                                className={cn(
+                                  'shrink-0 px-3 py-1 rounded-full text-xs font-bold border',
+                                  statusClass(item.status),
+                                )}
+                              >
+                                {inviteStatusLabelI18n(t, item.status)}
+                              </span>
                               {isSelf && (
                                 <span className="shrink-0 px-2 py-0.5 rounded-md bg-violet-100 text-violet-700 text-[10px] font-bold uppercase">
                                   {t('admin.users.you')}
@@ -1682,9 +1704,6 @@ export function CircleSettingsUserManagementPanel({
                               )}
                             </div>
                             <p className="text-sm text-slate-500 truncate">{item.invitedEmail}</p>
-                            <p className="text-xs text-slate-400 mt-1">
-                              {resolvedInviteAccessLabel(t, item, contacts)}
-                            </p>
                             {openedLine ? (
                               <p
                                 className={cn(
@@ -1697,19 +1716,10 @@ export function CircleSettingsUserManagementPanel({
                               </p>
                             ) : null}
                           </div>
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span
-                              className={cn(
-                                'px-3 py-1 rounded-full text-xs font-bold border',
-                                statusClass(item.status),
-                              )}
-                            >
-                              {inviteStatusLabelI18n(t, item.status)}
-                            </span>
-                            {(item.status === 'pending' || item.status === 'accepted') &&
+                          {(item.status === 'pending' || item.status === 'accepted') &&
                               !isSelf &&
                               isValidInviteEmail(item.invitedEmail) && (
-                                <div className="flex items-center gap-2 ml-auto">
+                                <div className="flex flex-wrap items-center gap-2">
                                   <button
                                     type="button"
                                     onClick={() => openPersonalNote(item, lastOpenedAt)}
@@ -1757,7 +1767,6 @@ export function CircleSettingsUserManagementPanel({
                                   </button>
                                 </div>
                               )}
-                          </div>
                           {scheduledUntil ? <DeletionScheduledNote until={scheduledUntil} /> : null}
                         </div>
                       );
