@@ -11,6 +11,31 @@ export function formatCirclePostTime(t: CircleTranslator, ts: number): string {
   return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}`;
 }
 
+export function formatCirclePollClosesAt(ts: number): string {
+  const d = new Date(ts);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (d.toDateString() === today.toDateString()) {
+    return time;
+  }
+  if (d.toDateString() === tomorrow.toDateString()) {
+    return d.toLocaleString(undefined, {
+      weekday: 'long',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  }
+  return d.toLocaleString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 export function circleThreadDescriptionI18n(
   t: CircleTranslator,
   kind: CircleMemberThreadKind,

@@ -2,33 +2,41 @@
 
 import { ClipboardList } from 'lucide-react';
 import {
-  collectSchedulePostTaskRows,
-  collectSchedulePreTaskRows,
+  collectScheduleTaskBoard,
+  SCHEDULE_TASKS_FOLLOWUP_CARD_LIMIT,
+  SCHEDULE_TASKS_PREPARE_CARD_LIMIT,
   formatCareCalendarTimeRange,
   type AssessmentHistoryMap,
   type CareCalendarDayEvent,
   type CareCalendarEntry,
+  type CareCalendarMemberInviteContext,
   type ScheduleTaskAppointmentRow,
 } from '@medxforce/shared';
 import { cn } from '../lib/utils';
+import { CircleTranslatedUserText } from './CircleTranslatedUserText';
+import { CircleCareCalendarForYouLine } from './CircleCareCalendarForYouLine';
+import { useCircleI18nContext } from '../lib/circleI18nContext';
+import { formatCircleDate, type CircleUiLanguage } from '../lib/circleLanguages';
 
 type CircleScheduleTasksViewProps = {
   careEntries: CareCalendarEntry[];
   preferences: Record<string, unknown>;
   histories: AssessmentHistoryMap;
   memberRole?: string;
+  inviteContext?: CareCalendarMemberInviteContext;
   t: (path: string, params?: Record<string, unknown>) => string;
   onOpenAppointment: (dateKey: string, event: CareCalendarDayEvent) => void;
   compact?: boolean;
+  viewerTimezoneId?: string;
 };
 
-function formatAppointmentWhen(row: ScheduleTaskAppointmentRow): string {
-  const dateLabel = new Date(`${row.dateKey}T12:00:00`).toLocaleDateString(undefined, {
+function formatAppointmentWhen(row: ScheduleTaskAppointmentRow, language: CircleUiLanguage): string {
+  const dateLabel = formatCircleDate(new Date(`${row.dateKey}T12:00:00`), language, {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
   });
-  const time = formatCareCalendarTimeRange(row.event.startTimeMinutes, row.event.endTimeMinutes);
+  const time = formatCareCalendarTimeRange(row.event.startTimeMinutes, row.event.endTimeMinutes, row.event.timezoneId);
   return time ? `${dateLabel} · ${time}` : dateLabel;
 }
 
@@ -39,6 +47,9 @@ function TaskSection({
   countLabel,
   onOpen,
   compact,
+  accent = 'violet',
+  t,
+  viewerTimezoneId,
 }: {
   title: string;
   emptyLabel: string;
@@ -46,7 +57,11 @@ function TaskSection({
   countLabel: (count: number) => string;
   onOpen: (row: ScheduleTaskAppointmentRow) => void;
   compact?: boolean;
+  accent?: 'violet' | 'amber';
+  t: CircleScheduleTasksViewProps['t'];
+  viewerTimezoneId?: string;
 }) {
+  const { language } = useCircleI18nContext();
   return (
     <section className="space-y-2">
       <h4
@@ -68,15 +83,37 @@ function TaskSection({
               <button
                 type="button"
                 onClick={() => onOpen(row)}
-                className="w-full text-left rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm hover:border-violet-200 hover:bg-violet-50/40 transition-colors"
+                className={cn(
+                  'w-full text-left rounded-2xl border bg-white px-4 py-3 shadow-sm transition-colors',
+                  accent === 'amber'
+                    ? 'border-amber-100 hover:border-amber-200 hover:bg-amber-50/40'
+                    : 'border-slate-100 hover:border-violet-200 hover:bg-violet-50/40',
+                )}
               >
-                <p className={cn('font-bold text-slate-800', compact ? 'text-sm' : 'text-base')}>
-                  {row.event.title}
-                </p>
+                <CircleTranslatedUserText
+                  text={row.event.title}
+                  className={cn('font-bold text-slate-800', compact ? 'text-sm' : 'text-base')}
+                  showToggle={false}
+                />
                 <p className={cn('text-slate-500 mt-0.5', compact ? 'text-xs' : 'text-sm')}>
-                  {formatAppointmentWhen(row)}
+                  {formatAppointmentWhen(row, language)}
                 </p>
-                <p className={cn('text-violet-700 font-semibold mt-1.5', compact ? 'text-xs' : 'text-sm')}>
+                <CircleCareCalendarForYouLine
+                  dateKey={row.dateKey}
+                  startMinutes={row.event.startTimeMinutes}
+                  endMinutes={row.event.endTimeMinutes}
+                  eventTimeZoneId={row.event.timezoneId}
+                  viewerTimeZoneId={viewerTimezoneId}
+                  t={t}
+                  className="mt-0.5"
+                />
+                <p
+                  className={cn(
+                    'font-semibold mt-1.5',
+                    compact ? 'text-xs' : 'text-sm',
+                    accent === 'amber' ? 'text-amber-700' : 'text-violet-700',
+                  )}
+                >
                   {countLabel(row.totalOpen)}
                 </p>
               </button>
@@ -93,27 +130,25 @@ export function CircleScheduleTasksView({
   preferences,
   histories,
   memberRole,
+  inviteContext,
   t,
   onOpenAppointment,
   compact = false,
+  viewerTimezoneId,
 }: CircleScheduleTasksViewProps) {
-  const preRows = collectSchedulePreTaskRows(careEntries, {
+  const { awaitingRows, preRows, postRows } = collectScheduleTaskBoard(careEntries, {
     preferences,
     histories,
     memberRole,
-    limit: 5,
+    inviteContext,
+    preLimit: SCHEDULE_TASKS_PREPARE_CARD_LIMIT,
+    postLimit: SCHEDULE_TASKS_FOLLOWUP_CARD_LIMIT,
   });
-  const postRows = collectSchedulePostTaskRows(careEntries, {
-    preferences,
-    histories,
-    memberRole,
-    limit: 3,
-  });
-  const isEmpty = preRows.length === 0 && postRows.length === 0;
+  const isEmpty = preRows.length === 0 && postRows.length === 0 && awaitingRows.length === 0;
 
   if (isEmpty) {
     return (
-      <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+      <div className="flex flex-1 min-h-0 flex-col items-center justify-center py-10 px-4 text-center">
         <div className="p-3 rounded-2xl bg-violet-50 text-violet-600 mb-3">
           <ClipboardList size={compact ? 24 : 28} />
         </div>
@@ -128,7 +163,20 @@ export function CircleScheduleTasksView({
   }
 
   return (
-    <div className="space-y-6 py-1">
+    <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-6 py-1 pb-4">
+      {inviteContext ? (
+        <TaskSection
+          title={t('schedulePage.views.tasksAwaitingRsvp')}
+          emptyLabel={t('schedulePage.views.tasksAwaitingRsvpEmpty')}
+          rows={awaitingRows}
+          countLabel={() => t('schedulePage.views.tasksAwaitingRsvpHint')}
+          onOpen={(row) => onOpenAppointment(row.dateKey, row.event)}
+          compact={compact}
+          accent="amber"
+          t={t}
+          viewerTimezoneId={viewerTimezoneId}
+        />
+      ) : null}
       <TaskSection
         title={t('schedulePage.views.tasksPrepare')}
         emptyLabel={t('schedulePage.views.tasksPrepareEmpty')}
@@ -136,6 +184,8 @@ export function CircleScheduleTasksView({
         countLabel={(count) => t('schedulePage.views.tasksOpenPre', { count })}
         onOpen={(row) => onOpenAppointment(row.dateKey, row.event)}
         compact={compact}
+        t={t}
+        viewerTimezoneId={viewerTimezoneId}
       />
       <TaskSection
         title={t('schedulePage.views.tasksFollowUp')}
@@ -144,6 +194,8 @@ export function CircleScheduleTasksView({
         countLabel={(count) => t('schedulePage.views.tasksOpenPost', { count })}
         onOpen={(row) => onOpenAppointment(row.dateKey, row.event)}
         compact={compact}
+        t={t}
+        viewerTimezoneId={viewerTimezoneId}
       />
     </div>
   );

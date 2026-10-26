@@ -22,10 +22,14 @@ export function useCirclePatientProfileSnapshot(
       return;
     }
 
+    let cancelled = false;
     setLoading(true);
-    return onSnapshot(
+    setSnapshot(null);
+    setPhotoUrl(undefined);
+    const unsub = onSnapshot(
       doc(db, 'patients', patientId),
       (snap) => {
+        if (cancelled) return;
         if (!snap.exists()) {
           setSnapshot(null);
           setPhotoUrl(undefined);
@@ -44,11 +48,16 @@ export function useCirclePatientProfileSnapshot(
         setLoading(false);
       },
       () => {
+        if (cancelled) return;
         setSnapshot(null);
         setPhotoUrl(undefined);
         setLoading(false);
       },
     );
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, [db, patientId]);
 
   return { snapshot, photoUrl, loading };

@@ -129,3 +129,21 @@ export function shouldShowProfileIncompleteReminder(input: {
   if (input.snoozedUntil != null && input.snoozedUntil > now) return false;
   return true;
 }
+
+export const SCHEDULED_ASSESSMENT_MISS_RATE_THRESHOLD = 0.5;
+
+/** True when at least half of past scheduled assessment slots in the window were missed. */
+export function shouldShowScheduledAssessmentMissedReminder(input: {
+  enabled: boolean;
+  scheduleEnabled: boolean;
+  pastScheduled: number;
+  missed: number;
+  snoozedUntil: number | undefined;
+  now?: number;
+}): boolean {
+  if (!input.enabled || !input.scheduleEnabled) return false;
+  const now = input.now ?? Date.now();
+  if (input.snoozedUntil != null && input.snoozedUntil > now) return false;
+  if (input.pastScheduled <= 0) return false;
+  return input.missed / input.pastScheduled >= SCHEDULED_ASSESSMENT_MISS_RATE_THRESHOLD;
+}

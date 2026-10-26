@@ -110,7 +110,7 @@ export function buildCircleAiSystemInstruction(role: CircleMemberRole): string {
     '4. Do not pretend to be part of the circle thread; this is private guidance for one person.',
     '5. Be substantive on the first reply: lead with practical help, not filler. Do not open with long praise (e.g. "What a thoughtful question"). At most one brief warm sentence, then concrete suggestions.',
     '6. When they ask for recommendations or "what should we do", give 3–5 specific, actionable ideas (products/types/approaches in general terms — not medical prescriptions).',
-    '7. Keep responses under 200 words, warm and practical — avoid unnecessary jargon.',
+    '7. Keep responses concise but complete (about 150–250 words): finish every numbered point — never stop mid-sentence or mid-list.',
     '8. Format as plain text only: use numbered lines (1. 2. 3.) or lines starting with "- " for bullets. Never use asterisks, markdown, hashtags, or **bold** syntax.',
     '9. Do not ask for or repeat unnecessary personal health identifiers.',
   ].join('\n');

@@ -3,6 +3,7 @@
 import type { AssessmentHistoryMap } from './assessmentSchedule';
 import {
   appointmentTasksForPhase,
+  normalizeAppointmentTaskAssignee,
   openAppointmentTaskCount,
   supportsCareCalendarAppointmentEpisode,
   type CareCalendarAppointmentTaskAssignee,
@@ -11,10 +12,16 @@ import {
   countRecommendedCareCalendarAssessmentNudges,
   getCareCalendarAssessmentNudges,
 } from './careCalendarAssessmentNudges';
-import type { CareCalendarDayEvent } from './careCalendar';
+import {
+  careCalendarDateKey,
+  isCareCalendarAppointmentPast,
+  parseCareCalendarDateKey,
+  type CareCalendarDayEvent,
+} from './careCalendar';
 import {
   careCalendarDayEventTiming,
   resolvePrepNudgeTier,
+  SCHEDULE_PREP_TASK_HORIZON_DAYS,
   taskAssigneesForScheduleViewer,
   type CareCalendarDayEventTiming,
   type PrepNudgeTier,
@@ -43,6 +50,7 @@ export function resolveCareCalendarAppointmentTiming(
       event.startTimeMinutes,
       event.endTimeMinutes,
       options.now,
+      event.timezoneId,
     );
   }
   return 'upcoming';
@@ -62,7 +70,7 @@ function countOpenTasksForViewerOnEvent(
 ): number {
   const assignees = taskAssigneesForViewer(memberRole);
   const tasks = appointmentTasksForPhase(event.appointmentTasks, phase);
-  return tasks.filter((task) => task.status === 'open' && assignees.includes(task.assignee))
+  return tasks.filter((task) => task.status === 'open' && assignees.includes(normalizeAppointmentTaskAssignee(task.assignee)))
     .length;
 }
 
@@ -99,7 +107,7 @@ export function countAppointmentPrepRemaining(
   const now = options.now ?? new Date();
   const tier =
     options.tier ??
-    resolvePrepNudgeTier(dateKey, event.startTimeMinutes, event.endTimeMinutes, now);
+    resolvePrepNudgeTier(dateKey, event.startTimeMinutes, event.endTimeMinutes, now, event.timezoneId);
   const taskScope = options.taskScope ?? 'all';
   const openTasks =
     taskScope === 'viewer'
@@ -157,6 +165,38 @@ export function countAppointmentPostFollowUpRemaining(
   return { openTasks, openNudges, total: openTasks + openNudges };
 }
 
+/** Open follow-up checklist tasks that still count on Schedule (past visit, last 7 days). */
+export function countVisibleAppointmentFollowUpTasks(
+  event: CareCalendarDayEvent,
+  dateKey: string,
+  options: {
+    preferences?: Record<string, unknown>;
+    histories?: AssessmentHistoryMap;
+    now?: Date;
+    memberRole?: ScheduleTaskViewerRole;
+    taskScope?: AppointmentPrepTaskScope;
+  } = {},
+): number {
+  const now = options.now ?? new Date();
+  if (
+    !isCareCalendarAppointmentPast(
+      dateKey,
+      event.startTimeMinutes,
+      event.endTimeMinutes,
+      now,
+      event.timezoneId,
+    )
+  ) {
+    return 0;
+  }
+  const todayKey = careCalendarDateKey(now);
+  const visit = parseCareCalendarDateKey(dateKey);
+  const today = parseCareCalendarDateKey(todayKey);
+  const ageDays = Math.round((today.getTime() - visit.getTime()) / (24 * 60 * 60 * 1000));
+  if (ageDays < 0 || ageDays > SCHEDULE_PREP_TASK_HORIZON_DAYS) return 0;
+  return countAppointmentPostFollowUpRemaining(event, dateKey, { ...options, now }).openTasks;
+}
+
 export type AppointmentPrepHighlight =
   | 'none'
   | 'ready_light'
@@ -195,6 +235,7 @@ export function resolveAppointmentPrepHighlight(
     event.startTimeMinutes,
     event.endTimeMinutes,
     now,
+    event.timezoneId,
   );
   if (tier === 'none') return 'none';
 

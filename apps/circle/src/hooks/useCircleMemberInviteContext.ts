@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, type Firestore } from 'firebase/firestore';
 import type { CareCalendarMemberInviteContext, CirclePatientSummary } from '@medxforce/shared';
+import { composeContactDisplayName } from '@medxforce/shared';
 import { useCircleOwnManagedContact } from './useCircleOwnManagedContact';
 
 export function useCircleMemberInviteContext(
@@ -41,31 +42,31 @@ export function useCircleMemberInviteContext(
     });
   }, [db, patient?.patientId, user.uid]);
 
+  const memberContactId =
+    contact?.id ?? memberDocContactId ?? inviteContactId ?? undefined;
+
   const inviteContext = useMemo<CareCalendarMemberInviteContext>(
     () => ({
       memberUid: user.uid,
-      contactId: contact?.id,
+      contactId: memberContactId,
       memberDocContactId,
       inviteContactId,
       displayName:
-        contact?.name?.trim() ||
+        composeContactDisplayName(contact || {}) ||
         user.displayName?.trim() ||
         user.email?.split('@')[0] ||
         undefined,
     }),
     [
-      contact?.id,
-      contact?.name,
+      contact,
       inviteContactId,
+      memberContactId,
       memberDocContactId,
       user.displayName,
       user.email,
       user.uid,
     ],
   );
-
-  const memberContactId =
-    contact?.id ?? memberDocContactId ?? inviteContactId ?? undefined;
 
   const inviteContextReady = !loading && inviteContactIdReady;
 

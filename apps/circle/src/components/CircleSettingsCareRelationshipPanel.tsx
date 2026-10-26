@@ -1,18 +1,53 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
-import type { Firestore } from 'firebase/firestore';
+import { doc, onSnapshot, type Firestore } from 'firebase/firestore';
 import { HeartHandshake, LogOut } from 'lucide-react';
-import { leaveCircleForPatient, type CirclePatientSummary } from '@medxforce/shared';
-import { useCircleOnlineVisibility } from '../hooks/useCircleOnlineVisibility';
+import {
+  canInviteMembers,
+  leaveCircleForPatient,
+  listManagedProxyContacts,
+  normalizeInviteEmail,
+  parsePatientManagedContacts,
+  type CirclePatientSummary,
+  type ManagedProxyContact,
+} from '@medxforce/shared';
 import { CircleLeaveCircleConfirmModal } from './CircleLeaveCircleConfirmModal';
 import { useCircleT } from '../lib/circleI18nContext';
 import { translateCircleMemberAccessLabel } from '../lib/adminScreenI18n';
+import {
+  circleAccessOptionLabelKey,
+  type CircleAccessOptionId,
+} from '../lib/circleContactAccessOptions';
 
 interface CircleSettingsCareRelationshipPanelProps {
   user: User;
   db: Firestore;
   patient: CirclePatientSummary | null;
   onLeftCircle: () => void | Promise<void>;
+}
+
+/** Assignable Circle sign-in roles — same set as User management / invite access options. */
+const CARE_RELATIONSHIP_ROLE_OPTIONS: CircleAccessOptionId[] = [
+  'proxy_primary',
+  'proxy_backup',
+  'caregiver',
+  'family',
+  'friend',
+];
+
+function pickContactableProxy(
+  proxies: ManagedProxyContact[],
+  viewerEmail: string,
+): ManagedProxyContact | null {
+  const viewer = normalizeInviteEmail(viewerEmail);
+  const others = proxies.filter(
+    (proxy) => normalizeInviteEmail(proxy.email) !== viewer,
+  );
+  return (
+    others.find((proxy) => proxy.tier === 'primary') ??
+    others.find((proxy) => proxy.tier === 'backup') ??
+    null
+  );
 }
 
 export function CircleSettingsCareRelationshipPanel({
@@ -25,12 +60,38 @@ export function CircleSettingsCareRelationshipPanel({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const {
-    hideOnlineStatusFromPatient,
-    loading: visibilityLoading,
-    saving: visibilitySaving,
-    updateHideOnlineStatusFromPatient,
-  } = useCircleOnlineVisibility(db, user.uid, patient?.patientId);
+  const [proxies, setProxies] = useState<ManagedProxyContact[]>([]);
+  const [proxiesReady, setProxiesReady] = useState(false);
+
+  useEffect(() => {
+    if (!patient?.patientId) {
+      setProxies([]);
+      setProxiesReady(true);
+      return;
+    }
+    setProxiesReady(false);
+    const unsub = onSnapshot(
+      doc(db, 'patients', patient.patientId),
+      (snap) => {
+        if (!snap.exists()) {
+          setProxies([]);
+          setProxiesReady(true);
+          return;
+        }
+        setProxies(
+          listManagedProxyContacts(
+            parsePatientManagedContacts(snap.data() as Record<string, unknown>),
+          ),
+        );
+        setProxiesReady(true);
+      },
+      () => {
+        setProxies([]);
+        setProxiesReady(true);
+      },
+    );
+    return unsub;
+  }, [db, patient?.patientId]);
 
   const handleLeave = async () => {
     if (!patient) return;
@@ -67,6 +128,22 @@ export function CircleSettingsCareRelationshipPanel({
     );
   }
 
+  const otherProxy = pickContactableProxy(proxies, user.email || '');
+  const otherProxyName = otherProxy?.name.trim() || otherProxy?.email.trim() || '';
+  const userManagementHint = t('settings.careRelationshipChangeViaUserManagement', {
+    settings: t('drawer.settings'),
+    userManagement: t('drawer.userManagement'),
+  });
+  const roleChangeHint = canInviteMembers(patient.capabilities)
+    ? userManagementHint
+    : !proxiesReady
+      ? null
+      : patient.role === 'proxy' && !otherProxy
+        ? userManagementHint
+        : otherProxyName
+          ? t('settings.careRelationshipChangeContactNamed', { name: otherProxyName })
+          : t('settings.careRelationshipChangeContactGeneric');
+
   return (
     <>
       <div className="space-y-6 p-5">
@@ -98,34 +175,34 @@ export function CircleSettingsCareRelationshipPanel({
               {translateCircleMemberAccessLabel(t, patient.role, patient.proxyTier)}
             </p>
           </div>
-          <div className="flex items-start justify-between gap-4 p-4 bg-white rounded-2xl border border-slate-100">
-            <div className="space-y-1 min-w-0">
-              <p className="text-sm font-bold text-slate-800">
-                {t('common.aria.hideMyOnlineStatus')}
-              </p>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                {t('settings.careRelationshipHideOnlineDesc')}
-              </p>
-            </div>
-            <button
-              type="button"
-              disabled={visibilityLoading || visibilitySaving}
-              onClick={() =>
-                void updateHideOnlineStatusFromPatient(!hideOnlineStatusFromPatient)
-              }
-              className={`w-14 h-8 rounded-full transition-all duration-300 relative shrink-0 disabled:opacity-50 ${
-                hideOnlineStatusFromPatient ? 'bg-blue-600' : 'bg-slate-300'
-              }`}
-              aria-pressed={hideOnlineStatusFromPatient}
-              aria-label={t('common.aria.hideMyOnlineStatus')}
-            >
-              <span
-                className={`absolute top-1 left-0 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 ${
-                  hideOnlineStatusFromPatient ? 'translate-x-7' : 'translate-x-1'
-                }`}
-              />
-            </button>
+        </div>
+
+        <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">
+              {t('settings.careRelationshipRolesTitle')}
+            </p>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              {t('settings.careRelationshipRolesIntro')}
+            </p>
           </div>
+          <ul className="space-y-1.5">
+            {CARE_RELATIONSHIP_ROLE_OPTIONS.map((option) => (
+              <li
+                key={option}
+                className="flex items-center gap-2 text-sm font-semibold text-slate-700"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0" aria-hidden />
+                {t(circleAccessOptionLabelKey(option))}
+              </li>
+            ))}
+          </ul>
+          {roleChangeHint && (
+            <p className="text-xs text-slate-500 leading-relaxed">{roleChangeHint}</p>
+          )}
+        </div>
+
+        <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
           <p className="text-xs text-slate-400 leading-relaxed">
             {t('settings.careRelationshipLeaveHint')}
           </p>

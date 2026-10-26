@@ -7,13 +7,18 @@ import {
   Camera,
   ChevronLeft,
   ChevronRight,
+  Calendar,
   Globe,
   HeartHandshake,
   LayoutGrid,
+  Loader2,
   LogOut,
   Image as ImageIcon,
+  Trash2,
   MessageSquare,
+  Radio,
   Settings,
+  Shield,
   User as UserIcon,
   UserPlus,
   Users,
@@ -22,6 +27,8 @@ import {
 import { CircleSettingsMessagingPanel } from './CircleSettingsMessagingPanel';
 import { CircleSettingsMediaPanel } from './CircleSettingsMediaPanel';
 import { CircleSettingsLocalePanel } from './CircleSettingsLocalePanel';
+import { CircleSettingsOnlineStatusPanel } from './CircleSettingsOnlineStatusPanel';
+import { CircleSettingsSchedulePanel } from './CircleSettingsSchedulePanel';
 import { CircleSettingsCareRelationshipPanel } from './CircleSettingsCareRelationshipPanel';
 import { CircleSettingsUserManagementPanel } from './CircleSettingsUserManagementPanel';
 import { CircleSettingsNotificationPreferencesPanel } from './CircleSettingsNotificationPreferencesPanel';
@@ -40,8 +47,13 @@ import {
   type CirclePatientSummary,
   type CircleUserProfile,
   canInviteMembers,
+  PRIVACY_POLICY_URL,
   type PatientProvisionRecord,
 } from '@medxforce/shared';
+import {
+  cancelScheduledAccountDeletion,
+  scheduleAccountDeletion,
+} from '../services/deleteSignedInAccount';
 import { CirclePatientSwitchList } from './CirclePatientSwitchList';
 import { CircleAddPatientPanel } from './CircleAddPatientPanel';
 import { cn } from '../lib/utils';
@@ -98,6 +110,8 @@ export function CircleProfileDrawer({
     | 'messaging'
     | 'media'
     | 'localeDisplay'
+    | 'onlineStatus'
+    | 'schedule'
     | 'careRelationship'
     | 'userManagement'
     | 'notifications'
@@ -106,6 +120,11 @@ export function CircleProfileDrawer({
     | 'switchPatient'
     | 'addPatient'
   >('account');
+  const [deleteArmed, setDeleteArmed] = useState(false);
+  const [deleteContributions, setDeleteContributions] = useState(false);
+  const [confirmDeleteShared, setConfirmDeleteShared] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState('');
 
   const proxyCanManageUsers = canInviteMembers(patient?.capabilities);
   const { online: patientOnline } = usePatientOnlinePresence(db, patient?.patientId);
@@ -121,6 +140,10 @@ export function CircleProfileDrawer({
       setDrawerView('account');
       setMyContactDirty(false);
       setDiscardPrompt(null);
+      setDeleteArmed(false);
+      setDeleteContributions(false);
+      setConfirmDeleteShared(false);
+      setDeleteAccountError('');
     }
   }, [open]);
 
@@ -153,6 +176,24 @@ export function CircleProfileDrawer({
     user.email?.split('@')[0] ||
     t('drawer.defaultMemberName');
   const photoUrl = profile?.photoUrl || user.photoURL || '';
+  const connectedPatientNames = patients
+    .filter((item) => !item.isPendingProvision)
+    .map((item) => item.displayName.trim())
+    .filter(Boolean);
+  const connectedPatientList =
+    connectedPatientNames.length > 1
+      ? new Intl.ListFormat(undefined, { type: 'conjunction', style: 'long' }).format(
+          connectedPatientNames,
+        )
+      : '';
+  const scheduledEraseAt = profile?.accountDeletion?.eraseAt;
+  const scheduledDeletionDate = scheduledEraseAt
+    ? new Date(scheduledEraseAt).toLocaleDateString(undefined, {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : '';
 
   const handlePhotoChange = async (file: File) => {
     if (!isAcceptedProfilePhotoFile(file)) {
@@ -214,6 +255,8 @@ export function CircleProfileDrawer({
       drawerView === 'messaging' ||
       drawerView === 'media' ||
       drawerView === 'localeDisplay' ||
+      drawerView === 'onlineStatus' ||
+      drawerView === 'schedule' ||
       drawerView === 'careRelationship' ||
       drawerView === 'userManagement' ||
       drawerView === 'switchPatient' ||
@@ -262,7 +305,7 @@ export function CircleProfileDrawer({
         aria-label={t('common.closeMenu')}
         onClick={requestCloseDrawer}
       />
-      <aside className="w-full max-w-sm bg-white shadow-2xl flex flex-col h-full">
+      <aside className="w-full max-w-sm min-w-0 overflow-x-hidden bg-white shadow-2xl flex flex-col h-full">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 gap-2">
           {drawerView !== 'account' ? (
             <button
@@ -282,6 +325,8 @@ export function CircleProfileDrawer({
             {drawerView === 'messaging' && t('drawer.messaging')}
             {drawerView === 'media' && t('drawer.media')}
             {drawerView === 'localeDisplay' && t('drawer.localeDisplay')}
+            {drawerView === 'onlineStatus' && t('drawer.onlineStatus')}
+            {drawerView === 'schedule' && t('drawer.schedule')}
             {drawerView === 'careRelationship' && t('drawer.careRelationship')}
             {drawerView === 'userManagement' && t('drawer.userManagement')}
             {drawerView === 'notifications' && t('drawer.notifications')}
@@ -305,7 +350,7 @@ export function CircleProfileDrawer({
               <button
                 type="button"
                 onClick={() => setDrawerView('addPatient')}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 mb-1"
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100 mb-1"
               >
                 <UserPlus size={20} className="text-blue-600" />
                 <div className="flex-1 min-w-0">
@@ -319,7 +364,7 @@ export function CircleProfileDrawer({
               <button
                 type="button"
                 onClick={() => setDrawerView('switchPatient')}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
               >
                 <HeartHandshake size={20} className="text-blue-600" />
                 <div className="flex-1 min-w-0">
@@ -335,7 +380,7 @@ export function CircleProfileDrawer({
             <button
               type="button"
               onClick={() => setDrawerView('careRelationship')}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
             >
               <HeartHandshake size={20} className="text-blue-600" />
               <div className="flex-1 min-w-0">
@@ -352,7 +397,7 @@ export function CircleProfileDrawer({
               <button
                 type="button"
                 onClick={() => setDrawerView('userManagement')}
-                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
               >
                 <Users size={20} className="text-violet-600" />
                 <div className="flex-1 min-w-0">
@@ -369,7 +414,7 @@ export function CircleProfileDrawer({
             <button
               type="button"
               onClick={() => setDrawerView('messaging')}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
             >
               <MessageSquare size={20} className="text-blue-600" />
               <div className="flex-1 min-w-0">
@@ -381,7 +426,7 @@ export function CircleProfileDrawer({
             <button
               type="button"
               onClick={() => setDrawerView('media')}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
             >
               <ImageIcon size={20} className="text-blue-600" />
               <div className="flex-1 min-w-0">
@@ -393,12 +438,36 @@ export function CircleProfileDrawer({
             <button
               type="button"
               onClick={() => setDrawerView('localeDisplay')}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
             >
               <Globe size={20} className="text-sky-600" />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-slate-800 text-sm">{t('drawer.localeDisplay')}</p>
                 <p className="text-xs text-slate-400">{t('drawer.localeDisplayHint')}</p>
+              </div>
+              <ChevronRight size={16} className="text-slate-300 shrink-0" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setDrawerView('onlineStatus')}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
+            >
+              <Radio size={20} className="text-emerald-600" />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-800 text-sm">{t('drawer.onlineStatus')}</p>
+                <p className="text-xs text-slate-400">{t('drawer.onlineStatusHint')}</p>
+              </div>
+              <ChevronRight size={16} className="text-slate-300 shrink-0" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setDrawerView('schedule')}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
+            >
+              <Calendar size={20} className="text-violet-600" />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-800 text-sm">{t('drawer.schedule')}</p>
+                <p className="text-xs text-slate-400">{t('drawer.scheduleHint')}</p>
               </div>
               <ChevronRight size={16} className="text-slate-300 shrink-0" />
             </button>
@@ -419,7 +488,23 @@ export function CircleProfileDrawer({
 
         {drawerView === 'localeDisplay' && (
           <div className="flex-1 overflow-y-auto">
-            <CircleSettingsLocalePanel />
+            <CircleSettingsLocalePanel
+              user={user}
+              db={db}
+              patientId={patient?.patientId}
+            />
+          </div>
+        )}
+
+        {drawerView === 'onlineStatus' && (
+          <div className="flex-1 overflow-y-auto">
+            <CircleSettingsOnlineStatusPanel user={user} db={db} patient={patient} />
+          </div>
+        )}
+
+        {drawerView === 'schedule' && (
+          <div className="flex-1 overflow-y-auto">
+            <CircleSettingsSchedulePanel />
           </div>
         )}
 
@@ -511,6 +596,7 @@ export function CircleProfileDrawer({
               user={user}
               db={db}
               patient={patient}
+              patients={patients}
               onDirtyChange={setMyContactDirty}
               onProfileSaved={(nextName) => {
                 setProfileDisplayName(nextName);
@@ -609,7 +695,7 @@ export function CircleProfileDrawer({
           <button
             type="button"
             onClick={() => setDrawerView('myContact')}
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
           >
             <UserIcon size={20} className="text-violet-600" />
             <div className="flex-1 min-w-0">
@@ -621,7 +707,7 @@ export function CircleProfileDrawer({
           <button
             type="button"
             onClick={() => setDrawerView('notifications')}
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
           >
             <Bell size={20} className="text-slate-500" />
             <div className="flex-1">
@@ -633,7 +719,7 @@ export function CircleProfileDrawer({
           <button
             type="button"
             onClick={() => setDrawerView('customizeDashboard')}
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
           >
             <LayoutGrid size={20} className="text-blue-600" />
             <div className="flex-1 min-w-0">
@@ -645,7 +731,7 @@ export function CircleProfileDrawer({
           <button
             type="button"
             onClick={() => setDrawerView('settings')}
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
           >
             <Settings size={20} className="text-slate-500" />
             <div className="flex-1">
@@ -658,6 +744,18 @@ export function CircleProfileDrawer({
             </div>
             <ChevronRight size={16} className="text-slate-300" />
           </button>
+          <a
+            href={PRIVACY_POLICY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
+          >
+            <Shield size={20} className="text-slate-500" />
+            <div className="flex-1">
+              <p className="font-semibold text-slate-800 text-sm">{t('drawer.privacyPolicy')}</p>
+            </div>
+            <ChevronRight size={16} className="text-slate-300" />
+          </a>
         </div>
 
         <div className="p-4 border-t border-slate-100">
@@ -672,10 +770,222 @@ export function CircleProfileDrawer({
             <LogOut size={18} />
             {t('drawer.signOut')}
           </button>
+          <div className="mt-3 border-t border-slate-100 pt-3 space-y-2">
+            {scheduledDeletionDate ? (
+              <>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {t('drawer.scheduledDeletion', { date: scheduledDeletionDate })}
+                </p>
+                <button
+                  type="button"
+                  disabled={deletingAccount}
+                  onClick={() => {
+                    setDeletingAccount(true);
+                    setDeleteAccountError('');
+                    void cancelScheduledAccountDeletion()
+                      .then(() => {
+                        setProfile((prev) =>
+                          prev ? { ...prev, accountDeletion: undefined } : prev,
+                        );
+                      })
+                      .catch(() => {
+                        setDeleteAccountError(t('drawer.deleteAccountFailed'));
+                      })
+                      .finally(() => setDeletingAccount(false));
+                  }}
+                  className="w-full py-2.5 rounded-2xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {deletingAccount ? t('drawer.deleteAccountWorking') : t('drawer.cancelScheduledDeletion')}
+                </button>
+                {deleteAccountError ? (
+                  <p className="text-xs text-red-600">{deleteAccountError}</p>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeleteAccountError('');
+                    setDeleteContributions(false);
+                    setConfirmDeleteShared(false);
+                    setDeleteArmed(true);
+                  }}
+                  className="w-full py-2.5 rounded-2xl border border-red-200 bg-red-50 text-red-700 text-sm font-semibold hover:bg-red-100"
+                >
+                  {t('drawer.deleteAccount')}
+                </button>
+                <p className="text-xs text-slate-500 leading-relaxed">{t('drawer.deleteAccountDesc')}</p>
+              </>
+            )}
+          </div>
         </div>
         </>
         )}
       </aside>
+
+      {deleteArmed && !confirmDeleteShared ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white p-6 rounded-[28px] shadow-2xl max-w-sm w-full space-y-5 border border-slate-100">
+            <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center text-red-500 mx-auto">
+              {deletingAccount ? <Loader2 size={24} className="animate-spin" /> : <Trash2 size={24} />}
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-bold text-slate-900">{t('drawer.deleteAccountConfirm')}</h3>
+              {connectedPatientList ? (
+                <p className="text-slate-500 text-sm leading-relaxed">
+                  {t('drawer.deleteAccountManyPatientsLead')}{' '}
+                  <span className="font-bold text-slate-800">{connectedPatientList}</span>
+                  {t('drawer.deleteAccountManyPatientsTail')}
+                </p>
+              ) : null}
+              <p className="text-slate-500 text-sm leading-relaxed">{t('drawer.deleteAccountByline')}</p>
+              <fieldset className="text-left space-y-3 pt-1">
+                <label className="flex items-start gap-2 text-sm text-slate-700">
+                  <input
+                    type="radio"
+                    name="delete-account-shared"
+                    className="mt-1"
+                    checked={!deleteContributions}
+                    onChange={() => setDeleteContributions(false)}
+                  />
+                  <span>
+                    <span className="font-semibold text-slate-800">{t('drawer.keepShared')}</span>
+                    <span className="block text-slate-500 mt-0.5">{t('drawer.keepSharedHint')}</span>
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 text-sm text-slate-700">
+                  <input
+                    type="radio"
+                    name="delete-account-shared"
+                    className="mt-1"
+                    checked={deleteContributions}
+                    onChange={() => setDeleteContributions(true)}
+                  />
+                  <span>
+                    <span className="font-semibold text-slate-800">{t('drawer.deleteShared')}</span>
+                    <span className="block text-slate-500 mt-0.5">{t('drawer.deleteSharedHint')}</span>
+                  </span>
+                </label>
+              </fieldset>
+              {deleteAccountError ? (
+                <p className="text-sm text-red-600">{deleteAccountError}</p>
+              ) : null}
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                disabled={deletingAccount}
+                onClick={() => {
+                  setDeleteArmed(false);
+                  setDeleteContributions(false);
+                  setDeleteAccountError('');
+                }}
+                className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-bold disabled:opacity-50"
+              >
+                {t('drawer.deleteAccountCancel')}
+              </button>
+              <button
+                type="button"
+                disabled={deletingAccount}
+                onClick={() => {
+                  if (deleteContributions) {
+                    setDeleteAccountError('');
+                    setConfirmDeleteShared(true);
+                    return;
+                  }
+                  setDeletingAccount(true);
+                  setDeleteAccountError('');
+                  void scheduleAccountDeletion(false)
+                    .then(({ eraseAt }) => {
+                      setProfile((prev) =>
+                        prev
+                          ? { ...prev, accountDeletion: { eraseAt, deleteContributions: false } }
+                          : {
+                              uid: user.uid,
+                              accountDeletion: { eraseAt, deleteContributions: false },
+                              updatedAt: Date.now(),
+                            },
+                      );
+                      setDeleteArmed(false);
+                      setDeleteContributions(false);
+                      onClose();
+                    })
+                    .catch(() => {
+                      setDeleteAccountError(t('drawer.deleteAccountFailed'));
+                    })
+                    .finally(() => setDeletingAccount(false));
+                }}
+                className="flex-1 py-3 bg-red-600 text-white rounded-2xl font-bold inline-flex items-center justify-center gap-2 disabled:cursor-wait"
+              >
+                {deletingAccount ? <Loader2 size={16} className="animate-spin shrink-0" /> : null}
+                {deletingAccount ? t('drawer.deleteAccountWorking') : t('drawer.deleteAccount')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteArmed && confirmDeleteShared ? (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white p-6 rounded-[28px] shadow-2xl max-w-sm w-full space-y-5 border border-slate-100">
+            <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center text-red-500 mx-auto">
+              {deletingAccount ? <Loader2 size={24} className="animate-spin" /> : <Trash2 size={24} />}
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-bold text-slate-900">{t('drawer.deleteSharedTitle')}</h3>
+              <p className="text-slate-500 text-sm leading-relaxed">{t('drawer.deleteSharedBody')}</p>
+              {deleteAccountError ? (
+                <p className="text-sm text-red-600">{deleteAccountError}</p>
+              ) : null}
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                disabled={deletingAccount}
+                onClick={() => {
+                  setConfirmDeleteShared(false);
+                  setDeleteAccountError('');
+                }}
+                className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-bold disabled:opacity-50"
+              >
+                {t('common.back')}
+              </button>
+              <button
+                type="button"
+                disabled={deletingAccount}
+                onClick={() => {
+                  setDeletingAccount(true);
+                  setDeleteAccountError('');
+                  void scheduleAccountDeletion(true)
+                    .then(({ eraseAt }) => {
+                      setProfile((prev) =>
+                        prev
+                          ? { ...prev, accountDeletion: { eraseAt, deleteContributions: true } }
+                          : {
+                              uid: user.uid,
+                              accountDeletion: { eraseAt, deleteContributions: true },
+                              updatedAt: Date.now(),
+                            },
+                      );
+                      setDeleteArmed(false);
+                      setConfirmDeleteShared(false);
+                      setDeleteContributions(false);
+                    })
+                    .catch(() => {
+                      setDeleteAccountError(t('drawer.deleteAccountFailed'));
+                    })
+                    .finally(() => setDeletingAccount(false));
+                }}
+                className="flex-1 py-3 bg-red-600 text-white rounded-2xl font-bold inline-flex items-center justify-center gap-2 disabled:cursor-wait"
+              >
+                {deletingAccount ? <Loader2 size={16} className="animate-spin shrink-0" /> : null}
+                {deletingAccount ? t('drawer.deleteAccountWorking') : t('drawer.deleteSharedConfirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {fileToCrop && (
         <CircleProfilePhotoCropModal
@@ -685,8 +995,9 @@ export function CircleProfileDrawer({
         />
       )}
 
-      <CircleDiscardChangesModal
+        <CircleDiscardChangesModal
         open={discardPrompt !== null}
+        title={t('drawer.discardTitle')}
         message={t('drawer.discardMessage')}
         onDiscard={confirmDiscardChanges}
         onKeepEditing={() => setDiscardPrompt(null)}

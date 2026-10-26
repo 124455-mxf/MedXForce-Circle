@@ -4,6 +4,7 @@ import { ChevronDown, Mic, MicOff, Plus, Trash2 } from 'lucide-react';
 import type { CareCalendarEntryKind } from '@medxforce/shared';
 import {
   appointmentTasksForPhase,
+  APPOINTMENT_TASK_ASSIGNEE_OPTIONS,
   defaultAppointmentTasksForSubtype,
   newAppointmentTaskId,
   supportsCareCalendarAppointmentEpisode,
@@ -18,13 +19,80 @@ import { cn } from '../lib/utils';
 
 const SUPPORTING_NOTES_MAX = 2000;
 
-const TASK_ASSIGNEES: CareCalendarAppointmentTaskAssignee[] = [
-  'patient',
-  'caregiver',
-  'family',
-  'proxy',
-  'creator',
-];
+type CircleCareCalendarDictationTextareaProps = {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  t: (key: string, params?: Record<string, unknown>) => string;
+  rows?: number;
+  maxLength?: number;
+};
+
+export function CircleCareCalendarDictationTextarea({
+  label,
+  value,
+  onChange,
+  placeholder,
+  t,
+  rows = 3,
+  maxLength,
+}: CircleCareCalendarDictationTextareaProps) {
+  const { isRecording, micError, setMicError, toggleRecording, stopRecording } = useDictation();
+
+  useEffect(() => () => stopRecording(), [stopRecording]);
+
+  const applyValue = (next: string) => {
+    onChange(maxLength ? next.slice(0, maxLength) : next);
+  };
+
+  const handleDictation = () => {
+    setMicError(null);
+    void toggleRecording(() => value, applyValue);
+  };
+
+  return (
+    <label className="block space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-bold text-slate-700">{label}</span>
+        <button
+          type="button"
+          onClick={handleDictation}
+          className={cn(
+            'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors',
+            isRecording
+              ? 'bg-red-50 text-red-600 ring-2 ring-red-200 animate-pulse'
+              : 'text-slate-500 hover:bg-slate-100 hover:text-violet-700',
+          )}
+          aria-label={isRecording ? t('fields.dictateStop') : t('fields.dictate')}
+          aria-pressed={isRecording}
+        >
+          {isRecording ? <MicOff size={14} /> : <Mic size={14} />}
+          {isRecording ? t('fields.dictateStop') : t('fields.dictate')}
+        </button>
+      </div>
+      <textarea
+        value={value}
+        onChange={(e) => applyValue(e.target.value)}
+        rows={rows}
+        maxLength={maxLength}
+        className={cn(
+          'w-full px-4 py-3 rounded-xl border resize-none text-sm',
+          isRecording ? 'border-red-200 ring-2 ring-red-100' : 'border-slate-200',
+        )}
+        placeholder={placeholder}
+      />
+      {isRecording && (
+        <p className="text-xs text-red-600 font-medium">{t('fields.dictateListening')}</p>
+      )}
+      {micError && (
+        <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+          {micError}
+        </p>
+      )}
+    </label>
+  );
+}
 
 type CircleCareCalendarAppointmentEpisodeFieldsProps = {
   kind: CareCalendarEntryKind;
@@ -155,7 +223,7 @@ function TaskEditorSection({
                       }
                       className="px-2 py-2 rounded-lg border border-slate-200 bg-white text-sm"
                     >
-                      {TASK_ASSIGNEES.map((assignee) => (
+                      {APPOINTMENT_TASK_ASSIGNEE_OPTIONS.map((assignee) => (
                         <option key={assignee} value={assignee}>
                           {t(`taskAssignees.${assignee}`)}
                         </option>
@@ -188,21 +256,9 @@ export function CircleCareCalendarAppointmentEpisodeFields({
   onSupportingNotesChange,
   t,
 }: CircleCareCalendarAppointmentEpisodeFieldsProps) {
-  const { isRecording, micError, setMicError, toggleRecording, stopRecording } = useDictation();
-
-  useEffect(() => () => stopRecording(), [stopRecording]);
-
   if (!supportsCareCalendarAppointmentEpisode(kind)) {
     return null;
   }
-
-  const handleDictation = () => {
-    setMicError(null);
-    void toggleRecording(
-      () => supportingNotes,
-      (value) => onSupportingNotesChange(value.slice(0, SUPPORTING_NOTES_MAX)),
-    );
-  };
 
   const subtypes = visitSubtypesForKind(kind);
 
@@ -223,45 +279,14 @@ export function CircleCareCalendarAppointmentEpisodeFields({
         </select>
       </label>
 
-      <label className="block space-y-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-bold text-slate-700">{t('fields.supportingNotes')}</span>
-          <button
-            type="button"
-            onClick={handleDictation}
-            className={cn(
-              'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors',
-              isRecording
-                ? 'bg-red-50 text-red-600 ring-2 ring-red-200 animate-pulse'
-                : 'text-slate-500 hover:bg-slate-100 hover:text-violet-700',
-            )}
-            aria-label={isRecording ? t('fields.dictateStop') : t('fields.dictate')}
-            aria-pressed={isRecording}
-          >
-            {isRecording ? <MicOff size={14} /> : <Mic size={14} />}
-            {isRecording ? t('fields.dictateStop') : t('fields.dictate')}
-          </button>
-        </div>
-        <textarea
-          value={supportingNotes}
-          onChange={(e) => onSupportingNotesChange(e.target.value.slice(0, SUPPORTING_NOTES_MAX))}
-          rows={3}
-          maxLength={SUPPORTING_NOTES_MAX}
-          className={cn(
-            'w-full px-4 py-3 rounded-xl border resize-none text-sm',
-            isRecording ? 'border-red-200 ring-2 ring-red-100' : 'border-slate-200',
-          )}
-          placeholder={t('fields.supportingNotesPlaceholder')}
-        />
-        {isRecording && (
-          <p className="text-xs text-red-600 font-medium">{t('fields.dictateListening')}</p>
-        )}
-        {micError && (
-          <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
-            {micError}
-          </p>
-        )}
-      </label>
+      <CircleCareCalendarDictationTextarea
+        label={t('fields.supportingNotes')}
+        value={supportingNotes}
+        onChange={onSupportingNotesChange}
+        placeholder={t('fields.supportingNotesPlaceholder')}
+        t={t}
+        maxLength={SUPPORTING_NOTES_MAX}
+      />
     </div>
   );
 }
