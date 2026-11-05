@@ -21,6 +21,11 @@ import {
   preferApplePopupSignIn,
 } from './lib/appleSignIn';
 import {
+  isCapacitorNativeApp,
+  nativeOAuthErrorMessage,
+  signInWithNativeProvider,
+} from './lib/capacitorNativeAuth';
+import {
   CIRCLE_ONBOARDING_LEARN_MORE_URL,
   acceptPendingCircleInvites,
   ensureMemberCapabilitiesForUser,
@@ -453,7 +458,25 @@ export default function App() {
     }
   };
 
+  const runNativeSignIn = async (target: 'apple' | 'google') => {
+    setAuthError(null);
+    setResetNotice(null);
+    setOauthSigningIn(target);
+    try {
+      await signInWithNativeProvider(firebase.auth, target);
+    } catch (err: unknown) {
+      const message = nativeOAuthErrorMessage(err);
+      if (message) setAuthError(message);
+    } finally {
+      setOauthSigningIn(null);
+    }
+  };
+
   const handleGoogleSignIn = () => {
+    if (isCapacitorNativeApp()) {
+      void runNativeSignIn('google');
+      return;
+    }
     const provider = new GoogleAuthProvider();
     provider.addScope('email');
     provider.setCustomParameters({ prompt: 'select_account' });
@@ -461,6 +484,10 @@ export default function App() {
   };
 
   const handleAppleSignIn = () => {
+    if (isCapacitorNativeApp()) {
+      void runNativeSignIn('apple');
+      return;
+    }
     const host = window.location.hostname;
     void runOAuthSignIn(createAppleOAuthProvider(), preferApplePopupSignIn(host), 'apple');
   };
