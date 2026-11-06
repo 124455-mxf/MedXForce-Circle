@@ -48,6 +48,7 @@ import {
   type CircleUserProfile,
   canInviteMembers,
   PRIVACY_POLICY_URL,
+  TERMS_URL,
   type PatientProvisionRecord,
 } from '@medxforce/shared';
 import {
@@ -756,6 +757,18 @@ export function CircleProfileDrawer({
             </div>
             <ChevronRight size={16} className="text-slate-300" />
           </a>
+          <a
+            href={TERMS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left hover:bg-slate-50 active:bg-slate-100"
+          >
+            <Shield size={20} className="text-slate-500" />
+            <div className="flex-1">
+              <p className="font-semibold text-slate-800 text-sm">{t('drawer.terms')}</p>
+            </div>
+            <ChevronRight size={16} className="text-slate-300" />
+          </a>
         </div>
 
         <div className="p-4 border-t border-slate-100">
@@ -816,6 +829,7 @@ export function CircleProfileDrawer({
                   {t('drawer.deleteAccount')}
                 </button>
                 <p className="text-xs text-slate-500 leading-relaxed">{t('drawer.deleteAccountDesc')}</p>
+                <p className="text-xs text-slate-500 leading-relaxed">{t('drawer.healthConsentSettingsNote')}</p>
               </>
             )}
           </div>

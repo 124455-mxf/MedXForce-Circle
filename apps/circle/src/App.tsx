@@ -51,6 +51,8 @@ import {
   CircleAccountDeletionHold,
   useAccountDeletionHold,
 } from './components/CircleAccountDeletionHold';
+import { CircleHealthConsentScreen } from './components/CircleHealthConsentScreen';
+import { saveCircleHealthConsent, useCircleHealthConsent } from './lib/healthConsent';
 import { CirclePatientsAttentionProvider } from './context/CirclePatientsAttentionContext';
 import { CircleStartupSequence } from './components/CircleStartupSequence';
 import { useCircleStartupSequence } from './hooks/useCircleStartupSequence';
@@ -107,6 +109,11 @@ export default function App() {
   const { toast, showToast } = useCircleToast(7000);
   useCircleRemovalNotice(firebase.db, user, t, showToast);
   const accountHold = useAccountDeletionHold(firebase.db, user?.uid);
+  const healthConsent = useCircleHealthConsent(firebase.db, user?.uid, language);
+  const isProxyForAnyPatient = patients.some((patient) => patient.role === 'proxy');
+  const needsHealthConsent =
+    !!healthConsent &&
+    (healthConsent.memberNeeded || (isProxyForAnyPatient && healthConsent.proxyNeeded));
 
   const selectedPatientForSettings = useMemo(() => {
     if (patients.length === 0) return null;
@@ -495,7 +502,7 @@ export default function App() {
   const appReady = !authLoading && (!user || !patientsHydrating);
   const startup = useCircleStartupSequence(appReady);
   const accountPhotoUrl = useCircleAccountPhoto(firebase.db, user);
-  const accessPlaceholderLayout = patients.length === 0;
+  const accessPlaceholderLayout = patients.length === 0 || needsHealthConsent;
 
   const handleForgotPassword = async () => {
     setAuthError(null);
@@ -644,7 +651,9 @@ export default function App() {
           deleteContributions={accountHold.deleteContributions}
           onSignOut={() => void handleSignOut()}
         />
-      ) : accountHold === undefined || (patientsHydrating && patients.length === 0) ? (
+      ) : accountHold === undefined ||
+        healthConsent === undefined ||
+        (patientsHydrating && patients.length === 0) ? (
         <>
           <CircleAccessBrandHeader title={t('auth.title')} subtitle={t('common.friendsFamily')} />
           <div className="min-w-0 w-full overflow-hidden bg-white rounded-[32px] border border-slate-100 shadow-sm p-6 space-y-5">
@@ -678,6 +687,24 @@ export default function App() {
             </button>
           </div>
         </>
+      ) : needsHealthConsent && healthConsent && user ? (
+        <CircleHealthConsentScreen
+          t={t}
+          showMember={healthConsent.memberNeeded}
+          showProxy={isProxyForAnyPatient && healthConsent.proxyNeeded}
+          memberSentence={healthConsent.memberSentence}
+          proxySentence={healthConsent.proxySentence}
+          onSignOut={() => void handleSignOut()}
+          onAccept={() =>
+            saveCircleHealthConsent(firebase.db, user.uid, {
+              member: healthConsent.memberNeeded,
+              proxy: isProxyForAnyPatient && healthConsent.proxyNeeded,
+              language: healthConsent.language,
+              memberVersion: healthConsent.memberVersion,
+              proxyVersion: healthConsent.proxyVersion,
+            })
+          }
+        />
       ) : patients.length === 0 ? (
         <>
           <CircleAccessBrandHeader title={t('auth.title')} subtitle={t('common.friendsFamily')} />

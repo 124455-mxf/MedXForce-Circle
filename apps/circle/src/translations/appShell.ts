@@ -340,6 +340,22 @@ export const appShellEnglish = {
     openSettings: 'Settings',
     signOut: 'Sign out',
     privacyPolicy: 'Privacy policy',
+    terms: 'Terms',
+    healthConsentTitle: 'Health information',
+    healthConsentBody:
+      'Circle shows you health information the patient or their Proxy has chosen to share with your role, and stores health information you enter about them, including messages, notes, and care tasks.',
+    healthConsentAgree:
+      'I agree that MedXForce may show me that health information and store what I enter, as described in the Privacy policy.',
+    healthConsentProxyIntro: 'You are a Proxy for a patient in Circle.',
+    healthConsentProxyAgree:
+      'I agree, as Proxy, that MedXForce may process this patient’s health information and share it with this Circle.',
+    healthConsentWithdraw:
+      'You can withdraw this consent by deleting your Circle account. Deletion starts a 30-day hold. You can cancel during those 30 days. You choose whether what you shared is kept or deleted.',
+    healthConsentContinue: 'Continue',
+    healthConsentSaving: 'Saving…',
+    healthConsentFailed: 'Could not save this consent. Try again.',
+    healthConsentSettingsNote:
+      'Deleting your account withdraws your consent to process health information. That starts a 30-day hold. You can cancel during those 30 days. You choose whether what you shared is kept or deleted.',
     deleteAccount: 'Delete account',
     deleteAccountDesc: 'You choose whether what you shared is kept or deleted.',
     deleteAccountConfirm: 'Delete your account?',
@@ -1801,6 +1817,22 @@ export const appShellGerman = {
     openSettings: 'Einstellungen',
     signOut: 'Abmelden',
     privacyPolicy: 'Datenschutz',
+    terms: 'Nutzungsbedingungen',
+    healthConsentTitle: 'Gesundheitsdaten',
+    healthConsentBody:
+      'Circle zeigt Ihnen die Gesundheitsdaten, die der Patient oder der Bevollmächtigte für Ihre Rolle freigegeben hat, und speichert Gesundheitsdaten, die Sie über diese Person eingeben, einschließlich Nachrichten, Notizen und Pflegeaufgaben.',
+    healthConsentAgree:
+      'Ich stimme zu, dass MedXForce mir diese Gesundheitsdaten zeigt und speichert, was ich eingebe, wie in der Datenschutzerklärung beschrieben.',
+    healthConsentProxyIntro: 'Sie sind Bevollmächtigter für einen Patienten in Circle.',
+    healthConsentProxyAgree:
+      'Ich stimme als Bevollmächtigter zu, dass MedXForce die Gesundheitsdaten dieses Patienten verarbeiten und mit diesem Circle teilen darf.',
+    healthConsentWithdraw:
+      'Sie können diese Einwilligung widerrufen, indem Sie Ihr Circle-Konto löschen. Die Löschung startet eine Frist von 30 Tagen. Sie können in diesen 30 Tagen abbrechen. Sie wählen, ob Geteiltes bleibt oder gelöscht wird.',
+    healthConsentContinue: 'Weiter',
+    healthConsentSaving: 'Wird gespeichert…',
+    healthConsentFailed: 'Die Einwilligung konnte nicht gespeichert werden. Versuchen Sie es erneut.',
+    healthConsentSettingsNote:
+      'Wenn Sie Ihr Konto löschen, widerrufen Sie die Einwilligung zur Verarbeitung von Gesundheitsdaten. Das startet eine Frist von 30 Tagen. Sie können in diesen 30 Tagen abbrechen. Sie wählen, ob Geteiltes bleibt oder gelöscht wird.',
     deleteAccount: 'Konto löschen',
     deleteAccountDesc: 'Sie wählen, ob Geteiltes bleibt oder gelöscht wird.',
     deleteAccountConfirm: 'Ihr Konto löschen?',
@@ -3262,6 +3294,22 @@ export const appShellSpanish = {
     openSettings: 'Ajustes',
     signOut: 'Cerrar sesión',
     privacyPolicy: 'Política de privacidad',
+    terms: 'Términos',
+    healthConsentTitle: 'Información de salud',
+    healthConsentBody:
+      'Circle le muestra la información de salud que el paciente o su apoderado ha elegido compartir con su rol, y guarda la información de salud que usted escribe sobre esa persona, incluidos mensajes, notas y tareas de cuidado.',
+    healthConsentAgree:
+      'Acepto que MedXForce me muestre esa información de salud y guarde lo que yo escribo, como se describe en la política de privacidad.',
+    healthConsentProxyIntro: 'Usted es apoderado de un paciente en Circle.',
+    healthConsentProxyAgree:
+      'Acepto, como apoderado, que MedXForce trate la información de salud de este paciente y la comparta con este Circle.',
+    healthConsentWithdraw:
+      'Puede retirar este consentimiento eliminando su cuenta de Circle. La eliminación inicia un plazo de 30 días. Puede cancelar durante esos 30 días. Usted elige si lo que compartió se conserva o se elimina.',
+    healthConsentContinue: 'Continuar',
+    healthConsentSaving: 'Guardando…',
+    healthConsentFailed: 'No se pudo guardar este consentimiento. Inténtelo de nuevo.',
+    healthConsentSettingsNote:
+      'Eliminar su cuenta retira el consentimiento para tratar la información de salud. Eso inicia un plazo de 30 días. Puede cancelar durante esos 30 días. Usted elige si lo que compartió se conserva o se elimina.',
     deleteAccount: 'Eliminar cuenta',
     deleteAccountDesc: 'Usted elige si lo que compartió se conserva o se elimina.',
     deleteAccountConfirm: '¿Eliminar su cuenta?',
@@ -4723,6 +4771,22 @@ export const appShellPolish = {
     openSettings: 'Ustawienia',
     signOut: 'Wyloguj się',
     privacyPolicy: 'Polityka prywatności',
+    terms: 'Warunki',
+    healthConsentTitle: 'Dane o zdrowiu',
+    healthConsentBody:
+      'Circle pokazuje dane o zdrowiu, które pacjent lub pełnomocnik zdecydował się udostępnić Twojej roli, i zapisuje dane o zdrowiu, które wpisujesz o tej osobie, w tym wiadomości, notatki i zadania opieki.',
+    healthConsentAgree:
+      'Zgadzam się, aby MedXForce pokazywał mi te dane o zdrowiu i zapisywał to, co wpisuję, zgodnie z polityką prywatności.',
+    healthConsentProxyIntro: 'Jesteś pełnomocnikiem pacjenta w Circle.',
+    healthConsentProxyAgree:
+      'Zgadzam się, jako pełnomocnik, aby MedXForce przetwarzał dane o zdrowiu tego pacjenta i udostępniał je temu Circle.',
+    healthConsentWithdraw:
+      'Tę zgodę możesz wycofać, usuwając konto Circle. Usunięcie uruchamia 30-dniowy okres. W tych 30 dniach możesz anulować. Wybierasz, czy udostępnione treści zostają, czy są usuwane.',
+    healthConsentContinue: 'Dalej',
+    healthConsentSaving: 'Zapisywanie…',
+    healthConsentFailed: 'Nie udało się zapisać zgody. Spróbuj ponownie.',
+    healthConsentSettingsNote:
+      'Usunięcie konta wycofuje zgodę na przetwarzanie danych o zdrowiu. To uruchamia 30-dniowy okres. W tych 30 dniach możesz anulować. Wybierasz, czy udostępnione treści zostają, czy są usuwane.',
     deleteAccount: 'Usuń konto',
     deleteAccountDesc: 'Wybierasz, czy udostępnione treści zostają, czy są usuwane.',
     deleteAccountConfirm: 'Usunąć Twoje konto?',
