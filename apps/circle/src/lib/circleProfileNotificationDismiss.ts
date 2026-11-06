@@ -1,6 +1,7 @@
 import {
   profileNotificationDocId,
   type CircleProfileNotification,
+  type CircleProfileNotificationRow,
 } from '@medxforce/shared';
 
 const STORAGE_PREFIX = 'circle_profile_notif_dismissed';
@@ -46,7 +47,7 @@ export function rememberDismissedProfileNotification(
 export function rememberDismissedProfileNotificationRow(
   patientId: string,
   readerUid: string,
-  row: Pick<CircleProfileNotification, 'id' | 'type' | 'changedLabels'>,
+  row: Pick<CircleProfileNotificationRow, 'id' | 'type' | 'changedLabels'>,
 ): void {
   const ids = readDismissedIds(patientId, readerUid);
   ids.add(row.id);
@@ -57,14 +58,14 @@ export function rememberDismissedProfileNotificationRow(
 export function isProfileNotificationDismissedLocally(
   patientId: string,
   readerUid: string,
-  row: Pick<CircleProfileNotification, 'id' | 'type' | 'changedLabels'>,
+  row: Pick<CircleProfileNotificationRow, 'id' | 'type' | 'changedLabels'>,
 ): boolean {
   const dismissed = readDismissedIds(patientId, readerUid);
   return dismissed.has(row.id) || dismissed.has(notificationSignatureKey(row));
 }
 
 export function filterLocallyDismissedProfileNotifications<
-  T extends Pick<CircleProfileNotification, 'id' | 'type' | 'changedLabels'>,
+  T extends Pick<CircleProfileNotificationRow, 'id' | 'type' | 'changedLabels'>,
 >(patientId: string, readerUid: string, rows: T[]): T[] {
   const dismissed = readDismissedIds(patientId, readerUid);
   if (dismissed.size === 0) return rows;

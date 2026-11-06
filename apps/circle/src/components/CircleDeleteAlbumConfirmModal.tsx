@@ -1,4 +1,5 @@
 import { Trash2 } from 'lucide-react';
+import { useCircleT } from '../lib/circleI18nContext';
 
 type CircleDeleteAlbumConfirmModalProps = {
   open: boolean;
@@ -17,7 +18,13 @@ export function CircleDeleteAlbumConfirmModal({
   onCancel,
   onConfirm,
 }: CircleDeleteAlbumConfirmModalProps) {
+  const t = useCircleT();
   if (!open) return null;
+
+  const body =
+    itemCount === 1
+      ? t('gallery.deleteAlbumBody_one', { title: albumTitle, count: itemCount })
+      : t('gallery.deleteAlbumBody_other', { title: albumTitle, count: itemCount });
 
   return (
     <div
@@ -32,14 +39,9 @@ export function CircleDeleteAlbumConfirmModal({
         </div>
         <div className="space-y-2">
           <h3 id="delete-album-title" className="text-xl font-bold text-slate-900">
-            Delete album?
+            {t('gallery.deleteAlbumTitle')}
           </h3>
-          <p className="text-slate-500 text-sm leading-relaxed">
-            <span className="font-semibold text-slate-700">&ldquo;{albumTitle}&rdquo;</span>
-            {' '}and all{' '}
-            {itemCount === 1 ? '1 photo or video' : `${itemCount} photos and videos`} inside it
-            will be permanently removed.
-          </p>
+          <p className="text-slate-500 text-sm leading-relaxed">{body}</p>
         </div>
         <div className="flex flex-col gap-3">
           <button
@@ -48,7 +50,7 @@ export function CircleDeleteAlbumConfirmModal({
             disabled={busy}
             className="w-full py-4 bg-red-600 text-white rounded-2xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200 disabled:opacity-50"
           >
-            {busy ? 'Deleting…' : 'Delete album'}
+            {busy ? t('gallery.deleting') : t('gallery.deleteAlbumConfirm')}
           </button>
           <button
             type="button"
@@ -56,7 +58,7 @@ export function CircleDeleteAlbumConfirmModal({
             disabled={busy}
             className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50"
           >
-            Cancel
+            {t('gallery.cancel')}
           </button>
         </div>
       </div>

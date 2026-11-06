@@ -1,6 +1,11 @@
 import { ChevronDown, HeartHandshake, X } from 'lucide-react';
 
-import { cn, type CirclePatientSummary, resolveCirclePatientPhotoUrl } from '@medxforce/shared';
+import {
+  cn,
+  circleDisplayFirstName,
+  type CirclePatientSummary,
+  resolveCirclePatientPhotoUrl,
+} from '@medxforce/shared';
 import type { Firestore } from 'firebase/firestore';
 
 import {
@@ -11,7 +16,6 @@ import { CirclePatientSwitchList } from './CirclePatientSwitchList';
 import { useCirclePatientsAttention } from '../context/CirclePatientsAttentionContext';
 import { useCircleT } from '../lib/circleI18nContext';
 import { useCirclePatientProfileSnapshot } from '../hooks/useCirclePatientProfileSnapshot';
-import { formatCircleBadgeCount } from './CircleCountBadge';
 
 interface CirclePatientSwitcherProps {
   patients: CirclePatientSummary[];
@@ -27,6 +31,8 @@ interface CirclePatientSwitcherProps {
   patientOnline?: boolean;
   patientLastSeen?: number;
   memberDisplayName?: string;
+  /** Optional structured first name for the card "Member for Patient" title. */
+  memberFirstName?: string;
   /** Live profile photo from patients/{id} (overrides stale list photoUrl). */
   db: Firestore;
 }
@@ -44,6 +50,7 @@ export function CirclePatientSwitcher({
   patientOnline = false,
   patientLastSeen = 0,
   memberDisplayName,
+  memberFirstName,
   db,
 }: CirclePatientSwitcherProps) {
   const t = useCircleT();
@@ -64,19 +71,21 @@ export function CirclePatientSwitcher({
 
   const cardTitle = memberDisplayName
     ? t('common.memberForPatientTitle', {
-        member: memberDisplayName,
-        patient: selectedFromList.displayName,
+        member: circleDisplayFirstName(memberDisplayName, memberFirstName),
+        patient: circleDisplayFirstName(
+          selectedFromList.displayName,
+          selectedFromList.firstName ?? profileSnapshot?.identity.firstName,
+        ),
       })
-    : selectedFromList.displayName;
+    : circleDisplayFirstName(
+        selectedFromList.displayName,
+        selectedFromList.firstName ?? profileSnapshot?.identity.firstName,
+      );
 
   const otherAttentionLabel =
     otherPatientsSummary.patientCount === 1
-      ? t('drawer.otherPatientNeedsAttention', {
-          count: formatCircleBadgeCount(otherPatientsSummary.totalUnread),
-        })
-      : t('drawer.otherPatientsNeedAttention', {
-          count: formatCircleBadgeCount(otherPatientsSummary.totalUnread),
-        });
+      ? t('drawer.otherPatientNeedsAttention')
+      : t('drawer.otherPatientsNeedAttention');
 
   return (
     <>

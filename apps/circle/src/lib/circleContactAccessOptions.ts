@@ -52,7 +52,19 @@ export function circleAccessOptionsForDraft(
 ): CircleAccessOptionId[] {
   if (draft.kind === 'contact') return [];
   if (draft.kind === 'caregiver') {
-    return ['caregiver', 'proxy_primary', 'proxy_backup'];
+    const options: CircleAccessOptionId[] = ['caregiver'];
+    // At most one primary and one backup across the whole circle.
+    const holdingPrimary =
+      !!draft.id && contacts.some((c) => c.id === draft.id && isPrimaryProxy(c));
+    const holdingBackup =
+      !!draft.id && contacts.some((c) => c.id === draft.id && isBackupProxy(c));
+    if (!findPrimaryProxyContact(contacts, draft.id) || holdingPrimary) {
+      options.push('proxy_primary');
+    }
+    if (!findBackupProxyContact(contacts, draft.id) || holdingBackup) {
+      options.push('proxy_backup');
+    }
+    return options;
   }
 
   const options: CircleAccessOptionId[] =

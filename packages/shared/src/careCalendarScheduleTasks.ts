@@ -13,7 +13,12 @@ import {
   countAppointmentPostFollowUpRemaining,
   countAppointmentPrepRemaining,
 } from './careCalendarAppointmentDisplay';
-import { isAppointmentInviteThreadPost } from './careCalendarInvite';
+import {
+  isAppointmentInviteThreadPost,
+  pendingAppointmentInviteEntriesForMember,
+  SCHEDULE_PENDING_RSVP_HORIZON_DAYS,
+  type CareCalendarMemberInviteContext,
+} from './careCalendarInvite';
 import {
   SCHEDULE_PREP_LIGHT_NUDGE_DAYS,
   SCHEDULE_PREP_TASK_HORIZON_DAYS,
@@ -73,7 +78,8 @@ function collectRowsFromRange(
               memberRole: options.memberRole,
               taskScope,
             });
-      if (counts.total <= 0) continue;
+      // Recommended assessments stay on the visit, but they are not Schedule "open tasks".
+      if (counts.openTasks <= 0) continue;
       rows.push({
         entryId: event.entryId,
         dateKey,
@@ -82,7 +88,7 @@ function collectRowsFromRange(
         openPreNudges: options.phase === 'pre' ? counts.openNudges : 0,
         openPostTasks: options.phase === 'post' ? counts.openTasks : 0,
         openPostNudges: options.phase === 'post' ? counts.openNudges : 0,
-        totalOpen: counts.total,
+        totalOpen: counts.openTasks,
       });
     }
   }
@@ -120,6 +126,7 @@ export function collectSchedulePreTaskRows(
         row.event.startTimeMinutes,
         row.event.endTimeMinutes,
         now,
+        row.event.timezoneId,
       ),
   );
   return options.limit ? rows.slice(0, options.limit) : rows;
@@ -152,10 +159,136 @@ export function collectSchedulePostTaskRows(
         row.event.startTimeMinutes,
         row.event.endTimeMinutes,
         now,
+        row.event.timezoneId,
       ),
     )
     .sort((a, b) => b.dateKey.localeCompare(a.dateKey));
   return options.limit ? rows.slice(0, options.limit) : rows;
+}
+
+/** Open before/after visit tasks assigned to this viewer (not assessment nudges or RSVP). */
+export function countOpenVisitTasksForScheduleViewer(
+  entries: CareCalendarEntry[],
+  options: {
+    memberRole?: ScheduleTaskViewerRole;
+    now?: Date;
+  } = {},
+): number {
+  const pre = collectSchedulePreTaskRows(entries, options);
+  const post = collectSchedulePostTaskRows(entries, options);
+  return (
+    pre.reduce((sum, row) => sum + row.openPreTasks, 0) +
+    post.reduce((sum, row) => sum + row.openPostTasks, 0)
+  );
+}
+
+/** Max Prepare cards on the Tasks screen (badge uses the same cap). */
+export const SCHEDULE_TASKS_PREPARE_CARD_LIMIT = 5;
+/** Max Follow-up cards on the Tasks screen (badge uses the same cap). */
+export const SCHEDULE_TASKS_FOLLOWUP_CARD_LIMIT = 3;
+
+export function collectScheduleTaskBoard(
+  entries: CareCalendarEntry[],
+  options: {
+    inviteContext?: CareCalendarMemberInviteContext;
+    memberRole?: ScheduleTaskViewerRole;
+    preferences?: Record<string, unknown>;
+    histories?: AssessmentHistoryMap;
+    now?: Date;
+    preLimit?: number;
+    postLimit?: number;
+  } = {},
+): {
+  awaitingRows: ScheduleTaskAppointmentRow[];
+  preRows: ScheduleTaskAppointmentRow[];
+  postRows: ScheduleTaskAppointmentRow[];
+} {
+  const now = options.now ?? new Date();
+  const awaitingRows = options.inviteContext?.memberUid
+    ? pendingAppointmentInviteEntriesForMember(entries, options.inviteContext, {
+        now,
+        horizonDays: SCHEDULE_PENDING_RSVP_HORIZON_DAYS,
+      }).map(({ entry, dateKey }) => scheduleTaskRowFromPendingInvite(entry, dateKey))
+    : [];
+  const preRows = collectSchedulePreTaskRows(entries, {
+    preferences: options.preferences,
+    histories: options.histories,
+    memberRole: options.memberRole,
+    now,
+    limit: options.preLimit,
+  });
+  const postRows = collectSchedulePostTaskRows(entries, {
+    preferences: options.preferences,
+    histories: options.histories,
+    memberRole: options.memberRole,
+    now,
+    limit: options.postLimit,
+  });
+  return { awaitingRows, preRows, postRows };
+}
+
+function scheduleTaskRowFromPendingInvite(
+  entry: CareCalendarEntry,
+  dateKey: string,
+): ScheduleTaskAppointmentRow {
+  return {
+    entryId: entry.id,
+    dateKey,
+    openPreTasks: 0,
+    openPreNudges: 0,
+    openPostTasks: 0,
+    openPostNudges: 0,
+    totalOpen: 1,
+    event: {
+      entryId: entry.id,
+      kind: entry.kind,
+      title: entry.title,
+      details: entry.details,
+      startTimeMinutes: entry.startTimeMinutes,
+      endTimeMinutes: entry.endTimeMinutes,
+      address: entry.address,
+      attendees: entry.attendees,
+      attendeeResponseSummary: entry.attendeeResponseSummary,
+      inviteeContactIds: entry.inviteeContactIds,
+      inviteeMemberUids: entry.inviteeMemberUids,
+      inviteeMemberUidByContactId: entry.inviteeMemberUidByContactId,
+      visitSubtype: entry.visitSubtype,
+      supportingNotes: entry.supportingNotes,
+      appointmentTasks: entry.appointmentTasks,
+      clinicalReferenceIds: entry.clinicalReferenceIds,
+      visitBrief: entry.visitBrief,
+      visitDebrief: entry.visitDebrief,
+      doctorName: entry.doctorName,
+      recurrence: entry.recurrence,
+      source: entry.source,
+      createdByName: entry.createdByName,
+      status: 'upcoming',
+    },
+  };
+}
+
+/**
+ * Schedule badge / Tasks-tab counter: one point per Tasks-screen card
+ * (awaiting RSVP + appointments with open visit tasks). Assessment nudges
+ * do not create a card or increment this count.
+ */
+export function countScheduleTabBadge(
+  entries: CareCalendarEntry[],
+  options: {
+    inviteContext?: CareCalendarMemberInviteContext;
+    memberRole?: ScheduleTaskViewerRole;
+    viewerUid?: string;
+    preferences?: Record<string, unknown>;
+    histories?: AssessmentHistoryMap;
+    now?: Date;
+  } = {},
+): number {
+  const board = collectScheduleTaskBoard(entries, {
+    ...options,
+    preLimit: SCHEDULE_TASKS_PREPARE_CARD_LIMIT,
+    postLimit: SCHEDULE_TASKS_FOLLOWUP_CARD_LIMIT,
+  });
+  return board.awaitingRows.length + board.preRows.length + board.postRows.length;
 }
 
 export function collectUpcomingAppointmentsInHorizon(
@@ -176,6 +309,7 @@ export function collectUpcomingAppointmentsInHorizon(
           event.startTimeMinutes,
           event.endTimeMinutes,
           now,
+          event.timezoneId,
         )
       ) {
         continue;
@@ -195,7 +329,7 @@ export function isPastAppointmentInvitePost(
   post: { postKind?: string; text: string; careCalendarEntryId?: string },
   entryById: ReadonlyMap<
     string,
-    Pick<CareCalendarEntry, 'startDateKey' | 'startTimeMinutes' | 'endTimeMinutes'>
+    Pick<CareCalendarEntry, 'startDateKey' | 'startTimeMinutes' | 'endTimeMinutes' | 'timezoneId'>
   >,
   now = new Date(),
 ): boolean {
@@ -209,5 +343,6 @@ export function isPastAppointmentInvitePost(
     entry.startTimeMinutes,
     entry.endTimeMinutes,
     now,
+    entry.timezoneId,
   );
 }

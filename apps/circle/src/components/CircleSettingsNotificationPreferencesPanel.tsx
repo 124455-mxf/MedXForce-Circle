@@ -71,9 +71,21 @@ export function CircleSettingsNotificationPreferencesPanel({
     if (!patient?.patientId || !user.uid || !user.email) return;
 
     const patientRef = doc(db, 'patients', patient.patientId);
-    const memberRef = doc(db, 'patients', patient.patientId, 'members', user.uid);
+    const notifyPrefsRef = doc(
+      db,
+      'patients',
+      patient.patientId,
+      'members',
+      user.uid,
+      'prefs',
+      'notifications',
+    );
+    const memberLegacyRef = doc(db, 'patients', patient.patientId, 'members', user.uid);
 
-    const apply = (patientData: Record<string, unknown> | undefined, memberData: Record<string, unknown> | undefined) => {
+    const apply = (
+      patientData: Record<string, unknown> | undefined,
+      prefsData: Record<string, unknown> | undefined,
+    ) => {
       if (!patientData) return;
       const listed = parsePatientManagedContacts(patientData);
       const base = findManagedContactByEmail(listed, user.email ?? '');
@@ -81,25 +93,40 @@ export function CircleSettingsNotificationPreferencesPanel({
         setContact(null);
         return;
       }
-      const memberPrefs = parseMemberNotifyPreferences(memberData);
+      const memberPrefs = parseMemberNotifyPreferences(prefsData);
       setContact(mergeContactWithMemberNotifyPreferences(base, memberPrefs));
     };
 
     let latestPatient: Record<string, unknown> | undefined;
-    let latestMember: Record<string, unknown> | undefined;
+    let latestPrefs: Record<string, unknown> | undefined;
+    let legacyApplied = false;
 
     const unsubPatient = onSnapshot(patientRef, (snap) => {
       latestPatient = snap.exists() ? (snap.data() as Record<string, unknown>) : undefined;
-      apply(latestPatient, latestMember);
+      apply(latestPatient, latestPrefs);
     });
-    const unsubMember = onSnapshot(memberRef, (snap) => {
-      latestMember = snap.exists() ? (snap.data() as Record<string, unknown>) : undefined;
-      apply(latestPatient, latestMember);
+    const unsubPrefs = onSnapshot(notifyPrefsRef, (snap) => {
+      if (snap.exists()) {
+        latestPrefs = snap.data() as Record<string, unknown>;
+        legacyApplied = true;
+        apply(latestPatient, latestPrefs);
+        return;
+      }
+      if (legacyApplied) {
+        latestPrefs = undefined;
+        apply(latestPatient, latestPrefs);
+      }
+    });
+    const unsubLegacy = onSnapshot(memberLegacyRef, (snap) => {
+      if (legacyApplied) return;
+      latestPrefs = snap.exists() ? (snap.data() as Record<string, unknown>) : undefined;
+      apply(latestPatient, latestPrefs);
     });
 
     return () => {
       unsubPatient();
-      unsubMember();
+      unsubPrefs();
+      unsubLegacy();
     };
   }, [db, patient?.patientId, user.email, user.uid]);
 

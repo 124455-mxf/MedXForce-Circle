@@ -4,6 +4,9 @@ import type {
   CareCalendarAppointmentTask,
   CareCalendarVisitSubtype,
 } from './careCalendarAppointment';
+import type { CareCalendarVisitBrief, CareCalendarVisitDebrief } from './visitBrief';
+import { isCareCalendarOccurrencePast } from './careCalendarTimeZone';
+import { formatTimeZoneAbbreviation, isValidIanaTimeZone } from './timeZones';
 
 export type CareCalendarEntryKind = 'doctor' | 'wellness' | 'rehab' | 'other';
 
@@ -59,6 +62,8 @@ export type CareCalendarEntry = {
   startDateKey: string;
   startTimeMinutes?: number;
   endTimeMinutes?: number;
+  /** IANA zone the wall-clock start/end minutes are in (e.g. America/Los_Angeles). */
+  timezoneId?: string;
   recurrence: CareCalendarRecurrence;
   address?: CareCalendarAddress;
   attendees?: CareCalendarAttendee[];
@@ -70,6 +75,9 @@ export type CareCalendarEntry = {
   visitSubtype?: CareCalendarVisitSubtype;
   supportingNotes?: string;
   appointmentTasks?: CareCalendarAppointmentTask[];
+  clinicalReferenceIds?: string[];
+  visitBrief?: CareCalendarVisitBrief;
+  visitDebrief?: CareCalendarVisitDebrief;
   doctorName?: string;
   source: 'patient' | 'circle';
   createdByUid: string;
@@ -86,14 +94,19 @@ export type CareCalendarDayEvent = {
   details?: string;
   startTimeMinutes?: number;
   endTimeMinutes?: number;
+  timezoneId?: string;
   address?: CareCalendarAddress;
   attendees?: CareCalendarAttendee[];
   attendeeResponseSummary?: CareCalendarAttendeeResponseSummary;
   inviteeContactIds?: string[];
+  inviteeMemberUids?: string[];
   inviteeMemberUidByContactId?: Record<string, string>;
   visitSubtype?: CareCalendarVisitSubtype;
   supportingNotes?: string;
   appointmentTasks?: CareCalendarAppointmentTask[];
+  clinicalReferenceIds?: string[];
+  visitBrief?: CareCalendarVisitBrief;
+  visitDebrief?: CareCalendarVisitDebrief;
   doctorName?: string;
   recurrence: CareCalendarRecurrence;
   source: 'patient' | 'circle';
@@ -125,28 +138,29 @@ export function isCareCalendarAppointmentPast(
   startTimeMinutes?: number,
   endTimeMinutes?: number,
   now = new Date(),
+  timeZoneId?: string | null,
 ): boolean {
-  const todayKey = careCalendarDateKey(now);
-  if (startDateKey < todayKey) return true;
-  if (startDateKey > todayKey) return false;
-  const slotEndMinutes = endTimeMinutes ?? startTimeMinutes;
-  if (slotEndMinutes == null) return false;
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  return slotEndMinutes <= nowMinutes;
+  return isCareCalendarOccurrencePast({
+    startDateKey,
+    startTimeMinutes,
+    endTimeMinutes,
+    now,
+    timeZoneId,
+  });
 }
 
-/** Pending/declined RSVP badges are hidden once the appointment is in the past. */
+/** RSVP badges are hidden once the appointment is in the past. */
 export function shouldShowAttendeeInviteResponseBadge(
-  response: CareCalendarAttendeeResponse,
+  _response: CareCalendarAttendeeResponse,
   options: {
     eventStatus?: CareCalendarDayEvent['status'];
     startDateKey?: string;
     startTimeMinutes?: number;
     endTimeMinutes?: number;
+    timezoneId?: string | null;
     now?: Date;
   },
 ): boolean {
-  if (response === 'accepted') return true;
   const isPast =
     options.eventStatus === 'past' ||
     (options.startDateKey
@@ -155,6 +169,7 @@ export function shouldShowAttendeeInviteResponseBadge(
           options.startTimeMinutes,
           options.endTimeMinutes,
           options.now,
+          options.timezoneId,
         )
       : false);
   return !isPast;
@@ -164,8 +179,7 @@ function compareDateKeys(a: string, b: string): number {
   return a.localeCompare(b);
 }
 
-export function formatCareCalendarTime(minutes?: number): string | null {
-  if (minutes == null || Number.isNaN(minutes)) return null;
+function formatCareCalendarWallClock(minutes: number): string {
   const h = Math.floor(minutes / 60) % 24;
   const m = minutes % 60;
   const d = new Date();
@@ -173,14 +187,32 @@ export function formatCareCalendarTime(minutes?: number): string | null {
   return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
+export function formatCareCalendarTime(
+  minutes?: number,
+  timeZoneId?: string | null,
+  atDate = new Date(),
+): string | null {
+  if (minutes == null || Number.isNaN(minutes)) return null;
+  const clock = formatCareCalendarWallClock(minutes);
+  if (!isValidIanaTimeZone(timeZoneId)) return clock;
+  return `${clock} ${formatTimeZoneAbbreviation(timeZoneId, atDate)}`;
+}
+
 export function formatCareCalendarTimeRange(
   startMinutes?: number,
   endMinutes?: number,
+  timeZoneId?: string | null,
+  atDate = new Date(),
 ): string | null {
-  const start = formatCareCalendarTime(startMinutes);
-  if (!start) return null;
-  const end = formatCareCalendarTime(endMinutes);
-  return end ? `${start} – ${end}` : start;
+  if (startMinutes == null || Number.isNaN(startMinutes)) return null;
+  const start = formatCareCalendarWallClock(startMinutes);
+  const end =
+    endMinutes != null && !Number.isNaN(endMinutes)
+      ? formatCareCalendarWallClock(endMinutes)
+      : null;
+  const range = end ? `${start} – ${end}` : start;
+  if (!isValidIanaTimeZone(timeZoneId)) return range;
+  return `${range} ${formatTimeZoneAbbreviation(timeZoneId, atDate)}`;
 }
 
 export function buildAppleMapsUrl(address: CareCalendarAddress): string {
@@ -391,8 +423,20 @@ export function getCareCalendarByDay(
 
   for (const entry of entries) {
     for (const dateKey of expandCareEntryDateKeys(entry, rangeStart, rangeEnd)) {
-      const status: CareCalendarDayEvent['status'] =
-        dateKey < todayKey ? 'past' : dateKey === todayKey ? 'today' : 'upcoming';
+      const occurrencePast = isCareCalendarAppointmentPast(
+        dateKey,
+        entry.startTimeMinutes,
+        entry.endTimeMinutes,
+        new Date(),
+        entry.timezoneId,
+      );
+      const status: CareCalendarDayEvent['status'] = occurrencePast
+        ? 'past'
+        : dateKey < todayKey
+          ? 'past'
+          : dateKey === todayKey
+            ? 'today'
+            : 'upcoming';
       const event: CareCalendarDayEvent = {
         entryId: entry.id,
         kind: entry.kind,
@@ -400,14 +444,19 @@ export function getCareCalendarByDay(
         details: entry.details,
         startTimeMinutes: entry.startTimeMinutes,
         endTimeMinutes: entry.endTimeMinutes,
+        timezoneId: entry.timezoneId,
         address: entry.address,
         attendees: entry.attendees,
         attendeeResponseSummary: entry.attendeeResponseSummary,
         inviteeContactIds: entry.inviteeContactIds,
+        inviteeMemberUids: entry.inviteeMemberUids,
         inviteeMemberUidByContactId: entry.inviteeMemberUidByContactId,
         visitSubtype: entry.visitSubtype,
         supportingNotes: entry.supportingNotes,
         appointmentTasks: entry.appointmentTasks,
+        clinicalReferenceIds: entry.clinicalReferenceIds,
+        visitBrief: entry.visitBrief,
+        visitDebrief: entry.visitDebrief,
         doctorName: entry.doctorName,
         recurrence: entry.recurrence,
         source: entry.source,
@@ -434,6 +483,11 @@ export function defaultWeeklyRecurrenceDays(dateKey: string): number[] {
 
 export const CARE_CALENDAR_TIME_STEP_MINUTES = 15;
 export const CARE_CALENDAR_MIN_DURATION_MINUTES = 15;
+/** Cap appointment duration options (still further limited by remaining time in the day). */
+export const CARE_CALENDAR_MAX_DURATION_MINUTES = 5 * 60;
+/** Use 15-minute steps up to this duration; coarser steps above it. */
+export const CARE_CALENDAR_DURATION_FINE_UNTIL_MINUTES = 2 * 60;
+export const CARE_CALENDAR_DURATION_COARSE_STEP_MINUTES = 30;
 export const CARE_CALENDAR_TIME_INPUT_STEP_SECONDS = 900;
 
 const CARE_CALENDAR_TIME_OPTIONS = Array.from(
@@ -507,14 +561,18 @@ export function defaultCareCalendarEndMinutes(startMinutes: number): number {
 
 export function buildCareCalendarDurationOptions(startMinutes?: number): number[] {
   const start = startMinutes ?? 0;
-  const maxDuration = 24 * 60 - start;
+  const maxDuration = Math.min(CARE_CALENDAR_MAX_DURATION_MINUTES, 24 * 60 - start);
   const options: number[] = [];
   for (
     let duration = CARE_CALENDAR_MIN_DURATION_MINUTES;
     duration <= maxDuration;
-    duration += CARE_CALENDAR_TIME_STEP_MINUTES
   ) {
     options.push(duration);
+    const step =
+      duration < CARE_CALENDAR_DURATION_FINE_UNTIL_MINUTES
+        ? CARE_CALENDAR_TIME_STEP_MINUTES
+        : CARE_CALENDAR_DURATION_COARSE_STEP_MINUTES;
+    duration += step;
   }
   return options.length ? options : [CARE_CALENDAR_MIN_DURATION_MINUTES];
 }
@@ -558,8 +616,16 @@ export function clampCareCalendarDurationMinutes(
   const options = buildCareCalendarDurationOptions(startMinutes);
   if (!options.length) return CARE_CALENDAR_MIN_DURATION_MINUTES;
   if (options.includes(durationMinutes)) return durationMinutes;
-  const max = options[options.length - 1];
-  return durationMinutes > max ? max : options[0];
+  let best = options[0];
+  let bestDelta = Math.abs(durationMinutes - best);
+  for (let i = 1; i < options.length; i += 1) {
+    const delta = Math.abs(durationMinutes - options[i]);
+    if (delta < bestDelta) {
+      best = options[i];
+      bestDelta = delta;
+    }
+  }
+  return best;
 }
 
 export function minCareCalendarEndTimeInput(startTimeInput: string): string | undefined {
@@ -603,15 +669,56 @@ export function buildScheduleTimeSlots(
   return slots;
 }
 
-/** Week grid uses a shorter day range and hourly rows for readability. */
+/** Week grid default range — keeps the grid compact when the week is quiet. */
 export const SCHEDULE_WEEK_VIEW_START_HOUR = 8;
 export const SCHEDULE_WEEK_VIEW_END_HOUR = 18;
+/** Expand week grid at least this early/late when appointments fall outside the default. */
+export const SCHEDULE_WEEK_VIEW_MIN_HOUR = SCHEDULE_DAY_VIEW_START_HOUR;
+export const SCHEDULE_WEEK_VIEW_MAX_HOUR = SCHEDULE_DAY_VIEW_END_HOUR;
 export const SCHEDULE_WEEK_SLOT_MINUTES = 60;
 
-export function buildScheduleWeekTimeSlots(): number[] {
+/**
+ * Expand the week hour window to include care events outside the default 8–18 range,
+ * clamped to the day-view bounds (6–22).
+ */
+export function resolveScheduleWeekViewHours(
+  events: Array<{ startTimeMinutes?: number | null; endTimeMinutes?: number | null }>,
+): { startHour: number; endHour: number } {
+  let startHour = SCHEDULE_WEEK_VIEW_START_HOUR;
+  let endHour = SCHEDULE_WEEK_VIEW_END_HOUR;
+
+  for (const event of events) {
+    const start = event.startTimeMinutes;
+    if (typeof start === 'number' && Number.isFinite(start) && start >= 0) {
+      const hour = Math.floor(start / 60);
+      startHour = Math.min(startHour, Math.max(SCHEDULE_WEEK_VIEW_MIN_HOUR, hour));
+    }
+    const end =
+      typeof event.endTimeMinutes === 'number' && Number.isFinite(event.endTimeMinutes)
+        ? event.endTimeMinutes
+        : typeof start === 'number' && Number.isFinite(start)
+          ? start + SCHEDULE_WEEK_SLOT_MINUTES
+          : null;
+    if (typeof end === 'number' && end > 0) {
+      // Include the hour slot that contains the end (exclusive end uses ceil).
+      const endHourNeeded = Math.max(1, Math.ceil(end / 60));
+      endHour = Math.max(endHour, Math.min(SCHEDULE_WEEK_VIEW_MAX_HOUR, endHourNeeded));
+    }
+  }
+
+  if (endHour <= startHour) {
+    endHour = Math.min(SCHEDULE_WEEK_VIEW_MAX_HOUR, startHour + 1);
+  }
+  return { startHour, endHour };
+}
+
+export function buildScheduleWeekTimeSlots(
+  startHour = SCHEDULE_WEEK_VIEW_START_HOUR,
+  endHour = SCHEDULE_WEEK_VIEW_END_HOUR,
+): number[] {
   return buildScheduleTimeSlots(
-    SCHEDULE_WEEK_VIEW_START_HOUR,
-    SCHEDULE_WEEK_VIEW_END_HOUR,
+    startHour,
+    endHour,
     SCHEDULE_WEEK_SLOT_MINUTES,
   );
 }

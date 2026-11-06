@@ -1,5 +1,11 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 
+import {
+  normalizeTreatmentPhaseForSchedule,
+  type TreatmentPhaseValue,
+} from './treatmentPhase';
+import { isScheduleEnabled } from './activeTab';
+
 export type AssessmentHistoryKey =
   | 'pain'
   | 'impact'
@@ -9,7 +15,8 @@ export type AssessmentHistoryKey =
   | 'vision'
   | 'neurological'
   | 'strengthReflex'
-  | 'psychological';
+  | 'psychological'
+  | 'speech';
 
 export type AssessmentHistoryMap = Partial<Record<AssessmentHistoryKey, { timestamp: number }[]>>;
 
@@ -22,7 +29,7 @@ export type AssessmentScheduleId =
   | 'temperature'
   | 'balance'
   | 'vision'
-  | 'hearing'
+  | 'speech'
   | 'neurological'
   | 'physiological'
   | 'psychological';
@@ -55,7 +62,7 @@ export type RemoteAssessmentSchedule = {
 
 export type SchedulableAssessmentMeta = {
   id: AssessmentScheduleId;
-  sectionId: 'physical' | 'visionHearing' | 'neurologicalPhysiological';
+  sectionId: 'physical' | 'visionHearing' | 'speech' | 'neurologicalPhysiological';
   featureKey: string;
   historyKey: AssessmentHistoryKey | null;
   modal:
@@ -68,6 +75,8 @@ export type SchedulableAssessmentMeta = {
     | 'strengthReflex'
     | 'neurological'
     | 'emotional'
+    | 'balance'
+    | 'speech'
     | null;
   titleKey: string;
   descriptionKey: string;
@@ -156,14 +165,14 @@ export const SCHEDULABLE_ASSESSMENTS: SchedulableAssessmentMeta[] = [
     released: true,
   },
   {
-    id: 'hearing',
-    sectionId: 'visionHearing',
-    featureKey: 'hearingAssessment',
-    historyKey: null,
-    modal: null,
-    titleKey: 'assessments.items.hearing.title',
-    descriptionKey: 'assessments.items.hearing.description',
-    released: false,
+    id: 'speech',
+    sectionId: 'speech',
+    featureKey: 'speechAssessment',
+    historyKey: 'speech',
+    modal: 'speech',
+    titleKey: 'assessments.items.speech.title',
+    descriptionKey: 'assessments.items.speech.description',
+    released: true,
   },
   {
     id: 'neurological',
@@ -205,8 +214,6 @@ export const TREATMENT_PHASES = [
   'rehab',
   'maintenance',
   'palliative',
-  'preOp',
-  'postOp',
 ] as const;
 
 export type TreatmentPhase = (typeof TREATMENT_PHASES)[number];
@@ -268,7 +275,8 @@ export function sanitizeScheduleRule(raw: unknown): AssessmentScheduleRule | nul
   if (!recurrence) return null;
   return {
     assessmentId,
-    enabled: value.enabled !== false,
+    enabled: SCHEDULABLE_ASSESSMENTS.find((item) => item.id === assessmentId)?.released !== false
+      && value.enabled !== false,
     recurrence,
   };
 }
@@ -313,6 +321,31 @@ export function sanitizeRemoteAssessmentSchedule(raw: unknown): RemoteAssessment
   return { rules, lockedIds };
 }
 
+/** Copy Circle's saved schedule onto the tablet. Do not let stale local all-off rules win. */
+export function applyRemoteAssessmentScheduleToLocal(
+  local: unknown,
+  remote: RemoteAssessmentSchedule,
+  phase?: string | null,
+): AssessmentSchedulePreferences {
+  const current = sanitizeAssessmentSchedulePreferences(local);
+  const defaults = buildDefaultAssessmentScheduleRules(phase);
+  const rules = {
+    ...defaults,
+    ...remote.rules,
+  } as Record<AssessmentScheduleId, AssessmentScheduleRule>;
+  for (const meta of SCHEDULABLE_ASSESSMENTS) {
+    if (!meta.released) {
+      rules[meta.id] = { ...rules[meta.id], enabled: false };
+    }
+  }
+  return {
+    ...current,
+    rules,
+    lockedIds: remote.lockedIds ?? current.lockedIds,
+    updatedAt: Date.now(),
+  };
+}
+
 export function isRecurrenceActiveOnDate(recurrence: AssessmentRecurrence, date: Date): boolean {
   switch (recurrence.kind) {
     case 'daily':
@@ -353,14 +386,41 @@ export function getCurrentPeriodStart(recurrence: AssessmentRecurrence, date: Da
   }
 }
 
+/**
+ * Early completion credit before a scheduled day:
+ * - monthly: 5 days
+ * - weekly (or a single selected weekday): 2 days
+ * - daily / multiple selected weekdays: none
+ */
+export function graceDaysForRecurrence(recurrence: AssessmentRecurrence): number {
+  if (recurrence.kind === 'monthly') return 5;
+  if (recurrence.kind === 'weekly') return 2;
+  if (recurrence.kind === 'weekdays' && recurrence.daysOfWeek.length <= 1) return 2;
+  return 0;
+}
+
+/** Earliest completion timestamp that still counts for the period containing `date`. */
+export function getPeriodCreditStart(recurrence: AssessmentRecurrence, date: Date): number {
+  const periodStart = getCurrentPeriodStart(recurrence, date);
+  return periodStart - graceDaysForRecurrence(recurrence) * MS_DAY;
+}
+
 export function isAssessmentDueForRecurrence(
   lastCompletedAt: number | null,
   recurrence: AssessmentRecurrence,
   now = new Date(),
 ): boolean {
-  if (!isRecurrenceActiveOnDate(recurrence, now)) return false;
-  if (lastCompletedAt === null) return true;
-  return lastCompletedAt < getCurrentPeriodStart(recurrence, now);
+  // Only look from "now" forward. Past missed days stay visible on the calendar
+  // for that date, but do not keep nagging in "due now" until the next
+  // early-completion window (or scheduled day) opens.
+  for (let offset = 0; offset < 366; offset += 1) {
+    const candidate = addDays(now, offset);
+    if (!isRecurrenceActiveOnDate(recurrence, candidate)) continue;
+    const creditStart = getPeriodCreditStart(recurrence, candidate);
+    if (lastCompletedAt !== null && lastCompletedAt >= creditStart) continue;
+    return now.getTime() >= creditStart;
+  }
+  return false;
 }
 
 export function getNextDueTimestamp(
@@ -371,73 +431,227 @@ export function getNextDueTimestamp(
   for (let offset = 0; offset < 366; offset += 1) {
     const candidate = addDays(from, offset);
     if (!isRecurrenceActiveOnDate(recurrence, candidate)) continue;
-    const periodStart = getCurrentPeriodStart(recurrence, candidate);
-    if (lastCompletedAt === null || lastCompletedAt < periodStart) {
-      return periodStart;
+    const creditStart = getPeriodCreditStart(recurrence, candidate);
+    if (lastCompletedAt === null || lastCompletedAt < creditStart) {
+      return getCurrentPeriodStart(recurrence, candidate);
     }
   }
   return null;
 }
 
+/** When early completion next becomes available (null if no grace or already due). */
+export function getNextEarlyCompletionTimestamp(
+  lastCompletedAt: number | null,
+  recurrence: AssessmentRecurrence,
+  from = new Date(),
+): number | null {
+  if (graceDaysForRecurrence(recurrence) === 0) return null;
+  const nextPeriodStart = getNextDueTimestamp(lastCompletedAt, recurrence, from);
+  if (nextPeriodStart == null) return null;
+  return getPeriodCreditStart(recurrence, new Date(nextPeriodStart));
+}
+
+const DAILY: AssessmentRecurrence = { kind: 'daily' };
+const MON_THU: AssessmentRecurrence = { kind: 'weekdays', daysOfWeek: [1, 4] };
+const TUE_FRI: AssessmentRecurrence = { kind: 'weekdays', daysOfWeek: [2, 5] };
+const WEEKLY_MON: AssessmentRecurrence = { kind: 'weekly', dayOfWeek: 1 };
+const WEEKLY_WED: AssessmentRecurrence = { kind: 'weekly', dayOfWeek: 3 };
+const MONTHLY_1: AssessmentRecurrence = { kind: 'monthly', dayOfMonth: 1 };
+const MONTHLY_15: AssessmentRecurrence = { kind: 'monthly', dayOfMonth: 15 };
+
+type PhaseScheduleCell = { on: boolean; recurrence: AssessmentRecurrence };
+
+/** Bump when the recovery-stage default table changes so existing unlocked rules refresh once. */
+export const ASSESSMENT_SCHEDULE_PHASE_DEFAULTS_VERSION = 2;
+
+const PHASE_SCHEDULE_DEFAULTS: Record<
+  TreatmentPhaseValue,
+  Record<AssessmentScheduleId, PhaseScheduleCell>
+> = {
+  icu: {
+    impact: { on: true, recurrence: DAILY },
+    physical: { on: true, recurrence: DAILY },
+    'strength-reflex': { on: true, recurrence: WEEKLY_WED },
+    mobility: { on: true, recurrence: MON_THU },
+    numbness: { on: true, recurrence: MON_THU },
+    temperature: { on: true, recurrence: MON_THU },
+    balance: { on: true, recurrence: WEEKLY_MON },
+    vision: { on: true, recurrence: MON_THU },
+    speech: { on: true, recurrence: TUE_FRI },
+    neurological: { on: true, recurrence: WEEKLY_MON },
+    physiological: { on: true, recurrence: WEEKLY_MON },
+    psychological: { on: true, recurrence: DAILY },
+  },
+  acute: {
+    impact: { on: true, recurrence: MON_THU },
+    physical: { on: true, recurrence: MON_THU },
+    'strength-reflex': { on: true, recurrence: WEEKLY_WED },
+    mobility: { on: true, recurrence: WEEKLY_WED },
+    numbness: { on: true, recurrence: WEEKLY_WED },
+    temperature: { on: true, recurrence: WEEKLY_WED },
+    balance: { on: true, recurrence: WEEKLY_MON },
+    vision: { on: true, recurrence: WEEKLY_MON },
+    speech: { on: true, recurrence: WEEKLY_WED },
+    neurological: { on: true, recurrence: WEEKLY_MON },
+    physiological: { on: true, recurrence: WEEKLY_MON },
+    psychological: { on: true, recurrence: WEEKLY_WED },
+  },
+  rehab: {
+    impact: { on: true, recurrence: WEEKLY_MON },
+    physical: { on: true, recurrence: WEEKLY_MON },
+    'strength-reflex': { on: true, recurrence: WEEKLY_WED },
+    mobility: { on: true, recurrence: WEEKLY_WED },
+    numbness: { on: false, recurrence: WEEKLY_WED },
+    temperature: { on: false, recurrence: WEEKLY_WED },
+    balance: { on: true, recurrence: WEEKLY_WED },
+    vision: { on: true, recurrence: WEEKLY_MON },
+    speech: { on: true, recurrence: WEEKLY_WED },
+    neurological: { on: true, recurrence: WEEKLY_MON },
+    physiological: { on: true, recurrence: WEEKLY_WED },
+    psychological: { on: true, recurrence: WEEKLY_WED },
+  },
+  maintenance: {
+    impact: { on: true, recurrence: MONTHLY_15 },
+    physical: { on: true, recurrence: MONTHLY_15 },
+    'strength-reflex': { on: false, recurrence: MONTHLY_15 },
+    mobility: { on: true, recurrence: MONTHLY_15 },
+    numbness: { on: false, recurrence: MONTHLY_15 },
+    temperature: { on: false, recurrence: MONTHLY_15 },
+    balance: { on: true, recurrence: MONTHLY_15 },
+    vision: { on: true, recurrence: MONTHLY_1 },
+    speech: { on: true, recurrence: MONTHLY_1 },
+    neurological: { on: true, recurrence: MONTHLY_1 },
+    physiological: { on: true, recurrence: MONTHLY_1 },
+    psychological: { on: true, recurrence: MONTHLY_1 },
+  },
+  palliative: {
+    impact: { on: true, recurrence: MONTHLY_15 },
+    physical: { on: true, recurrence: MONTHLY_15 },
+    'strength-reflex': { on: true, recurrence: MONTHLY_15 },
+    mobility: { on: true, recurrence: MONTHLY_15 },
+    numbness: { on: true, recurrence: MONTHLY_15 },
+    temperature: { on: true, recurrence: MONTHLY_15 },
+    balance: { on: true, recurrence: MONTHLY_15 },
+    vision: { on: true, recurrence: MONTHLY_1 },
+    speech: { on: true, recurrence: MONTHLY_1 },
+    neurological: { on: true, recurrence: MONTHLY_1 },
+    physiological: { on: true, recurrence: MONTHLY_1 },
+    psychological: { on: true, recurrence: MONTHLY_1 },
+  },
+};
+
 function defaultRecurrenceFor(
   assessmentId: AssessmentScheduleId,
-  phase: TreatmentPhase | undefined,
+  phase: TreatmentPhaseValue,
 ): AssessmentRecurrence {
-  const dailyPhysical: AssessmentScheduleId[] = [
-    'impact',
-    'physical',
-    'mobility',
-    'numbness',
-    'temperature',
-  ];
-  if (phase === 'icu' || phase === 'acute' || phase === 'postOp') {
-    if (dailyPhysical.includes(assessmentId)) return { kind: 'daily' };
-    if (assessmentId === 'neurological' || assessmentId === 'psychological') return { kind: 'daily' };
-    if (assessmentId === 'vision') return { kind: 'weekdays', daysOfWeek: [1, 3, 5] };
-    return { kind: 'weekly', dayOfWeek: 1 };
-  }
-  if (phase === 'rehab') {
-    if (assessmentId === 'impact' || assessmentId === 'physical') return { kind: 'daily' };
-    if (assessmentId === 'mobility' || assessmentId === 'strength-reflex') {
-      return { kind: 'weekdays', daysOfWeek: [1, 3, 5] };
-    }
-    if (assessmentId === 'neurological' || assessmentId === 'vision') {
-      return { kind: 'weekly', dayOfWeek: 1 };
-    }
-    if (assessmentId === 'psychological') return { kind: 'weekdays', daysOfWeek: [2, 5] };
-    return { kind: 'weekly', dayOfWeek: 3 };
-  }
-  if (phase === 'maintenance' || phase === 'palliative' || phase === 'preOp') {
-    if (assessmentId === 'impact' || assessmentId === 'physical') {
-      return { kind: 'weekdays', daysOfWeek: [1, 4] };
-    }
-    if (assessmentId === 'mobility') return { kind: 'weekly', dayOfWeek: 1 };
-    if (assessmentId === 'neurological' || assessmentId === 'vision') {
-      return { kind: 'monthly', dayOfMonth: 1 };
-    }
-    if (assessmentId === 'psychological') return { kind: 'weekly', dayOfWeek: 5 };
-    return { kind: 'monthly', dayOfMonth: 15 };
-  }
-  if (dailyPhysical.includes(assessmentId)) return { kind: 'daily' };
-  if (assessmentId === 'neurological') return { kind: 'weekly', dayOfWeek: 1 };
-  return { kind: 'weekly', dayOfWeek: 3 };
+  return PHASE_SCHEDULE_DEFAULTS[phase][assessmentId].recurrence;
 }
 
 export function buildDefaultAssessmentScheduleRules(
   phase?: string | null,
 ): Record<AssessmentScheduleId, AssessmentScheduleRule> {
-  const normalizedPhase = TREATMENT_PHASES.includes(phase as TreatmentPhase)
-    ? (phase as TreatmentPhase)
-    : 'rehab';
+  const normalizedPhase: TreatmentPhaseValue =
+    normalizeTreatmentPhaseForSchedule(phase) ?? 'rehab';
   const rules = {} as Record<AssessmentScheduleId, AssessmentScheduleRule>;
   for (const meta of SCHEDULABLE_ASSESSMENTS) {
+    const cell = PHASE_SCHEDULE_DEFAULTS[normalizedPhase][meta.id];
     rules[meta.id] = {
       assessmentId: meta.id,
-      enabled: meta.released,
+      enabled: meta.released && cell.on,
       recurrence: defaultRecurrenceFor(meta.id, normalizedPhase),
     };
   }
   return rules;
+}
+
+/** Full stage table for Circle remote settings. Lock flags stay; cadences are replaced. */
+export function assessmentScheduleForRecoveryStage(
+  phase?: string | null,
+  lockedIds: AssessmentScheduleId[] = [],
+): RemoteAssessmentSchedule {
+  return {
+    rules: buildDefaultAssessmentScheduleRules(phase),
+    lockedIds: [...lockedIds],
+  };
+}
+
+/** True when stored rules look like ICU/Hospital force-off leftovers (all released items off). */
+export function assessmentScheduleLooksFullyDisabled(
+  schedule: unknown,
+): boolean {
+  const local = sanitizeAssessmentSchedulePreferences(schedule);
+  const rules = local.rules ?? {};
+  const released = SCHEDULABLE_ASSESSMENTS.filter((item) => item.released);
+  if (released.length === 0) return false;
+  const hasAnyStored = released.some((item) => !!rules[item.id]);
+  if (!hasAnyStored) return false;
+  return released.every((item) => rules[item.id]?.enabled === false);
+}
+
+/** Apply recovery-stage defaults. Circle-locked assessments keep their current rule. */
+export function withPhaseAssessmentScheduleDefaults<T extends Record<string, unknown>>(
+  preferences: T,
+): T {
+  const phase =
+    (preferences.fullUserDetails as { clinical?: { treatmentPhase?: string } } | null | undefined)
+      ?.clinical?.treatmentPhase ?? null;
+  const current = sanitizeAssessmentSchedulePreferences(preferences.assessmentSchedule);
+  const nextRules = buildDefaultAssessmentScheduleRules(phase);
+  for (const id of current.lockedIds ?? []) {
+    const existing = current.rules?.[id];
+    if (existing) nextRules[id] = existing;
+  }
+  return {
+    ...preferences,
+    assessmentSchedule: {
+      ...current,
+      rules: nextRules,
+      updatedAt: Date.now(),
+    },
+  };
+}
+
+/** Restore phase defaults for Daily Life (and clear stale all-off rules from ICU/Hospital). */
+export function withDailyLifeAssessmentScheduleDefaults<T extends Record<string, unknown>>(
+  preferences: T,
+): T {
+  return withPhaseAssessmentScheduleDefaults(preferences);
+}
+
+/** Replace every cadence with the recovery-stage table. Locked rows stay locked. */
+export function withRecoveryStageAssessmentSchedule<T extends Record<string, unknown>>(
+  preferences: T,
+  phase?: string | null,
+): T {
+  const current = sanitizeAssessmentSchedulePreferences(preferences.assessmentSchedule);
+  const resolvedPhase =
+    phase ??
+    (preferences.fullUserDetails as { clinical?: { treatmentPhase?: string } } | null | undefined)
+      ?.clinical?.treatmentPhase ??
+    null;
+  const next = assessmentScheduleForRecoveryStage(resolvedPhase, current.lockedIds ?? []);
+  return {
+    ...preferences,
+    assessmentSchedule: {
+      ...current,
+      rules: next.rules,
+      lockedIds: next.lockedIds,
+      updatedAt: Date.now(),
+    },
+  };
+}
+
+/** One-time refresh of unlocked stored rules after the default table changes. */
+export function applyAssessmentSchedulePhaseDefaultsVersion<T extends Record<string, unknown>>(
+  preferences: T,
+): T {
+  if (preferences.assessmentSchedulePhaseDefaultsVersion === ASSESSMENT_SCHEDULE_PHASE_DEFAULTS_VERSION) {
+    return preferences;
+  }
+  return {
+    ...withPhaseAssessmentScheduleDefaults(preferences),
+    assessmentSchedulePhaseDefaultsVersion: ASSESSMENT_SCHEDULE_PHASE_DEFAULTS_VERSION,
+  };
 }
 
 function isFeatureEnabled(
@@ -474,6 +688,8 @@ export function resolveEffectiveAssessmentScheduleRules(params: {
     ...(remote?.lockedIds ?? []),
   ]);
 
+  const assessmentsMasterOn = params.preferences.featuresVisibility?.healthAssessments !== false;
+
   const merged = { ...defaults };
   for (const meta of SCHEDULABLE_ASSESSMENTS) {
     const remoteRule = remote?.rules?.[meta.id];
@@ -481,6 +697,12 @@ export function resolveEffectiveAssessmentScheduleRules(params: {
     if (remoteRule) merged[meta.id] = remoteRule;
     if (localRule && !locked.has(meta.id)) merged[meta.id] = localRule;
     if (appMode === 'intensive_care' || appMode === 'hospital') {
+      merged[meta.id] = { ...merged[meta.id], enabled: false };
+    }
+    if (!assessmentsMasterOn || !isFeatureEnabled(params.preferences, meta.featureKey)) {
+      merged[meta.id] = { ...merged[meta.id], enabled: false };
+    }
+    if (!meta.released) {
       merged[meta.id] = { ...merged[meta.id], enabled: false };
     }
   }
@@ -503,10 +725,10 @@ export function getScheduledDueAssessments(
   },
   histories: AssessmentHistoryMap,
   remoteAssessmentSchedule?: RemoteAssessmentSchedule,
+  now = new Date(),
 ): DueAssessmentScheduleItem[] {
-  if (!preferences.featuresVisibility?.healthAssessments) return [];
+  if (!isScheduleEnabled(preferences)) return [];
   const rules = resolveEffectiveAssessmentScheduleRules({ preferences, remoteAssessmentSchedule });
-  const now = new Date();
   const due: DueAssessmentScheduleItem[] = [];
 
   for (const meta of SCHEDULABLE_ASSESSMENTS) {
@@ -536,10 +758,10 @@ export function countUpcomingScheduledAssessmentsWithinDays(
   histories: AssessmentHistoryMap,
   windowDays = 7,
   remoteAssessmentSchedule?: RemoteAssessmentSchedule,
+  now = new Date(),
 ): number {
-  if (!preferences.featuresVisibility?.healthAssessments) return 0;
+  if (!isScheduleEnabled(preferences)) return 0;
   const rules = resolveEffectiveAssessmentScheduleRules({ preferences, remoteAssessmentSchedule });
-  const now = new Date();
   const windowEnd = now.getTime() + windowDays * MS_DAY;
   let count = 0;
 
@@ -550,8 +772,11 @@ export function countUpcomingScheduledAssessmentsWithinDays(
     if (!meta.historyKey) continue;
     const latest = latestTimestamp(histories[meta.historyKey] ?? []);
     if (isAssessmentDueForRecurrence(latest, rule.recurrence, now)) continue;
-    const nextDue = getNextDueTimestamp(latest, rule.recurrence, now);
-    if (nextDue != null && nextDue <= windowEnd) count += 1;
+    const nextCreditStart = getNextEarlyCompletionTimestamp(latest, rule.recurrence, now);
+    const nowMs = now.getTime();
+    if (nextCreditStart != null && nextCreditStart > nowMs && nextCreditStart <= windowEnd) {
+      count += 1;
+    }
   }
   return count;
 }
@@ -568,7 +793,70 @@ export type AssessmentScheduleDayEvent = {
   modal: NonNullable<SchedulableAssessmentMeta['modal']>;
   titleKey: string;
   status: 'due' | 'upcoming' | 'completed';
+  /** False when this calendar day is still before the early-completion window. */
+  canCompleteNow: boolean;
+  /** Scheduled due date for this credit period (`YYYY-MM-DD`). */
+  scheduledDateKey: string;
+  /**
+   * When false, list in the selected-day panel (grace window) but do not draw a
+   * calendar dot — dots stay on the scheduled due date.
+   */
+  showOnCalendar?: boolean;
 };
+
+export function assessmentEventShowsCalendarDot(
+  event: Pick<AssessmentScheduleDayEvent, 'showOnCalendar'>,
+): boolean {
+  return event.showOnCalendar !== false;
+}
+
+export function dayHasAssessmentCalendarDot(
+  events: AssessmentScheduleDayEvent[] | undefined,
+): boolean {
+  return (events ?? []).some(assessmentEventShowsCalendarDot);
+}
+
+export function formatAssessmentScheduleDueDate(dateKey: string, locale?: string): string {
+  return new Date(`${dateKey}T12:00:00`).toLocaleDateString(locale, {
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+/** Status copy: grace listings on today include the real due date. */
+export function assessmentScheduleStatusI18n(
+  event: Pick<AssessmentScheduleDayEvent, 'status' | 'showOnCalendar' | 'scheduledDateKey'>,
+  viewingDateKey: string,
+  locale?: string,
+): { key: 'availableNowDue' | AssessmentScheduleDayEvent['status']; date?: string } {
+  if (
+    event.showOnCalendar === false &&
+    event.scheduledDateKey &&
+    event.scheduledDateKey !== viewingDateKey
+  ) {
+    return {
+      key: 'availableNowDue',
+      date: formatAssessmentScheduleDueDate(event.scheduledDateKey, locale),
+    };
+  }
+  return { key: event.status };
+}
+
+function isSchedulableCalendarMeta(
+  preferences: {
+    featuresVisibility?: Record<string, unknown>;
+  },
+  meta: SchedulableAssessmentMeta,
+  rule: AssessmentScheduleRule | undefined,
+): rule is AssessmentScheduleRule {
+  return Boolean(
+    rule?.enabled &&
+      meta.released &&
+      meta.modal &&
+      meta.historyKey &&
+      isFeatureEnabled(preferences, meta.featureKey),
+  );
+}
 
 export function getAssessmentScheduleCalendar(
   preferences: {
@@ -581,12 +869,14 @@ export function getAssessmentScheduleCalendar(
   rangeStart: Date,
   rangeEnd: Date,
   remoteAssessmentSchedule?: RemoteAssessmentSchedule,
+  now = new Date(),
 ): Map<string, AssessmentScheduleDayEvent[]> {
   const result = new Map<string, AssessmentScheduleDayEvent[]>();
-  if (!preferences.featuresVisibility?.healthAssessments) return result;
+  if (!isScheduleEnabled(preferences)) return result;
 
   const rules = resolveEffectiveAssessmentScheduleRules({ preferences, remoteAssessmentSchedule });
-  const todayStart = startOfDay(new Date());
+  const todayStart = startOfDay(now);
+  const nowMs = now.getTime();
 
   const start = startOfDay(rangeStart);
   const end = startOfDay(rangeEnd);
@@ -595,22 +885,22 @@ export function getAssessmentScheduleCalendar(
     day.setHours(12, 0, 0, 0);
     const dateKey = assessmentScheduleDateKey(day);
     const events: AssessmentScheduleDayEvent[] = [];
+    const dayStart = startOfDay(day);
 
     for (const meta of SCHEDULABLE_ASSESSMENTS) {
       const rule = rules[meta.id];
-      if (!rule?.enabled || !meta.released || !meta.modal || !meta.historyKey) continue;
-      if (!isFeatureEnabled(preferences, meta.featureKey)) continue;
+      if (!isSchedulableCalendarMeta(preferences, meta, rule)) continue;
       if (!isRecurrenceActiveOnDate(rule.recurrence, day)) continue;
 
-      const latest = latestTimestamp(histories[meta.historyKey] ?? []);
+      const latest = latestTimestamp(histories[meta.historyKey!] ?? []);
       const due = isAssessmentDueForRecurrence(latest, rule.recurrence, day);
-      const dayStart = startOfDay(day);
+      const creditStart = getPeriodCreditStart(rule.recurrence, day);
+      const alreadyCredited = latest !== null && latest >= creditStart;
+      const canCompleteNow = !alreadyCredited && nowMs >= creditStart;
       let status: AssessmentScheduleDayEvent['status'];
       if (!due) {
         status = 'completed';
-      } else if (dayStart < todayStart) {
-        status = 'due';
-      } else if (dayStart === todayStart) {
+      } else if (canCompleteNow || dayStart <= todayStart) {
         status = 'due';
       } else {
         status = 'upcoming';
@@ -618,10 +908,36 @@ export function getAssessmentScheduleCalendar(
 
       events.push({
         id: meta.id,
-        modal: meta.modal,
+        modal: meta.modal!,
         titleKey: meta.titleKey,
         status,
+        canCompleteNow,
+        scheduledDateKey: dateKey,
       });
+    }
+
+    if (dayStart === todayStart) {
+      const listedIds = new Set(events.map((event) => event.id));
+      for (const meta of SCHEDULABLE_ASSESSMENTS) {
+        const rule = rules[meta.id];
+        if (!isSchedulableCalendarMeta(preferences, meta, rule)) continue;
+        if (listedIds.has(meta.id)) continue;
+        const latest = latestTimestamp(histories[meta.historyKey!] ?? []);
+        if (!isAssessmentDueForRecurrence(latest, rule.recurrence, now)) continue;
+        const nextDue = getNextDueTimestamp(latest, rule.recurrence, now);
+        if (nextDue == null) continue;
+        const scheduledDateKey = assessmentScheduleDateKey(new Date(nextDue));
+        if (scheduledDateKey === dateKey) continue;
+        events.push({
+          id: meta.id,
+          modal: meta.modal!,
+          titleKey: meta.titleKey,
+          status: 'due',
+          canCompleteNow: true,
+          scheduledDateKey,
+          showOnCalendar: false,
+        });
+      }
     }
 
     if (events.length > 0) result.set(dateKey, events);
@@ -703,7 +1019,7 @@ export function getAssessmentCardScheduleFooter(
   t: (key: string, params?: Record<string, unknown>) => string,
 ): { text: string; color: string } | null {
   if (!isAssessmentScheduleId(cardId)) return null;
-  if (!preferences.featuresVisibility?.healthAssessments) return null;
+  if (!isScheduleEnabled(preferences)) return null;
 
   const meta = SCHEDULABLE_ASSESSMENTS.find((item) => item.id === cardId);
   if (!meta?.released || !meta.historyKey) return null;

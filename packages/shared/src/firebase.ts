@@ -1,5 +1,5 @@
 import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
+import { getAuth, indexedDBLocalPersistence, initializeAuth, type Auth } from 'firebase/auth';
 import { getFirestore, initializeFirestore, setLogLevel, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
@@ -33,6 +33,25 @@ function initFirestore(app: FirebaseApp, databaseId?: string): Firestore {
   }
 }
 
+function isCapacitorNativeShell(): boolean {
+  if (typeof window === 'undefined') return false;
+  const bridge = (window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+  try {
+    return bridge?.isNativePlatform?.() === true;
+  } catch {
+    return false;
+  }
+}
+
+function createAuth(app: FirebaseApp): Auth {
+  if (!isCapacitorNativeShell()) return getAuth(app);
+  try {
+    return initializeAuth(app, { persistence: indexedDBLocalPersistence });
+  } catch {
+    return getAuth(app);
+  }
+}
+
 export function initMedxFirebase(config: MedxFirebaseConfig): MedxFirebaseServices {
   if (cached) return cached;
   const app = getApps().length === 0 ? initializeApp(config) : getApp();
@@ -40,7 +59,7 @@ export function initMedxFirebase(config: MedxFirebaseConfig): MedxFirebaseServic
   setLogLevel('error');
   cached = {
     app,
-    auth: getAuth(app),
+    auth: createAuth(app),
     db,
     storage: getStorage(app),
   };

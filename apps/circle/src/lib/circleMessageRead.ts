@@ -2,24 +2,108 @@ const PREFIX = 'circleMsgRead:';
 
 export const CIRCLE_MSG_READ_CHANGED = 'circleMsgReadChanged';
 
-export function getThreadLastReadAt(patientId: string, messageId: string): number {
+export type CircleMsgReadChangedDetail = {
+  patientId: string;
+  messageId?: string;
+  at?: number;
+  /** When false, listeners should refresh UI but skip a cloud write (remote merge). */
+  persist?: boolean;
+};
+
+const memoryCache = new Map<string, number>();
+
+function cacheKey(patientId: string, messageId: string): string {
+  return `${patientId}:${messageId}`;
+}
+
+function storageKey(patientId: string, messageId: string): string {
+  return `${PREFIX}${patientId}:${messageId}`;
+}
+
+function readStored(patientId: string, messageId: string): number {
   try {
-    const raw = localStorage.getItem(`${PREFIX}${patientId}:${messageId}`);
-    return raw ? Number(raw) : 0;
+    const raw = localStorage.getItem(storageKey(patientId, messageId));
+    return raw ? Number(raw) || 0 : 0;
   } catch {
     return 0;
   }
 }
 
-export function markThreadRead(patientId: string, messageId: string, at = Date.now()): void {
+function writeStored(patientId: string, messageId: string, at: number): void {
   try {
-    localStorage.setItem(`${PREFIX}${patientId}:${messageId}`, String(at));
-    window.dispatchEvent(
-      new CustomEvent(CIRCLE_MSG_READ_CHANGED, { detail: { patientId, messageId, at } }),
-    );
+    localStorage.setItem(storageKey(patientId, messageId), String(at));
   } catch {
     /* ignore */
   }
+}
+
+function emitReadChanged(detail: CircleMsgReadChangedDetail): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(CIRCLE_MSG_READ_CHANGED, { detail }));
+}
+
+function rememberThreadRead(
+  patientId: string,
+  messageId: string,
+  at: number,
+  persist: boolean,
+  notify = true,
+): boolean {
+  if (!patientId || !messageId || !Number.isFinite(at) || at <= 0) return false;
+  const current = getThreadLastReadAt(patientId, messageId);
+  if (at <= current) return false;
+  memoryCache.set(cacheKey(patientId, messageId), at);
+  writeStored(patientId, messageId, at);
+  if (notify) emitReadChanged({ patientId, messageId, at, persist });
+  return true;
+}
+
+export function getThreadLastReadAt(patientId: string, messageId: string): number {
+  if (!patientId || !messageId) return 0;
+  const mem = memoryCache.get(cacheKey(patientId, messageId)) ?? 0;
+  return Math.max(mem, readStored(patientId, messageId));
+}
+
+export function markThreadRead(patientId: string, messageId: string, at = Date.now()): void {
+  rememberThreadRead(patientId, messageId, at, true);
+}
+
+/** Merge last-read timestamps from Firestore without scheduling another cloud write. */
+export function mergeRemoteThreadReads(
+  patientId: string,
+  lastReadByMessageId: Record<string, number>,
+): boolean {
+  let changed = false;
+  for (const [messageId, at] of Object.entries(lastReadByMessageId)) {
+    if (rememberThreadRead(patientId, messageId, at, false, false)) changed = true;
+  }
+  if (changed) emitReadChanged({ patientId, persist: false });
+  return changed;
+}
+
+export function listLocalThreadReads(patientId: string): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!patientId) return out;
+  const prefix = `${PREFIX}${patientId}:`;
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(prefix)) continue;
+      const messageId = key.slice(prefix.length);
+      const at = Number(localStorage.getItem(key)) || 0;
+      if (messageId && at > 0) out[messageId] = at;
+    }
+  } catch {
+    /* ignore */
+  }
+  const memPrefix = `${patientId}:`;
+  for (const [key, at] of memoryCache) {
+    if (!key.startsWith(memPrefix) || at <= 0) continue;
+    const messageId = key.slice(memPrefix.length);
+    if (!messageId) continue;
+    out[messageId] = Math.max(out[messageId] ?? 0, at);
+  }
+  return out;
 }
 
 /** ICU daily summary — unread when summary was created/updated after last open. */

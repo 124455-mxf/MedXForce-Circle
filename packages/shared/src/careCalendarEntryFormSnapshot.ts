@@ -20,6 +20,7 @@ export type CareCalendarEntryFormComparable = {
   startDateKey: string;
   startTimeMinutes?: number;
   endTimeMinutes?: number;
+  timezoneId?: string | null;
   recurrence: CareCalendarRecurrence;
   address?: CareCalendarAddress;
   attendees?: CareCalendarEntry['attendees'];
@@ -77,6 +78,7 @@ export function careCalendarEntryFormSnapshot(input: CareCalendarEntryFormCompar
     startDateKey: input.startDateKey,
     startTimeMinutes: input.startTimeMinutes ?? null,
     endTimeMinutes: input.endTimeMinutes ?? null,
+    timezoneId: input.timezoneId?.trim() || null,
     recurrence: normalizeRecurrence(input.recurrence),
     address: normalizeAddress(input.address),
     attendees: normalizeAttendees(input.attendees),
@@ -97,6 +99,7 @@ export function careCalendarEntryFormSnapshotFromEntry(entry: CareCalendarEntry)
     startDateKey: entry.startDateKey,
     startTimeMinutes: entry.startTimeMinutes,
     endTimeMinutes: entry.endTimeMinutes,
+    timezoneId: entry.timezoneId,
     recurrence: entry.recurrence,
     address: entry.address,
     attendees: entry.attendees,

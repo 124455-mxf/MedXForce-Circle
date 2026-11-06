@@ -15,7 +15,7 @@ export function CircleAnalyticsChartLegendRow({ items }: CircleAnalyticsChartLeg
       {items.map((item) => (
         <span
           key={item.label}
-          className="inline-flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-wide"
+          className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-wide"
         >
           <span
             className="w-2 h-2 rounded-full shrink-0"

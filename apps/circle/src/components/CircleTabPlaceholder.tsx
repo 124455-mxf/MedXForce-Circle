@@ -64,7 +64,7 @@ export function CircleTabPlaceholder({
   iconClassName = 'text-cyan-600',
   title,
   subtitle,
-  badge = 'Coming soon',
+  badge,
   items,
 }: CircleTabPlaceholderProps) {
   return (

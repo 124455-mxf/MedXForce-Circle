@@ -12,15 +12,19 @@ import { formatPatientLocaleTime, formatPatientLocaleTemperature } from '../lib/
 import { formatPatientViewerTimeDifferenceT } from '../lib/patientLocaleTimeI18n';
 import { getBrowserTimeZone } from '../lib/patientLocaleTime';
 import { cn } from '../lib/utils';
+import { dashboardSectionTitleClass } from '../lib/circleSectionStyles';
 
 export function CircleDashboardPatientLocaleWidget({
   db,
   patientId,
   snapshot,
+  hideTitle = false,
 }: {
   db: Firestore;
   patientId: string;
   snapshot: CirclePatientProfileSnapshot | null;
+  /** When true, omit the Patient Overview section heading (e.g. under Live). */
+  hideTitle?: boolean;
 }) {
   const t = useCircleT();
   const previewReminders = useMemo(() => isPatientInsightsPreviewRemindersEnabled(), []);
@@ -97,9 +101,11 @@ export function CircleDashboardPatientLocaleWidget({
 
   return (
     <section className="space-y-2">
-      <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-0.5">
-        {t('dashboard.sectionPatientLocale')}
-      </h3>
+      {hideTitle ? null : (
+        <h3 className={dashboardSectionTitleClass}>
+          {t('dashboard.sectionPatientOverview')}
+        </h3>
+      )}
       {previewReminders ? (
         <p className="text-[11px] text-violet-700 bg-violet-50 border border-violet-100 rounded-xl px-3 py-2 leading-relaxed">
           {t('dashboard.previewLocaleTimeHint')}

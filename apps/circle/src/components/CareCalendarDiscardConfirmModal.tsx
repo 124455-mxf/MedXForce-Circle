@@ -32,7 +32,7 @@ export function CareCalendarDiscardConfirmModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[130] flex items-center justify-center p-4 sm:p-6 bg-slate-900/50 backdrop-blur-sm"
+          className="fixed inset-0 z-[220] flex items-center justify-center p-4 sm:p-6 bg-slate-900/50 backdrop-blur-sm"
           onClick={onClose}
         >
           <motion.div

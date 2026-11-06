@@ -66,9 +66,9 @@ export function alertAttentionBannerTitle(kind: CircleAlertAttentionKind): strin
   return kind === 'alert' ? 'Alert from your loved one' : 'Needs your attention';
 }
 
-/** Circle inbox — alert/attention threads are view-only; replies use normal Messages. */
+/** Circle inbox — alert/attention threads are view-only. */
 export function circleAlertAttentionReadOnlyHint(): string {
-  return 'This is a one-way alert — use Messages to reply to your loved one.';
+  return 'This is a one-way alarm.';
 }
 
 export function formatAlertAttentionTime(ts: number): string {

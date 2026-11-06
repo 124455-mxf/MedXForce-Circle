@@ -1,9 +1,10 @@
 import { createContext, useContext, type ReactNode } from 'react';
-import type { CircleManagedContact, TeamCoverageAnalysis } from '@medxforce/shared';
+import type { CircleInviteListItem, CircleManagedContact, TeamCoverageAnalysis } from '@medxforce/shared';
 
 export type CircleTeamCoverageContextValue = {
   analysis: TeamCoverageAnalysis;
   contacts: CircleManagedContact[];
+  invites: CircleInviteListItem[];
   loading: boolean;
 };
 

@@ -71,27 +71,58 @@ import {
   dailyCheckInScreenPolish,
   dailyCheckInScreenSpanish,
 } from './translations/dailyCheckInScreen';
+import {
+  clinicalReferencesScreenEnglish,
+  clinicalReferencesScreenGerman,
+  clinicalReferencesScreenPolish,
+  clinicalReferencesScreenSpanish,
+} from './translations/clinicalReferences';
+import {
+  visitBriefScreenEnglish,
+  visitBriefScreenGerman,
+  visitBriefScreenPolish,
+  visitBriefScreenSpanish,
+} from './translations/visitBrief';
+import {
+  careTransitionContentEnglish,
+  careTransitionContentGerman,
+  careTransitionContentPolish,
+  careTransitionContentSpanish,
+} from './translations/careTransitionContent';
 
-type TranslationTree = Record<string, string | TranslationTree>;
+interface TranslationTree {
+  [key: string]: string | TranslationTree;
+}
 
 export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
   English: {
     auth: {
       title: 'MedXForce Circle',
-      subtitle: 'Family & Friends — share moments with your loved one',
+      subtitle: 'Sign in with the same email address on your invite.',
+      signInHelp: 'How to join a Circle',
       emailPlaceholder: 'Email (must match patient invite)',
       passwordPlaceholder: 'Password',
-      continueGoogle: 'Continue with Google',
+      continueApple: 'Sign in with Apple',
+      continueGoogle: 'Sign in with Google',
+      appleRedirectHint:
+        'On iPhone, Sign in with Apple leaves this page and brings you back when you finish.',
+      embeddedBrowser:
+        'Sign-in does not work inside Microsoft Teams or other in-app browsers. Open this page in Safari, then try again.',
       signingIn: 'Signing in…',
       orEmailPassword: 'or email & password',
       signIn: 'Sign in',
       createAccount: 'Create account',
+      forgotPassword: 'Forgot password?',
+      enterEmailForReset: 'Enter your email first, then tap Forgot password.',
+      passwordResetSent:
+        'If an account exists for this email, a reset link was sent. Check inbox and spam.',
+      tooManyRequests: 'Too many attempts. Wait a few minutes and try again.',
       googleHint:
-        'MedXForce patient app uses Google — use Continue with Google if you already sign in there. The Google email must match the Family & Friends invite exactly.',
+        'Security: Never share your password with anyone. MedXForce will never ask you for your password by email, text, or phone.',
       wrongPassword:
-        'Wrong password — or this account uses Google sign-in. Try Continue with Google instead.',
+        'Wrong password — or this account uses Google or Apple sign-in. Try those buttons, or Forgot password.',
       emailInUse:
-        'This email already has an account (often via Google). Use Continue with Google, or reset password in Firebase Authentication.',
+        'This email already has an account (often via Google or Apple). Use that sign-in, or Forgot password.',
       weakPassword: 'Password must be at least 6 characters.',
       invalidEmail: 'Enter a valid email address.',
       userNotFound: 'No account for this email yet. Use Create account instead.',
@@ -106,11 +137,17 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     patients: {
       yourPatients: 'Your patients',
+      checkingAccess: 'Checking your Circle access…',
+      checkingAccessHint: 'Looking up invites and patient links for this account. This can take a moment.',
       noInvitesYet:
-        'No active invites yet. In the patient app, open Settings → Family & Friends, confirm your email is saved, click Done, then tap Refresh here.',
+        'This account has no Circle patients right now. That can mean you have not been invited yet, or access was removed. If you should have access, ask the patient\'s family or proxy to invite this email again from the patient tablet (Settings → Family & Friends). Then tap Refresh here.',
     },
     brand: {
       startupTagline: 'MedXForce Circle — Family & Friends',
+      motto: 'Communication made possible',
+      startupBoot: 'Starting MedXForce Circle',
+      startupAccess: 'Checking your access',
+      startupWorkspace: 'Preparing your workspace',
     },
     ...appShellEnglish,
     messages: messagesScreenEnglish,
@@ -124,6 +161,9 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     remoteSettings: remoteSettingsScreenEnglish,
     provision: provisionScreenEnglish,
     dailyCheckIn: dailyCheckInScreenEnglish,
+    ...clinicalReferencesScreenEnglish,
+    ...visitBriefScreenEnglish,
+    careTransitionContent: careTransitionContentEnglish,
     common: {
       refresh: 'Refresh',
       refreshing: 'Refreshing…',
@@ -137,20 +177,31 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
   German: {
     auth: {
       title: 'MedXForce Circle',
-      subtitle: 'Familie & Freunde — Momente mit Ihrem Angehörigen teilen',
+      subtitle: 'Melden Sie sich mit derselben E-Mail-Adresse wie in Ihrer Einladung an.',
+      signInHelp: 'So treten Sie einem Circle bei',
       emailPlaceholder: 'E-Mail (muss mit der Patienteneinladung übereinstimmen)',
       passwordPlaceholder: 'Passwort',
-      continueGoogle: 'Mit Google fortfahren',
+      continueApple: 'Mit Apple anmelden',
+      continueGoogle: 'Mit Google anmelden',
+      appleRedirectHint:
+        'Auf dem iPhone verlässt „Mit Apple anmelden“ diese Seite und bringt Sie zurück, wenn Sie fertig sind.',
+      embeddedBrowser:
+        'Die Anmeldung funktioniert nicht in Microsoft Teams oder anderen In-App-Browsern. Öffnen Sie diese Seite in Safari und versuchen Sie es erneut.',
       signingIn: 'Anmeldung…',
       orEmailPassword: 'oder E-Mail & Passwort',
       signIn: 'Anmelden',
       createAccount: 'Konto erstellen',
+      forgotPassword: 'Passwort vergessen?',
+      enterEmailForReset: 'Geben Sie zuerst Ihre E-Mail ein und tippen Sie dann auf Passwort vergessen.',
+      passwordResetSent:
+        'Falls ein Konto zu dieser E-Mail existiert, wurde ein Reset-Link gesendet. Prüfen Sie Posteingang und Spam.',
+      tooManyRequests: 'Zu viele Versuche. Warten Sie ein paar Minuten und versuchen Sie es erneut.',
       googleHint:
-        'Die MedXForce-Patienten-App nutzt Google — verwenden Sie „Mit Google fortfahren“, wenn Sie sich dort bereits anmelden. Die Google-E-Mail muss exakt mit der Familie-&-Freunde-Einladung übereinstimmen.',
+        'Sicherheit: Geben Sie Ihr Passwort niemals an Dritte weiter. MedXForce wird Sie niemals per E-Mail, SMS oder Telefon nach Ihrem Passwort fragen.',
       wrongPassword:
-        'Falsches Passwort — oder dieses Konto nutzt Google-Anmeldung. Versuchen Sie „Mit Google fortfahren“.',
+        'Falsches Passwort — oder dieses Konto nutzt Google- oder Apple-Anmeldung. Versuchen Sie die Schaltflächen oben oder „Passwort vergessen“.',
       emailInUse:
-        'Diese E-Mail hat bereits ein Konto (oft über Google). Nutzen Sie Google oder setzen Sie das Passwort in Firebase Authentication zurück.',
+        'Diese E-Mail hat bereits ein Konto (oft über Google oder Apple). Nutzen Sie diese Anmeldung oder „Passwort vergessen“.',
       weakPassword: 'Das Passwort muss mindestens 6 Zeichen haben.',
       invalidEmail: 'Geben Sie eine gültige E-Mail-Adresse ein.',
       userNotFound: 'Kein Konto für diese E-Mail. Nutzen Sie „Konto erstellen“.',
@@ -165,11 +216,18 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     patients: {
       yourPatients: 'Ihre Patienten',
+      checkingAccess: 'Circle-Zugang wird geprüft…',
+      checkingAccessHint:
+        'Einladungen und Patientenverknüpfungen für dieses Konto werden gesucht. Das kann einen Moment dauern.',
       noInvitesYet:
-        'Noch keine aktiven Einladungen. Öffnen Sie in der Patienten-App Einstellungen → Familie & Freunde, speichern Sie Ihre E-Mail, tippen Sie auf Fertig und dann hier auf Aktualisieren.',
+        'Dieses Konto hat derzeit keine Circle-Patienten. Das kann heißen, dass Sie noch nicht eingeladen wurden oder der Zugang entfernt wurde. Wenn Sie Zugang haben sollten, bitten Sie die Familie oder den Vertreter des Patienten, diese E-Mail erneut vom Patiententablet einzuladen (Einstellungen → Familie & Freunde). Tippen Sie danach hier auf Aktualisieren.',
     },
     brand: {
       startupTagline: 'MedXForce Circle — Familie & Freunde',
+      motto: 'Kommunikation, die verbindet',
+      startupBoot: 'MedXForce Circle wird gestartet',
+      startupAccess: 'Zugang wird geprüft',
+      startupWorkspace: 'Arbeitsbereich wird vorbereitet',
     },
     ...appShellGerman,
     messages: messagesScreenGerman,
@@ -183,6 +241,9 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     remoteSettings: remoteSettingsScreenGerman,
     provision: provisionScreenGerman,
     dailyCheckIn: dailyCheckInScreenGerman,
+    ...clinicalReferencesScreenGerman,
+    ...visitBriefScreenGerman,
+    careTransitionContent: careTransitionContentGerman,
     common: {
       refresh: 'Aktualisieren',
       refreshing: 'Aktualisiere…',
@@ -196,20 +257,31 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
   Spanish: {
     auth: {
       title: 'MedXForce Circle',
-      subtitle: 'Familia y amigos — comparta momentos con su ser querido',
+      subtitle: 'Inicie sesión con la misma dirección de correo de su invitación.',
+      signInHelp: 'Cómo unirse a un Circle',
       emailPlaceholder: 'Correo (debe coincidir con la invitación del paciente)',
       passwordPlaceholder: 'Contraseña',
-      continueGoogle: 'Continuar con Google',
+      continueApple: 'Iniciar sesión con Apple',
+      continueGoogle: 'Iniciar sesión con Google',
+      appleRedirectHint:
+        'En el iPhone, Iniciar sesión con Apple sale de esta página y vuelve cuando termina.',
+      embeddedBrowser:
+        'El inicio de sesión no funciona dentro de Microsoft Teams u otros navegadores integrados. Abra esta página en Safari e inténtelo de nuevo.',
       signingIn: 'Iniciando sesión…',
       orEmailPassword: 'o correo y contraseña',
       signIn: 'Iniciar sesión',
       createAccount: 'Crear cuenta',
+      forgotPassword: '¿Olvidó la contraseña?',
+      enterEmailForReset: 'Escriba primero su correo y pulse ¿Olvidó la contraseña?',
+      passwordResetSent:
+        'Si existe una cuenta para este correo, se envió un enlace de restablecimiento. Revise bandeja de entrada y spam.',
+      tooManyRequests: 'Demasiados intentos. Espere unos minutos e inténtelo de nuevo.',
       googleHint:
-        'La app del paciente MedXForce usa Google — use Continuar con Google si ya inicia sesión allí. El correo de Google debe coincidir exactamente con la invitación de Familia y amigos.',
+        'Seguridad: Nunca comparta su contraseña con nadie. MedXForce nunca le pedirá la contraseña por correo, mensaje de texto o teléfono.',
       wrongPassword:
-        'Contraseña incorrecta — o esta cuenta usa Google. Pruebe Continuar con Google.',
+        'Contraseña incorrecta — o esta cuenta usa Google o Apple. Pruebe esos botones o ¿Olvidó la contraseña?',
       emailInUse:
-        'Este correo ya tiene una cuenta (a menudo con Google). Use Google o restablezca la contraseña en Firebase Authentication.',
+        'Este correo ya tiene una cuenta (a menudo con Google o Apple). Use ese inicio de sesión o ¿Olvidó la contraseña?',
       weakPassword: 'La contraseña debe tener al menos 6 caracteres.',
       invalidEmail: 'Introduzca un correo válido.',
       userNotFound: 'No hay cuenta para este correo. Use Crear cuenta.',
@@ -224,11 +296,18 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     patients: {
       yourPatients: 'Sus pacientes',
+      checkingAccess: 'Comprobando su acceso a Circle…',
+      checkingAccessHint:
+        'Buscando invitaciones y vínculos de pacientes para esta cuenta. Puede tardar un momento.',
       noInvitesYet:
-        'Aún no hay invitaciones activas. En la app del paciente, abra Ajustes → Familia y amigos, confirme su correo, pulse Hecho y luego Actualizar aquí.',
+        'Esta cuenta no tiene pacientes de Circle ahora. Puede ser que aún no la hayan invitado o que le hayan quitado el acceso. Si debería tener acceso, pida a la familia o al representante del paciente que vuelva a invitar este correo desde la tablet del paciente (Ajustes → Familia y amigos). Luego pulse Actualizar aquí.',
     },
     brand: {
       startupTagline: 'MedXForce Circle — Familia y amigos',
+      motto: 'Comunicación hecha posible',
+      startupBoot: 'Iniciando MedXForce Circle',
+      startupAccess: 'Comprobando su acceso',
+      startupWorkspace: 'Preparando su espacio de trabajo',
     },
     ...appShellSpanish,
     messages: messagesScreenSpanish,
@@ -242,6 +321,9 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     remoteSettings: remoteSettingsScreenSpanish,
     provision: provisionScreenSpanish,
     dailyCheckIn: dailyCheckInScreenSpanish,
+    ...clinicalReferencesScreenSpanish,
+    ...visitBriefScreenSpanish,
+    careTransitionContent: careTransitionContentSpanish,
     common: {
       refresh: 'Actualizar',
       refreshing: 'Actualizando…',
@@ -255,20 +337,31 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
   Polish: {
     auth: {
       title: 'MedXForce Circle',
-      subtitle: 'Rodzina i przyjaciele — dziel się chwilami z bliską osobą',
+      subtitle: 'Zaloguj się tym samym adresem e-mail, który jest w zaproszeniu.',
+      signInHelp: 'Jak dołączyć do Circle',
       emailPlaceholder: 'E-mail (musi zgadzać się z zaproszeniem pacjenta)',
       passwordPlaceholder: 'Hasło',
-      continueGoogle: 'Kontynuuj z Google',
+      continueApple: 'Zaloguj się przez Apple',
+      continueGoogle: 'Zaloguj się przez Google',
+      appleRedirectHint:
+        'Na iPhonie logowanie przez Apple opuszcza tę stronę i wraca po zakończeniu.',
+      embeddedBrowser:
+        'Logowanie nie działa w Microsoft Teams ani w innych przeglądarkach w aplikacji. Otwórz tę stronę w Safari i spróbuj ponownie.',
       signingIn: 'Logowanie…',
       orEmailPassword: 'lub e-mail i hasło',
       signIn: 'Zaloguj się',
       createAccount: 'Utwórz konto',
+      forgotPassword: 'Nie pamiętasz hasła?',
+      enterEmailForReset: 'Najpierw wpisz e-mail, potem naciśnij Nie pamiętasz hasła?',
+      passwordResetSent:
+        'Jeśli istnieje konto dla tego e-maila, wysłano link resetujący. Sprawdź skrzynkę i spam.',
+      tooManyRequests: 'Zbyt wiele prób. Poczekaj kilka minut i spróbuj ponownie.',
       googleHint:
-        'Aplikacja pacjenta MedXForce używa Google — wybierz Kontynuuj z Google, jeśli tam się logujesz. Adres Google musi dokładnie odpowiadać zaproszeniu Rodzina i przyjaciele.',
+        'Bezpieczeństwo: Nigdy nie udostępniaj hasła nikomu. MedXForce nigdy nie poprosi Cię o hasło e-mailem, SMS-em ani telefonem.',
       wrongPassword:
-        'Błędne hasło — lub to konto używa logowania Google. Spróbuj Kontynuuj z Google.',
+        'Błędne hasło — lub to konto używa logowania Google albo Apple. Spróbuj tych przycisków albo Nie pamiętasz hasła?',
       emailInUse:
-        'Ten e-mail ma już konto (często przez Google). Użyj Google lub zresetuj hasło w Firebase Authentication.',
+        'Ten e-mail ma już konto (często przez Google lub Apple). Użyj tego logowania albo Nie pamiętasz hasła?',
       weakPassword: 'Hasło musi mieć co najmniej 6 znaków.',
       invalidEmail: 'Wprowadź prawidłowy adres e-mail.',
       userNotFound: 'Brak konta dla tego e-maila. Użyj Utwórz konto.',
@@ -283,11 +376,18 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     patients: {
       yourPatients: 'Twoi pacjenci',
+      checkingAccess: 'Sprawdzanie dostępu do Circle…',
+      checkingAccessHint:
+        'Szukamy zaproszeń i powiązań z pacjentami dla tego konta. To może chwilę potrwać.',
       noInvitesYet:
-        'Brak aktywnych zaproszeń. W aplikacji pacjenta otwórz Ustawienia → Rodzina i przyjaciele, zapisz e-mail, naciśnij Gotowe, a potem Odśwież tutaj.',
+        'To konto nie ma teraz żadnych pacjentów w Circle. To może znaczyć, że nie dostałaś/eś jeszcze zaproszenia albo dostęp został usunięty. Jeśli powinnaś/powinieneś mieć dostęp, poproś rodzinę lub pełnomocnika pacjenta, by ponownie zaprosili ten e-mail z tabletu pacjenta (Ustawienia → Rodzina i przyjaciele). Potem naciśnij tutaj Odśwież.',
     },
     brand: {
       startupTagline: 'MedXForce Circle — Rodzina i przyjaciele',
+      motto: 'Komunikacja staje się możliwa',
+      startupBoot: 'Uruchamianie MedXForce Circle',
+      startupAccess: 'Sprawdzanie dostępu',
+      startupWorkspace: 'Przygotowywanie obszaru roboczego',
     },
     ...appShellPolish,
     messages: messagesScreenPolish,
@@ -301,6 +401,9 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     remoteSettings: remoteSettingsScreenPolish,
     provision: provisionScreenPolish,
     dailyCheckIn: dailyCheckInScreenPolish,
+    ...clinicalReferencesScreenPolish,
+    ...visitBriefScreenPolish,
+    careTransitionContent: careTransitionContentPolish,
     common: {
       refresh: 'Odśwież',
       refreshing: 'Odświeżanie…',
@@ -324,12 +427,13 @@ function resolvePath(tree: TranslationTree, path: string): string | undefined {
 }
 
 export function createCircleTranslator(language: CircleUiLanguage) {
-  return (path: string, params?: Record<string, string | number>) => {
+  return (path: string, params?: Record<string, unknown>) => {
     const primary = resolvePath(CIRCLE_TRANSLATIONS[language], path);
     const english = resolvePath(CIRCLE_TRANSLATIONS.English, path);
     let text = primary ?? english ?? path;
     if (params) {
       for (const [key, value] of Object.entries(params)) {
+        if (value == null) continue;
         text = text.replaceAll(`{{${key}}}`, String(value));
       }
     }

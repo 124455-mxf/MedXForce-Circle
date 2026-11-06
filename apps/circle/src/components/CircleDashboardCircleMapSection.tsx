@@ -1,78 +1,25 @@
 import { useMemo, useState } from 'react';
 import type { Firestore } from 'firebase/firestore';
 import {
-  type CircleManagedContact,
+  canSeeCircleRestrictedThread,
   type CircleMemberRole,
-  normalizeMemberRole,
 } from '@medxforce/shared';
 import { useCircleTeamCoverageFromDashboard } from '../context/CircleTeamCoverageContext';
 import { useCircleMapMemberPhotos } from '../hooks/useCircleMapMemberPhotos';
-import type { CircleThreadMessage, CircleThreadReply } from '../hooks/useCirclePatientThreads';
+import { useCircleMemberThread } from '../hooks/useCircleMemberThread';
 import { useCirclePatientThreadsContext } from '../context/CirclePatientThreadsContext';
 import type { FamilyGalleryPreviewPhoto } from '../hooks/useFamilyGalleryDashboard';
-import type { CircleMapGalleryPhoto } from '../lib/circleMapModel';
+import {
+  contactsToCircleMapPreferences,
+  mapCirclePostsForEngagement,
+  mapGalleryPhotosForEngagement,
+  mapMessagesForEngagement,
+} from '../lib/circleMapContacts';
 import { useCircleT } from '../lib/circleI18nContext';
 import {
   CircleDashboardCircleMapModal,
   CircleDashboardCircleMapTile,
 } from './CircleDashboardCircleMap';
-
-function managedContactToRecord(contact: CircleManagedContact): Record<string, unknown> {
-  return {
-    id: contact.id,
-    name: contact.name,
-    email: contact.email,
-    relationship: contact.relationship,
-    circleRole: contact.circleRole,
-    proxyTier: contact.proxyTier,
-    kind: contact.kind,
-  };
-}
-
-function contactsToPreferences(
-  contacts: CircleManagedContact[],
-  patientName: string,
-  nickName?: string,
-) {
-  const caregivers = contacts.filter((c) => c.kind === 'caregiver').map(managedContactToRecord);
-  const friendsAndFamily = contacts
-    .filter((c) => c.kind === 'family' || c.kind === 'friend')
-    .map(managedContactToRecord);
-  const messagingContacts = contacts.filter((c) => c.kind === 'contact').map(managedContactToRecord);
-
-  return {
-    userName: patientName,
-    fullUserDetails: nickName ? { identity: { nickName } } : undefined,
-    caregivers,
-    friendsAndFamily,
-    contacts: messagingContacts,
-  };
-}
-
-function mapMessagesForEngagement(
-  rawMessages: CircleThreadMessage[],
-  repliesByMessageId: Record<string, CircleThreadReply[]>,
-) {
-  return rawMessages.map((msg) => ({
-    timestamp: msg.updatedAt || msg.createdAt,
-    recipients: msg.recipientEmails ?? [],
-    replies: (repliesByMessageId[msg.id] ?? []).map((reply) => ({
-      timestamp: reply.timestamp,
-      senderEmail: reply.senderEmail,
-      senderName: reply.senderName,
-      sender: reply.senderName,
-      isPatient: reply.isPatient,
-    })),
-  }));
-}
-
-function mapGalleryPhotos(photos: FamilyGalleryPreviewPhoto[]): CircleMapGalleryPhoto[] {
-  return photos.map((photo) => ({
-    source: 'member',
-    senderName: photo.senderName,
-    date: photo.timestamp,
-  }));
-}
 
 type CircleDashboardCircleMapSectionProps = {
   db: Firestore;
@@ -82,7 +29,8 @@ type CircleDashboardCircleMapSectionProps = {
   patientPhotoUrl?: string;
   patientNickName?: string;
   galleryPhotos: FamilyGalleryPreviewPhoto[];
-  enabled: boolean;
+  showVisual: boolean;
+  showCompact: boolean;
   onManageContacts?: () => void;
 };
 
@@ -94,46 +42,72 @@ export function CircleDashboardCircleMapSection({
   patientPhotoUrl,
   patientNickName,
   galleryPhotos,
-  enabled,
+  showVisual,
+  showCompact,
   onManageContacts,
 }: CircleDashboardCircleMapSectionProps) {
   const t = useCircleT();
   const [open, setOpen] = useState(false);
-  const role = normalizeMemberRole(memberRole);
-  const active = enabled && role !== 'friend';
+  const active = showVisual || showCompact;
+  const includeRestrictedPosts = canSeeCircleRestrictedThread(memberRole);
 
   const { contacts, loading: contactsLoading } = useCircleTeamCoverageFromDashboard();
-  const { photosByEmail, photosByContactId } = useCircleMapMemberPhotos(db, patientId, active);
+  const { photosByEmail, photosByContactId, uidByEmail, uidByContactId } = useCircleMapMemberPhotos(
+    db,
+    patientId,
+    active,
+  );
   const { rawMessages, repliesByMessageId } = useCirclePatientThreadsContext();
+  const { posts: openPosts } = useCircleMemberThread(db, patientId, 'open', active);
+  const { posts: restrictedPosts } = useCircleMemberThread(
+    db,
+    patientId,
+    'restricted',
+    active && includeRestrictedPosts,
+  );
 
   const preferences = useMemo(
-    () => contactsToPreferences(contacts, patientDisplayName, patientNickName),
+    () => contactsToCircleMapPreferences(contacts, patientDisplayName, patientNickName),
     [contacts, patientDisplayName, patientNickName],
   );
 
   const messages = useMemo(
-    () => mapMessagesForEngagement(rawMessages, repliesByMessageId),
-    [rawMessages, repliesByMessageId],
+    () => [
+      ...mapMessagesForEngagement(rawMessages, repliesByMessageId),
+      ...mapCirclePostsForEngagement(openPosts),
+      ...mapCirclePostsForEngagement(restrictedPosts),
+    ],
+    [openPosts, rawMessages, repliesByMessageId, restrictedPosts],
   );
 
-  const mappedGalleryPhotos = useMemo(() => mapGalleryPhotos(galleryPhotos), [galleryPhotos]);
+  const mappedGalleryPhotos = useMemo(
+    () => mapGalleryPhotosForEngagement(galleryPhotos),
+    [galleryPhotos],
+  );
 
   if (!active || contactsLoading) return null;
 
+  const tileProps = {
+    preferences,
+    messages,
+    galleryPhotos: mappedGalleryPhotos,
+    photosByEmail,
+    photosByContactId,
+    uidByEmail,
+    uidByContactId,
+    patientPhotoUrl,
+    onOpen: () => setOpen(true),
+    t,
+  };
+
   return (
-    <>
-      <div className="h-[13rem] sm:h-[14rem]">
-        <CircleDashboardCircleMapTile
-          preferences={preferences}
-          messages={messages}
-          galleryPhotos={mappedGalleryPhotos}
-          photosByEmail={photosByEmail}
-          photosByContactId={photosByContactId}
-          patientPhotoUrl={patientPhotoUrl}
-          onOpen={() => setOpen(true)}
-          t={t}
-        />
-      </div>
+    <div className="space-y-3">
+      {showVisual ? (
+        <div className="h-[15rem] sm:h-[16.5rem]">
+          <CircleDashboardCircleMapTile {...tileProps} variant="visual" />
+        </div>
+      ) : null}
+      {showCompact ? <CircleDashboardCircleMapTile {...tileProps} variant="compact" /> : null}
 
       <CircleDashboardCircleMapModal
         isOpen={open}
@@ -143,10 +117,12 @@ export function CircleDashboardCircleMapSection({
         galleryPhotos={mappedGalleryPhotos}
         photosByEmail={photosByEmail}
         photosByContactId={photosByContactId}
+        uidByEmail={uidByEmail}
+        uidByContactId={uidByContactId}
         patientPhotoUrl={patientPhotoUrl}
         onManageContacts={onManageContacts}
         t={t}
       />
-    </>
+    </div>
   );
 }

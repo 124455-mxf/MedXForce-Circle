@@ -1,17 +1,74 @@
 /** @license SPDX-License-Identifier: Apache-2.0 */
 import { Clock } from 'lucide-react';
 import { formatCareCalendarTimeRange, type ImminentCareCalendarAppointment } from '@medxforce/shared';
+import { useCircleLiveTranslatedText } from '../hooks/useCircleLiveTranslatedText';
+import { CircleCareCalendarForYouLine } from './CircleCareCalendarForYouLine';
 
 type CircleScheduleImminentBannerProps = {
   items: ImminentCareCalendarAppointment[];
   t: (path: string, params?: Record<string, unknown>) => string;
   onSelect?: (entryId: string) => void;
+  viewerTimezoneId?: string;
 };
+
+function ImminentItemRow({
+  item,
+  t,
+  onSelect,
+  viewerTimezoneId,
+}: {
+  item: ImminentCareCalendarAppointment;
+  t: (path: string, params?: Record<string, unknown>) => string;
+  onSelect?: (entryId: string) => void;
+  viewerTimezoneId?: string;
+}) {
+  const { displayText } = useCircleLiveTranslatedText(item.title);
+  const timeLabel = formatCareCalendarTimeRange(item.startTimeMinutes, item.endTimeMinutes, item.timezoneId);
+  const label = t('schedulePage.views.imminentItem', {
+    title: displayText,
+    minutes: item.minutesUntilStart,
+  });
+  const detail = timeLabel ? `${label} · ${timeLabel}` : label;
+  const forYouLine = (
+    <CircleCareCalendarForYouLine
+      dateKey={item.dateKey}
+      startMinutes={item.startTimeMinutes}
+      endMinutes={item.endTimeMinutes}
+      eventTimeZoneId={item.timezoneId}
+      viewerTimeZoneId={viewerTimezoneId}
+      t={t}
+      className="mt-0.5 text-amber-800/80"
+    />
+  );
+
+  if (!onSelect) {
+    return (
+      <li className="text-sm text-amber-950">
+        <p>{detail}</p>
+        {forYouLine}
+      </li>
+    );
+  }
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => onSelect(item.entryId)}
+        className="w-full text-left rounded-xl px-3 py-2 bg-white/70 border border-amber-100 hover:bg-white transition-colors text-sm text-amber-950"
+      >
+        <p>{detail}</p>
+        {forYouLine}
+      </button>
+    </li>
+  );
+}
 
 export function CircleScheduleImminentBanner({
   items,
   t,
   onSelect,
+  viewerTimezoneId,
 }: CircleScheduleImminentBannerProps) {
   if (!items.length) return null;
 
@@ -24,37 +81,15 @@ export function CircleScheduleImminentBanner({
         </p>
       </div>
       <ul className="space-y-1.5">
-        {items.map((item) => {
-          const timeLabel = formatCareCalendarTimeRange(
-            item.startTimeMinutes,
-            item.endTimeMinutes,
-          );
-          const label = t('schedulePage.views.imminentItem', {
-            title: item.title,
-            minutes: item.minutesUntilStart,
-          });
-          const detail = timeLabel ? `${label} · ${timeLabel}` : label;
-
-          if (!onSelect) {
-            return (
-              <li key={`${item.entryId}-${item.dateKey}`} className="text-sm text-amber-950">
-                {detail}
-              </li>
-            );
-          }
-
-          return (
-            <li key={`${item.entryId}-${item.dateKey}`}>
-              <button
-                type="button"
-                onClick={() => onSelect(item.entryId)}
-                className="w-full text-left rounded-xl px-3 py-2 bg-white/70 border border-amber-100 hover:bg-white transition-colors text-sm text-amber-950"
-              >
-                {detail}
-              </button>
-            </li>
-          );
-        })}
+        {items.map((item) => (
+          <ImminentItemRow
+            key={`${item.entryId}-${item.dateKey}`}
+            item={item}
+            t={t}
+            onSelect={onSelect}
+            viewerTimezoneId={viewerTimezoneId}
+          />
+        ))}
       </ul>
     </div>
   );
