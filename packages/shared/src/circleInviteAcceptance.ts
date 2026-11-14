@@ -278,103 +278,25 @@ export function demotedRoleForProxyOverflow(
   return 'caregiver';
 }
 
-async function findAcceptedProxySlotHolder(
-  db: Firestore,
-  patientId: string,
-  tier: ProxyTier,
-  excludeEmail: string,
-): Promise<{ uid: string; email: string; displayName?: string } | null> {
-  const membersSnap = await getDocs(collection(db, 'patients', patientId, 'members'));
-  for (const memberDoc of membersSnap.docs) {
-    const data = memberDoc.data() as {
-      role?: string;
-      proxyTier?: string;
-      status?: string;
-      invitedEmail?: string;
-      displayName?: string;
-    };
-    if (String(data.status || 'active') !== 'active') continue;
-    if (normalizeMemberRole(String(data.role || '')) !== 'proxy') continue;
-    const memberTier = data.proxyTier === 'backup' ? 'backup' : 'primary';
-    if (memberTier !== tier) continue;
-    const memberEmail = normalizeInviteEmail(String(data.invitedEmail || ''));
-    if (memberEmail && memberEmail === excludeEmail) continue;
-    return {
-      uid: memberDoc.id,
-      email: memberEmail,
-      displayName:
-        typeof data.displayName === 'string' && data.displayName.trim()
-          ? data.displayName.trim()
-          : undefined,
-    };
-  }
-  return null;
-}
+export type ProxySeatDemotionResult = {
+  demoted: boolean;
+  role?: 'caregiver' | 'family';
+  requestedProxyTier?: 'primary' | 'backup';
+  slotHolderEmail?: string;
+  slotHolderName?: string;
+};
 
-function applyDemotedRoleToContact(
-  contact: Record<string, unknown>,
-  demotedRole: 'caregiver' | 'family',
-): Record<string, unknown> {
-  const next: Record<string, unknown> = { ...contact, circleRole: demotedRole };
-  delete next.proxyTier;
-  return next;
-}
-
-async function syncDemotedContactOnPatientDoc(
-  db: Firestore,
-  patientId: string,
-  invitedEmail: string,
-  demotedRole: 'caregiver' | 'family',
-): Promise<void> {
-  const email = normalizeInviteEmail(invitedEmail);
-  if (!email) return;
-
-  const patientRef = doc(db, 'patients', patientId);
-  const patientSnap = await getDoc(patientRef);
-  if (!patientSnap.exists()) return;
-
-  const patientData = patientSnap.data() as PatientContactArrays;
-  const caregivers = (patientData.caregivers || []).map((c) => ({ ...c }));
-  const friendsAndFamily = (patientData.friendsAndFamily || []).map((c) => ({ ...c }));
-  let changed = false;
-
-  for (let i = 0; i < caregivers.length; i++) {
-    if (contactEmail(caregivers[i]) !== email) continue;
-    caregivers[i] = applyDemotedRoleToContact(caregivers[i], 'caregiver');
-    changed = true;
-  }
-  for (let i = 0; i < friendsAndFamily.length; i++) {
-    if (contactEmail(friendsAndFamily[i]) !== email) continue;
-    friendsAndFamily[i] = applyDemotedRoleToContact(
-      friendsAndFamily[i],
-      demotedRole === 'caregiver' ? 'family' : demotedRole,
-    );
-    changed = true;
-  }
-
-  if (!changed) return;
-
-  await setDoc(
-    patientRef,
-    {
-      caregivers,
-      friendsAndFamily,
-      updatedAt: Date.now(),
-    },
-    { merge: true },
-  );
-
-  await publishCircleAccessIndexFromPatientDoc(db, patientId, {
-    caregivers,
-    friendsAndFamily,
-    circleAccessByEmail: patientData.circleAccessByEmail,
-  });
-}
+/**
+ * Called before a proxy invite is copied onto the member record.
+ * The Patient server lowers the invite when that seat is already taken.
+ */
+export type DemoteFullProxySeat = (inviteId: string) => Promise<ProxySeatDemotionResult | void>;
 
 /** After sign-in: link pending invites to members/{uid} for upload rules. */
 export async function acceptPendingCircleInvites(
   db: Firestore,
   user: User,
+  options?: { demoteFullProxySeat?: DemoteFullProxySeat },
 ): Promise<AcceptedCircleInviteSummary[]> {
   const email = user.email ? normalizeInviteEmail(user.email) : '';
   if (!email) return [];
@@ -401,75 +323,44 @@ export async function acceptPendingCircleInvites(
     const memberRef = doc(db, 'patients', patientId, 'members', user.uid);
     const memberSnap = await getDoc(memberRef);
 
-    let patientData: PatientContactArrays | null = null;
-    try {
-      const patientSnap = await getDoc(doc(db, 'patients', patientId));
-      patientData = patientSnap.exists() ? (patientSnap.data() as PatientContactArrays) : null;
-    } catch (err) {
-      console.warn('[Circle] Patient read skipped during invite accept —', err);
-    }
-
-    const requestedTier = inviteProxyTier(invite);
-    let effectiveRole: CircleMemberRole = normalizeMemberRole(invite.role);
-    let effectiveTier: ProxyTier | undefined =
-      effectiveRole === 'proxy' ? requestedTier || 'primary' : undefined;
+    let inviteForMember = invite;
     let demotion: AcceptedCircleInviteSummary | null = null;
-
-    if (requestedTier) {
+    if (inviteProxyTier(invite) && options?.demoteFullProxySeat) {
       try {
-        const holder = await findAcceptedProxySlotHolder(
-          db,
-          patientId,
-          requestedTier,
-          email,
-        );
-        if (holder) {
-          const demotedToRole = demotedRoleForProxyOverflow(patientData, email);
-          effectiveRole = demotedToRole;
-          effectiveTier = undefined;
-          demotion = {
-            patientId,
-            role: demotedToRole,
-            invitedEmail: invite.invitedEmail,
-            contactDisplayName: invite.displayName,
-            proxySlotDemoted: true,
-            demotedToRole,
-            requestedProxyTier: requestedTier,
-            slotHolderEmail: holder.email || undefined,
-            slotHolderName: holder.displayName,
-          };
+        const lowered = await options.demoteFullProxySeat(inviteDoc.id);
+        if (lowered?.demoted && lowered.role) {
+          const fresh = await getDocFromServer(inviteDoc.ref);
+          if (fresh.exists()) {
+            inviteForMember = fresh.data() as CircleInviteRecord;
+            demotion = {
+              patientId,
+              role: lowered.role,
+              invitedEmail: invite.invitedEmail,
+              contactDisplayName: invite.displayName,
+              proxySlotDemoted: true,
+              demotedToRole: lowered.role,
+              requestedProxyTier: lowered.requestedProxyTier,
+              slotHolderEmail: lowered.slotHolderEmail,
+              slotHolderName: lowered.slotHolderName,
+            };
+          }
         }
       } catch (err) {
-        console.warn('[Circle] Proxy slot check skipped —', err);
+        console.warn('[Circle] Proxy seat check skipped —', err);
       }
     }
 
-    const capabilities = mergeMemberCapabilities(
-      effectiveRole,
-      demotion ? capabilitiesForRole(effectiveRole) : invite.capabilities,
-    );
-
-    const memberBase = demotion
-      ? {
-          role: effectiveRole,
-          capabilities,
-          status: 'active' as const,
-          invitedEmail: invite.invitedEmail,
-          updatedAt: Date.now(),
-          ...(invite.displayName?.trim() ? { displayName: invite.displayName.trim() } : {}),
-          ...(invite.contactId?.trim() ? { contactId: invite.contactId.trim() } : {}),
-        }
-      : memberRecordFromInvite(invite, user.uid);
+    const memberBase = memberRecordFromInvite(inviteForMember, user.uid);
+    // Copy the invite map as stored. Merging with the role template can raise a flag the invite did not grant.
+    memberBase.capabilities = inviteForMember.capabilities;
 
     let memberPayload: Record<string, unknown> | null = null;
     if (!memberSnap.exists()) {
       memberPayload = {
         ...memberBase,
         inviteRef: inviteDoc.id,
+        updatedAt: Date.now(),
       };
-      if (effectiveTier) {
-        memberPayload.proxyTier = effectiveTier;
-      }
     }
 
     const inviteUpdate: Record<string, unknown> = {
@@ -477,17 +368,6 @@ export async function acceptPendingCircleInvites(
       acceptedByUid: user.uid,
       updatedAt: Date.now(),
     };
-    if (demotion) {
-      inviteUpdate.role = effectiveRole;
-      inviteUpdate.capabilities = capabilities;
-      inviteUpdate.proxyTier = deleteField();
-      inviteUpdate.proxySlotDemotedAt = Date.now();
-      inviteUpdate.proxySlotDemotedTo = effectiveRole;
-      inviteUpdate.requestedProxyTier = requestedTier;
-      if (demotion.slotHolderEmail) {
-        inviteUpdate.proxySlotHeldByEmail = demotion.slotHolderEmail;
-      }
-    }
 
     try {
       // Keep these writes separate. Member-create rules validate the invite while it is
@@ -504,26 +384,14 @@ export async function acceptPendingCircleInvites(
       }
       await setDoc(inviteDoc.ref, inviteUpdate, { merge: true });
 
-      if (demotion) {
-        try {
-          await syncDemotedContactOnPatientDoc(
-            db,
-            patientId,
-            email,
-            demotion.demotedToRole!,
-          );
-        } catch (err) {
-          console.warn('[Circle] Contact demotion sync skipped —', err);
-        }
-      }
-
       try {
+        const acceptedRole = normalizeMemberRole(inviteForMember.role);
         await ensureManagedContactForAcceptedMember(db, patientId, {
           email,
-          role: effectiveRole,
-          proxyTier: effectiveTier,
-          displayName: invite.displayName,
-          contactId: invite.contactId,
+          role: acceptedRole,
+          proxyTier: inviteForMember.proxyTier,
+          displayName: inviteForMember.displayName || invite.displayName,
+          contactId: inviteForMember.contactId || invite.contactId,
         });
       } catch (err) {
         console.warn('[Circle] Contact ensure after accept skipped —', err);
@@ -532,8 +400,8 @@ export async function acceptPendingCircleInvites(
       accepted.push(
         demotion || {
           patientId,
-          role: effectiveRole,
-          proxyTier: effectiveTier,
+          role: inviteForMember.role,
+          proxyTier: inviteForMember.proxyTier,
           invitedEmail: invite.invitedEmail,
           contactDisplayName: invite.displayName,
         },

@@ -42,6 +42,7 @@ import {
   type CirclePatientSummary,
 } from '@medxforce/shared';
 import { CircleMainShell } from './components/CircleMainShell';
+import { demoteFullProxySeat } from './services/demoteProxyInvite';
 import { CircleAddPatientPanel } from './components/CircleAddPatientPanel';
 import { CirclePendingProvisionPanel } from './components/CirclePendingProvisionPanel';
 import { CircleSettingsUserManagementPanel } from './components/CircleSettingsUserManagementPanel';
@@ -214,7 +215,9 @@ export default function App() {
     if (existing) return existing;
 
     const refresh = (async () => {
-      const accepted = await acceptPendingCircleInvites(firebase.db, currentUser);
+      const accepted = await acceptPendingCircleInvites(firebase.db, currentUser, {
+        demoteFullProxySeat,
+      });
       await repairOrphanAcceptedInvitesForUser(firebase.db, currentUser.uid);
       await repairInactiveAcceptedMemberDocsForUser(firebase.db, currentUser.uid);
       await reconcileAcceptedMemberRolesForUser(firebase.db, currentUser.uid);
