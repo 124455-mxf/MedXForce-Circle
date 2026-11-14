@@ -2,6 +2,7 @@ import type { AcceptedCircleInviteSummary, CirclePatientSummary } from '@medxfor
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import { resolveContactLanguageForPatient } from '../lib/circleUiLanguageHydration';
+import { patientApiAuthHeaders } from '../lib/patientApiAuth';
 
 function patientApiBaseUrl(): string | null {
   const explicit = (import.meta.env.VITE_MEDXFORCE_API_URL as string | undefined)?.trim();
@@ -58,9 +59,11 @@ export async function sendCircleWelcomeEmail(params: {
     return { success: false, message: 'Patient API URL not configured.' };
   }
 
+  const headers = await patientApiAuthHeaders();
+  if (!headers) return { success: false, message: 'Sign in required.' };
   const res = await fetch(`${base}/api/send-circle-welcome-email`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(params),
   });
   return res.json() as Promise<{ success: boolean; message?: string }>;
@@ -78,9 +81,11 @@ export async function notifyCircleMemberJoined(params: {
     return { success: false, message: 'Patient API URL not configured.' };
   }
 
+  const headers = await patientApiAuthHeaders();
+  if (!headers) return { success: false, message: 'Sign in required.' };
   const res = await fetch(`${base}/api/notify-circle-member-joined`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(params),
   });
   return res.json() as Promise<{ success: boolean; message?: string }>;
@@ -104,9 +109,11 @@ export async function notifyCircleProxySlotDemotion(params: {
     return { success: false, message: 'Patient API URL not configured.' };
   }
 
+  const headers = await patientApiAuthHeaders();
+  if (!headers) return { success: false, message: 'Sign in required.' };
   const res = await fetch(`${base}/api/notify-circle-proxy-slot-demotion`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(params),
   });
   return res.json() as Promise<{ success: boolean; message?: string }>;

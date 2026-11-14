@@ -1,4 +1,5 @@
 import type { CircleContactEmailAudience } from '../lib/circleContactEmailAudience';
+import { patientApiAuthHeaders } from '../lib/patientApiAuth';
 
 function patientApiBaseUrl(): string | null {
   const explicit = (import.meta.env.VITE_MEDXFORCE_API_URL as string | undefined)?.trim();
@@ -42,9 +43,11 @@ async function sendCircleContactEmail(params: {
   }
 
   try {
+    const headers = await patientApiAuthHeaders();
+    if (!headers) return { success: false, message: 'Sign in required.' };
     const res = await fetch(`${base}/api/send-contact-email`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         email: params.email,
         kind: params.kind,
