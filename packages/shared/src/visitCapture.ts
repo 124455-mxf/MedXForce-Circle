@@ -4,6 +4,7 @@ import type { CircleMemberRole } from './patientPermissions';
 
 export const CARE_VISIT_CAPTURE_TYPE = 'care_visit_capture' as const;
 
+/** Hold for a recording that never produced a transcript. A saved transcript deletes the audio right away. */
 export const VISIT_CAPTURE_AUDIO_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type VisitCaptureRole = CircleMemberRole | 'patient';
@@ -101,6 +102,21 @@ const CARE_COORDINATION_ROLES = new Set<CircleMemberRole>([
   'caregiver',
   'professional_caregiver',
 ]);
+
+/** The recording can go once the transcript is saved, the user discards it, or the 30-day hold has passed. */
+export function visitCaptureAudioReadyToDelete(
+  session: Pick<VisitCaptureSession, 'status' | 'audioExpiresAt' | 'transcript'>,
+  now = Date.now(),
+): boolean {
+  if (session.status === 'discarded') return true;
+  if (
+    (session.status === 'preview' || session.status === 'published') &&
+    Boolean(session.transcript?.trim())
+  ) {
+    return true;
+  }
+  return session.audioExpiresAt > 0 && session.audioExpiresAt <= now;
+}
 
 export function canStartVisitCapture(role: VisitCaptureRole | string): boolean {
   return CAPTURE_ROLES.has(role as VisitCaptureRole);
