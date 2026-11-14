@@ -17,8 +17,12 @@ export async function uploadGalleryBlobResumable(
   blob: Blob,
   contentType: string,
   onPercent?: (percent: number) => void,
+  ownerUid?: string,
 ): Promise<void> {
-  const task = uploadBytesResumable(storageRef, blob, { contentType });
+  const task = uploadBytesResumable(storageRef, blob, {
+    contentType,
+    ...(ownerUid ? { customMetadata: { ownerUid } } : {}),
+  });
   await new Promise<void>((resolve, reject) => {
     task.on(
       'state_changed',

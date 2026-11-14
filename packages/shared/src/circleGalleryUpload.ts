@@ -58,6 +58,7 @@ export async function uploadCircleGalleryMedia(params: {
       const thumbWeight = !isVideo && prepared.thumbnailBlob ? 0.12 : 0;
       report('uploading', Math.round(mainPct * (1 - thumbWeight)));
     },
+    params.uploadedByUid,
   );
   const url = await getDownloadURL(storageRef);
 
@@ -70,6 +71,7 @@ export async function uploadCircleGalleryMedia(params: {
       prepared.thumbnailBlob,
       'image/jpeg',
       (thumbPct) => report('uploading', Math.round(88 + thumbPct * 0.12)),
+      params.uploadedByUid,
     );
     thumbnailUrl = await getDownloadURL(thumbRef);
   }
