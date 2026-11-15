@@ -14,6 +14,16 @@ const pkg = JSON.parse(readFileSync(path.join(circleDir, 'package.json'), 'utf-8
 
 const circleBuildId = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
 
+/** Local calendar day of this build, MM-DD-YY. */
+function formatBuildDay(date = new Date()): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const year = String(date.getFullYear()).slice(-2);
+  return `${month}-${day}-${year}`;
+}
+
+const circleBuildDay = formatBuildDay();
+
 function readGitShortSha(): string {
   try {
     return execSync('git rev-parse --short HEAD', {
@@ -32,6 +42,7 @@ export default defineConfig({
     __CIRCLE_BUILD_ID__: JSON.stringify(circleBuildId),
     __CIRCLE_APP_VERSION__: JSON.stringify(pkg.version),
     __CIRCLE_GIT_SHA__: JSON.stringify(circleGitSha),
+    __CIRCLE_BUILD_DAY__: JSON.stringify(circleBuildDay),
   },
   plugins: [
     react(),
