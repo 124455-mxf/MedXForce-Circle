@@ -84,3 +84,43 @@ export function appendSpeechResults(
     nextText: mergeDictationText(baseText, committed + interim),
   };
 }
+
+export function speechLangFromPreferences(primaryLanguage?: string): string {
+  const map: Record<string, string> = {
+    German: 'de-DE',
+    Spanish: 'es-ES',
+    Polish: 'pl-PL',
+  };
+  return map[primaryLanguage || ''] || 'en-US';
+}
+
+/** Chrome still ends `continuous` recognition after silence; wait this long then start a new instance. */
+export const SPEECH_RESTART_DELAY_MS = 180;
+
+export function isFatalSpeechRecognitionError(error: string): boolean {
+  return (
+    error === 'not-allowed' ||
+    error === 'service-not-allowed' ||
+    error === 'language-not-supported'
+  );
+}
+
+/** Browser-ended sessions that should resume while the user still wants dictation. */
+export function isTransientSpeechRecognitionError(error: string): boolean {
+  return (
+    error === 'no-speech' ||
+    error === 'aborted' ||
+    error === 'network' ||
+    error === 'audio-capture'
+  );
+}
+
+export function shouldRestartDictation(
+  wantRecording: boolean,
+  error: string | null | undefined,
+): boolean {
+  if (!wantRecording) return false;
+  if (!error) return true;
+  if (isFatalSpeechRecognitionError(error)) return false;
+  return isTransientSpeechRecognitionError(error);
+}

@@ -1,23 +1,34 @@
 import type { CircleStartupPhase } from '../hooks/useCircleStartupSequence';
+import type { CircleTranslator } from '../lib/circleI18nContext';
 import { formatCircleBuildDetail, formatCircleBuildLabel } from '../lib/circleBuildId';
 
 /** Circle app brand splash color */
 export const STARTUP_BRAND_COLOR = '#F9A142';
 
-const STEPS = [
-  'Starting MedXForce Circle',
-  'Loading your circle',
-  'Preparing your messages',
+const STEP_KEYS = [
+  'brand.startupBoot',
+  'brand.startupAccess',
+  'brand.startupWorkspace',
 ] as const;
+
+/**
+ * Fixed pixel size, shared by the header and the step line.
+ * Rem and vw sizes shrink on iPhone when the step changes or the text-size
+ * preference arrives. MedXForce stays put because its size is already in vw.
+ */
+const STARTUP_LABEL_CLASS =
+  'text-center text-[13px] font-bold uppercase leading-none tracking-[0.14em] text-white/90';
 
 type CircleStartupSequenceProps = {
   phase: CircleStartupPhase;
   exiting: boolean;
   tagline: string;
+  t: CircleTranslator;
 };
 
-export function CircleStartupSequence({ phase, exiting, tagline }: CircleStartupSequenceProps) {
-  const progress = ((phase + 1) / STEPS.length) * 100;
+export function CircleStartupSequence({ phase, exiting, tagline, t }: CircleStartupSequenceProps) {
+  const progress = ((phase + 1) / STEP_KEYS.length) * 100;
+  const stepLabel = t(STEP_KEYS[phase] ?? STEP_KEYS[0]);
 
   return (
     <div
@@ -25,6 +36,8 @@ export function CircleStartupSequence({ phase, exiting, tagline }: CircleStartup
       style={{
         backgroundColor: STARTUP_BRAND_COLOR,
         opacity: exiting ? 0 : 1,
+        textSizeAdjust: '100%',
+        WebkitTextSizeAdjust: '100%',
       }}
       aria-live="polite"
       aria-busy={!exiting}
@@ -40,8 +53,9 @@ export function CircleStartupSequence({ phase, exiting, tagline }: CircleStartup
         }}
       >
         <header className="shrink-0 pt-[clamp(0.5rem,2vh,1.5rem)] text-center landscape:pt-[clamp(0.25rem,1.5vh,1rem)]">
-          <p className="mx-auto max-w-2xl text-[clamp(0.625rem,1.8vw,0.9375rem)] font-medium leading-snug text-white/95">
-            {tagline}
+          <p className={`mx-auto max-w-2xl ${STARTUP_LABEL_CLASS}`}>{tagline}</p>
+          <p className={`mx-auto mt-2 max-w-2xl ${STARTUP_LABEL_CLASS}`}>
+            {t('brand.startupFocus')}
           </p>
         </header>
 
@@ -54,21 +68,17 @@ export function CircleStartupSequence({ phase, exiting, tagline }: CircleStartup
               MedXForce
             </h1>
             <p
-              className="mx-auto mt-[clamp(0.75rem,2.5vh,1.5rem)] max-w-xl font-semibold uppercase tracking-[0.28em] text-white/95 landscape:mt-[clamp(0.5rem,1.5vh,1rem)]"
-              style={{ fontSize: 'clamp(0.6875rem, 2vw, 1.0625rem)' }}
+              className={`mx-auto mt-[clamp(0.75rem,2.5vh,1.5rem)] max-w-xl landscape:mt-[clamp(0.5rem,1.5vh,1rem)] ${STARTUP_LABEL_CLASS}`}
             >
-              Communication made possible
+              {t('brand.motto')}
             </p>
           </div>
         </main>
 
         <footer className="mx-auto w-full max-w-[min(100%,22rem)] shrink-0 pb-[clamp(0.5rem,2vh,1.25rem)] landscape:max-w-[min(100%,28rem)]">
-          <div className="mb-3 h-[1.125rem] landscape:mb-2">
-            <p
-              key={STEPS[phase]}
-              className="text-center text-[clamp(0.625rem,1.6vw,0.8125rem)] font-bold uppercase tracking-[0.22em] text-white/90 transition-opacity duration-300"
-            >
-              {STEPS[phase]}
+          <div className="mb-3 h-5 landscape:mb-2">
+            <p className={STARTUP_LABEL_CLASS}>
+              {stepLabel}
             </p>
           </div>
 

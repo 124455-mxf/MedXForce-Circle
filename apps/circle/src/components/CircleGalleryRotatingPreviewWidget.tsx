@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ImageIcon } from 'lucide-react';
 import type { FamilyGalleryPreviewPhoto } from '../hooks/useFamilyGalleryDashboard';
 import { useGalleryImageSrc } from '../lib/galleryHeicDisplay';
@@ -7,19 +7,37 @@ import { cn } from '../lib/utils';
 
 const ROTATE_MS = 4500;
 
-function RotatingPhotoLayer({ photo }: { photo: FamilyGalleryPreviewPhoto }) {
+function GalleryPhotoBuffer({
+  photo,
+  visible,
+  onReady,
+}: {
+  photo: FamilyGalleryPreviewPhoto;
+  visible: boolean;
+  onReady?: () => void;
+}) {
   const src = useGalleryImageSrc(photo.url, photo.thumbnailUrl);
 
-  if (!src) {
-    return <div className="absolute inset-0 animate-pulse bg-slate-300" />;
-  }
+  useEffect(() => {
+    if (!src || !onReady) return undefined;
+    const probe = new Image();
+    probe.onload = onReady;
+    probe.onerror = onReady;
+    probe.src = src;
+    if (probe.complete) onReady();
+    return undefined;
+  }, [onReady, src]);
+
+  if (!src) return null;
 
   return (
     <img
-      key={photo.id}
       src={src}
       alt=""
-      className="absolute inset-0 h-full w-full object-cover animate-[galleryFadeIn_700ms_ease-in-out]"
+      className={cn(
+        'absolute inset-0 h-full w-full object-cover',
+        visible ? 'opacity-100' : 'opacity-0',
+      )}
     />
   );
 }
@@ -36,26 +54,41 @@ export function CircleGalleryRotatingPreviewWidget({
   onOpenGallery,
 }: CircleGalleryRotatingPreviewWidgetProps) {
   const t = useCircleT();
-  const [index, setIndex] = useState(0);
+  const [shownIndex, setShownIndex] = useState(0);
+  const nextReadyRef = useRef(false);
   const photosKey = useMemo(() => photos.map((photo) => photo.id).join('|'), [photos]);
 
   useEffect(() => {
-    setIndex(0);
+    setShownIndex(0);
+    nextReadyRef.current = false;
   }, [photosKey]);
+
+  const shownPhoto = photos[shownIndex];
+  const nextPhoto =
+    photos.length > 1 ? photos[(shownIndex + 1) % photos.length] : undefined;
+
+  useEffect(() => {
+    nextReadyRef.current = false;
+  }, [shownIndex, nextPhoto?.id]);
+
+  const markNextReady = useCallback(() => {
+    nextReadyRef.current = true;
+  }, []);
 
   useEffect(() => {
     if (photos.length <= 1) return undefined;
     const timer = window.setInterval(() => {
-      setIndex((current) => (current + 1) % photos.length);
+      if (!nextReadyRef.current) return;
+      nextReadyRef.current = false;
+      setShownIndex((current) => (current + 1) % photos.length);
     }, ROTATE_MS);
     return () => window.clearInterval(timer);
   }, [photos.length, photosKey]);
 
-  const current = photos[index];
   const subtitle =
-    current?.caption?.trim() ||
-    (current?.senderName
-      ? t('dashboard.fromSender', { name: current.senderName })
+    shownPhoto?.caption?.trim() ||
+    (shownPhoto?.senderName
+      ? t('dashboard.fromSender', { name: shownPhoto.senderName })
       : t('dashboard.tapToOpenGallery'));
 
   return (
@@ -64,11 +97,10 @@ export function CircleGalleryRotatingPreviewWidget({
       onClick={onOpenGallery}
       className={cn(
         'relative h-full w-full overflow-hidden rounded-2xl border text-left transition-colors',
-        'border-slate-100 bg-slate-900 hover:border-blue-200',
+        'border-slate-100 bg-slate-100 hover:border-blue-200',
       )}
       aria-label={t('dashboard.openMediaGallery')}
     >
-      <style>{`@keyframes galleryFadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
       {loading ? (
         <div className="absolute inset-0 animate-pulse bg-slate-200" />
       ) : photos.length === 0 ? (
@@ -81,7 +113,21 @@ export function CircleGalleryRotatingPreviewWidget({
         </div>
       ) : (
         <>
-          {current ? <RotatingPhotoLayer key={current.id} photo={current} /> : null}
+          {shownPhoto ? (
+            <GalleryPhotoBuffer
+              key={shownPhoto.id}
+              photo={shownPhoto}
+              visible
+            />
+          ) : null}
+          {nextPhoto && nextPhoto.id !== shownPhoto?.id ? (
+            <GalleryPhotoBuffer
+              key={nextPhoto.id}
+              photo={nextPhoto}
+              visible={false}
+              onReady={markNextReady}
+            />
+          ) : null}
 
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
@@ -99,7 +145,7 @@ export function CircleGalleryRotatingPreviewWidget({
                     key={photo.id}
                     className={cn(
                       'h-1.5 rounded-full transition-all',
-                      dotIndex === index % 6 ? 'w-3 bg-white' : 'w-1.5 bg-white/40',
+                      dotIndex === shownIndex % 6 ? 'w-3 bg-white' : 'w-1.5 bg-white/40',
                     )}
                   />
                 ))}

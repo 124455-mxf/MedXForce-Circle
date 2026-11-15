@@ -22,6 +22,22 @@ export function isIcuDailySummary(msg: { type?: string }): boolean {
   return msg.type === ICU_DAILY_SUMMARY_TYPE;
 }
 
+/** Unread ICU daily summaries visible to this Circle role (excludes Friend). */
+export function countUnreadIcuDailySummaries(
+  messages: Array<{ id: string; type?: string; createdAt: number; updatedAt?: number }>,
+  patientId: string,
+  canView: boolean,
+  isUnread: (msg: { id: string; createdAt: number; updatedAt?: number }) => boolean,
+): number {
+  if (!canView) return 0;
+  let count = 0;
+  for (const msg of messages) {
+    if (!isIcuDailySummary(msg)) continue;
+    if (isUnread(msg)) count += 1;
+  }
+  return count;
+}
+
 export function splitCircleInbox<T extends CircleInboxMessage>(messages: T[]): {
   communicationLog: T[];
   directMessages: T[];

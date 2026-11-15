@@ -50,6 +50,7 @@ export function CircleCareCalendarPrepStatusBadge({
     event.startTimeMinutes,
     event.endTimeMinutes,
     now,
+    event.timezoneId,
   );
   if (tier === 'none') return null;
 

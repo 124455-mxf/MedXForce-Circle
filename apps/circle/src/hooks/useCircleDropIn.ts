@@ -278,6 +278,7 @@ export function useCircleDropIn(
       }
     }, (msg) => {
       console.warn('[circleDropIn]', msg);
+      if (/insufficient permissions|permission-denied/i.test(msg)) return;
       setError(msg);
     });
 

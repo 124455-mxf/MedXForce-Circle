@@ -1,10 +1,12 @@
 import { CIRCLE_UI_LANGUAGE_STORAGE_KEY } from './circleLanguages';
+import { CIRCLE_TEXT_SIZE_STORAGE_KEY } from './circleTextSizePreferences';
 
 /** Clears shared session cache so the next sign-in does not inherit UI state from another account. */
 export function clearCircleActiveSessionStorage(): void {
   if (typeof localStorage === 'undefined') return;
   try {
     localStorage.removeItem(CIRCLE_UI_LANGUAGE_STORAGE_KEY);
+    localStorage.removeItem(CIRCLE_TEXT_SIZE_STORAGE_KEY);
   } catch {
     /* ignore */
   }

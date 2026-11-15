@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Clock } from 'lucide-react';
+import { useCircleLocaleTimeFormat } from '../hooks/useCircleLocaleTimeFormat';
 import { useCircleI18nContext, useCircleT } from '../lib/circleI18nContext';
 import { formatPatientLastSeenT } from '../lib/dashboardI18n';
 import { cn } from '../lib/utils';
@@ -20,6 +21,7 @@ export function PatientPresenceCaption({
 }: PatientPresenceCaptionProps) {
   const t = useCircleT();
   const { language } = useCircleI18nContext();
+  const timeFormat = useCircleLocaleTimeFormat();
   const isHeader = variant === 'header';
 
   return (
@@ -36,7 +38,7 @@ export function PatientPresenceCaption({
       <span className="truncate">
         {isHeader ? (
           <>
-            {t('presence.lastSeen')}: {online ? t('presence.now') : formatPatientLastSeenT(t, language, lastSeen)}
+            {t('presence.lastSeen')}: {online ? t('presence.now') : formatPatientLastSeenT(t, language, lastSeen, timeFormat)}
           </>
         ) : online ? (
           <span className="text-emerald-700 font-semibold">{t('presence.onlineInPatientApp')}</span>
@@ -44,7 +46,7 @@ export function PatientPresenceCaption({
           <>
             {t('presence.lastSeenLabel')}{' '}
             <span className="font-medium text-slate-600">
-              {formatPatientLastSeenT(t, language, lastSeen)}
+              {formatPatientLastSeenT(t, language, lastSeen, timeFormat)}
             </span>
           </>
         )}

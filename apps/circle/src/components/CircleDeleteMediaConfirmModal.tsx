@@ -1,4 +1,5 @@
 import { Trash2 } from 'lucide-react';
+import { useCircleT } from '../lib/circleI18nContext';
 
 type CircleDeleteMediaConfirmModalProps = {
   open: boolean;
@@ -17,10 +18,13 @@ export function CircleDeleteMediaConfirmModal({
   onCancel,
   onConfirm,
 }: CircleDeleteMediaConfirmModalProps) {
+  const t = useCircleT();
   if (!open) return null;
 
-  const mediaLabel = isVideo ? 'video' : 'photo';
   const trimmedCaption = caption?.trim();
+  const title = isVideo ? t('gallery.deleteVideoTitle') : t('gallery.deletePhotoTitle');
+  const confirm = isVideo ? t('gallery.deleteVideoConfirm') : t('gallery.deletePhotoConfirm');
+  const untitledBody = isVideo ? t('gallery.deleteVideoBody') : t('gallery.deletePhotoBody');
 
   return (
     <div
@@ -35,17 +39,12 @@ export function CircleDeleteMediaConfirmModal({
         </div>
         <div className="space-y-2">
           <h3 id="delete-media-title" className="text-xl font-bold text-slate-900">
-            Delete {mediaLabel}?
+            {title}
           </h3>
           <p className="text-slate-500 text-sm leading-relaxed">
-            {trimmedCaption ? (
-              <>
-                <span className="font-semibold text-slate-700">&ldquo;{trimmedCaption}&rdquo;</span>
-                {' '}will be permanently removed.
-              </>
-            ) : (
-              <>This {mediaLabel} will be permanently removed.</>
-            )}
+            {trimmedCaption
+              ? t('gallery.deleteMediaBodyCaption', { caption: trimmedCaption })
+              : untitledBody}
           </p>
         </div>
         <div className="flex flex-col gap-3">
@@ -55,7 +54,7 @@ export function CircleDeleteMediaConfirmModal({
             disabled={busy}
             className="w-full py-4 bg-red-600 text-white rounded-2xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200 disabled:opacity-50"
           >
-            {busy ? 'Deleting…' : `Delete ${mediaLabel}`}
+            {busy ? t('gallery.deleting') : confirm}
           </button>
           <button
             type="button"
@@ -63,7 +62,7 @@ export function CircleDeleteMediaConfirmModal({
             disabled={busy}
             className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all disabled:opacity-50"
           >
-            Cancel
+            {t('gallery.cancel')}
           </button>
         </div>
       </div>

@@ -3,9 +3,12 @@ import {
   visitCaptureClipboardPlain,
 } from '@medxforce/shared';
 
-export async function writeVisitCaptureToClipboard(postText: string): Promise<void> {
-  const plain = visitCaptureClipboardPlain(postText);
-  const html = visitCaptureClipboardHtml(postText);
+export async function writeVisitCaptureToClipboard(
+  postText: string,
+  recordedByDisplayName?: string,
+): Promise<void> {
+  const plain = visitCaptureClipboardPlain(postText, recordedByDisplayName);
+  const html = visitCaptureClipboardHtml(postText, recordedByDisplayName);
 
   if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
     try {

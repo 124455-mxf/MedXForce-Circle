@@ -23,7 +23,7 @@ export function CircleAnalyticsChartDayMarkers({
         {CIRCLE_ANALYTICS_X_TICK_DAYS.map((day) => (
           <span
             key={day}
-            className="absolute top-1.5 -translate-x-1/2 text-[9px] font-semibold text-slate-500"
+            className="absolute top-1.5 -translate-x-1/2 text-[11px] font-semibold text-slate-500"
             style={{ left: `${(day / X_AXIS_MAX_DAY) * 100}%` }}
           >
             {day}

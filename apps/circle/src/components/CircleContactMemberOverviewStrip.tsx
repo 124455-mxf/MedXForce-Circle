@@ -1,8 +1,12 @@
 import type { CircleInviteListItem, CircleManagedContact } from '@medxforce/shared';
 import { cn } from '../lib/utils';
 import { useCircleT } from '../lib/circleI18nContext';
-import { relationshipLabelI18n } from '../lib/adminScreenI18n';
-import { resolvedContactAccess } from '../lib/circleContactDisplay';
+import { relationshipLabelI18n, contactInvitePeopleStatusLabelI18n } from '../lib/adminScreenI18n';
+import {
+  contactInvitePeopleStatusBadgeClass,
+  resolvedContactAccess,
+  resolveContactInvitePeopleStatus,
+} from '../lib/circleContactDisplay';
 import { CirclePatientLanguagePill } from './CirclePatientLanguagePill';
 import { CircleContactNotifyIconStrip } from './CircleContactNotifyIconStrip';
 
@@ -34,6 +38,8 @@ export function CircleContactMemberOverviewStrip({
   const hasEmail = !!contact.email.trim();
   const hasMobile = !!contact.mobile.trim();
   const showNotify = contact.kind !== 'contact' || hasEmail || hasMobile;
+  const invitePeopleStatus =
+    members.length > 0 ? resolveContactInvitePeopleStatus(contact, members) : null;
 
   return (
     <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
@@ -45,6 +51,16 @@ export function CircleContactMemberOverviewStrip({
           )}
         >
           {roleLabel}
+        </span>
+      )}
+      {invitePeopleStatus && (
+        <span
+          className={cn(
+            'shrink-0 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border',
+            contactInvitePeopleStatusBadgeClass(invitePeopleStatus),
+          )}
+        >
+          {contactInvitePeopleStatusLabelI18n(t, invitePeopleStatus)}
         </span>
       )}
       {showRelationship && (

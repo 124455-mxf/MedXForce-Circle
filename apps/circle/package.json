@@ -7,21 +7,28 @@
     "dev": "vite --port 5174",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "ios:add": "npx cap add ios && node ../../scripts/configure-capacitor-ios.mjs --form iphone --root .",
+    "ios:sync": "npx cap sync ios && node ../../scripts/configure-capacitor-ios.mjs --form iphone --root .",
+    "ios:open": "npx cap open ios"
   },
   "dependencies": {
+    "@capacitor-firebase/authentication": "^8.6.0",
+    "@capacitor/core": "^8.6.0",
     "@medxforce/shared": "*",
     "clsx": "^2.1.1",
     "firebase": "^12.11.0",
-    "tailwind-merge": "^3.3.1",
     "lucide-react": "^0.546.0",
     "motion": "^12.34.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-easy-crop": "^5.5.7",
     "recharts": "^2.15.4",
-    "react-easy-crop": "^5.5.7"
+    "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.0",
+    "@capacitor/ios": "^8.6.0",
     "@tailwindcss/vite": "^4.1.14",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

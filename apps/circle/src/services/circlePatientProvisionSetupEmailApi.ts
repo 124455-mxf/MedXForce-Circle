@@ -1,5 +1,6 @@
 import type { PatientProvisionRecord } from '@medxforce/shared';
 import type { User } from 'firebase/auth';
+import { patientApiAuthHeaders } from '../lib/patientApiAuth';
 
 function patientApiBaseUrl(): string | null {
   const explicit = (import.meta.env.VITE_MEDXFORCE_API_URL as string | undefined)?.trim();
@@ -39,9 +40,11 @@ export async function sendPatientProvisionSetupEmails(params: {
   }
 
   try {
+    const headers = await patientApiAuthHeaders();
+    if (!headers) return { success: false, message: 'Sign in required.' };
     const res = await fetch(`${base}/api/send-patient-provision-setup-emails`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         patientName: params.provision.displayName,
         setupCode: params.provision.setupCode,

@@ -4,6 +4,7 @@ import type { CircleMemberRole } from './patientPermissions';
 
 export const CARE_VISIT_CAPTURE_TYPE = 'care_visit_capture' as const;
 
+/** Hold for a recording that never produced a transcript. A saved transcript deletes the audio right away. */
 export const VISIT_CAPTURE_AUDIO_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type VisitCaptureRole = CircleMemberRole | 'patient';
@@ -102,6 +103,21 @@ const CARE_COORDINATION_ROLES = new Set<CircleMemberRole>([
   'professional_caregiver',
 ]);
 
+/** The recording can go once the transcript is saved, the user discards it, or the 30-day hold has passed. */
+export function visitCaptureAudioReadyToDelete(
+  session: Pick<VisitCaptureSession, 'status' | 'audioExpiresAt' | 'transcript'>,
+  now = Date.now(),
+): boolean {
+  if (session.status === 'discarded') return true;
+  if (
+    (session.status === 'preview' || session.status === 'published') &&
+    Boolean(session.transcript?.trim())
+  ) {
+    return true;
+  }
+  return session.audioExpiresAt > 0 && session.audioExpiresAt <= now;
+}
+
 export function canStartVisitCapture(role: VisitCaptureRole | string): boolean {
   return CAPTURE_ROLES.has(role as VisitCaptureRole);
 }
@@ -164,7 +180,7 @@ export function buildCanonicalVisitCaptureBundle(
   });
   const starter = visitCaptureRoleLabel(session.capturedBy.role);
   return {
-    headingLine1: `Visit capture — ${dateLabel}`,
+    headingLine1: `Meeting capture — ${dateLabel}`,
     headingLine2: `Started by ${session.capturedBy.name} (${starter})`,
     analysis: session.analysis ?? { summary: '', actionItems: [], followUpQuestions: [] },
   };
@@ -236,7 +252,7 @@ export function isVisitCaptureThreadPost(post: {
   if (post.postKind === 'visit_capture') return true;
   const firstLine = post.text.replace(/\r\n/g, '\n').split('\n')[0]?.trim() ?? '';
   if (!firstLine) return false;
-  if (firstLine.startsWith('Visit capture —')) return true;
+  if (firstLine.startsWith('Visit capture —') || firstLine.startsWith('Meeting capture —')) return true;
   return firstLine.includes(' — ') && post.text.includes('\nFULL TRANSCRIPT\n');
 }
 
@@ -286,8 +302,8 @@ export function parseVisitCapturePostText(text: string): ParsedVisitCapturePost 
   }
 
   const lines = main.split('\n');
-  const heading = lines[0]?.trim() || 'Visit capture';
-  const dateLabel = heading.replace(/^Visit capture —\s*/i, '').trim() || heading;
+  const heading = lines[0]?.trim() || 'Meeting capture';
+  const dateLabel = heading.replace(/^(?:Meeting capture|Visit capture)\s*—\s*/i, '').trim() || heading;
   const startedLine = lines[1]?.trim() || '';
   const startedByLine = startedLine;
   const recordedBy = startedLine.replace(/^Started by\s+/i, '').trim();
@@ -322,21 +338,33 @@ export function parseVisitCapturePostText(text: string): ParsedVisitCapturePost 
 
 const CLIPBOARD_RULE = '──────────────────────────────────────────────────';
 
+function recordedByClipboardLabel(
+  recordedBy: string,
+  displayName?: string,
+): string {
+  const name = displayName?.trim();
+  if (!recordedBy || !name) return recordedBy;
+  const namePart = recordedBy.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  if (!namePart || namePart === name) return recordedBy;
+  return recordedBy.replace(namePart, name);
+}
+
 function visitCapturePlainSection(title: string, body: string): string {
   return `${title}\n${CLIPBOARD_RULE}\n\n${body.trim()}\n`;
 }
 
 /** Word-friendly plain text for clipboard fallback. */
-export function visitCaptureClipboardPlain(text: string): string {
+export function visitCaptureClipboardPlain(text: string, recordedByDisplayName?: string): string {
   const parsed = parseVisitCapturePostText(text);
   if (!parsed) return text.replace(/\r\n/g, '\n').trim();
+  const recordedBy = recordedByClipboardLabel(parsed.recordedBy, recordedByDisplayName);
 
   const blocks: string[] = [
-    'DOCTOR VISIT CAPTURE',
+    'MEETING CAPTURE',
     '══════════════════════════════════════════════════',
     '',
     `Date: ${parsed.dateLabel}`,
-    parsed.recordedBy ? `Recorded by: ${parsed.recordedBy}` : '',
+    parsed.recordedBy ? `Recorded by: ${recordedBy}` : '',
     '',
   ];
 
@@ -382,21 +410,22 @@ function escapeVisitCaptureHtml(value: string): string {
 }
 
 /** Rich HTML so Word and email clients preserve headings and lists on paste. */
-export function visitCaptureClipboardHtml(text: string): string {
+export function visitCaptureClipboardHtml(text: string, recordedByDisplayName?: string): string {
   const parsed = parseVisitCapturePostText(text);
   if (!parsed) {
     return `<div>${escapeVisitCaptureHtml(text.replace(/\r\n/g, '\n').trim())}</div>`;
   }
+  const recordedBy = recordedByClipboardLabel(parsed.recordedBy, recordedByDisplayName);
 
   const parts: string[] = [
     '<div style="font-family:Calibri,Arial,sans-serif;color:#0f172a;font-size:11pt;line-height:1.5;">',
-    '<h1 style="font-size:18pt;color:#1e3a8a;margin:0 0 8pt 0;">Doctor visit capture</h1>',
+    '<h1 style="font-size:18pt;color:#1e3a8a;margin:0 0 8pt 0;">Meeting capture</h1>',
     `<p style="margin:0 0 4pt 0;"><strong>Date:</strong> ${escapeVisitCaptureHtml(parsed.dateLabel)}</p>`,
   ];
 
-  if (parsed.recordedBy) {
+  if (recordedBy) {
     parts.push(
-      `<p style="margin:0 0 16pt 0;"><strong>Recorded by:</strong> ${escapeVisitCaptureHtml(parsed.recordedBy)}</p>`,
+      `<p style="margin:0 0 16pt 0;"><strong>Recorded by:</strong> ${escapeVisitCaptureHtml(recordedBy)}</p>`,
     );
   }
 

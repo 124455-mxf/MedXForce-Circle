@@ -3,6 +3,7 @@ import { doc, onSnapshot, type Firestore } from 'firebase/firestore';
 import {
   dismissMemberOnboardingWelcome,
   isOnboardingWelcomeDismissedForPatient,
+  isPatientInsightsPreviewRemindersEnabled,
   memberOnboardingRef,
 } from '@medxforce/shared';
 
@@ -15,6 +16,8 @@ export function useCircleMemberOnboarding(
   const [dismissed, setDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dismissing, setDismissing] = useState(false);
+  const [previewDismissed, setPreviewDismissed] = useState(false);
+  const previewReminders = isPatientInsightsPreviewRemindersEnabled();
 
   useEffect(() => {
     if (!enabled || !patientId || !memberUid) {
@@ -66,6 +69,10 @@ export function useCircleMemberOnboarding(
   }, [db, enabled, memberUid, patientId]);
 
   const dismissWelcome = useCallback(async () => {
+    if (previewReminders) {
+      setPreviewDismissed(true);
+      return;
+    }
     if (!patientId || !memberUid || dismissing) return;
     setDismissing(true);
     try {
@@ -77,13 +84,17 @@ export function useCircleMemberOnboarding(
     } finally {
       setDismissing(false);
     }
-  }, [db, dismissing, memberUid, patientId]);
+  }, [db, dismissing, memberUid, patientId, previewReminders]);
+
+  const showWelcome = previewReminders
+    ? !previewDismissed
+    : enabled && !loading && !dismissed;
 
   return {
     dismissed,
     loading,
-    dismissing,
+    dismissing: previewReminders ? false : dismissing,
     dismissWelcome,
-    showWelcome: enabled && !loading && !dismissed,
+    showWelcome,
   };
 }

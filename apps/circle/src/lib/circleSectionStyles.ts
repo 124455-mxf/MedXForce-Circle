@@ -23,17 +23,13 @@ export const circleSectionTitleClass = cn(
 
 export const circleSectionSubtitleClass = cn(
   'text-xs text-slate-500 mt-0.5 leading-relaxed',
-  `${short}line-clamp-2`,
 );
 
-/** Secondary hint under tabs — one line on short screens instead of hidden. */
-export const circleSectionContextHintClass = cn(
-  'text-xs text-slate-500 leading-relaxed',
-  `${short}line-clamp-1`,
-);
+/** Secondary hint under tabs — always wrap; never ellipsize instructional copy. */
+export const circleSectionContextHintClass = cn('text-xs text-slate-500 leading-relaxed');
 
 export const circleSectionBodyClass =
-  'flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-contain';
+  'flex-1 min-h-0 min-w-0 overflow-y-auto overscroll-contain [overflow-anchor:none]';
 
 export const circleSectionBodyPaddingClass = cn(
   'p-4 space-y-3',
@@ -65,22 +61,41 @@ export const circleHeaderActionButtonClass = cn(
 );
 
 export const circleTabListClass = cn(
-  'flex gap-1 p-1 bg-slate-100 rounded-xl',
-  `${short}p-0.5`,
-  `${short}rounded-lg`,
+  'flex gap-1.5 p-1.5 bg-slate-100 rounded-2xl',
+  `${short}gap-1`,
+  `${short}p-1`,
+  `${short}rounded-xl`,
+);
+
+/** Messages / Circle inbox folder strip (icon + text tabs). */
+export const circleInboxTabStripClass = cn(
+  'rounded-2xl bg-slate-100 p-1.5',
+  `${short}rounded-xl`,
+  `${short}p-1`,
 );
 
 export function circleTabButtonClass(active: boolean, extra?: string): string {
   return cn(
-    'flex-1 py-2 px-2 rounded-lg text-xs font-bold transition-all',
-    `${short}py-1.5`,
-    `${short}px-1`,
-    `${short}text-[10px]`,
-    `${short}rounded-md`,
+    'flex-1 py-2.5 px-3 rounded-xl text-sm font-bold transition-all',
+    `${short}py-2`,
+    `${short}px-2`,
+    `${short}text-xs`,
+    `${short}rounded-lg`,
     active ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500',
     extra,
   );
 }
+
+/** Icon-only tab in Messages / Circle inbox strips. */
+export const circleInboxIconTabExtraClass =
+  'shrink-0 flex-none justify-center min-w-[3rem] px-3 py-2.5';
+
+/** Labeled text tab in Messages / Circle inbox strips. */
+export const circleInboxTextTabExtraClass =
+  'shrink-0 flex-none justify-center px-3.5 py-2.5';
+
+/** Lucide size for Messages / Circle inbox icon tabs. */
+export const CIRCLE_INBOX_TAB_ICON_SIZE = 22;
 
 /** Shared horizontal scroll strip — use outer + inner wrapper so flex parents can shrink. */
 export const circleHorizontalScrollClass = cn(
@@ -95,17 +110,17 @@ export const circleHorizontalScrollInnerClass = 'inline-flex flex-nowrap items-c
 /** Horizontally scrollable browse pills (matches patient app Media Gallery). */
 export const circleBrowsePillListClass = cn(
   circleHorizontalScrollClass,
-  'p-1.5 bg-slate-50 rounded-2xl border border-slate-100',
-  `${short}p-1`,
+  'p-2 bg-slate-50 rounded-2xl border border-slate-100',
+  `${short}p-1.5`,
 );
 
 export const circleBrowsePillRowClass = cn(circleHorizontalScrollInnerClass, 'gap-2');
 
 export function circleBrowsePillButtonClass(active: boolean): string {
   return cn(
-    'px-4 py-2 rounded-xl text-sm font-bold transition-all shrink-0 whitespace-nowrap',
+    'px-4 py-2.5 rounded-xl text-sm font-bold transition-all shrink-0 whitespace-nowrap',
     `${short}px-3`,
-    `${short}py-1.5`,
+    `${short}py-2`,
     `${short}text-xs`,
     active
       ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
@@ -140,3 +155,11 @@ export const circleAnalyticsMetricRowClass = cn(
 );
 
 export const circleCompactCardClass = cn('border rounded-2xl p-4', `${short}p-3`);
+
+/** Home dashboard area labels (Patient App, Patient activity, …). */
+export const dashboardSectionTitleClass =
+  'text-xs font-bold text-slate-600 uppercase tracking-wider px-0.5';
+
+/** Home dashboard tile titles (Remote settings, Check-ins, …). */
+export const dashboardTileTitleClass =
+  'font-bold text-slate-800 text-sm leading-tight line-clamp-2 min-w-0';

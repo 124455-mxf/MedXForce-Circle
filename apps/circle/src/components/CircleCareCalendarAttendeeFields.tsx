@@ -22,6 +22,8 @@ type CircleCareCalendarAttendeeFieldsProps = {
   familySectionLabel: string;
   patientSectionLabel: string;
   defaultExpanded?: boolean;
+  /** Grow to the modal body so the member list uses leftover height on tall screens. */
+  fillAvailableHeight?: boolean;
 };
 
 function attendeeFromOption(option: CareCalendarAttendeeOption): CareCalendarAttendee {
@@ -63,6 +65,7 @@ export function CircleCareCalendarAttendeeFields({
   familySectionLabel,
   patientSectionLabel,
   defaultExpanded = false,
+  fillAvailableHeight = false,
 }: CircleCareCalendarAttendeeFieldsProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [searchQuery, setSearchQuery] = useState('');
@@ -150,11 +153,16 @@ export function CircleCareCalendarAttendeeFields({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-slate-50/80 overflow-hidden">
+    <div
+      className={cn(
+        'rounded-2xl border border-slate-100 bg-slate-50/80 overflow-hidden',
+        fillAvailableHeight && 'flex h-full min-h-0 flex-col',
+      )}
+    >
       <button
         type="button"
         onClick={() => setExpanded((open) => !open)}
-        className="w-full flex items-center gap-2 px-4 py-3 text-left text-slate-800 font-bold text-sm"
+        className="w-full flex items-center gap-2 px-4 py-3 text-left text-slate-800 font-bold text-sm shrink-0"
         aria-expanded={expanded}
       >
         <Users size={18} className="shrink-0" />
@@ -171,8 +179,13 @@ export function CircleCareCalendarAttendeeFields({
       </button>
 
       {expanded && (
-        <div className="border-t border-slate-100 bg-white">
-          <div className="px-4 pt-3 pb-2">
+        <div
+          className={cn(
+            'border-t border-slate-100 bg-white',
+            fillAvailableHeight && 'flex min-h-0 flex-1 flex-col',
+          )}
+        >
+          <div className="px-4 pt-3 pb-2 shrink-0">
             <div className="relative">
               <Search
                 size={18}
@@ -196,12 +209,15 @@ export function CircleCareCalendarAttendeeFields({
 
           <div
             className={cn(
-              'px-4 pb-4 overflow-y-auto space-y-4 transition-[max-height]',
-              isSearchActive
-                ? 'max-h-[min(36rem,75dvh)]'
-                : expanded
-                  ? 'max-h-80'
-                  : 'max-h-56',
+              'px-4 pb-4 overflow-y-auto space-y-4',
+              fillAvailableHeight
+                ? 'min-h-0 flex-1'
+                : cn(
+                    'transition-[max-height]',
+                    isSearchActive
+                      ? 'max-h-[min(40rem,70dvh)]'
+                      : 'max-h-[min(32rem,60dvh)]',
+                  ),
             )}
           >
             {options.length === 0 ? (

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Check, HeartHandshake, Home, Trash2 } from 'lucide-react';
 import type { CirclePatientSummary } from '@medxforce/shared';
-import { resolveCirclePatientPhotoUrl } from '@medxforce/shared';
+import { resolveCirclePatientPhotoUrl, sortCirclePatientsByName } from '@medxforce/shared';
 import { useCircleT } from '../lib/circleI18nContext';
 import { translateCircleMemberAccessLabel } from '../lib/adminScreenI18n';
 import { cn } from '../lib/utils';
@@ -58,6 +58,7 @@ export function CirclePatientSwitchList({
   const t = useCircleT();
   const { badgesByPatientId } = useCirclePatientsAttention();
   const showStartupControls = patients.length > 1 && !!onSetStartupPatient;
+  const sortedPatients = useMemo(() => sortCirclePatientsByName(patients), [patients]);
   const [confirmCancel, setConfirmCancel] = useState<CirclePatientSummary | null>(null);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
@@ -80,11 +81,13 @@ export function CirclePatientSwitchList({
   return (
     <>
       <ul className="space-y-1">
-        {patients.map((patient) => {
+        {sortedPatients.map((patient) => {
           const isActive = patient.patientId === selectedPatientId;
           const isStartup = patient.patientId === startupPatientId;
           const badge = badgesByPatientId[patient.patientId];
-          const showBadge = !isActive && badge;
+          const needsAttention =
+            !!badge && (badge.hasUrgentAlert || badge.totalUnread > 0);
+          const showBadge = !isActive && needsAttention;
           const accountEmail = patientAccountEmail(patient);
           const canCancel = patient.isPendingProvision === true && !!onCancelPending;
 

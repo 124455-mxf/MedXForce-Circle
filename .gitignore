@@ -7,3 +7,8 @@ dist/
 .DS_Store
 .cursor/
 .firebase/
+apps/circle/ios/App/App/public
+apps/circle/ios/App/Pods
+apps/circle/ios/App/build
+apps/circle/ios/DerivedData
+apps/circle/ios/**/xcuserdata

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { User } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
+import type { PatientRemoteSettingsDoc } from '@medxforce/shared';
 import { CIRCLE_MSG_READ_CHANGED } from '../lib/circleMessageRead';
 import {
   buildCirclePatientInboxMessages,
@@ -28,6 +29,7 @@ export function useCirclePatientThreads(
   patientId: string,
   user: User,
   memberRole = 'friend',
+  remoteSettings?: Pick<PatientRemoteSettingsDoc, 'appMode' | 'autoSendMessage'> | null,
 ): CirclePatientThreadsState {
   const { loading, error, rawMessages, normalizedEmail } = useCirclePatientRawMessages(
     db,
@@ -44,8 +46,9 @@ export function useCirclePatientThreads(
         hiddenAtByMessageId,
         repliesByMessageId,
         memberRole,
+        remoteSettings,
       ),
-    [rawMessages, hiddenAtByMessageId, repliesByMessageId, memberRole],
+    [rawMessages, hiddenAtByMessageId, repliesByMessageId, memberRole, remoteSettings],
   );
 
   const [readTick, setReadTick] = useState(0);
@@ -70,6 +73,7 @@ export function useCirclePatientThreads(
       user,
       normalizedEmail,
       readTick,
+      remoteSettings,
     });
   }, [
     messages,
@@ -79,6 +83,7 @@ export function useCirclePatientThreads(
     user,
     normalizedEmail,
     readTick,
+    remoteSettings,
   ]);
 
   return {

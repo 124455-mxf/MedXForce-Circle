@@ -12,6 +12,9 @@ import {
   useCirclePatientRepliesByMessageId,
 } from './circlePatientMessagingCore';
 import { useCircleMemberThreadUnread } from './useCircleMemberThreadUnread';
+import { useCircleMemberInviteContext } from './useCircleMemberInviteContext';
+import { useCareCalendarEntries, buildCareCalendarEntriesSubscription } from './useCareCalendarEntries';
+import { countAcceptedAppointmentsTodayForMember } from '@medxforce/shared';
 import {
   computePatientDashboardAttentionTotal,
   type CirclePatientAttentionBadge,
@@ -20,6 +23,10 @@ import {
 /**
  * Lightweight badge hook for background patients — avoids mounting the full
  * thread UI stack (alert attention state, per-screen thread consumers).
+ *
+ * Runs outside CircleSelectedPatientProvider, so remote settings are not available
+ * here. ICU communication-log eligibility still works when summaries already exist
+ * (count > 0); empty eligibility is only needed in the selected-patient Messages UI.
  */
 export function usePatientAttentionBadge(
   db: Firestore,
@@ -43,6 +50,20 @@ export function usePatientAttentionBadge(
     patient.patientId,
     user,
     patient.role,
+  );
+
+  const { inviteContext, inviteContextReady } = useCircleMemberInviteContext(db, user, patient);
+  const calendarSubscription = useMemo(
+    () =>
+      buildCareCalendarEntriesSubscription(patient, user.uid, inviteContext, {
+        inviteContextReady,
+      }),
+    [inviteContext, inviteContextReady, patient, user.uid],
+  );
+  const { entries: careCalendarEntries } = useCareCalendarEntries(
+    db,
+    patient.patientId,
+    calendarSubscription,
   );
 
   const [readTick, setReadTick] = useState(0);
@@ -108,6 +129,14 @@ export function usePatientAttentionBadge(
     [messages, repliesByMessageId, patient.patientId, now],
   );
 
+  const acceptedAppointmentsTodayCount = useMemo(
+    () =>
+      inviteContextReady && inviteContext.memberUid
+        ? countAcceptedAppointmentsTodayForMember(careCalendarEntries, inviteContext, new Date(now))
+        : 0,
+    [careCalendarEntries, inviteContext, inviteContextReady, now],
+  );
+
   return useMemo(
     (): CirclePatientAttentionBadge => ({
       totalUnread: computePatientDashboardAttentionTotal({
@@ -118,10 +147,12 @@ export function usePatientAttentionBadge(
         announcementsUnreadCount: circleUnread.announcementsUnreadCount,
         dropInsUnreadCount: circleUnread.dropInsUnreadCount,
         visitCapturesUnreadCount: circleUnread.visitCapturesUnreadCount,
+        acceptedAppointmentsTodayCount,
       }),
       hasUrgentAlert,
     }),
     [
+      acceptedAppointmentsTodayCount,
       circleUnread.announcementsUnreadCount,
       circleUnread.discussionsUnreadCount,
       circleUnread.dropInsUnreadCount,

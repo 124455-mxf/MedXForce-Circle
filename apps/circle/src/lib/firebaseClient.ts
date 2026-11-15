@@ -6,6 +6,7 @@ import {
   type Auth,
   type UserCredential,
 } from 'firebase/auth';
+import { isCapacitorNativeApp } from './capacitorNativeAuth';
 
 function requireEnv(key: string): string {
   const value = import.meta.env[key];
@@ -29,9 +30,11 @@ export function loadFirebaseConfig(): MedxFirebaseConfig {
 
 export const firebase = initMedxFirebase(loadFirebaseConfig());
 
-void setPersistence(firebase.auth, browserLocalPersistence).catch((err) => {
-  console.warn('Firebase Auth persistence:', err);
-});
+if (!isCapacitorNativeApp()) {
+  void setPersistence(firebase.auth, browserLocalPersistence).catch((err) => {
+    console.warn('Firebase Auth persistence:', err);
+  });
+}
 
 /** Single-flight while pending (StrictMode double-mount). */
 let redirectResultOnce: Promise<UserCredential | null> | null = null;

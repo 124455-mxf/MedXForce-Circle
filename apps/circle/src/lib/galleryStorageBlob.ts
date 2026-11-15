@@ -8,6 +8,13 @@ export function storagePathFromDownloadUrl(url: string): string | null {
   return decodeURIComponent(match[1]);
 }
 
+/** Same shape the patient gallery proxy accepts: gallery/{patientId}/{file}. */
+const GALLERY_OBJECT_PATH_RE = /^gallery\/[^/]+\/[^/]+$/;
+
+function isAllowedGalleryObjectPath(path: string): boolean {
+  return GALLERY_OBJECT_PATH_RE.test(path);
+}
+
 function resolveGalleryApiBase(): string {
   const explicit = String(
     (import.meta.env.VITE_MEDXFORCE_API_URL as string | undefined) || '',
@@ -34,7 +41,7 @@ async function loadGalleryBlobViaServerProxy(path: string): Promise<Blob | null>
 /** Load gallery bytes; prefers patient-app server proxy when VITE_MEDXFORCE_API_URL is set. */
 export async function loadGalleryStorageBlob(url: string): Promise<Blob> {
   const path = storagePathFromDownloadUrl(url);
-  if (!path) throw new Error('Invalid gallery storage URL');
+  if (!path || !isAllowedGalleryObjectPath(path)) throw new Error('Invalid gallery storage URL');
 
   const proxied = await loadGalleryBlobViaServerProxy(path);
   if (proxied) return proxied;
