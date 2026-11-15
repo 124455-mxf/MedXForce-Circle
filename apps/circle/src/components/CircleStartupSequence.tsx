@@ -11,9 +11,13 @@ const STEP_KEYS = [
   'brand.startupWorkspace',
 ] as const;
 
-/** Shared with the workspace status line so the header matches that size. */
+/**
+ * Fixed pixel size, shared by the header and the step line.
+ * Rem and vw sizes shrink on iPhone when the step changes or the text-size
+ * preference arrives. MedXForce stays put because its size is already in vw.
+ */
 const STARTUP_LABEL_CLASS =
-  'text-center text-[clamp(0.625rem,1.6vw,0.8125rem)] font-bold uppercase tracking-[0.22em] text-white/90';
+  'text-center text-[13px] font-bold uppercase leading-none tracking-[0.14em] text-white/90';
 
 type CircleStartupSequenceProps = {
   phase: CircleStartupPhase;
@@ -32,6 +36,8 @@ export function CircleStartupSequence({ phase, exiting, tagline, t }: CircleStar
       style={{
         backgroundColor: STARTUP_BRAND_COLOR,
         opacity: exiting ? 0 : 1,
+        textSizeAdjust: '100%',
+        WebkitTextSizeAdjust: '100%',
       }}
       aria-live="polite"
       aria-busy={!exiting}
@@ -47,8 +53,8 @@ export function CircleStartupSequence({ phase, exiting, tagline, t }: CircleStar
         }}
       >
         <header className="shrink-0 pt-[clamp(0.5rem,2vh,1.5rem)] text-center landscape:pt-[clamp(0.25rem,1.5vh,1rem)]">
-          <p className={`mx-auto max-w-2xl leading-snug ${STARTUP_LABEL_CLASS}`}>{tagline}</p>
-          <p className={`mx-auto mt-2 max-w-2xl leading-snug ${STARTUP_LABEL_CLASS}`}>
+          <p className={`mx-auto max-w-2xl ${STARTUP_LABEL_CLASS}`}>{tagline}</p>
+          <p className={`mx-auto mt-2 max-w-2xl ${STARTUP_LABEL_CLASS}`}>
             {t('brand.startupFocus')}
           </p>
         </header>
@@ -62,8 +68,7 @@ export function CircleStartupSequence({ phase, exiting, tagline, t }: CircleStar
               MedXForce
             </h1>
             <p
-              className="mx-auto mt-[clamp(0.75rem,2.5vh,1.5rem)] max-w-xl font-semibold uppercase tracking-[0.28em] text-white/95 landscape:mt-[clamp(0.5rem,1.5vh,1rem)]"
-              style={{ fontSize: 'clamp(0.6875rem, 2vw, 1.0625rem)' }}
+              className={`mx-auto mt-[clamp(0.75rem,2.5vh,1.5rem)] max-w-xl landscape:mt-[clamp(0.5rem,1.5vh,1rem)] ${STARTUP_LABEL_CLASS}`}
             >
               {t('brand.motto')}
             </p>
@@ -71,11 +76,8 @@ export function CircleStartupSequence({ phase, exiting, tagline, t }: CircleStar
         </main>
 
         <footer className="mx-auto w-full max-w-[min(100%,22rem)] shrink-0 pb-[clamp(0.5rem,2vh,1.25rem)] landscape:max-w-[min(100%,28rem)]">
-          <div className="mb-3 h-[1.125rem] landscape:mb-2">
-            <p
-              key={STEP_KEYS[phase]}
-              className={`${STARTUP_LABEL_CLASS} transition-opacity duration-300`}
-            >
+          <div className="mb-3 h-5 landscape:mb-2">
+            <p className={STARTUP_LABEL_CLASS}>
               {stepLabel}
             </p>
           </div>
