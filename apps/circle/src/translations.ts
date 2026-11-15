@@ -144,6 +144,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     brand: {
       startupTagline: 'MedXForce Circle — Family & Friends',
+      startupFocus: 'Stroke and TBI',
       motto: 'Communication made possible',
       startupBoot: 'Starting MedXForce Circle',
       startupAccess: 'Checking your access',
@@ -224,6 +225,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     brand: {
       startupTagline: 'MedXForce Circle — Familie & Freunde',
+      startupFocus: 'Schlaganfall und SHT',
       motto: 'Kommunikation, die verbindet',
       startupBoot: 'MedXForce Circle wird gestartet',
       startupAccess: 'Zugang wird geprüft',
@@ -304,6 +306,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     brand: {
       startupTagline: 'MedXForce Circle — Familia y amigos',
+      startupFocus: 'Ictus y TCE',
       motto: 'Comunicación hecha posible',
       startupBoot: 'Iniciando MedXForce Circle',
       startupAccess: 'Comprobando su acceso',
@@ -384,6 +387,7 @@ export const CIRCLE_TRANSLATIONS: Record<CircleUiLanguage, TranslationTree> = {
     },
     brand: {
       startupTagline: 'MedXForce Circle — Rodzina i przyjaciele',
+      startupFocus: 'Udar i uraz mózgu',
       motto: 'Komunikacja staje się możliwa',
       startupBoot: 'Uruchamianie MedXForce Circle',
       startupAccess: 'Sprawdzanie dostępu',

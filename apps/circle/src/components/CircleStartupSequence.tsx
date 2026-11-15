@@ -11,6 +11,10 @@ const STEP_KEYS = [
   'brand.startupWorkspace',
 ] as const;
 
+/** Shared with the workspace status line so the header matches that size. */
+const STARTUP_LABEL_CLASS =
+  'text-center text-[clamp(0.625rem,1.6vw,0.8125rem)] font-bold uppercase tracking-[0.22em] text-white/90';
+
 type CircleStartupSequenceProps = {
   phase: CircleStartupPhase;
   exiting: boolean;
@@ -43,8 +47,9 @@ export function CircleStartupSequence({ phase, exiting, tagline, t }: CircleStar
         }}
       >
         <header className="shrink-0 pt-[clamp(0.5rem,2vh,1.5rem)] text-center landscape:pt-[clamp(0.25rem,1.5vh,1rem)]">
-          <p className="mx-auto max-w-2xl text-[clamp(0.625rem,1.8vw,0.9375rem)] font-medium leading-snug text-white/95">
-            {tagline}
+          <p className={`mx-auto max-w-2xl leading-snug ${STARTUP_LABEL_CLASS}`}>{tagline}</p>
+          <p className={`mx-auto mt-2 max-w-2xl leading-snug ${STARTUP_LABEL_CLASS}`}>
+            {t('brand.startupFocus')}
           </p>
         </header>
 
@@ -69,7 +74,7 @@ export function CircleStartupSequence({ phase, exiting, tagline, t }: CircleStar
           <div className="mb-3 h-[1.125rem] landscape:mb-2">
             <p
               key={STEP_KEYS[phase]}
-              className="text-center text-[clamp(0.625rem,1.6vw,0.8125rem)] font-bold uppercase tracking-[0.22em] text-white/90 transition-opacity duration-300"
+              className={`${STARTUP_LABEL_CLASS} transition-opacity duration-300`}
             >
               {stepLabel}
             </p>
